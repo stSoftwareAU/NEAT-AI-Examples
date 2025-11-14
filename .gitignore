@@ -1,0 +1,7 @@
+# Ignore invisible
+.*
+*~
+!.gitignore
+!.github
+deno.lock
+run.log
