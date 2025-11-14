@@ -1,6 +1,6 @@
 # NEAT-AI-Examples
 
-Companion programs demonstrating how to use [`NEAT-AI`](../NEAT-AI). Each
+Companion programs demonstrating how to use [`NEAT-AI`](https://github.com/stSoftwareAU/NEAT-AI). Each
 example is designed to be run alongside the library and the Rust discovery
 extension so you can reproduce real-world scenarios without touching production
 data.
