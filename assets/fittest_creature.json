@@ -86390,24 +86390,5 @@
       "name": "intelligentDesign",
       "value": "💍  Tacit Knowledge, score: 0.414595 improved by 0.00000312"
     }
-  ],
-  "memetic": {
-    "generation": 2,
-    "score": 0.41468320196336506,
-    "biases": {},
-    "weights": {
-      "863ea815-7984-4684-8b00-59389fc2cb3e": [
-        {
-          "toUUID": "952525ab-e9ea-4252-813e-b43896becc36",
-          "weight": 0
-        }
-      ],
-      "input-402": [
-        {
-          "toUUID": "trend-check-00002",
-          "weight": -3.5431662999999998
-        }
-      ]
-    }
-  }
+  ]
 }
