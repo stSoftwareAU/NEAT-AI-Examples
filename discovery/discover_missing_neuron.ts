@@ -422,17 +422,27 @@ async function runDiscoveryExample(): Promise<void> {
     discoverySampleRate: 1,
     discoveryBatchSize: 1,
     discoveryTimeOutMinutes: 1,
-    discoveryAnalysisTimeoutMinutes: 5,
+    discoveryAnalysisTimeoutMinutes: 1,
     discoveryRustFlushRecords: 32,
     discoveryMaxNeurons: 6,
     discoveryDrainEveryNBatches: 32,
     discoveryFocusNeuronUUIDs: effectiveFocusNeurons,
   };
 
+  console.info(
+    `Discovery configuration: sampleRate=${discoveryOptions.discoverySampleRate}, batchSize=${discoveryOptions.discoveryBatchSize}, timeout=${discoveryOptions.discoveryTimeOutMinutes}m, analysisTimeout=${discoveryOptions.discoveryAnalysisTimeoutMinutes}m`,
+  );
+  console.info(`Discovery data dir: ${DATA_DIR}`);
+
   console.info("Running discovery...");
+  const discoveryStart = performance.now();
   const discoveryResult = await crippledCreature.discoveryDir(
     DATA_DIR,
     discoveryOptions,
+  );
+  const discoveryDurationSeconds = (performance.now() - discoveryStart) / 1000;
+  console.info(
+    `Discovery finished in ${discoveryDurationSeconds.toFixed(1)} seconds.`,
   );
 
   const improvement = discoveryResult.improvement;
