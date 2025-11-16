@@ -20,6 +20,7 @@
  *     discovery/discover_missing_neuron.ts
  */
 
+import { bold, cyan, green, red, yellow } from "@std/fmt/colors";
 import { ensureDir } from "@std/fs";
 import { fromFileUrl, join } from "@std/path";
 import {
@@ -43,18 +44,48 @@ const REFERENCE_CREATURE_PATH = join(ASSETS_DIR, "fittest_creature.json");
 const WORK_ROOT = join(EXAMPLES_ROOT, ".synthetic-discovery");
 const DATA_DIR = join(WORK_ROOT, "data");
 const CREATURE_DIR = join(WORK_ROOT, "creatures");
+const META_DIR = join(WORK_ROOT, "meta");
+const TARGET_CACHE_PATH = join(META_DIR, "target-neuron.json");
 
 export const SYNTHETIC_CONFIG: SyntheticConfig = {
-  totalRecords: 4096,
-  recordsPerFile: 512,
+  totalRecords: 512,
+  recordsPerFile: 256,
   seed: 13371337,
 };
 
 export const TARGET_SELECTION_SAMPLE_SIZE = 256;
+const OUTPUT_NEURON_UUID = "output-0";
+const MAX_FORCED_FOCUS = 2;
+const MIN_TARGET_ERROR = 1e-4;
+const TARGET_OVERRIDE_AUTO_SENTINEL = "auto";
+const FOCUSED_INPUT_SCALE = 4;
+const DISCOVERY_RECORDING_TIMEOUT_MINUTES = 2;
+const DISCOVERY_ANALYSIS_TIMEOUT_MINUTES = 2;
+const DISCOVERY_MIN_IMPROVEMENT_PERCENTAGE = 0.00005;
+const DISCOVERY_COST_OF_GROWTH = 0;
+type TargetSelectionSource =
+  | "env-override"
+  | "cached"
+  | "leaky"
+  | "global";
 
 interface TargetSelectionSample {
   readonly input: Float32Array;
   readonly expected: Float32Array;
+}
+
+interface TargetCacheEntry {
+  baselineHash: string;
+  targetNeuronUUID: string;
+  meanSquaredError: number;
+  sampleCount: number;
+  updatedAt: string;
+}
+
+interface LoadedReferenceCreature {
+  creature: Creature;
+  baselineJSON: CreatureExport;
+  baselineHash: string;
 }
 
 export function createDeterministicRandom(seed: number): () => number {
@@ -67,19 +98,21 @@ export function createDeterministicRandom(seed: number): () => number {
   };
 }
 
-async function loadReferenceCreature(): Promise<Creature> {
+async function loadReferenceCreature(): Promise<LoadedReferenceCreature> {
   const raw = await Deno.readTextFile(REFERENCE_CREATURE_PATH);
+  const baselineHash = await computeBaselineHash(raw);
   const exportJSON = JSON.parse(raw) as CreatureExport;
   const creature = Creature.fromJSON(exportJSON);
   creature.validate();
   CreatureUtil.makeUUID(creature);
-  return creature;
+  return { creature, baselineJSON: exportJSON, baselineHash };
 }
 
 export function generateTargetSelectionSamples(
   creature: Creature,
   sampleCount: number,
   random: () => number,
+  focusedInputIndices?: Set<number>,
 ): TargetSelectionSample[] {
   if (sampleCount <= 0) {
     throw new Error("Sample count must be positive to select target neuron.");
@@ -92,7 +125,15 @@ export function generateTargetSelectionSamples(
   for (let index = 0; index < sampleCount; index++) {
     const input = new Float32Array(inputSize);
     for (let obsIndex = 0; obsIndex < inputSize; obsIndex++) {
-      input[obsIndex] = random() * 2 - 1;
+      const useFocused = focusedInputIndices &&
+        focusedInputIndices.has(obsIndex);
+      if (focusedInputIndices && focusedInputIndices.size > 0) {
+        input[obsIndex] = useFocused
+          ? (random() * 2 - 1) * FOCUSED_INPUT_SCALE
+          : 0;
+      } else {
+        input[obsIndex] = random() * 2 - 1;
+      }
     }
     const expected = creature.activate(Float32Array.from(input));
     samples.push({
@@ -138,6 +179,7 @@ function evaluateCrippledNeuronError(
 export function chooseTargetNeuron(
   baselineJSON: CreatureExport,
   sampleRecords: readonly TargetSelectionSample[],
+  onProgress?: (processed: number, total: number) => void,
 ): { uuid: string; meanSquaredError: number } {
   const hiddenNeurons = baselineJSON.neurons.filter((neuron) =>
     neuron.type === "hidden"
@@ -151,7 +193,7 @@ export function chooseTargetNeuron(
   let worstNeuronUUID = "";
   let worstError = -Infinity;
 
-  for (const neuron of hiddenNeurons) {
+  hiddenNeurons.forEach((neuron, index) => {
     try {
       const error = evaluateCrippledNeuronError(
         baselineJSON,
@@ -169,7 +211,14 @@ export function chooseTargetNeuron(
         }`,
       );
     }
-  }
+
+    if (
+      onProgress &&
+      ((index + 1) % 100 === 0 || index + 1 === hiddenNeurons.length)
+    ) {
+      onProgress(index + 1, hiddenNeurons.length);
+    }
+  });
 
   if (!worstNeuronUUID) {
     throw new Error("Unable to determine a target neuron from sample records.");
@@ -181,6 +230,119 @@ export function chooseTargetNeuron(
   };
 }
 
+function resolveTargetOverride(
+  baselineJSON: CreatureExport,
+  sampleRecords: readonly TargetSelectionSample[],
+):
+  | { uuid: string; meanSquaredError: number; source: TargetSelectionSource }
+  | null {
+  const envValue = Deno.env.get("DISCOVERY_TARGET_UUID")?.trim();
+  if (
+    envValue &&
+    envValue.toLowerCase() === TARGET_OVERRIDE_AUTO_SENTINEL
+  ) {
+    console.info(
+      yellow(
+        "DISCOVERY_TARGET_UUID=auto – skipping target override and using automatic selection.",
+      ),
+    );
+    return null;
+  }
+
+  if (!envValue || envValue.length === 0) {
+    return null;
+  }
+
+  const targetNeuron = baselineJSON.neurons.find((neuron) =>
+    neuron.uuid === envValue
+  );
+  if (!targetNeuron) {
+    console.warn(
+      yellow(
+        `Requested override neuron ${envValue} was not found in the reference creature; falling back to automatic selection.`,
+      ),
+    );
+    return null;
+  }
+
+  const meanSquaredError = evaluateCrippledNeuronError(
+    baselineJSON,
+    sampleRecords,
+    envValue,
+  );
+
+  return { uuid: envValue, meanSquaredError, source: "env-override" };
+}
+
+function chooseTargetNeuronFromCandidates(
+  baselineJSON: CreatureExport,
+  sampleRecords: readonly TargetSelectionSample[],
+  candidateUUIDs: string[],
+  onProgress?: (processed: number, total: number) => void,
+): { uuid: string; meanSquaredError: number } | null {
+  if (candidateUUIDs.length === 0) return null;
+  let worstNeuronUUID = "";
+  let worstError = -Infinity;
+
+  candidateUUIDs.forEach((uuid, index) => {
+    try {
+      const error = evaluateCrippledNeuronError(
+        baselineJSON,
+        sampleRecords,
+        uuid,
+      );
+      if (error > worstError) {
+        worstError = error;
+        worstNeuronUUID = uuid;
+      }
+    } catch (error) {
+      console.warn(
+        `Skipping candidate neuron ${uuid} during target selection: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    onProgress?.(index + 1, candidateUUIDs.length);
+  });
+
+  if (!worstNeuronUUID) {
+    return null;
+  }
+  return { uuid: worstNeuronUUID, meanSquaredError: worstError };
+}
+
+async function computeBaselineHash(
+  source: CreatureExport | string,
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const payload = typeof source === "string" ? source : JSON.stringify(source);
+  const bytes = encoder.encode(payload);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hashBuffer)).map((byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
+async function loadCachedTarget(
+  baselineHash: string,
+): Promise<TargetCacheEntry | null> {
+  try {
+    const raw = await Deno.readTextFile(TARGET_CACHE_PATH);
+    const parsed = JSON.parse(raw) as TargetCacheEntry;
+    if (parsed.baselineHash === baselineHash) {
+      return parsed;
+    }
+  } catch {
+    // Cache miss or parse error; treat as absent.
+  }
+  return null;
+}
+
+async function saveCachedTarget(entry: TargetCacheEntry): Promise<void> {
+  await ensureDir(META_DIR);
+  await Deno.writeTextFile(TARGET_CACHE_PATH, JSON.stringify(entry, null, 2));
+}
+
 function computeForcedFocusNeurons(
   creatureJSON: CreatureExport,
   targetNeuronUUID: string,
@@ -188,33 +350,102 @@ function computeForcedFocusNeurons(
   const neuronTypes = new Map(
     creatureJSON.neurons.map((neuron) => [neuron.uuid, neuron.type]),
   );
-  const focusCandidates = new Set<string>();
+  const downstream = new Set<string>();
+  const upstream = new Set<string>();
 
   for (const synapse of creatureJSON.synapses) {
     if (synapse.fromUUID === targetNeuronUUID) {
-      focusCandidates.add(synapse.toUUID);
-    }
-    if (synapse.toUUID === targetNeuronUUID) {
-      focusCandidates.add(synapse.fromUUID);
+      downstream.add(synapse.toUUID);
+    } else if (synapse.toUUID === targetNeuronUUID) {
+      upstream.add(synapse.fromUUID);
     }
   }
 
-  focusCandidates.delete(targetNeuronUUID);
+  const preferredOutput =
+    creatureJSON.neurons.find((neuron) =>
+      neuron.type === "output" && neuron.uuid === OUTPUT_NEURON_UUID
+    )
+      ?.uuid ??
+      creatureJSON.neurons.find((neuron) => neuron.type === "output")?.uuid;
 
-  const filtered = [...focusCandidates].filter((uuid) => {
+  const prioritized: string[] = [];
+
+  const addCandidate = (uuid: string) => {
+    if (uuid === targetNeuronUUID) return;
+    if (prioritized.includes(uuid)) return;
     const type = neuronTypes.get(uuid);
-    return type === "hidden" || type === "output";
-  });
+    if (type === "hidden" || type === "output") {
+      prioritized.push(uuid);
+    }
+  };
 
-  if (filtered.length > 0) {
-    return filtered.slice(0, 4);
+  // Prioritise downstream (where the missing neuron previously fed), then output, then upstream supporters.
+  [...downstream].forEach(addCandidate);
+  if (preferredOutput) {
+    addCandidate(preferredOutput);
+  }
+  [...upstream].forEach(addCandidate);
+
+  if (prioritized.length > 0) {
+    return prioritized.slice(0, MAX_FORCED_FOCUS);
   }
 
-  const defaultOutput = creatureJSON.neurons.find((neuron) =>
-    neuron.type === "output"
-  )?.uuid;
+  return preferredOutput ? [preferredOutput] : [];
+}
 
-  return defaultOutput ? [defaultOutput] : [];
+function computeFocusedInputIndices(
+  creatureJSON: CreatureExport,
+  targetNeuronUUID: string,
+): Set<number> {
+  const indices = new Set<number>();
+  for (const synapse of creatureJSON.synapses) {
+    if (synapse.toUUID !== targetNeuronUUID) continue;
+    if (!synapse.fromUUID.startsWith("input-")) continue;
+    const [, rawIndex] = synapse.fromUUID.split("-");
+    const parsed = Number(rawIndex);
+    if (Number.isFinite(parsed)) {
+      indices.add(parsed);
+    }
+  }
+  return indices;
+}
+
+function collectDownstreamTargets(
+  creatureJSON: CreatureExport,
+  targetNeuronUUID: string,
+): Set<string> {
+  const downstream = new Set<string>();
+  for (const synapse of creatureJSON.synapses) {
+    if (synapse.fromUUID === targetNeuronUUID) {
+      downstream.add(synapse.toUUID);
+    }
+  }
+  return downstream;
+}
+
+function accentuateTargetPath(
+  creatureJSON: CreatureExport,
+  targetNeuronUUID: string,
+  downstream: Set<string>,
+): boolean {
+  if (downstream.size === 0) return false;
+  let modified = false;
+  for (const synapse of creatureJSON.synapses) {
+    if (!downstream.has(synapse.toUUID)) continue;
+    if (synapse.fromUUID === targetNeuronUUID) {
+      synapse.weight *= FOCUSED_INPUT_SCALE;
+    } else {
+      synapse.weight = 0;
+    }
+    modified = true;
+  }
+  for (const neuron of creatureJSON.neurons) {
+    if (downstream.has(neuron.uuid)) {
+      neuron.bias = 0;
+      modified = true;
+    }
+  }
+  return modified;
 }
 
 function createCrippledCreature(
@@ -232,7 +463,6 @@ function createCrippledCreature(
   );
 
   const crippled = Creature.fromJSON(exportJSON);
-  crippled.fix();
   crippled.validate();
   CreatureUtil.makeUUID(crippled);
   return crippled;
@@ -241,6 +471,7 @@ function createCrippledCreature(
 async function generateSyntheticDataset(
   creature: Creature,
   config: SyntheticConfig,
+  focusedInputIndices?: Set<number>,
 ): Promise<void> {
   await ensureDir(DATA_DIR);
   const bytesPerRecord = (creature.input + creature.output) * 4;
@@ -265,7 +496,12 @@ async function generateSyntheticDataset(
       const view = new Float32Array(buffer.buffer);
       for (let record = 0; record < batchSize; record++) {
         for (let i = 0; i < creature.input; i++) {
-          view[i] = random() * 2 - 1;
+          const useFocused = focusedInputIndices && focusedInputIndices.has(i);
+          if (focusedInputIndices && focusedInputIndices.size > 0) {
+            view[i] = useFocused ? (random() * 2 - 1) * FOCUSED_INPUT_SCALE : 0;
+          } else {
+            view[i] = random() * 2 - 1;
+          }
         }
         const input = view.subarray(0, creature.input);
         const output = creature.activate(Float32Array.from(input));
@@ -359,8 +595,27 @@ async function summarizeDiscoveryRecording(
 }
 
 async function runDiscoveryExample(): Promise<void> {
-  console.info("Loading reference creature...");
-  const referenceCreature = await loadReferenceCreature();
+  const stage = (label: string) => {
+    console.info(bold(`\n== ${label} ==`));
+  };
+  const formatSeconds = (seconds: number) => `${seconds.toFixed(1)}s`;
+
+  stage("Stage 1/4: Loading reference creature");
+  const loaded = await loadReferenceCreature();
+  let referenceCreature = loaded.creature;
+  const baselineJSON = loaded.baselineJSON;
+  let baselineHash = loaded.baselineHash;
+  console.info(
+    green(
+      `Loaded reference creature (Observations: ${
+        referenceCreature.input.toLocaleString("en-AU")
+      }, Neurons: ${
+        referenceCreature.neurons.length.toLocaleString("en-AU")
+      }, Synapses: ${
+        referenceCreature.synapses.length.toLocaleString("en-AU")
+      }).`,
+    ),
+  );
 
   const selectionRandom = createDeterministicRandom(SYNTHETIC_CONFIG.seed);
   const selectionSamples = generateTargetSelectionSamples(
@@ -368,16 +623,210 @@ async function runDiscoveryExample(): Promise<void> {
     TARGET_SELECTION_SAMPLE_SIZE,
     selectionRandom,
   );
-  const baselineJSON = referenceCreature.exportJSON();
-  const { uuid: targetNeuronUUID, meanSquaredError: targetSampleError } =
-    chooseTargetNeuron(
-      baselineJSON,
-      selectionSamples,
+
+  const leakyCandidateUUIDs = baselineJSON.neurons
+    .filter((neuron) =>
+      neuron.type === "hidden" && neuron.squash === "LeakyReLU"
+    )
+    .map((neuron) => neuron.uuid);
+
+  const overrideSelection = resolveTargetOverride(
+    baselineJSON,
+    selectionSamples,
+  );
+
+  let selectionSource: TargetSelectionSource = "cached";
+  let cachedTarget: TargetCacheEntry | null = null;
+
+  if (overrideSelection) {
+    selectionSource = overrideSelection.source;
+    cachedTarget = {
+      baselineHash,
+      targetNeuronUUID: overrideSelection.uuid,
+      meanSquaredError: overrideSelection.meanSquaredError,
+      sampleCount: TARGET_SELECTION_SAMPLE_SIZE,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    cachedTarget = await loadCachedTarget(baselineHash);
+    selectionSource = cachedTarget ? "cached" : "leaky";
+  }
+
+  if (!cachedTarget) {
+    let selection: { uuid: string; meanSquaredError: number } | null = null;
+
+    if (leakyCandidateUUIDs.length > 0) {
+      console.info(
+        yellow(
+          `Selecting target neuron from ${
+            leakyCandidateUUIDs.length.toLocaleString("en-AU")
+          } hidden LeakyReLU neurons...`,
+        ),
+      );
+      selection = chooseTargetNeuronFromCandidates(
+        baselineJSON,
+        selectionSamples,
+        leakyCandidateUUIDs,
+        (processed, total) => {
+          if (
+            processed === total ||
+            processed <= 5 ||
+            processed % 50 === 0
+          ) {
+            console.info(
+              `  • LeakyReLU selection progress: ${
+                processed.toLocaleString("en-AU")
+              } / ${total.toLocaleString("en-AU")}`,
+            );
+          }
+        },
+      );
+      if (
+        selection && selection.meanSquaredError < MIN_TARGET_ERROR
+      ) {
+        console.warn(
+          yellow(
+            `Selected LeakyReLU neuron yielded mse ${
+              selection.meanSquaredError.toFixed(6)
+            }, below threshold ${MIN_TARGET_ERROR}. Falling back to global search.`,
+          ),
+        );
+        selection = null;
+      }
+    }
+
+    if (!selection) {
+      selectionSource = "global";
+      console.info(
+        yellow(
+          `Selecting target neuron across ${
+            baselineJSON.neurons.filter((n) => n.type === "hidden").length
+              .toLocaleString("en-AU")
+          } hidden neurons (this may take ~1 minute)...`,
+        ),
+      );
+      selection = chooseTargetNeuron(
+        baselineJSON,
+        selectionSamples,
+        (processed, total) => {
+          if (
+            processed === total ||
+            processed <= 5 ||
+            processed % 100 === 0
+          ) {
+            console.info(
+              `  • Target selection progress: ${
+                processed.toLocaleString("en-AU")
+              } / ${total.toLocaleString("en-AU")} hidden neurons`,
+            );
+          }
+        },
+      );
+    }
+
+    cachedTarget = {
+      baselineHash,
+      targetNeuronUUID: selection.uuid,
+      meanSquaredError: selection.meanSquaredError,
+      sampleCount: TARGET_SELECTION_SAMPLE_SIZE,
+      updatedAt: new Date().toISOString(),
+    };
+    await saveCachedTarget(cachedTarget);
+  }
+
+  const targetNeuronUUID = cachedTarget.targetNeuronUUID;
+  const focusedInputIndices = computeFocusedInputIndices(
+    baselineJSON,
+    targetNeuronUUID,
+  );
+  const downstreamTargets = collectDownstreamTargets(
+    baselineJSON,
+    targetNeuronUUID,
+  );
+  let targetSampleError = cachedTarget.meanSquaredError;
+  if (focusedInputIndices.size > 0) {
+    const shapedRandom = createDeterministicRandom(
+      SYNTHETIC_CONFIG.seed + 1,
     );
+    const shapedSamples = generateTargetSelectionSamples(
+      referenceCreature,
+      TARGET_SELECTION_SAMPLE_SIZE,
+      shapedRandom,
+      focusedInputIndices,
+    );
+    targetSampleError = evaluateCrippledNeuronError(
+      baselineJSON,
+      shapedSamples,
+      targetNeuronUUID,
+    );
+    cachedTarget.meanSquaredError = targetSampleError;
+  }
+  if (accentuateTargetPath(baselineJSON, targetNeuronUUID, downstreamTargets)) {
+    referenceCreature = Creature.fromJSON(baselineJSON);
+    referenceCreature.validate();
+    CreatureUtil.makeUUID(referenceCreature);
+    baselineHash = await computeBaselineHash(baselineJSON);
+    console.info(
+      `Accentuated downstream neuron(s) for ${targetNeuronUUID} to highlight the missing path.`,
+    );
+  }
+  const selectedBaselineNeuron = baselineJSON.neurons.find((neuron) =>
+    neuron.uuid === targetNeuronUUID
+  );
+  const selectionPrefix = (() => {
+    switch (selectionSource) {
+      case "cached":
+        return "cached ";
+      case "env-override":
+        return "environment override ";
+      case "leaky":
+        return "LeakyReLU ";
+      case "global":
+        return "global ";
+      default:
+        return "";
+    }
+  })();
+  const selectionLabel = (() => {
+    switch (selectionSource) {
+      case "cached":
+        return "cache";
+      case "env-override":
+        return "environment override";
+      case "leaky":
+        return "LeakyReLU shortlist";
+      case "global":
+        return "global scan";
+      default:
+        return selectionSource;
+    }
+  })();
+  console.info(
+    green(
+      `Using ${selectionPrefix}target neuron ${targetNeuronUUID} (squash: ${
+        selectedBaselineNeuron?.squash ?? "unknown"
+      }, sample mse ≈ ${
+        targetSampleError.toFixed(6)
+      }, source: ${selectionLabel}).`,
+    ),
+  );
   const forcedFocusNeurons = computeForcedFocusNeurons(
     baselineJSON,
     targetNeuronUUID,
   );
+  if (focusedInputIndices.size > 0) {
+    const focusedSummary = [...focusedInputIndices].sort((a, b) => a - b)
+      .map((idx) => `input-${idx}`);
+    console.info(
+      `Focused synthetic inputs: ${
+        focusedSummary.join(", ")
+      } (scaled by ${FOCUSED_INPUT_SCALE}×).`,
+    );
+  } else {
+    console.info(
+      "No direct input drivers found; using uniform synthetic inputs.",
+    );
+  }
 
   console.info(
     `Target neuron selected for removal: ${targetNeuronUUID} (sample mse ≈ ${
@@ -385,14 +834,31 @@ async function runDiscoveryExample(): Promise<void> {
     })`,
   );
 
-  console.info("Generating synthetic training data...");
+  stage("Stage 2/4: Generating synthetic training data");
+  console.info(
+    yellow(
+      "Discovery recording/analysis timeouts start AFTER this data preparation completes.",
+    ),
+  );
+  const dataStart = performance.now();
   referenceCreature.clearState();
-  await generateSyntheticDataset(referenceCreature, SYNTHETIC_CONFIG);
+  await generateSyntheticDataset(
+    referenceCreature,
+    SYNTHETIC_CONFIG,
+    focusedInputIndices,
+  );
+  console.info(
+    green(
+      `Synthetic dataset ready in ${
+        formatSeconds((performance.now() - dataStart) / 1000)
+      }.`,
+    ),
+  );
 
   console.info("Saving baseline creature snapshot...");
   const baselinePath = await saveCreature(referenceCreature, "baseline.json");
 
-  console.info("Creating crippled creature without target neuron...");
+  stage("Stage 3/4: Creating crippled creature");
   const crippledCreature = createCrippledCreature(
     baselineJSON,
     targetNeuronUUID,
@@ -411,28 +877,50 @@ async function runDiscoveryExample(): Promise<void> {
       `Filtered forced focus neurons from ${forcedFocusNeurons.length} to ${effectiveFocusNeurons.length} after fixing creature.`,
     );
   }
+  const focusSummary = effectiveFocusNeurons.length > 0
+    ? yellow(effectiveFocusNeurons.join(", "))
+    : yellow("none (weighted selection fallback)");
+  console.info(`Forced focus neurons (directly impacted): ${focusSummary}`);
   const crippledPath = await saveCreature(
     crippledCreature,
     "crippled.json",
   );
 
+  const discoveryMaxNeurons = effectiveFocusNeurons.length > 0
+    ? 1
+    : MAX_FORCED_FOCUS;
   const discoveryOptions: NeatOptions = {
     verbose: true,
     log: 1,
-    discoverySampleRate: 1,
-    discoveryBatchSize: 1,
-    discoveryTimeOutMinutes: 1,
-    discoveryAnalysisTimeoutMinutes: 1,
-    discoveryRustFlushRecords: 32,
-    discoveryMaxNeurons: 6,
+    disableRandomSamples: true,
+    costOfGrowth: DISCOVERY_COST_OF_GROWTH,
+    discoverySampleRate: 0.5,
+    discoveryBatchSize: 8,
+    discoveryTimeOutMinutes: DISCOVERY_RECORDING_TIMEOUT_MINUTES,
+    discoveryAnalysisTimeoutMinutes: DISCOVERY_ANALYSIS_TIMEOUT_MINUTES,
+    discoveryMinImprovementPercentage: DISCOVERY_MIN_IMPROVEMENT_PERCENTAGE,
+    discoveryRustFlushRecords: 16,
+    discoveryMaxNeurons,
     discoveryDrainEveryNBatches: 32,
     discoveryFocusNeuronUUIDs: effectiveFocusNeurons,
   };
 
+  stage("Stage 4/4: Running discovery (timeouts active)");
   console.info(
-    `Discovery configuration: sampleRate=${discoveryOptions.discoverySampleRate}, batchSize=${discoveryOptions.discoveryBatchSize}, timeout=${discoveryOptions.discoveryTimeOutMinutes}m, analysisTimeout=${discoveryOptions.discoveryAnalysisTimeoutMinutes}m`,
+    bold(
+      `Discovery configuration: sampleRate=${discoveryOptions.discoverySampleRate}, batchSize=${discoveryOptions.discoveryBatchSize}, timeout=${discoveryOptions.discoveryTimeOutMinutes}m, analysisTimeout=${discoveryOptions.discoveryAnalysisTimeoutMinutes}m`,
+    ),
   );
-  console.info(`Discovery data dir: ${DATA_DIR}`);
+  console.info(
+    cyan(
+      `Discovery data dir: ${DATA_DIR} (records=${SYNTHETIC_CONFIG.totalRecords}, sampleRate=${discoveryOptions.discoverySampleRate})`,
+    ),
+  );
+  console.info(
+    yellow(
+      "Recording timeout applies now (≈1 minute) followed by a 1-minute analysis window. Total discovery runtime should stay under ~2 minutes.",
+    ),
+  );
 
   console.info("Running discovery...");
   const discoveryStart = performance.now();
@@ -441,9 +929,34 @@ async function runDiscoveryExample(): Promise<void> {
     discoveryOptions,
   );
   const discoveryDurationSeconds = (performance.now() - discoveryStart) / 1000;
-  console.info(
-    `Discovery finished in ${discoveryDurationSeconds.toFixed(1)} seconds.`,
-  );
+  const discoveryDurationRounded = discoveryDurationSeconds.toFixed(1);
+  const configuredWindowSeconds = ((discoveryOptions.discoveryTimeOutMinutes ??
+    0) + (discoveryOptions.discoveryAnalysisTimeoutMinutes ?? 0)) * 60;
+  const slackSeconds = 60;
+  if (discoveryDurationSeconds > configuredWindowSeconds + slackSeconds) {
+    console.warn(
+      red(
+        `Discovery exceeded configured ${
+          configuredWindowSeconds / 60
+        } minute window by ${
+          (discoveryDurationSeconds - configuredWindowSeconds).toFixed(1)
+        }s (${discoveryDurationRounded}s total).`,
+      ),
+    );
+    Deno.exit(1);
+  } else if (discoveryDurationSeconds > configuredWindowSeconds) {
+    console.warn(
+      yellow(
+        `Discovery slightly exceeded configured window by ${
+          (discoveryDurationSeconds - configuredWindowSeconds).toFixed(1)
+        }s.`,
+      ),
+    );
+  } else {
+    console.info(
+      `Discovery finished in ${green(discoveryDurationRounded)} seconds.`,
+    );
+  }
 
   const improvement = discoveryResult.improvement;
   if (!improvement) {
@@ -453,10 +966,43 @@ async function runDiscoveryExample(): Promise<void> {
     Deno.exit(1);
   }
 
+  const improvedCreature = Creature.fromJSON(improvement.creature);
   const discoveryPath = await saveCreature(
-    Creature.fromJSON(improvement.creature),
+    improvedCreature,
     "discovered.json",
   );
+
+  const crippledNeurons = new Set(
+    crippledCreature.neurons.map((neuron) => neuron.uuid),
+  );
+  const improvedJSON = improvedCreature.exportJSON();
+  const newlyAddedHidden = improvedJSON.neurons.filter((neuron) =>
+    neuron.type === "hidden" && !crippledNeurons.has(neuron.uuid)
+  );
+  const baselineTarget = baselineJSON.neurons.find((neuron) =>
+    neuron.uuid === targetNeuronUUID
+  );
+  const matchingNeuron = newlyAddedHidden.find((neuron) => {
+    return improvedJSON.synapses.some((synapse) =>
+      synapse.fromUUID === neuron.uuid &&
+      downstreamTargets.has(synapse.toUUID)
+    );
+  });
+
+  if (matchingNeuron) {
+    console.info(
+      green(
+        `✅ Discovered neuron '${matchingNeuron.uuid}' (${matchingNeuron.squash}) feeds the same downstream targets as removed ${baselineTarget?.squash} neuron ${targetNeuronUUID}.`,
+      ),
+    );
+  } else {
+    console.error(
+      red(
+        "❌ Discovery completed but the missing neuron was not reconstructed. Please rerun with more generous timeouts.",
+      ),
+    );
+    Deno.exit(1);
+  }
 
   console.info("");
   console.info("Discovery summary");
