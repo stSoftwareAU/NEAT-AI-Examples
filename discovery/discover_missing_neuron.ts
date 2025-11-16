@@ -61,11 +61,18 @@ const TARGET_OVERRIDE_AUTO_SENTINEL = "auto";
 const FOCUSED_INPUT_SCALE = 4;
 const DISCOVERY_RECORDING_TIMEOUT_MINUTES = 2;
 const DISCOVERY_ANALYSIS_TIMEOUT_MINUTES = 2;
-const DISCOVERY_MIN_IMPROVEMENT_PERCENTAGE = 0.00005;
+const DISCOVERY_MIN_IMPROVEMENT_PERCENTAGE = 0.000001;
 const DISCOVERY_COST_OF_GROWTH = 0;
 type TargetSelectionSource =
   | "env-override"
   | "cached"
+  | "near-output"
+  | "leaky"
+  | "global";
+
+type TargetCacheStrategy =
+  | "env-override"
+  | "near-output"
   | "leaky"
   | "global";
 
@@ -80,6 +87,7 @@ interface TargetCacheEntry {
   meanSquaredError: number;
   sampleCount: number;
   updatedAt: string;
+  strategy: TargetCacheStrategy;
 }
 
 interface LoadedReferenceCreature {
@@ -96,6 +104,10 @@ export function createDeterministicRandom(seed: number): () => number {
     r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+function formatMinutePhrase(minutes: number): string {
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
 async function loadReferenceCreature(): Promise<LoadedReferenceCreature> {
@@ -325,11 +337,15 @@ async function computeBaselineHash(
 
 async function loadCachedTarget(
   baselineHash: string,
+  strategy: TargetCacheStrategy,
 ): Promise<TargetCacheEntry | null> {
   try {
     const raw = await Deno.readTextFile(TARGET_CACHE_PATH);
     const parsed = JSON.parse(raw) as TargetCacheEntry;
-    if (parsed.baselineHash === baselineHash) {
+    if (
+      parsed.baselineHash === baselineHash &&
+      parsed.strategy === strategy
+    ) {
       return parsed;
     }
   } catch {
@@ -391,6 +407,37 @@ function computeForcedFocusNeurons(
   }
 
   return preferredOutput ? [preferredOutput] : [];
+}
+
+function findNearOutputCandidates(
+  creatureJSON: CreatureExport,
+  candidateUUIDs: string[],
+): string[] {
+  if (candidateUUIDs.length === 0) return [];
+  const candidateSet = new Set(candidateUUIDs);
+  const preferredOutputs = new Set<string>();
+  if (
+    creatureJSON.neurons.some((neuron) => neuron.uuid === OUTPUT_NEURON_UUID)
+  ) {
+    preferredOutputs.add(OUTPUT_NEURON_UUID);
+  } else {
+    creatureJSON.neurons.forEach((neuron) => {
+      if (neuron.type === "output") {
+        preferredOutputs.add(neuron.uuid);
+      }
+    });
+  }
+  if (preferredOutputs.size === 0) return [];
+  const nearOutput = new Set<string>();
+  for (const synapse of creatureJSON.synapses) {
+    if (
+      candidateSet.has(synapse.fromUUID) &&
+      preferredOutputs.has(synapse.toUUID)
+    ) {
+      nearOutput.add(synapse.fromUUID);
+    }
+  }
+  return candidateUUIDs.filter((uuid) => nearOutput.has(uuid));
 }
 
 function computeFocusedInputIndices(
@@ -629,6 +676,10 @@ async function runDiscoveryExample(): Promise<void> {
       neuron.type === "hidden" && neuron.squash === "LeakyReLU"
     )
     .map((neuron) => neuron.uuid);
+  const nearOutputCandidates = findNearOutputCandidates(
+    baselineJSON,
+    leakyCandidateUUIDs,
+  );
 
   const overrideSelection = resolveTargetOverride(
     baselineJSON,
@@ -636,37 +687,62 @@ async function runDiscoveryExample(): Promise<void> {
   );
 
   let selectionSource: TargetSelectionSource = "cached";
+  let selectionStrategy: TargetCacheStrategy = nearOutputCandidates.length > 0
+    ? "near-output"
+    : "leaky";
   let cachedTarget: TargetCacheEntry | null = null;
 
   if (overrideSelection) {
     selectionSource = overrideSelection.source;
+    selectionStrategy = "env-override";
     cachedTarget = {
       baselineHash,
       targetNeuronUUID: overrideSelection.uuid,
       meanSquaredError: overrideSelection.meanSquaredError,
       sampleCount: TARGET_SELECTION_SAMPLE_SIZE,
       updatedAt: new Date().toISOString(),
+      strategy: selectionStrategy,
     };
   } else {
-    cachedTarget = await loadCachedTarget(baselineHash);
-    selectionSource = cachedTarget ? "cached" : "leaky";
+    cachedTarget = await loadCachedTarget(baselineHash, selectionStrategy);
+    selectionSource = cachedTarget
+      ? "cached"
+      : selectionStrategy === "near-output"
+      ? "near-output"
+      : "leaky";
   }
 
   if (!cachedTarget) {
     let selection: { uuid: string; meanSquaredError: number } | null = null;
 
-    if (leakyCandidateUUIDs.length > 0) {
+    const candidatePool = nearOutputCandidates.length > 0
+      ? {
+        label: "near-output LeakyReLU",
+        list: nearOutputCandidates,
+        strategy: "near-output" as TargetCacheStrategy,
+      }
+      : {
+        label: "LeakyReLU",
+        list: leakyCandidateUUIDs,
+        strategy: "leaky" as TargetCacheStrategy,
+      };
+
+    if (candidatePool.list.length > 0) {
       console.info(
         yellow(
           `Selecting target neuron from ${
-            leakyCandidateUUIDs.length.toLocaleString("en-AU")
-          } hidden LeakyReLU neurons...`,
+            candidatePool.list.length.toLocaleString("en-AU")
+          } hidden ${candidatePool.label} neurons...`,
         ),
       );
+      selectionStrategy = candidatePool.strategy;
+      selectionSource = candidatePool.strategy === "near-output"
+        ? "near-output"
+        : "leaky";
       selection = chooseTargetNeuronFromCandidates(
         baselineJSON,
         selectionSamples,
-        leakyCandidateUUIDs,
+        candidatePool.list,
         (processed, total) => {
           if (
             processed === total ||
@@ -674,7 +750,7 @@ async function runDiscoveryExample(): Promise<void> {
             processed % 50 === 0
           ) {
             console.info(
-              `  • LeakyReLU selection progress: ${
+              `  • ${candidatePool.label} selection progress: ${
                 processed.toLocaleString("en-AU")
               } / ${total.toLocaleString("en-AU")}`,
             );
@@ -686,7 +762,7 @@ async function runDiscoveryExample(): Promise<void> {
       ) {
         console.warn(
           yellow(
-            `Selected LeakyReLU neuron yielded mse ${
+            `Selected ${candidatePool.label} neuron yielded mse ${
               selection.meanSquaredError.toFixed(6)
             }, below threshold ${MIN_TARGET_ERROR}. Falling back to global search.`,
           ),
@@ -697,6 +773,7 @@ async function runDiscoveryExample(): Promise<void> {
 
     if (!selection) {
       selectionSource = "global";
+      selectionStrategy = "global";
       console.info(
         yellow(
           `Selecting target neuron across ${
@@ -730,6 +807,7 @@ async function runDiscoveryExample(): Promise<void> {
       meanSquaredError: selection.meanSquaredError,
       sampleCount: TARGET_SELECTION_SAMPLE_SIZE,
       updatedAt: new Date().toISOString(),
+      strategy: selectionStrategy,
     };
     await saveCachedTarget(cachedTarget);
   }
@@ -777,6 +855,8 @@ async function runDiscoveryExample(): Promise<void> {
     switch (selectionSource) {
       case "cached":
         return "cached ";
+      case "near-output":
+        return "near-output ";
       case "env-override":
         return "environment override ";
       case "leaky":
@@ -791,6 +871,8 @@ async function runDiscoveryExample(): Promise<void> {
     switch (selectionSource) {
       case "cached":
         return "cache";
+      case "near-output":
+        return "near-output shortlist";
       case "env-override":
         return "environment override";
       case "leaky":
@@ -887,14 +969,14 @@ async function runDiscoveryExample(): Promise<void> {
   );
 
   const discoveryMaxNeurons = effectiveFocusNeurons.length > 0
-    ? 1
+    ? Math.max(1, effectiveFocusNeurons.length)
     : MAX_FORCED_FOCUS;
   const discoveryOptions: NeatOptions = {
     verbose: true,
     log: 1,
     disableRandomSamples: true,
     costOfGrowth: DISCOVERY_COST_OF_GROWTH,
-    discoverySampleRate: 0.5,
+    discoverySampleRate: 1,
     discoveryBatchSize: 8,
     discoveryTimeOutMinutes: DISCOVERY_RECORDING_TIMEOUT_MINUTES,
     discoveryAnalysisTimeoutMinutes: DISCOVERY_ANALYSIS_TIMEOUT_MINUTES,
@@ -903,6 +985,9 @@ async function runDiscoveryExample(): Promise<void> {
     discoveryMaxNeurons,
     discoveryDrainEveryNBatches: 32,
     discoveryFocusNeuronUUIDs: effectiveFocusNeurons,
+    discoveryDisableSynapseCandidates: true,
+    discoveryDisableHarmfulCandidates: true,
+    discoveryDisableSquashCandidates: true,
   };
 
   stage("Stage 4/4: Running discovery (timeouts active)");
@@ -918,7 +1003,18 @@ async function runDiscoveryExample(): Promise<void> {
   );
   console.info(
     yellow(
-      "Recording timeout applies now (≈1 minute) followed by a 1-minute analysis window. Total discovery runtime should stay under ~2 minutes.",
+      `Recording timeout applies now (${
+        formatMinutePhrase(
+          DISCOVERY_RECORDING_TIMEOUT_MINUTES,
+        )
+      }) followed by a ${
+        formatMinutePhrase(
+          DISCOVERY_ANALYSIS_TIMEOUT_MINUTES,
+        )
+      } analysis window. Total discovery runtime should stay under ~${
+        DISCOVERY_RECORDING_TIMEOUT_MINUTES +
+        DISCOVERY_ANALYSIS_TIMEOUT_MINUTES
+      } minutes.`,
     ),
   );
 
