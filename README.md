@@ -5,6 +5,56 @@ Companion programs demonstrating how to use
 to be run alongside the library and the Rust discovery extension so you can
 reproduce real-world scenarios without touching production data.
 
+## Intelligent Design: Squash Improvement Scan
+
+`intelligent_design/improve_squash_example.ts` demonstrates how to use the
+Intelligent Design module to systematically test different activation functions
+(squashes) for each hidden neuron in a creature. This technique is used in
+production workflows (e.g. at example.com/model-training) to optimise trained
+models by finding better squash functions than those produced by random mutation.
+
+### How it works
+
+1. Creates a reference creature with several hidden neurons
+2. Generates synthetic training data
+3. Scores the baseline creature
+4. Scans each hidden neuron, trying the target squash function
+5. For neurons that improve, tries alternative squash functions
+6. Combines the best improvements into a final creature
+
+### Running the example
+
+```bash
+./intelligent_design/run.sh
+```
+
+By default, the example tries `GELU` as the target squash. You can specify a
+different squash:
+
+```bash
+./intelligent_design/run.sh Swish
+./intelligent_design/run.sh LeakyReLU
+```
+
+The script writes all artefacts to `.synthetic-intelligent-design/`, a hidden
+directory ignored by git. You will find:
+
+- `data/` – Binary training data for scoring
+- `creatures/baseline.json` – The original reference creature
+- `creatures/improved.json` – The improved creature (if improvements were found)
+- `output/` – Individual improved creatures for each neuron
+
+### Tacit Knowledge
+
+In production workflows, successful squash substitutions are recorded as "tacit
+knowledge" – mappings from neuron UUID to squash function. This knowledge can be
+shared across machines (via a "hive" file in a git repository) or kept local.
+When a model is loaded, tacit knowledge is applied to quickly reapply known-good
+squash substitutions without rescanning.
+
+See the [`NEAT-AI` Intelligent Design guide](../NEAT-AI/docs/INTELLIGENT_DESIGN.md)
+for detailed documentation on the module and its APIs.
+
 ## Discovery: Recover a Missing Neuron
 
 `discovery/discover_missing_neuron.ts` generates a wide (1,600 inputs) dataset,
