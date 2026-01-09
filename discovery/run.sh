@@ -11,6 +11,11 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
+# Add deno to PATH if not already available
+if ! command -v deno &> /dev/null; then
+  export PATH="$HOME/.deno/bin:$PATH"
+fi
+
 echo "Discovery Example"
 echo "   Demonstrating neuron recovery with NEAT-AI"
 echo ""
