@@ -17,7 +17,7 @@ if ! command -v deno &> /dev/null; then
 fi
 
 echo "Discovery Example"
-echo "   Demonstrating neuron recovery with NEAT-AI"
+echo "   Demonstrating neuron discovery with NEAT-AI"
 echo ""
 
 deno run \
