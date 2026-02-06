@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Quality Assurance Script
 #
-# This script runs all example programs to verify they work correctly.
-# It should be run before committing changes to ensure the examples
-# remain functional.
+# This script runs unit tests and all example programs to verify they
+# work correctly. It should be run before committing changes to ensure
+# the examples remain functional.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 cd "${SCRIPT_DIR}"
@@ -39,6 +39,23 @@ run_example() {
   fi
 }
 
+# --- Unit Tests ---
+echo "----------------------------------------"
+echo "Running: Unit Tests"
+echo "----------------------------------------"
+
+if deno test --no-check --allow-read --allow-write --allow-env; then
+  echo ""
+  echo "SUCCESS: Unit Tests"
+  echo ""
+else
+  echo ""
+  echo "FAILED: Unit Tests"
+  echo ""
+  FAILED=1
+fi
+
+# --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
 rm -rf .synthetic-discovery .synthetic-intelligent-design .discovery

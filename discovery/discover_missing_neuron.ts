@@ -28,13 +28,13 @@ const DATA_DIR = join(WORK_ROOT, "data");
 const CREATURE_DIR = join(WORK_ROOT, "creatures");
 const OUTPUT_DIR = join(WORK_ROOT, "output");
 
-const SYNTHETIC_CONFIG = {
+export const SYNTHETIC_CONFIG = {
   totalRecords: 256,
   recordsPerFile: 128,
   seed: 13371337,
 };
 
-function createDeterministicRandom(seed: number): () => number {
+export function createDeterministicRandom(seed: number): () => number {
   let t = seed >>> 0;
   return () => {
     t += 0x6d2b79f5;
@@ -48,7 +48,7 @@ function createDeterministicRandom(seed: number): () => number {
  * Creates a reference creature for the discovery example.
  * This creature has several hidden neurons with different activation functions.
  */
-function createReferenceCreature(): CreatureExport {
+export function createReferenceCreature(): CreatureExport {
   const json: CreatureExport = {
     neurons: [
       // Input neurons
@@ -127,7 +127,7 @@ function createReferenceCreature(): CreatureExport {
 /**
  * Creates a "crippled" creature by removing a target neuron.
  */
-function createCrippledCreature(
+export function createCrippledCreature(
   baselineJSON: CreatureExport,
   targetNeuronUUID: string,
 ): Creature {
@@ -179,7 +179,7 @@ function createCrippledCreature(
 /**
  * Generates synthetic training data based on the reference creature's behavior.
  */
-function generateSyntheticData(
+export function generateSyntheticData(
   creature: Creature,
   dataDir: string,
   config: typeof SYNTHETIC_CONFIG,
