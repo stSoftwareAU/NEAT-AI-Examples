@@ -15,14 +15,39 @@ library.
 
 ## Quality Check
 
-Run all examples to verify they work correctly:
+Run unit tests and all examples to verify everything works correctly:
 
 ```bash
 ./quality.sh
 ```
 
-This script runs both the Intelligent Design and Discovery examples and reports
-success or failure.
+This script runs:
+
+1. **Unit tests** — `deno test` across the project (tests live next to each
+   module as `*_test.ts` files).
+2. **Example programs** — each example runner script, verifying the full
+   end-to-end workflow.
+
+### Running Tests Independently
+
+```bash
+# All unit tests
+deno test --no-check --allow-read --allow-write --allow-env
+
+# A single test file
+deno test --no-check --allow-read --allow-write --allow-env discovery/discover_missing_neuron_test.ts
+```
+
+### Unit Tests vs Benchmarks
+
+- **Unit tests** verify *what* the code produces (correct outputs, valid
+  structures, expected side effects). They never measure timing.
+- **Benchmarks** measure *how fast* the code runs. They use `deno bench` and
+  run in isolation.
+
+Unit tests run in parallel, so timing measurements inside them are unreliable.
+Keep performance assertions in benchmarks only. See
+[AGENTS.md](AGENTS.md) for the full testing guidelines.
 
 ## Intelligent Design: Squash Improvement Scan
 

@@ -30,115 +30,117 @@ import {
 } from "@stsoftware/neat-ai";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 
-const start = Date.now();
+if (import.meta.main) {
+  const start = Date.now();
 
-// Parse command-line arguments
-const args = parseArgs(Deno.args);
-const targetSquash = args.squash ?? "GELU";
+  // Parse command-line arguments
+  const args = parseArgs(Deno.args);
+  const targetSquash = args.squash ?? "GELU";
 
-console.log("🧬 Intelligent Design Squash Improvement Example");
-console.log(`   Target squash: ${targetSquash}`);
-console.log(`   Available squashes: ${alternativeSquashes.length}`);
-console.log("");
+  console.log("🧬 Intelligent Design Squash Improvement Example");
+  console.log(`   Target squash: ${targetSquash}`);
+  console.log(`   Available squashes: ${alternativeSquashes.length}`);
+  console.log("");
 
-// Set up directories (all under a hidden, gitignored folder)
-const WORKING_DIR = ".synthetic-intelligent-design";
-const DATA_DIR = join(WORKING_DIR, "data");
-const CREATURES_DIR = join(WORKING_DIR, "creatures");
-const OUTPUT_DIR = join(WORKING_DIR, "output");
+  // Set up directories (all under a hidden, gitignored folder)
+  const WORKING_DIR = ".synthetic-intelligent-design";
+  const DATA_DIR = join(WORKING_DIR, "data");
+  const CREATURES_DIR = join(WORKING_DIR, "creatures");
+  const OUTPUT_DIR = join(WORKING_DIR, "output");
 
-ensureDirSync(DATA_DIR);
-ensureDirSync(CREATURES_DIR);
-emptyDirSync(OUTPUT_DIR);
+  ensureDirSync(DATA_DIR);
+  ensureDirSync(CREATURES_DIR);
+  emptyDirSync(OUTPUT_DIR);
 
-// Step 1: Create or load a reference creature
-console.log("📦 Step 1: Creating reference creature...");
-const creature = createReferenceCreature();
-const creatureExport = creature.exportJSON();
+  // Step 1: Create or load a reference creature
+  console.log("📦 Step 1: Creating reference creature...");
+  const creature = createReferenceCreature();
+  const creatureExport = creature.exportJSON();
 
-const baselinePath = join(CREATURES_DIR, "baseline.json");
-await safeWriteJson(baselinePath, creatureExport);
-console.log(`   Saved baseline creature to ${baselinePath}`);
-console.log(
-  `   Hidden neurons: ${
-    creatureExport.neurons.filter((n) => n.type === "hidden").length
-  }`,
-);
-
-// Step 2: Generate synthetic training data
-console.log("\n📊 Step 2: Generating synthetic training data...");
-generateSyntheticData(DATA_DIR, creatureExport);
-
-// Step 3: Score the baseline creature
-console.log("\n📈 Step 3: Scoring baseline creature...");
-const baselineResult = creature.scoreDir(DATA_DIR, {});
-const baselineScore = baselineResult.score;
-addTag(creatureExport, "score", `${baselineScore}`);
-addTag(creatureExport, "error", `${baselineResult.error}`);
-console.log(`   Baseline score: ${baselineScore.toPrecision(6)}`);
-
-// Step 4: Run the squash improvement scan
-console.log("\n🔬 Step 4: Scanning for squash improvements...");
-console.log(`   Testing: ${targetSquash}`);
-
-const scanResult = await scanForSquashImprovements({
-  creature: creatureExport,
-  targetSquash: targetSquash,
-  outputDir: OUTPUT_DIR,
-  dataDir: DATA_DIR,
-  bestScore: baselineScore,
-  maxImprovements: 5, // Limit for the example
-  timeoutMs: 5 * 60 * 1000, // 5 minutes for the example
-  onProgress: (completed, total) => {
-    if (completed % 10 === 0) {
-      const percent = ((completed / total) * 100).toFixed(1);
-      console.log(`   Progress: ${percent}% (${completed}/${total})`);
-    }
-  },
-});
-
-console.log(
-  `\n✨ Scan complete in ${format(scanResult.duration, { ignoreZero: true })}`,
-);
-console.log(`   Tested: ${scanResult.tested} neurons`);
-console.log(`   Improvements found: ${scanResult.improved}`);
-if (scanResult.timedOut) {
-  console.log("   ⏰ Scan was terminated due to timeout");
-}
-
-// Step 5: Combine improvements (if any)
-if (scanResult.improvements.size > 0) {
-  console.log("\n🧪 Step 5: Combining improvements...");
-
-  const { creature: improvedCreature, message } = combineImprovements(
-    creatureExport,
-    scanResult.improvements,
-    DATA_DIR,
-    baselineScore,
+  const baselinePath = join(CREATURES_DIR, "baseline.json");
+  await safeWriteJson(baselinePath, creatureExport);
+  console.log(`   Saved baseline creature to ${baselinePath}`);
+  console.log(
+    `   Hidden neurons: ${
+      creatureExport.neurons.filter((n) => n.type === "hidden").length
+    }`,
   );
 
-  const improvedScore = Number.parseFloat(
-    getTag(improvedCreature, "score") ?? "0",
+  // Step 2: Generate synthetic training data
+  console.log("\n📊 Step 2: Generating synthetic training data...");
+  generateSyntheticData(DATA_DIR, creatureExport);
+
+  // Step 3: Score the baseline creature
+  console.log("\n📈 Step 3: Scoring baseline creature...");
+  const baselineResult = creature.scoreDir(DATA_DIR, {});
+  const baselineScore = baselineResult.score;
+  addTag(creatureExport, "score", `${baselineScore}`);
+  addTag(creatureExport, "error", `${baselineResult.error}`);
+  console.log(`   Baseline score: ${baselineScore.toPrecision(6)}`);
+
+  // Step 4: Run the squash improvement scan
+  console.log("\n🔬 Step 4: Scanning for squash improvements...");
+  console.log(`   Testing: ${targetSquash}`);
+
+  const scanResult = await scanForSquashImprovements({
+    creature: creatureExport,
+    targetSquash: targetSquash,
+    outputDir: OUTPUT_DIR,
+    dataDir: DATA_DIR,
+    bestScore: baselineScore,
+    maxImprovements: 5, // Limit for the example
+    timeoutMs: 5 * 60 * 1000, // 5 minutes for the example
+    onProgress: (completed, total) => {
+      if (completed % 10 === 0) {
+        const percent = ((completed / total) * 100).toFixed(1);
+        console.log(`   Progress: ${percent}% (${completed}/${total})`);
+      }
+    },
+  });
+
+  console.log(
+    `\n✨ Scan complete in ${format(scanResult.duration, { ignoreZero: true })}`,
   );
-  const improvement = improvedScore - baselineScore;
+  console.log(`   Tested: ${scanResult.tested} neurons`);
+  console.log(`   Improvements found: ${scanResult.improved}`);
+  if (scanResult.timedOut) {
+    console.log("   ⏰ Scan was terminated due to timeout");
+  }
 
-  console.log(`   ${message}`);
-  console.log(`   Final score: ${improvedScore.toPrecision(6)}`);
-  console.log(`   Improvement: ${improvement.toPrecision(3)}`);
+  // Step 5: Combine improvements (if any)
+  if (scanResult.improvements.size > 0) {
+    console.log("\n🧪 Step 5: Combining improvements...");
 
-  const improvedPath = join(CREATURES_DIR, "improved.json");
-  await safeWriteJson(improvedPath, improvedCreature);
-  console.log(`   Saved improved creature to ${improvedPath}`);
-} else {
-  console.log("\n🚫 No improvements found for this squash function.");
-  console.log("   Try a different target squash or a larger creature.");
+    const { creature: improvedCreature, message } = combineImprovements(
+      creatureExport,
+      scanResult.improvements,
+      DATA_DIR,
+      baselineScore,
+    );
+
+    const improvedScore = Number.parseFloat(
+      getTag(improvedCreature, "score") ?? "0",
+    );
+    const improvement = improvedScore - baselineScore;
+
+    console.log(`   ${message}`);
+    console.log(`   Final score: ${improvedScore.toPrecision(6)}`);
+    console.log(`   Improvement: ${improvement.toPrecision(3)}`);
+
+    const improvedPath = join(CREATURES_DIR, "improved.json");
+    await safeWriteJson(improvedPath, improvedCreature);
+    console.log(`   Saved improved creature to ${improvedPath}`);
+  } else {
+    console.log("\n🚫 No improvements found for this squash function.");
+    console.log("   Try a different target squash or a larger creature.");
+  }
+
+  console.log(
+    `\n🏁 Example completed in ${
+      format(Date.now() - start, { ignoreZero: true })
+    }`,
+  );
 }
-
-console.log(
-  `\n🏁 Example completed in ${
-    format(Date.now() - start, { ignoreZero: true })
-  }`,
-);
 
 /**
  * Creates a reference creature for testing.
@@ -146,7 +148,7 @@ console.log(
  * In a real application, this would load a trained model from your
  * model repository (e.g. git@example.com:models/best-model.json).
  */
-function createReferenceCreature(): Creature {
+export function createReferenceCreature(): Creature {
   // Create a simple creature with some hidden neurons
   const json: CreatureExport = {
     neurons: [
@@ -240,7 +242,7 @@ function createReferenceCreature(): Creature {
  * In a real application, this data would come from your training
  * data generation pipeline (e.g. example.com/data-pipeline).
  */
-function generateSyntheticData(dataDir: string, _creature: CreatureExport) {
+export function generateSyntheticData(dataDir: string, _creature: CreatureExport) {
   // Generate simple binary training data
   const inputSize = 4;
   const outputSize = 1;
