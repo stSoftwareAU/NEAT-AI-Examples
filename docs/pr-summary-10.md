@@ -11,8 +11,9 @@ discovery module's approach. Closes #10.
   (`creature.input`, `creature.output`) instead of being hardcoded as `4` and `1`.
 - **Creature activation for targets**: Target outputs are generated using the creature's own
   `activate()` method rather than a separate mathematical formula (`Math.tanh(...)`).
-- **Shared PRNG utility**: Extracted `createDeterministicRandom` into `shared/deterministic_random.ts`
-  so both the discovery and intelligent design modules import from a single source of truth (DRY).
+- **Shared PRNG utility**: Extracted `createDeterministicRandom` into
+  `shared/deterministic_random.ts` so both the discovery and intelligent design modules import from
+  a single source of truth (DRY).
 - **Configurable generation**: Added `SYNTHETIC_CONFIG` (matching the discovery module's pattern)
   with `totalRecords`, `recordsPerFile`, and `seed` fields.
 
@@ -27,8 +28,8 @@ This is a backend/CLI change with no visual output. Correctness is verified by t
 
 - **New test**: `generateSyntheticData is deterministic for the same seed` — generates data twice
   with the same seed and asserts the binary output is byte-for-byte identical
-- **New test**: `generateSyntheticData splits records across multiple files` — verifies batched
-  file output works correctly
+- **New test**: `generateSyntheticData splits records across multiple files` — verifies batched file
+  output works correctly
 - **New test**: `SYNTHETIC_CONFIG has expected properties` — validates the configuration constant
 - **New tests**: `shared/deterministic_random_test.ts` — tests for the extracted PRNG (range,
   determinism, seed diversity)
