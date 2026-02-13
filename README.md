@@ -74,6 +74,23 @@ and double quotes. All code must pass both lint and format checks before merging
 Unit tests run in parallel, so timing measurements inside them are unreliable. Keep performance
 assertions in benchmarks only. See [AGENTS.md](AGENTS.md) for the full testing guidelines.
 
+### Running Benchmarks
+
+Benchmarks live alongside their modules as `*_bench.ts` files and measure execution time for key
+operations such as creature activation, data generation, and scoring.
+
+```bash
+# All benchmarks
+deno bench --allow-read --allow-write --allow-env
+
+# Benchmarks for a specific module
+deno bench --allow-read --allow-write --allow-env discovery/
+deno bench --allow-read --allow-write --allow-env intelligent_design/
+```
+
+Benchmarks are intentionally separate from unit tests and are **not** included in `quality.sh` or
+CI, since they are designed to run in isolation on a consistent machine for meaningful results.
+
 ## Common Utilities
 
 The `common/` module provides shared functionality used across all examples:
