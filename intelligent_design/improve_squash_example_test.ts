@@ -6,17 +6,11 @@
  * checking implementation details or timing.
  */
 
-import {
-  assertEquals,
-  assertGreater,
-} from "@std/assert";
+import { assertEquals, assertGreater } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 
-import {
-  createReferenceCreature,
-  generateSyntheticData,
-} from "./improve_squash_example.ts";
+import { createReferenceCreature, generateSyntheticData } from "./improve_squash_example.ts";
 
 /* ------------------------------------------------------------------ */
 /*  createReferenceCreature                                            */

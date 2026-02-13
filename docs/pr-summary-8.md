@@ -1,8 +1,8 @@
 ## Summary
 
-Add a GitHub Actions CI/CD workflow that automates quality checks on every push
-and pull request to the `Develop` branch. This prevents regressions by ensuring
-unit tests and example programs are validated before merging. Closes #8.
+Add a GitHub Actions CI/CD workflow that automates quality checks on every push and pull request to
+the `Develop` branch. This prevents regressions by ensuring unit tests and example programs are
+validated before merging. Closes #8.
 
 ### What changed
 
@@ -11,15 +11,18 @@ unit tests and example programs are validated before merging. Closes #8.
   - Installs Deno and caches dependencies
   - Runs `deno test` (unit tests)
   - Runs all three example programs (Intelligent Design, Discovery, Suggest Improvements)
-  - Discovery step uses `continue-on-error: true` because it requires a native Rust FFI library not yet available in CI
-- **`.github/workflows/quality_test.ts`** — Tests that parse and validate the workflow YAML structure
+  - Discovery step uses `continue-on-error: true` because it requires a native Rust FFI library not
+    yet available in CI
+- **`.github/workflows/quality_test.ts`** — Tests that parse and validate the workflow YAML
+  structure
 - **`README.md`** — Added a Continuous Integration section documenting the automated workflow
 
 ## Evidence
 
 This is a backend/CI configuration change with no visual output. Evidence:
 
-- All 7 workflow validation tests pass, confirming the YAML is well-formed and contains the required configuration (triggers, Deno setup, test execution, example programs)
+- All 7 workflow validation tests pass, confirming the YAML is well-formed and contains the required
+  configuration (triggers, Deno setup, test execution, example programs)
 - `quality.sh` passes cleanly with all existing and new tests
 
 ## Test Plan

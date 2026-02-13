@@ -5,7 +5,7 @@
  * the required configuration for automated quality checks.
  */
 import { assertEquals, assertExists } from "@std/assert";
-import { parse } from "jsr:@std/yaml@1.0.5";
+import { parse } from "@std/yaml";
 
 const WORKFLOW_PATH = ".github/workflows/quality.yml";
 
@@ -94,6 +94,44 @@ Deno.test("workflow installs Deno", () => {
     }
   }
   assertEquals(denoInstalled, true, "Workflow should install Deno via setup-deno action");
+});
+
+Deno.test("workflow runs deno lint", () => {
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+
+  let runsLint = false;
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const run = step["run"] as string | undefined;
+      if (run && run.includes("deno lint")) {
+        runsLint = true;
+        break;
+      }
+    }
+  }
+  assertEquals(runsLint, true, "Workflow should run deno lint");
+});
+
+Deno.test("workflow runs deno fmt --check", () => {
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+
+  let runsFmtCheck = false;
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const run = step["run"] as string | undefined;
+      if (run && run.includes("deno fmt --check")) {
+        runsFmtCheck = true;
+        break;
+      }
+    }
+  }
+  assertEquals(runsFmtCheck, true, "Workflow should run deno fmt --check");
 });
 
 Deno.test("workflow runs unit tests", () => {

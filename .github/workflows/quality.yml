@@ -41,6 +41,12 @@ jobs:
           restore-keys: |
             deno-${{ runner.os }}-
 
+      - name: Run Deno lint
+        run: deno lint
+
+      - name: Run Deno format check
+        run: deno fmt --check
+
       - name: Run unit tests
         run: deno test --no-check --allow-read --allow-write --allow-env
 

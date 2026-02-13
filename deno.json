@@ -14,7 +14,19 @@
     "@std/streams": "jsr:@std/streams@1.0.13",
     "@std/testing/mock": "jsr:@std/testing@1.0.16/mock",
     "@std/uuid": "jsr:@std/uuid@1.0.9",
+    "@std/yaml": "jsr:@std/yaml@1.0.5",
     "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@0.287.0",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false
   }
 }
