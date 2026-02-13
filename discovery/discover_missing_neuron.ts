@@ -18,6 +18,9 @@ import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, type CreatureExport, CreatureUtil, type NeatOptions } from "@stsoftware/neat-ai";
 
+export { createDeterministicRandom } from "../shared/deterministic_random.ts";
+import { createDeterministicRandom } from "../shared/deterministic_random.ts";
+
 const WORK_ROOT = ".synthetic-discovery";
 const DATA_DIR = join(WORK_ROOT, "data");
 const CREATURE_DIR = join(WORK_ROOT, "creatures");
@@ -28,16 +31,6 @@ export const SYNTHETIC_CONFIG = {
   recordsPerFile: 128,
   seed: 13371337,
 };
-
-export function createDeterministicRandom(seed: number): () => number {
-  let t = seed >>> 0;
-  return () => {
-    t += 0x6d2b79f5;
-    let r = Math.imul(t ^ (t >>> 15), 1 | t);
-    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
-    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * Creates a reference creature for the discovery example.
