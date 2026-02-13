@@ -153,6 +153,40 @@ will find:
 - `creatures/crippled.json` – The creature with the target neuron removed
 - `creatures/discovered.json` – The best candidate returned by discovery (when available)
 
+## Crossover: Breeding Two Creatures
+
+`crossover/crossover_example.ts` demonstrates how to breed two parent creatures with different
+neural network architectures to produce offspring. Crossover is a fundamental neuroevolution
+operation where traits from both parents are combined into a child creature.
+
+### How it works
+
+1. Creates two parent creatures with different activation functions (TANH/LOGISTIC vs
+   SELU/LeakyReLU)
+2. Generates synthetic training data based on parent A's behaviour
+3. Scores both parents against the training data
+4. Performs crossover — the mother's neurons are always included, the father's unique neurons have a
+   50% chance of inclusion, and matching weights/biases are blended (averaged)
+5. Scores the offspring and compares performance to both parents
+6. Optionally evolves the offspring for several generations to demonstrate multi-generation
+   improvement
+
+### Running the example
+
+```bash
+./crossover/run.sh
+```
+
+The script writes all artefacts to `.synthetic-crossover/`, a hidden directory ignored by git. You
+will find:
+
+- `data/` – Binary training data for scoring
+- `creatures/parent_a.json` – The first parent creature
+- `creatures/parent_b.json` – The second parent creature
+- `creatures/offspring.json` – The crossover offspring
+- `creatures/evolved.json` – The offspring after multi-generation evolution
+- `output/` – Additional offspring from repeated crossover
+
 ## Suggest Improvements: Project Analyser
 
 `suggest_improvements/suggest_improvements.ts` analyses the NEAT-AI-Examples project structure and

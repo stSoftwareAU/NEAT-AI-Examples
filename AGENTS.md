@@ -79,6 +79,11 @@ All steps must pass before merging.
 ## Project Structure
 
 ```
+crossover/
+  crossover_example.ts             — Example: breed two creatures (crossover)
+  crossover_example_test.ts        — Unit tests for the above
+  run.sh                           — Runner script for the example
+
 discovery/
   discover_missing_neuron.ts       — Example: recover a removed neuron
   discover_missing_neuron_test.ts  — Unit tests for the above
