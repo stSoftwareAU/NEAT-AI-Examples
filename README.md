@@ -28,6 +28,16 @@ This script runs:
 2. **Example programs** — each example runner script, verifying the full
    end-to-end workflow.
 
+### Continuous Integration
+
+A GitHub Actions workflow automatically runs the quality checks on every push
+and pull request to the `Develop` branch. The workflow configuration is at
+`.github/workflows/quality.yml`. Failing checks will block merges, ensuring
+all examples remain functional across contributions.
+
+> **Note:** The Discovery example requires a native Rust FFI library that is
+> not yet available in CI, so its step is allowed to fail gracefully.
+
 ### Running Tests Independently
 
 ```bash

@@ -1,0 +1,59 @@
+# GitHub Actions CI/CD workflow for NEAT-AI-Examples
+#
+# Runs the project quality checks on every push and pull request
+# targeting the Develop branch. This automates the quality gate
+# to ensure all examples remain functional across contributions.
+
+name: Quality Check
+
+on:
+  push:
+    branches:
+      - Develop
+  pull_request:
+    branches:
+      - Develop
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Run quality checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
+          restore-keys: |
+            deno-${{ runner.os }}-
+
+      - name: Run unit tests
+        run: deno test --no-check --allow-read --allow-write --allow-env
+
+      - name: Run Intelligent Design example
+        run: ./intelligent_design/run.sh
+
+      - name: Run Discovery example
+        # The Discovery example requires a native Rust FFI library
+        # (libneat_ai_discovery) which is not available in CI.
+        # Allow this step to fail gracefully until the library
+        # is available as a CI artefact.
+        continue-on-error: true
+        run: ./discovery/run.sh
+
+      - name: Run Suggest Improvements example
+        run: ./suggest_improvements/run.sh
