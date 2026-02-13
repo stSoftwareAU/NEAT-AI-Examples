@@ -6,12 +6,7 @@
  * checking implementation details or timing.
  */
 
-import {
-  assertEquals,
-  assertGreater,
-  assertNotEquals,
-  assertThrows,
-} from "@std/assert";
+import { assertEquals, assertGreater, assertNotEquals, assertThrows } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";

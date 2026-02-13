@@ -6,16 +6,13 @@
  * implementation details.
  */
 
-import {
-  assertEquals,
-  assertGreater,
-} from "@std/assert";
-import { ensureDirSync, existsSync } from "@std/fs";
+import { assertEquals, assertGreater } from "@std/assert";
+import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 
 import {
-  type AnalysisResult,
   analyseProject,
+  type AnalysisResult,
   type Improvement,
   writeImprovementsSummary,
 } from "./suggest_improvements.ts";

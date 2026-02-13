@@ -14,14 +14,9 @@
  *     discovery/discover_missing_neuron.ts
  */
 
-import { ensureDirSync, emptyDirSync } from "@std/fs";
+import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import {
-  Creature,
-  type CreatureExport,
-  CreatureUtil,
-  type NeatOptions,
-} from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport, CreatureUtil, type NeatOptions } from "@stsoftware/neat-ai";
 
 const WORK_ROOT = ".synthetic-discovery";
 const DATA_DIR = join(WORK_ROOT, "data");

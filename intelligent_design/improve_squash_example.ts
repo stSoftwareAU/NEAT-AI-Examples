@@ -61,9 +61,7 @@ if (import.meta.main) {
   await safeWriteJson(baselinePath, creatureExport);
   console.log(`   Saved baseline creature to ${baselinePath}`);
   console.log(
-    `   Hidden neurons: ${
-      creatureExport.neurons.filter((n) => n.type === "hidden").length
-    }`,
+    `   Hidden neurons: ${creatureExport.neurons.filter((n) => n.type === "hidden").length}`,
   );
 
   // Step 2: Generate synthetic training data
@@ -136,9 +134,7 @@ if (import.meta.main) {
   }
 
   console.log(
-    `\n🏁 Example completed in ${
-      format(Date.now() - start, { ignoreZero: true })
-    }`,
+    `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,
   );
 }
 
@@ -277,4 +273,3 @@ export function generateSyntheticData(dataDir: string, _creature: CreatureExport
   Deno.writeFileSync(dataPath, new Uint8Array(buffer));
   console.log(`   Generated ${recordCount} records to ${dataPath}`);
 }
-

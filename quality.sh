@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Quality Assurance Script
 #
-# This script runs unit tests and all example programs to verify they
-# work correctly. It should be run before committing changes to ensure
-# the examples remain functional.
+# This script runs linting, formatting checks, unit tests, and all
+# example programs to verify they work correctly. It should be run
+# before committing changes to ensure the examples remain functional.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 cd "${SCRIPT_DIR}"
@@ -38,6 +38,38 @@ run_example() {
     FAILED=1
   fi
 }
+
+# --- Linting ---
+echo "----------------------------------------"
+echo "Running: Deno Lint"
+echo "----------------------------------------"
+
+if deno lint; then
+  echo ""
+  echo "SUCCESS: Deno Lint"
+  echo ""
+else
+  echo ""
+  echo "FAILED: Deno Lint"
+  echo ""
+  FAILED=1
+fi
+
+# --- Formatting ---
+echo "----------------------------------------"
+echo "Running: Deno Format Check"
+echo "----------------------------------------"
+
+if deno fmt --check; then
+  echo ""
+  echo "SUCCESS: Deno Format Check"
+  echo ""
+else
+  echo ""
+  echo "FAILED: Deno Format Check"
+  echo ""
+  FAILED=1
+fi
 
 # --- Unit Tests ---
 echo "----------------------------------------"
