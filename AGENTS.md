@@ -90,6 +90,11 @@ intelligent_design/
   improve_squash_example_test.ts   — Unit tests for the above
   run.sh                           — Runner script for the example
 
+suggest_improvements/
+  suggest_improvements.ts          — Analyse project and suggest improvements
+  suggest_improvements_test.ts     — Unit tests for the above
+  run.sh                           — Runner script for the example
+
 quality.sh                         — Runs all tests and examples
 deno.json                          — Deno configuration and dependencies
 ```

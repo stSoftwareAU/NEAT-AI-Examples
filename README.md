@@ -134,6 +134,32 @@ ignored by git. You will find:
 - `creatures/discovered.json` – The best candidate returned by discovery (when
   available)
 
+## Suggest Improvements: Project Analyser
+
+`suggest_improvements/suggest_improvements.ts` analyses the NEAT-AI-Examples
+project structure and produces actionable improvement suggestions. These
+suggestions can be filed as GitHub issues using the GH CLI.
+
+### How it works
+
+1. Scans the project for common improvement opportunities
+2. Categorises suggestions (CI/CD, code quality, documentation, new examples)
+3. Produces a structured list with titles, descriptions, and categories
+4. Optionally writes a markdown summary to `.synthetic-suggest-improvements/`
+
+### Running the example
+
+```bash
+./suggest_improvements/run.sh
+```
+
+The output lists each improvement suggestion with its category and description.
+To file the suggestions as GitHub issues, use the GH CLI:
+
+```bash
+gh issue create --title "Improvement title" --label "enhancement" --body "Description"
+```
+
 ## License
 
 See [LICENSE](LICENSE) for details.
