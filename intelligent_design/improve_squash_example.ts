@@ -18,7 +18,6 @@
 
 import { parseArgs } from "@std/cli";
 import { format } from "@std/fmt/duration";
-import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
   alternativeSquashes,
@@ -29,9 +28,13 @@ import {
   scanForSquashImprovements,
 } from "@stsoftware/neat-ai";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { createDeterministicRandom } from "../shared/deterministic_random.ts";
 
-export const SYNTHETIC_CONFIG = {
+import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
+import { setupWorkingDirs } from "../common/working_dirs.ts";
+
+export { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
+
+export const SYNTHETIC_CONFIG: SyntheticConfig = {
   totalRecords: 500,
   recordsPerFile: 500,
   seed: 42424242,
@@ -50,21 +53,16 @@ if (import.meta.main) {
   console.log("");
 
   // Set up directories (all under a hidden, gitignored folder)
-  const WORKING_DIR = ".synthetic-intelligent-design";
-  const DATA_DIR = join(WORKING_DIR, "data");
-  const CREATURES_DIR = join(WORKING_DIR, "creatures");
-  const OUTPUT_DIR = join(WORKING_DIR, "output");
-
-  ensureDirSync(DATA_DIR);
-  ensureDirSync(CREATURES_DIR);
-  emptyDirSync(OUTPUT_DIR);
+  const { dataDir, creaturesDir, outputDir } = setupWorkingDirs(
+    ".synthetic-intelligent-design",
+  );
 
   // Step 1: Create or load a reference creature
   console.log("📦 Step 1: Creating reference creature...");
   const creature = createReferenceCreature();
   const creatureExport = creature.exportJSON();
 
-  const baselinePath = join(CREATURES_DIR, "baseline.json");
+  const baselinePath = join(creaturesDir, "baseline.json");
   await safeWriteJson(baselinePath, creatureExport);
   console.log(`   Saved baseline creature to ${baselinePath}`);
   console.log(
@@ -73,11 +71,11 @@ if (import.meta.main) {
 
   // Step 2: Generate synthetic training data
   console.log("\n📊 Step 2: Generating synthetic training data...");
-  generateSyntheticData(creature, DATA_DIR, SYNTHETIC_CONFIG);
+  generateSyntheticData(creature, dataDir, SYNTHETIC_CONFIG);
 
   // Step 3: Score the baseline creature
   console.log("\n📈 Step 3: Scoring baseline creature...");
-  const baselineResult = creature.scoreDir(DATA_DIR, {});
+  const baselineResult = creature.scoreDir(dataDir, {});
   const baselineScore = baselineResult.score;
   addTag(creatureExport, "score", `${baselineScore}`);
   addTag(creatureExport, "error", `${baselineResult.error}`);
@@ -90,8 +88,8 @@ if (import.meta.main) {
   const scanResult = await scanForSquashImprovements({
     creature: creatureExport,
     targetSquash: targetSquash,
-    outputDir: OUTPUT_DIR,
-    dataDir: DATA_DIR,
+    outputDir: outputDir,
+    dataDir: dataDir,
     bestScore: baselineScore,
     maxImprovements: 5, // Limit for the example
     timeoutMs: 5 * 60 * 1000, // 5 minutes for the example
@@ -119,7 +117,7 @@ if (import.meta.main) {
     const { creature: improvedCreature, message } = combineImprovements(
       creatureExport,
       scanResult.improvements,
-      DATA_DIR,
+      dataDir,
       baselineScore,
     );
 
@@ -132,7 +130,7 @@ if (import.meta.main) {
     console.log(`   Final score: ${improvedScore.toPrecision(6)}`);
     console.log(`   Improvement: ${improvement.toPrecision(3)}`);
 
-    const improvedPath = join(CREATURES_DIR, "improved.json");
+    const improvedPath = join(creaturesDir, "improved.json");
     await safeWriteJson(improvedPath, improvedCreature);
     console.log(`   Saved improved creature to ${improvedPath}`);
   } else {
@@ -237,61 +235,4 @@ export function createReferenceCreature(): Creature {
   };
 
   return Creature.fromJSON(json);
-}
-
-/**
- * Generates deterministic synthetic training data using the creature's activation.
- *
- * Uses a seeded PRNG for reproducible input generation and derives
- * input/output sizes from the creature rather than hardcoding them.
- * Target outputs come from the creature's own activate() method,
- * consistent with the discovery module's approach.
- */
-export function generateSyntheticData(
-  creature: Creature,
-  dataDir: string,
-  config: typeof SYNTHETIC_CONFIG,
-): void {
-  const random = createDeterministicRandom(config.seed);
-  const bytesPerRecord = (creature.input + creature.output) * 4;
-
-  let remaining = config.totalRecords;
-  let fileIndex = 0;
-
-  while (remaining > 0) {
-    const batchSize = Math.min(config.recordsPerFile, remaining);
-    const filePath = join(
-      dataDir,
-      `synthetic_${String(fileIndex).padStart(4, "0")}.bin`,
-    );
-
-    const buffer = new Uint8Array(bytesPerRecord * batchSize);
-    const view = new Float32Array(buffer.buffer);
-
-    let offset = 0;
-    for (let record = 0; record < batchSize; record++) {
-      // Generate deterministic random input
-      for (let i = 0; i < creature.input; i++) {
-        view[offset + i] = random() * 2 - 1;
-      }
-
-      // Get creature's output for this input
-      const input = view.subarray(offset, offset + creature.input);
-      creature.clearState();
-      const output = creature.activate(Float32Array.from(input));
-
-      // Store output
-      for (let j = 0; j < creature.output; j++) {
-        view[offset + creature.input + j] = output[j] ?? 0;
-      }
-
-      offset += creature.input + creature.output;
-    }
-
-    Deno.writeFileSync(filePath, buffer);
-    console.log(`   Generated ${batchSize} records to ${filePath}`);
-
-    remaining -= batchSize;
-    fileIndex++;
-  }
 }

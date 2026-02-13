@@ -15,7 +15,6 @@
  */
 
 import { format } from "@std/fmt/duration";
-import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
   Creature,
@@ -26,9 +25,22 @@ import {
   type SynapseExport,
 } from "@stsoftware/neat-ai";
 import { addTag } from "@stsoftware/tags/mod";
-import { createDeterministicRandom } from "../shared/deterministic_random.ts";
 
-export const SYNTHETIC_CONFIG = {
+import {
+  generateSyntheticData,
+  scoreCreature,
+  type SyntheticConfig,
+} from "../common/synthetic_data.ts";
+import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
+
+export {
+  generateSyntheticData,
+  scoreCreature,
+  type SyntheticConfig,
+} from "../common/synthetic_data.ts";
+
+export const SYNTHETIC_CONFIG: SyntheticConfig = {
   totalRecords: 500,
   recordsPerFile: 500,
   seed: 77889900,
@@ -41,14 +53,7 @@ if (import.meta.main) {
   console.log("");
 
   // Set up directories (all under a hidden, gitignored folder)
-  const WORKING_DIR = ".synthetic-crossover";
-  const DATA_DIR = join(WORKING_DIR, "data");
-  const CREATURES_DIR = join(WORKING_DIR, "creatures");
-  const OUTPUT_DIR = join(WORKING_DIR, "output");
-
-  ensureDirSync(DATA_DIR);
-  ensureDirSync(CREATURES_DIR);
-  emptyDirSync(OUTPUT_DIR);
+  const { dataDir, creaturesDir, outputDir } = setupWorkingDirs(".synthetic-crossover");
 
   // Step 1: Create two parent creatures
   console.log("📦 Step 1: Creating parent creatures...");
@@ -58,8 +63,8 @@ if (import.meta.main) {
   const parentAExport = parentA.exportJSON();
   const parentBExport = parentB.exportJSON();
 
-  const parentAPath = join(CREATURES_DIR, "parent_a.json");
-  const parentBPath = join(CREATURES_DIR, "parent_b.json");
+  const parentAPath = join(creaturesDir, "parent_a.json");
+  const parentBPath = join(creaturesDir, "parent_b.json");
   await safeWriteJson(parentAPath, parentAExport);
   await safeWriteJson(parentBPath, parentBExport);
 
@@ -76,12 +81,12 @@ if (import.meta.main) {
 
   // Step 2: Generate synthetic training data from parent A
   console.log("\n📊 Step 2: Generating synthetic training data...");
-  generateSyntheticData(parentA, DATA_DIR, SYNTHETIC_CONFIG);
+  generateSyntheticData(parentA, dataDir, SYNTHETIC_CONFIG);
 
   // Step 3: Score both parents
   console.log("\n📈 Step 3: Scoring parents...");
-  const scoreA = scoreCreature(parentA, DATA_DIR);
-  const scoreB = scoreCreature(parentB, DATA_DIR);
+  const scoreA = scoreCreature(parentA, dataDir);
+  const scoreB = scoreCreature(parentB, dataDir);
   addTag(parentAExport, "score", `${scoreA}`);
   addTag(parentBExport, "score", `${scoreB}`);
   console.log(`   Parent A score: ${scoreA.toPrecision(6)}`);
@@ -99,12 +104,12 @@ if (import.meta.main) {
         `squashes: ${offspringHidden.map((n) => n.squash).join(", ")}`,
     );
 
-    const offspringPath = join(CREATURES_DIR, "offspring.json");
+    const offspringPath = join(creaturesDir, "offspring.json");
     await safeWriteJson(offspringPath, offspringExport);
 
     // Step 5: Score the offspring
     console.log("\n📊 Step 5: Scoring offspring...");
-    const scoreOffspring = scoreCreature(offspring, DATA_DIR);
+    const scoreOffspring = scoreCreature(offspring, dataDir);
     addTag(offspringExport, "score", `${scoreOffspring}`);
     console.log(`   Offspring score: ${scoreOffspring.toPrecision(6)}`);
 
@@ -127,27 +132,27 @@ if (import.meta.main) {
 
     // Step 6: Multi-generation evolution using evolveDir
     console.log("\n🔄 Step 6: Multi-generation evolution from offspring...");
-    const evolveResult = await offspring.evolveDir(DATA_DIR, {
+    const evolveResult = await offspring.evolveDir(dataDir, {
       populationSize: 10,
       iterations: 5,
       verbose: false,
       costOfGrowth: 0,
     });
     // evolveDir mutates the creature in-place and returns statistics
-    const evolvedScore = scoreCreature(offspring, DATA_DIR);
+    const evolvedScore = scoreCreature(offspring, dataDir);
     console.log(
       `   Evolved score after ${evolveResult.generation} generations: ` +
         `${evolvedScore.toPrecision(6)}`,
     );
 
-    const evolvedPath = join(CREATURES_DIR, "evolved.json");
+    const evolvedPath = join(creaturesDir, "evolved.json");
     await safeWriteJson(evolvedPath, offspring.exportJSON());
 
     // Save multiple offspring to output dir
     for (let i = 0; i < 3; i++) {
       const child = performCrossover(parentA, parentB);
       if (child) {
-        const childPath = join(OUTPUT_DIR, `offspring_${i}.json`);
+        const childPath = join(outputDir, `offspring_${i}.json`);
         await safeWriteJson(childPath, child.exportJSON());
       }
     }
@@ -281,68 +286,6 @@ export function createParentB(): Creature {
   };
 
   return Creature.fromJSON(json);
-}
-
-/**
- * Generates deterministic synthetic training data using the creature's activation.
- *
- * Uses a seeded PRNG for reproducible input generation and derives
- * input/output sizes from the creature rather than hardcoding them.
- */
-export function generateSyntheticData(
-  creature: Creature,
-  dataDir: string,
-  config: typeof SYNTHETIC_CONFIG,
-): void {
-  const random = createDeterministicRandom(config.seed);
-  const bytesPerRecord = (creature.input + creature.output) * 4;
-
-  let remaining = config.totalRecords;
-  let fileIndex = 0;
-
-  while (remaining > 0) {
-    const batchSize = Math.min(config.recordsPerFile, remaining);
-    const filePath = join(
-      dataDir,
-      `synthetic_${String(fileIndex).padStart(4, "0")}.bin`,
-    );
-
-    const buffer = new Uint8Array(bytesPerRecord * batchSize);
-    const view = new Float32Array(buffer.buffer);
-
-    let offset = 0;
-    for (let record = 0; record < batchSize; record++) {
-      for (let i = 0; i < creature.input; i++) {
-        view[offset + i] = random() * 2 - 1;
-      }
-
-      const input = view.subarray(offset, offset + creature.input);
-      creature.clearState();
-      const output = creature.activate(Float32Array.from(input));
-
-      for (let j = 0; j < creature.output; j++) {
-        view[offset + creature.input + j] = output[j] ?? 0;
-      }
-
-      offset += creature.input + creature.output;
-    }
-
-    Deno.writeFileSync(filePath, buffer);
-    console.log(`   Generated ${batchSize} records to ${filePath}`);
-
-    remaining -= batchSize;
-    fileIndex++;
-  }
-}
-
-/**
- * Scores a creature against a directory of training data.
- *
- * Returns the numeric score (higher is better; scores are typically negative).
- */
-export function scoreCreature(creature: Creature, dataDir: string): number {
-  const result = creature.scoreDir(dataDir, {});
-  return result.score;
 }
 
 /**

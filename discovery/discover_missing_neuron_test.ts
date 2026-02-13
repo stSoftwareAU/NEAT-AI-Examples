@@ -13,11 +13,11 @@ import { Creature } from "@stsoftware/neat-ai";
 
 import {
   createCrippledCreature,
-  createDeterministicRandom,
   createReferenceCreature,
   generateSyntheticData,
   SYNTHETIC_CONFIG,
 } from "./discover_missing_neuron.ts";
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
 
 /* ------------------------------------------------------------------ */
 /*  createDeterministicRandom                                          */
