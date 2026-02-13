@@ -14,19 +14,15 @@
  *     discovery/discover_missing_neuron.ts
  */
 
-import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, type CreatureExport, CreatureUtil, type NeatOptions } from "@stsoftware/neat-ai";
 
-export { createDeterministicRandom } from "../shared/deterministic_random.ts";
-import { createDeterministicRandom } from "../shared/deterministic_random.ts";
+import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
+import { setupWorkingDirs } from "../common/working_dirs.ts";
 
-const WORK_ROOT = ".synthetic-discovery";
-const DATA_DIR = join(WORK_ROOT, "data");
-const CREATURE_DIR = join(WORK_ROOT, "creatures");
-const OUTPUT_DIR = join(WORK_ROOT, "output");
+export { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 
-export const SYNTHETIC_CONFIG = {
+export const SYNTHETIC_CONFIG: SyntheticConfig = {
   totalRecords: 256,
   recordsPerFile: 128,
   seed: 13371337,
@@ -165,65 +161,14 @@ export function createCrippledCreature(
 }
 
 /**
- * Generates synthetic training data based on the reference creature's behavior.
- */
-export function generateSyntheticData(
-  creature: Creature,
-  dataDir: string,
-  config: typeof SYNTHETIC_CONFIG,
-): void {
-  const random = createDeterministicRandom(config.seed);
-  const bytesPerRecord = (creature.input + creature.output) * 4;
-
-  let remaining = config.totalRecords;
-  let fileIndex = 0;
-
-  while (remaining > 0) {
-    const batchSize = Math.min(config.recordsPerFile, remaining);
-    const filePath = join(
-      dataDir,
-      `synthetic_${String(fileIndex).padStart(4, "0")}.bin`,
-    );
-
-    const buffer = new Uint8Array(bytesPerRecord * batchSize);
-    const view = new Float32Array(buffer.buffer);
-
-    let offset = 0;
-    for (let record = 0; record < batchSize; record++) {
-      // Generate random input
-      for (let i = 0; i < creature.input; i++) {
-        view[offset + i] = random() * 2 - 1;
-      }
-
-      // Get creature's output for this input
-      const input = view.subarray(offset, offset + creature.input);
-      creature.clearState();
-      const output = creature.activate(Float32Array.from(input));
-
-      // Store output
-      for (let j = 0; j < creature.output; j++) {
-        view[offset + creature.input + j] = output[j] ?? 0;
-      }
-
-      offset += creature.input + creature.output;
-    }
-
-    Deno.writeFileSync(filePath, buffer);
-    console.log(`   Generated ${batchSize} records to ${filePath}`);
-
-    remaining -= batchSize;
-    fileIndex++;
-  }
-}
-
-/**
  * Saves a creature to a JSON file.
  */
 async function saveCreature(
   creature: Creature | CreatureExport,
+  creaturesDir: string,
   fileName: string,
 ): Promise<string> {
-  const outputPath = join(CREATURE_DIR, fileName);
+  const outputPath = join(creaturesDir, fileName);
   const json = "exportJSON" in creature ? creature.exportJSON() : creature;
   await Deno.writeTextFile(outputPath, JSON.stringify(json, null, 2));
   return outputPath;
@@ -235,10 +180,7 @@ async function runDiscoveryExample(): Promise<void> {
   };
 
   // Setup directories
-  ensureDirSync(WORK_ROOT);
-  ensureDirSync(DATA_DIR);
-  ensureDirSync(CREATURE_DIR);
-  emptyDirSync(OUTPUT_DIR);
+  const { dataDir, creaturesDir } = setupWorkingDirs(".synthetic-discovery");
 
   // Stage 1: Create reference creature
   stage("Stage 1/4: Creating reference creature");
@@ -254,12 +196,12 @@ async function runDiscoveryExample(): Promise<void> {
   );
 
   // Save baseline
-  const baselinePath = await saveCreature(referenceCreature, "baseline.json");
+  const baselinePath = await saveCreature(referenceCreature, creaturesDir, "baseline.json");
   console.log(`   Saved baseline creature to ${baselinePath}`);
 
   // Stage 2: Generate synthetic training data
   stage("Stage 2/4: Generating synthetic training data");
-  generateSyntheticData(referenceCreature, DATA_DIR, SYNTHETIC_CONFIG);
+  generateSyntheticData(referenceCreature, dataDir, SYNTHETIC_CONFIG);
 
   // Stage 3: Create crippled creature (remove hidden-1 which is LeakyReLU)
   stage("Stage 3/4: Creating crippled creature");
@@ -277,12 +219,12 @@ async function runDiscoveryExample(): Promise<void> {
       `${crippledCreature.synapses.length} synapses`,
   );
 
-  const crippledPath = await saveCreature(crippledCreature, "crippled.json");
+  const crippledPath = await saveCreature(crippledCreature, creaturesDir, "crippled.json");
   console.log(`   Saved crippled creature to ${crippledPath}`);
 
   // Score both creatures to show the difference
-  const baselineScore = referenceCreature.scoreDir(DATA_DIR, {});
-  const crippledScore = crippledCreature.scoreDir(DATA_DIR, {});
+  const baselineScore = referenceCreature.scoreDir(dataDir, {});
+  const crippledScore = crippledCreature.scoreDir(dataDir, {});
   console.log(
     `   Baseline score: ${baselineScore.score.toPrecision(6)}, ` +
       `Crippled score: ${crippledScore.score.toPrecision(6)}`,
@@ -308,7 +250,7 @@ async function runDiscoveryExample(): Promise<void> {
 
   const startTime = performance.now();
   const discoveryResult = await crippledCreature.discoveryDir(
-    DATA_DIR,
+    dataDir,
     discoveryOptions,
   );
   const durationSeconds = ((performance.now() - startTime) / 1000).toFixed(1);
@@ -321,10 +263,11 @@ async function runDiscoveryExample(): Promise<void> {
     const improvedCreature = Creature.fromJSON(improvement.creature);
     const discoveredPath = await saveCreature(
       improvedCreature,
+      creaturesDir,
       "discovered.json",
     );
 
-    const improvedScore = improvedCreature.scoreDir(DATA_DIR, {});
+    const improvedScore = improvedCreature.scoreDir(dataDir, {});
     console.log(`\n   Discovery found an improvement!`);
     console.log(`   Improved score: ${improvedScore.score.toPrecision(6)}`);
     console.log(`   Score delta: ${improvement.scoreDelta.toFixed(6)}`);

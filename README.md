@@ -74,6 +74,22 @@ and double quotes. All code must pass both lint and format checks before merging
 Unit tests run in parallel, so timing measurements inside them are unreliable. Keep performance
 assertions in benchmarks only. See [AGENTS.md](AGENTS.md) for the full testing guidelines.
 
+## Common Utilities
+
+The `common/` module provides shared functionality used across all examples:
+
+- **`deterministic_random.ts`** — A seeded pseudo-random number generator (PRNG) using a
+  splitmix32-style algorithm. Given the same seed, the sequence is identical across runs and
+  platforms.
+- **`synthetic_data.ts`** — Deterministic binary training data generation (`generateSyntheticData`)
+  and creature scoring (`scoreCreature`). Each example defines its own `SyntheticConfig` with a
+  unique seed so data sets are independent but reproducible.
+- **`working_dirs.ts`** — Standard working directory setup (`setupWorkingDirs`). Creates `data/`,
+  `creatures/`, and `output/` subdirectories under a given root, emptying `output/` on each run.
+
+Examples import from `common/` and add only their example-specific logic (creature definitions,
+domain-specific workflows).
+
 ## Intelligent Design: Squash Improvement Scan
 
 `intelligent_design/improve_squash_example.ts` demonstrates how to use the Intelligent Design module

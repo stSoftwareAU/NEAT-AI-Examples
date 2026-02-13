@@ -79,6 +79,14 @@ All steps must pass before merging.
 ## Project Structure
 
 ```
+common/
+  deterministic_random.ts          — Seeded PRNG for reproducible data generation
+  deterministic_random_test.ts     — Unit tests for the PRNG
+  synthetic_data.ts                — Shared synthetic data generation and scoring
+  synthetic_data_test.ts           — Unit tests for data generation and scoring
+  working_dirs.ts                  — Shared working directory setup
+  working_dirs_test.ts             — Unit tests for directory setup
+
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
   crossover_example_test.ts        — Unit tests for the above
