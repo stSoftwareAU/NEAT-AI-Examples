@@ -95,11 +95,13 @@ crossover/
 discovery/
   discover_missing_neuron.ts       — Example: recover a removed neuron
   discover_missing_neuron_test.ts  — Unit tests for the above
+  discover_missing_neuron_bench.ts — Benchmarks for the above
   run.sh                           — Runner script for the example
 
 intelligent_design/
   improve_squash_example.ts        — Example: optimise activation functions
   improve_squash_example_test.ts   — Unit tests for the above
+  improve_squash_example_bench.ts  — Benchmarks for the above
   run.sh                           — Runner script for the example
 
 suggest_improvements/
