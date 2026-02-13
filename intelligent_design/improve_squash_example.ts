@@ -29,6 +29,13 @@ import {
   scanForSquashImprovements,
 } from "@stsoftware/neat-ai";
 import { addTag, getTag } from "@stsoftware/tags/mod";
+import { createDeterministicRandom } from "../shared/deterministic_random.ts";
+
+export const SYNTHETIC_CONFIG = {
+  totalRecords: 500,
+  recordsPerFile: 500,
+  seed: 42424242,
+};
 
 if (import.meta.main) {
   const start = Date.now();
@@ -66,7 +73,7 @@ if (import.meta.main) {
 
   // Step 2: Generate synthetic training data
   console.log("\n📊 Step 2: Generating synthetic training data...");
-  generateSyntheticData(DATA_DIR, creatureExport);
+  generateSyntheticData(creature, DATA_DIR, SYNTHETIC_CONFIG);
 
   // Step 3: Score the baseline creature
   console.log("\n📈 Step 3: Scoring baseline creature...");
@@ -233,43 +240,58 @@ export function createReferenceCreature(): Creature {
 }
 
 /**
- * Generates synthetic training data for testing.
+ * Generates deterministic synthetic training data using the creature's activation.
  *
- * In a real application, this data would come from your training
- * data generation pipeline (e.g. example.com/data-pipeline).
+ * Uses a seeded PRNG for reproducible input generation and derives
+ * input/output sizes from the creature rather than hardcoding them.
+ * Target outputs come from the creature's own activate() method,
+ * consistent with the discovery module's approach.
  */
-export function generateSyntheticData(dataDir: string, _creature: CreatureExport) {
-  // Generate simple binary training data
-  const inputSize = 4;
-  const outputSize = 1;
-  const recordCount = 500;
+export function generateSyntheticData(
+  creature: Creature,
+  dataDir: string,
+  config: typeof SYNTHETIC_CONFIG,
+): void {
+  const random = createDeterministicRandom(config.seed);
+  const bytesPerRecord = (creature.input + creature.output) * 4;
 
-  // Calculate record size: 4 bytes per float32
-  const recordSize = (inputSize + outputSize) * 4;
-  const buffer = new ArrayBuffer(recordCount * recordSize);
-  const view = new DataView(buffer);
+  let remaining = config.totalRecords;
+  let fileIndex = 0;
 
-  let offset = 0;
-  for (let i = 0; i < recordCount; i++) {
-    // Generate random inputs
-    const inputs = [];
-    for (let j = 0; j < inputSize; j++) {
-      const value = Math.random() * 2 - 1; // Range: -1 to 1
-      inputs.push(value);
-      view.setFloat32(offset, value, true); // little-endian
-      offset += 4;
+  while (remaining > 0) {
+    const batchSize = Math.min(config.recordsPerFile, remaining);
+    const filePath = join(
+      dataDir,
+      `synthetic_${String(fileIndex).padStart(4, "0")}.bin`,
+    );
+
+    const buffer = new Uint8Array(bytesPerRecord * batchSize);
+    const view = new Float32Array(buffer.buffer);
+
+    let offset = 0;
+    for (let record = 0; record < batchSize; record++) {
+      // Generate deterministic random input
+      for (let i = 0; i < creature.input; i++) {
+        view[offset + i] = random() * 2 - 1;
+      }
+
+      // Get creature's output for this input
+      const input = view.subarray(offset, offset + creature.input);
+      creature.clearState();
+      const output = creature.activate(Float32Array.from(input));
+
+      // Store output
+      for (let j = 0; j < creature.output; j++) {
+        view[offset + creature.input + j] = output[j] ?? 0;
+      }
+
+      offset += creature.input + creature.output;
     }
 
-    // Generate target output (some function of inputs)
-    const target = Math.tanh(
-      inputs[0] * 0.5 + inputs[1] * -0.3 + inputs[2] * 0.4 + inputs[3] * -0.2,
-    );
-    view.setFloat32(offset, target, true);
-    offset += 4;
-  }
+    Deno.writeFileSync(filePath, buffer);
+    console.log(`   Generated ${batchSize} records to ${filePath}`);
 
-  // Write to file
-  const dataPath = join(dataDir, "synthetic.bin");
-  Deno.writeFileSync(dataPath, new Uint8Array(buffer));
-  console.log(`   Generated ${recordCount} records to ${dataPath}`);
+    remaining -= batchSize;
+    fileIndex++;
+  }
 }
