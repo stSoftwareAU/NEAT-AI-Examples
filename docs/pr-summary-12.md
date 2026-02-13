@@ -27,10 +27,10 @@ This is a backend/CLI refactoring with no visual output. Evidence is provided by
 
 ## Test Plan
 
-- Added `common/synthetic_data_test.ts` (8 tests): file creation, correct sizes, determinism,
-  valid float32 values, different seeds produce different data, scoring correctness
-- Added `common/working_dirs_test.ts` (5 tests): directory creation, correct paths, output
-  directory emptying, data/creatures preservation, idempotency
+- Added `common/synthetic_data_test.ts` (8 tests): file creation, correct sizes, determinism, valid
+  float32 values, different seeds produce different data, scoring correctness
+- Added `common/working_dirs_test.ts` (5 tests): directory creation, correct paths, output directory
+  emptying, data/creatures preservation, idempotency
 - Existing `common/deterministic_random_test.ts` (3 tests) moved from `shared/` — unchanged
-- All existing tests in discovery (18), intelligent design (14), and crossover (21) continue to
-  pass without modification (except one import path update in the discovery test)
+- All existing tests in discovery (18), intelligent design (14), and crossover (21) continue to pass
+  without modification (except one import path update in the discovery test)
