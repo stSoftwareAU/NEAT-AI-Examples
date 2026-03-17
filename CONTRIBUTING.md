@@ -47,7 +47,33 @@ Before submitting any changes, run the full quality gate (`./quality.sh`), which
 
 ## Adding a New Example
 
-Each example follows a consistent three-file pattern. Use these steps to add a new one:
+Each example follows a consistent three-file pattern:
+
+```mermaid
+flowchart LR
+    subgraph new ["🆕 my_example/"]
+        MOD["📝 my_example.ts<br/>Core logic"]
+        TEST["🧪 my_example_test.ts<br/>Unit tests"]
+        RUN["🚀 run.sh<br/>Runner script"]
+    end
+
+    COMMON["📦 common/<br/>Shared utilities"]
+    QUALITY["✅ quality.sh<br/>Register example"]
+    README["📖 README.md<br/>Document example"]
+
+    COMMON --> MOD
+    MOD --> TEST
+    MOD --> RUN
+    RUN --> QUALITY
+    MOD --> README
+
+    style new fill:#d4edda,stroke:#28a745,color:#333
+    style COMMON fill:#f5a623,stroke:#333,color:#fff
+    style QUALITY fill:#2ecc71,stroke:#333,color:#fff
+    style README fill:#3498db,stroke:#333,color:#fff
+```
+
+Use these steps to add a new one:
 
 ### 1. Create the example directory
 
