@@ -63,18 +63,8 @@ benchmark will expose the regression.
 
 ## Running Quality Checks
 
-```bash
-./quality.sh
-```
-
-This runs:
-
-1. **Linting** — `deno lint` with the recommended rule set.
-2. **Formatting** — `deno fmt --check` to enforce consistent style.
-3. **Unit tests** — `deno test` across the entire project.
-4. **Example programs** — each example runner script, verifying the full end-to-end workflow.
-
-All steps must pass before merging.
+Run `./quality.sh` before merging. It executes linting, formatting, unit tests, and all example
+programs. See [README.md](README.md#quality-check) for full details.
 
 ## Project Structure
 
