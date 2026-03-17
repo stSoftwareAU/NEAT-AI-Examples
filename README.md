@@ -246,6 +246,11 @@ suggestions as GitHub issues, use the GH CLI:
 gh issue create --title "Improvement title" --label "enhancement" --body "Description"
 ```
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to add
+new examples, coding standards, and the pull request checklist.
+
 ## License
 
 See [LICENSE](LICENSE) for details.

@@ -1,6 +1,7 @@
 # Contributing to NEAT-AI-Examples
 
-Thank you for your interest in contributing! This guide covers everything you need to get started.
+Thank you for your interest in contributing! This guide covers contributor-specific details. For
+project overview, running examples, testing commands, and benchmarks, see [README.md](README.md).
 
 ## Prerequisites
 
@@ -40,45 +41,9 @@ Then copy the compiled library to `~/.cargo/lib/`:
 
 ## Development Workflow
 
-### Running the Quality Gate
-
-Before submitting any changes, run the full quality gate:
-
-```bash
-./quality.sh
-```
-
-This executes, in order:
-
-1. `deno lint` — static analysis with the recommended rule set
-2. `deno fmt --check` — formatting verification (2-space indent, 100-char line width, double quotes)
-3. `deno test` — all unit tests across the project
-4. Each example runner script (`run.sh`) — end-to-end verification
-
-All steps must pass before merging.
-
-### Running Tests Independently
-
-```bash
-# All unit tests
-deno test --no-check --allow-read --allow-write --allow-env
-
-# A single test file
-deno test --no-check --allow-read --allow-write --allow-env crossover/crossover_example_test.ts
-```
-
-### Linting and Formatting
-
-```bash
-# Check for lint issues
-deno lint
-
-# Check formatting without modifying files
-deno fmt --check
-
-# Auto-fix formatting
-deno fmt
-```
+Before submitting any changes, run the full quality gate (`./quality.sh`), which runs `deno lint`,
+`deno fmt --check`, `deno test`, and all example runner scripts. See
+[Quality Check](README.md#quality-check) in the README for full details on each step.
 
 ## Adding a New Example
 
@@ -103,7 +68,7 @@ import { setupWorkingDirs } from "../common/working_dirs.ts";
 
 Create `my_example/my_example_test.ts` next to the module. Tests must be "what" tests — call real
 functions with test data and assert on outputs, exit codes, or side effects. See
-[Testing Guidelines](#testing-guidelines) below.
+[AGENTS.md](AGENTS.md) for the full testing philosophy.
 
 ### 4. Write the runner script
 
@@ -156,49 +121,13 @@ Run the full quality gate to confirm everything passes:
 ./quality.sh
 ```
 
-## Testing Guidelines
-
-Every test must be a **"what" test** — it verifies _what_ the code produces, never _how_ it produces
-it.
-
-**Good (what tests):**
-
-- Call a function with known input and assert the output value
-- Create a creature, activate it, and check that the result is finite
-- Generate data files and verify their existence and size
-- Remove a neuron and confirm the creature still validates
-
-**Bad (how tests — do not write these):**
-
-- Grep source code for a pattern or function name
-- Assert that one function calls another
-- Check that a specific algorithm or data structure is used internally
-
-For the full testing philosophy, including unit tests vs benchmarks, see [AGENTS.md](AGENTS.md).
-
-### Test file conventions
-
-- Place test files next to the module they test: `<module>_test.ts`
-- Use `Deno.test(...)` with descriptive names
-- Import the functions under test directly
-- Clean up temporary files in a `finally` block
-- Use `Deno.makeTempDirSync()` for any file I/O so tests never pollute the working tree
-
 ## Code Style
 
 ### Australian English
 
-All code, comments, and documentation **must** use Australian English spelling. Common examples:
-
-| American English | Australian English |
-| ---------------- | ------------------ |
-| color            | colour             |
-| behavior         | behaviour          |
-| organization     | organisation       |
-| favor            | favour             |
-| meter            | metre              |
-| center           | centre             |
-| optimize         | optimise           |
+All code, comments, and documentation **must** use Australian English spelling (e.g. colour,
+behaviour, organisation, favour, metre, centre, optimise). See [AGENTS.md](AGENTS.md) for the
+complete list of spelling conventions.
 
 ### Formatting
 
@@ -221,15 +150,10 @@ Before submitting a pull request, verify the following:
 - [ ] Commit messages are clear and reference the relevant issue number
 - [ ] The PR targets the `Develop` branch
 
-## Continuous Integration
-
-A GitHub Actions workflow automatically runs the quality checks on every push and pull request to
-the `Develop` branch. Failing checks will block merges.
-
 ## Getting Help
 
 If you have questions about the project or need guidance, open a GitHub issue or check the existing
 documentation:
 
-- [README.md](README.md) — project overview and example descriptions
-- [AGENTS.md](AGENTS.md) — detailed coding and testing guidelines
+- [README.md](README.md) — project overview, examples, testing, linting, and benchmarks
+- [AGENTS.md](AGENTS.md) — AI agent instructions and detailed testing guidelines

@@ -28,8 +28,9 @@ Deno.test("PR summary files exist in docs/archive/", () => {
 Deno.test("No PR summary files remain in docs/ root", () => {
   for (const entry of Deno.readDirSync("docs/")) {
     if (entry.isFile && entry.name.startsWith("pr-summary-")) {
-      // pr-summary-24.md is the current PR summary, not an archived one
+      // Current PR summaries that have not yet been archived
       if (entry.name === "pr-summary-24.md") continue;
+      if (entry.name === "pr-summary-25.md") continue;
       throw new Error(
         `Found unexpected PR summary file in docs/ root: ${entry.name}`,
       );
