@@ -31,6 +31,7 @@ Deno.test("No PR summary files remain in docs/ root", () => {
       // Current PR summaries that have not yet been archived
       if (entry.name === "pr-summary-24.md") continue;
       if (entry.name === "pr-summary-25.md") continue;
+      if (entry.name === "pr-summary-26.md") continue;
       throw new Error(
         `Found unexpected PR summary file in docs/ root: ${entry.name}`,
       );
