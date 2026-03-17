@@ -4,6 +4,32 @@ Companion programs demonstrating how to use [`NEAT-AI`](https://github.com/stSof
 Each example is self-contained and generates its own synthetic data, so you can run them immediately
 without any external dependencies beyond Deno and the NEAT-AI library.
 
+## 🧬 Examples Overview
+
+```mermaid
+flowchart TD
+    NEAT["🧠 NEAT-AI Library"]
+    COMMON["📦 Common Utilities<br/>Shared data generation,<br/>scoring & directory setup"]
+
+    ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
+    DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
+    CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
+    SUGGEST["💡 Suggest Improvements<br/>Analyse project &<br/>generate suggestions"]
+
+    NEAT --> COMMON
+    COMMON --> ID
+    COMMON --> DISC
+    COMMON --> CROSS
+    COMMON --> SUGGEST
+
+    style NEAT fill:#4a90d9,stroke:#333,color:#fff
+    style COMMON fill:#f5a623,stroke:#333,color:#fff
+    style ID fill:#7ed321,stroke:#333,color:#fff
+    style DISC fill:#bd10e0,stroke:#333,color:#fff
+    style CROSS fill:#e74c3c,stroke:#333,color:#fff
+    style SUGGEST fill:#50e3c2,stroke:#333,color:#fff
+```
+
 ## Prerequisites
 
 - [Deno](https://deno.land/) runtime installed
@@ -18,7 +44,33 @@ Run linting, formatting checks, unit tests, and all examples to verify everythin
 ./quality.sh
 ```
 
-This script runs:
+This script runs the following pipeline:
+
+```mermaid
+flowchart LR
+    LINT["🔎 Lint<br/>deno lint"]
+    FMT["✨ Format Check<br/>deno fmt --check"]
+    TEST["🧪 Unit Tests<br/>deno test"]
+    EX["🚀 Example Runners<br/>run.sh scripts"]
+    PASS["✅ All Passed"]
+    FAIL["❌ Failed"]
+
+    LINT -->|pass| FMT
+    FMT -->|pass| TEST
+    TEST -->|pass| EX
+    EX -->|pass| PASS
+    LINT -->|fail| FAIL
+    FMT -->|fail| FAIL
+    TEST -->|fail| FAIL
+    EX -->|fail| FAIL
+
+    style LINT fill:#3498db,stroke:#333,color:#fff
+    style FMT fill:#9b59b6,stroke:#333,color:#fff
+    style TEST fill:#e67e22,stroke:#333,color:#fff
+    style EX fill:#1abc9c,stroke:#333,color:#fff
+    style PASS fill:#2ecc71,stroke:#333,color:#fff
+    style FAIL fill:#e74c3c,stroke:#333,color:#fff
+```
 
 1. **Linting** — `deno lint` with the recommended rule set configured in `deno.json`.
 2. **Formatting** — `deno fmt --check` to enforce consistent style (2-space indent, 100-char line
@@ -93,6 +145,34 @@ CI, since they are designed to run in isolation on a consistent machine for mean
 
 ## Common Utilities
 
+```mermaid
+flowchart BT
+    subgraph common ["📦 common/"]
+        RNG["🎲 deterministic_random.ts<br/>Seeded PRNG"]
+        DATA["📊 synthetic_data.ts<br/>Data generation & scoring"]
+        DIRS["📁 working_dirs.ts<br/>Directory setup"]
+    end
+
+    subgraph examples ["🧬 Example Modules"]
+        ID["🧬 intelligent_design/"]
+        DISC["🔍 discovery/"]
+        CROSS["🔀 crossover/"]
+        SUGGEST["💡 suggest_improvements/"]
+    end
+
+    RNG --> DATA
+    common --> ID
+    common --> DISC
+    common --> CROSS
+    common --> SUGGEST
+
+    style common fill:#fff3cd,stroke:#f5a623,color:#333
+    style examples fill:#d4edda,stroke:#28a745,color:#333
+    style RNG fill:#f5a623,stroke:#333,color:#fff
+    style DATA fill:#f5a623,stroke:#333,color:#fff
+    style DIRS fill:#f5a623,stroke:#333,color:#fff
+```
+
 The `common/` module provides shared functionality used across all examples:
 
 - **`deterministic_random.ts`** — A seeded pseudo-random number generator (PRNG) using a
@@ -115,6 +195,30 @@ creature. This technique is used in production workflows to optimise trained mod
 better squash functions than those produced by random mutation.
 
 ### How it works
+
+```mermaid
+flowchart TD
+    CREATE["🧬 Create Reference Creature<br/>Several hidden neurons"]
+    DATA["📊 Generate Synthetic Data<br/>Binary training observations"]
+    SCORE["📏 Score Baseline<br/>Measure initial performance"]
+    SCAN["🔬 Scan Neurons<br/>Try target squash function"]
+    ALT["🔄 Try Alternatives<br/>Test other squash functions"]
+    COMBINE["🏆 Combine Improvements<br/>Build final optimised creature"]
+
+    CREATE --> DATA
+    DATA --> SCORE
+    SCORE --> SCAN
+    SCAN -->|improvement found| ALT
+    SCAN -->|no improvement| SCAN
+    ALT --> COMBINE
+
+    style CREATE fill:#7ed321,stroke:#333,color:#fff
+    style DATA fill:#4a90d9,stroke:#333,color:#fff
+    style SCORE fill:#f5a623,stroke:#333,color:#fff
+    style SCAN fill:#bd10e0,stroke:#333,color:#fff
+    style ALT fill:#e74c3c,stroke:#333,color:#fff
+    style COMBINE fill:#50e3c2,stroke:#333,color:#fff
+```
 
 1. Creates a reference creature with several hidden neurons
 2. Generates synthetic training data
