@@ -1,23 +1,23 @@
-# AGENTS.md — Guidelines for Humans and AI Agents
+# 🤖 AGENTS.md — Guidelines for Humans and AI Agents
 
-## Language
+## 🇦🇺 Language
 
 Use Australian English spelling in all code, comments, and documentation (e.g. colour, behaviour,
 organisation, favour, metre, centre).
 
-## Testing Philosophy
+## 🧪 Testing Philosophy
 
 Every test in this project must be a **"what" test** — it verifies _what_ the code produces
 (outputs, side effects, structure), never _how_ it produces it.
 
-### "What" tests (good)
+### ✅ "What" tests (good)
 
 - Call a function with known input and assert the output value.
 - Create a creature, activate it, and check that the result is finite.
 - Generate data files and verify their existence and size.
 - Remove a neuron and confirm the creature still validates and produces different output.
 
-### "How" tests (bad — do not write these)
+### ❌ "How" tests (bad — do not write these)
 
 - Grep source code for a pattern or function name.
 - Assert that one function calls another.
@@ -27,7 +27,7 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
 **Why?** "How" tests break whenever the implementation is refactored, even when behaviour is
 unchanged. They add maintenance cost without catching real bugs.
 
-## Unit Tests vs Benchmarks
+## ⚡ Unit Tests vs Benchmarks
 
 | Aspect                 | Unit test                      | Benchmark                       |
 | ---------------------- | ------------------------------ | ------------------------------- |
@@ -37,13 +37,13 @@ unchanged. They add maintenance cost without catching real bugs.
 | **Location**           | `*_test.ts` next to the module | `*_bench.ts` next to the module |
 | **Runner**             | `deno test`                    | `deno bench`                    |
 
-### Why separate them?
+### 🤔 Why separate them?
 
 Unit tests run in parallel with other tests, so any timing measurement is unreliable. If you switch
 "quick sort" to "bubble sort", the unit tests should still pass (the output is the same), but a
 benchmark will expose the regression.
 
-### Rules
+### 📏 Rules
 
 1. **Do not put timing assertions in unit tests.** If a test checks `performance.now()` or
    `Date.now()` deltas it belongs in a benchmark.
@@ -51,7 +51,7 @@ benchmark will expose the regression.
    Write a proper benchmark instead.
 3. **Benchmarks are expected to take time.** That is their job.
 
-## Writing Tests
+## ✍️ Writing Tests
 
 - Place test files next to the module they test, named `<module>_test.ts`.
 - Use `Deno.test(...)` with descriptive names.
@@ -61,12 +61,12 @@ benchmark will expose the regression.
 - Clean up temporary files in a `finally` block.
 - Use `Deno.makeTempDirSync()` for any file I/O so tests never pollute the working tree.
 
-## Running Quality Checks
+## ✅ Running Quality Checks
 
 Run `./quality.sh` before merging. It executes linting, formatting, unit tests, and all example
-programs. See [README.md](README.md#quality-check) for full details.
+programs. See [README.md](README.md#-quality-check) for full details.
 
-## Project Structure
+## 📂 Project Structure
 
 ```
 common/
