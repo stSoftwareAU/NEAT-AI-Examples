@@ -8,8 +8,8 @@ informative, and factual. Closes #27.
 - **README.md** (primary focus):
   - Added CI status, licence, and Deno version badges at the top
   - Added relevant emojis to all section headers
-  - Wrapped reference material (running tests, linting/formatting, unit tests vs benchmarks,
-    running benchmarks, tacit knowledge) in collapsible `<details>` sections
+  - Wrapped reference material (running tests, linting/formatting, unit tests vs benchmarks, running
+    benchmarks, tacit knowledge) in collapsible `<details>` sections
   - Added GitHub admonition blocks (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`) where appropriate
   - Fixed American English "behavior" to Australian English "behaviour"
   - Updated licence section to use Australian English spelling ("Licence")

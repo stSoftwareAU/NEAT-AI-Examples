@@ -132,6 +132,7 @@ if (import.meta.main) {
 
     // Step 6: Multi-generation evolution using evolveDir
     console.log("\n🔄 Step 6: Multi-generation evolution from offspring...");
+    offspring.score = scoreOffspring;
     const evolveResult = await offspring.evolveDir(dataDir, {
       populationSize: 10,
       iterations: 5,
