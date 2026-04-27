@@ -134,6 +134,25 @@ Deno.test("workflow runs deno fmt --check", () => {
   assertEquals(runsFmtCheck, true, "Workflow should run deno fmt --check");
 });
 
+Deno.test("workflow runs deno check (type checking)", () => {
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+
+  let runsCheck = false;
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const run = step["run"] as string | undefined;
+      if (run && /\bdeno check\b/.test(run)) {
+        runsCheck = true;
+        break;
+      }
+    }
+  }
+  assertEquals(runsCheck, true, "Workflow should run deno check for type checking");
+});
+
 Deno.test("workflow runs unit tests", () => {
   const workflow = loadWorkflow();
   const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;

@@ -9,13 +9,14 @@
 import { assertEquals, assertGreater } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, type CreatureExport } from "@stsoftware/neat-ai";
+import { Creature } from "@stsoftware/neat-ai";
 
 import { generateSyntheticData, scoreCreature, type SyntheticConfig } from "./synthetic_data.ts";
+import { asCreatureExport, type LegacyCreatureJSON } from "./legacy_types.ts";
 
 /** Creates a minimal creature for testing purposes. */
 function createTestCreature(): Creature {
-  const json: CreatureExport = {
+  const json: LegacyCreatureJSON = {
     neurons: [
       { type: "input", squash: "LOGISTIC", index: 0, uuid: "in-0" },
       { type: "input", squash: "LOGISTIC", index: 1, uuid: "in-1" },
@@ -30,7 +31,7 @@ function createTestCreature(): Creature {
     input: 2,
     output: 1,
   };
-  return Creature.fromJSON(json);
+  return Creature.fromJSON(asCreatureExport(json));
 }
 
 /* ------------------------------------------------------------------ */
@@ -217,7 +218,7 @@ Deno.test("scoreCreature scores higher for matching creature", () => {
     generateSyntheticData(creature, dataDir, config);
 
     // Create a different creature
-    const differentJSON: CreatureExport = {
+    const differentJSON: LegacyCreatureJSON = {
       neurons: [
         { type: "input", squash: "LOGISTIC", index: 0, uuid: "in-0" },
         { type: "input", squash: "LOGISTIC", index: 1, uuid: "in-1" },
@@ -232,7 +233,7 @@ Deno.test("scoreCreature scores higher for matching creature", () => {
       input: 2,
       output: 1,
     };
-    const differentCreature = Creature.fromJSON(differentJSON);
+    const differentCreature = Creature.fromJSON(asCreatureExport(differentJSON));
 
     const matchingScore = scoreCreature(creature, dataDir);
     const differentScore = scoreCreature(differentCreature, dataDir);
