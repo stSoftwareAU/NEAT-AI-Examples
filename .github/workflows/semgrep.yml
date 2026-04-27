@@ -1,0 +1,36 @@
+# Semgrep SAST Scanning workflow for NEAT-AI-Examples
+#
+# Performs Static Application Security Testing (SAST) on every pull
+# request. Runs the Semgrep CLI inside the official semgrep/semgrep
+# container image against the default community ruleset (p/default).
+#
+# The SEMGREP_APP_TOKEN secret is optional: when set, results are
+# uploaded to Semgrep AppSec Platform; when unset, the scan still runs
+# locally and fails the job if any findings are reported.
+#
+# Actions are pinned to 40-character commit SHAs (not floating tags)
+# in line with the project's supply-chain hardening rules.
+
+name: Semgrep
+
+on:
+  pull_request:
+    branches: ["*"]
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: SAST scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Run Semgrep
+        run: semgrep ci --config p/default
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
