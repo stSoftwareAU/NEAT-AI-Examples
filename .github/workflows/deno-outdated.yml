@@ -1,0 +1,41 @@
+# Deno Dependency Updates workflow for NEAT-AI-Examples
+#
+# Runs `deno outdated --update --latest` on a weekly schedule (and on
+# demand via workflow_dispatch) to refresh imports in deno.json /
+# deno.lock to their latest versions, then opens a pull request with
+# the changes for review.
+
+name: Deno Dependency Updates
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  outdated:
+    name: Update Deno dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Update dependencies to latest versions
+        run: deno outdated --update --latest
+
+      - name: Open pull request with updates
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: update Deno dependencies"
+          title: "chore: update Deno dependencies"
+          branch: chore/deno-outdated
+          body: "Automated Deno dependency update via `deno outdated --update --latest`."
