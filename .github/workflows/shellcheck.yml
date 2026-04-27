@@ -1,0 +1,35 @@
+# ShellCheck Lint workflow for NEAT-AI-Examples
+#
+# Lints every shell script in the repository on each pull request using
+# ShellCheck. Catches common bugs and portability problems in Bash scripts
+# (such as quality.sh and the per-example run.sh scripts) before they reach
+# the default branch.
+#
+# Severity is set to `warning` so style-only suggestions do not fail the
+# build but real warnings (and errors) do.
+#
+# Actions are pinned to 40-character commit SHAs (not floating tags)
+# in line with the project's supply-chain hardening rules.
+
+name: ShellCheck
+
+on:
+  pull_request:
+    branches: ["*"]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Lint shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
+        with:
+          scandir: .
+          severity: warning
