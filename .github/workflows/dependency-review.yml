@@ -1,0 +1,29 @@
+# Dependency Review workflow for NEAT-AI-Examples
+#
+# Scans pull requests for dependencies that introduce known
+# vulnerabilities, invalid licences, or other supply-chain risks.
+# Uses the GitHub-maintained dependency-review-action, which inspects
+# the dependency graph diff between the base and head refs.
+#
+# Actions are pinned to 40-character commit SHAs (not floating tags)
+# in line with the project's supply-chain hardening rules.
+
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: ["*"]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Review dependency changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Review dependencies
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
