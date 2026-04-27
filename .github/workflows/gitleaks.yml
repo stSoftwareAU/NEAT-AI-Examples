@@ -1,0 +1,29 @@
+# Gitleaks Secrets Detection workflow for NEAT-AI-Examples
+#
+# Scans pull requests for accidentally committed secrets such as API
+# keys, tokens, and credentials. Runs against the full git history
+# (fetch-depth: 0) so secrets introduced in earlier commits are caught.
+
+name: Gitleaks
+
+on:
+  pull_request:
+    branches: ["*"]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Scan for secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
