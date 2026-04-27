@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["deno.ns", "deno.unstable"]
+    "lib": ["deno.ns", "deno.unstable", "deno.window", "esnext"]
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.15",

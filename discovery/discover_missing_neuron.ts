@@ -19,6 +19,7 @@ import { Creature, type CreatureExport, CreatureUtil, type NeatOptions } from "@
 
 import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 
 export { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 
@@ -32,8 +33,8 @@ export const SYNTHETIC_CONFIG: SyntheticConfig = {
  * Creates a reference creature for the discovery example.
  * This creature has several hidden neurons with different activation functions.
  */
-export function createReferenceCreature(): CreatureExport {
-  const json: CreatureExport = {
+export function createReferenceCreature(): LegacyCreatureJSON {
+  const json: LegacyCreatureJSON = {
     neurons: [
       // Input neurons
       { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
@@ -112,10 +113,10 @@ export function createReferenceCreature(): CreatureExport {
  * Creates a "crippled" creature by removing a target neuron.
  */
 export function createCrippledCreature(
-  baselineJSON: CreatureExport,
+  baselineJSON: LegacyCreatureJSON,
   targetNeuronUUID: string,
 ): Creature {
-  const exportJSON: CreatureExport = structuredClone(baselineJSON);
+  const exportJSON: LegacyCreatureJSON = structuredClone(baselineJSON);
 
   // Find the index of the target neuron to be removed
   const targetIndex = exportJSON.neurons.findIndex(
@@ -154,7 +155,7 @@ export function createCrippledCreature(
     }
   });
 
-  const crippled = Creature.fromJSON(exportJSON);
+  const crippled = Creature.fromJSON(asCreatureExport(exportJSON));
   crippled.validate();
   CreatureUtil.makeUUID(crippled);
   return crippled;
@@ -164,12 +165,12 @@ export function createCrippledCreature(
  * Saves a creature to a JSON file.
  */
 async function saveCreature(
-  creature: Creature | CreatureExport,
+  creature: Creature | CreatureExport | LegacyCreatureJSON,
   creaturesDir: string,
   fileName: string,
 ): Promise<string> {
   const outputPath = join(creaturesDir, fileName);
-  const json = "exportJSON" in creature ? creature.exportJSON() : creature;
+  const json = creature instanceof Creature ? creature.exportJSON() : creature;
   await Deno.writeTextFile(outputPath, JSON.stringify(json, null, 2));
   return outputPath;
 }
@@ -185,7 +186,7 @@ async function runDiscoveryExample(): Promise<void> {
   // Stage 1: Create reference creature
   stage("Stage 1/4: Creating reference creature");
   const baselineJSON = createReferenceCreature();
-  const referenceCreature = Creature.fromJSON(baselineJSON);
+  const referenceCreature = Creature.fromJSON(asCreatureExport(baselineJSON));
   referenceCreature.validate();
   CreatureUtil.makeUUID(referenceCreature);
 
@@ -239,13 +240,10 @@ async function runDiscoveryExample(): Promise<void> {
     costOfGrowth: 0,
     discoverySampleRate: 1,
     discoveryBatchSize: 4,
-    discoveryTimeOutMinutes: 1,
+    discoveryRecordTimeOutMinutes: 1,
     discoveryAnalysisTimeoutMinutes: 1,
-    discoveryMinImprovementPercentage: 0.001,
+    discoveryMinImprovementVsCostOfGrowthMultiplier: 0.001,
     discoveryMaxNeurons: 2,
-    discoveryDisableSynapseCandidates: true,
-    discoveryDisableHarmfulCandidates: true,
-    discoveryDisableSquashCandidates: true,
   };
 
   const startTime = performance.now();

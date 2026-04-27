@@ -23,7 +23,6 @@ import {
   alternativeSquashes,
   combineImprovements,
   Creature,
-  type CreatureExport,
   safeWriteJson,
   scanForSquashImprovements,
 } from "@stsoftware/neat-ai";
@@ -31,6 +30,7 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 
 import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 
 export { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 
@@ -151,7 +151,7 @@ if (import.meta.main) {
  */
 export function createReferenceCreature(): Creature {
   // Create a simple creature with some hidden neurons
-  const json: CreatureExport = {
+  const json: LegacyCreatureJSON = {
     neurons: [
       // Input neurons
       { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
@@ -234,5 +234,5 @@ export function createReferenceCreature(): Creature {
     output: 1,
   };
 
-  return Creature.fromJSON(json);
+  return Creature.fromJSON(asCreatureExport(json));
 }

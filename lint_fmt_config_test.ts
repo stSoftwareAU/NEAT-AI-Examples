@@ -88,6 +88,26 @@ Deno.test("quality.sh runs deno fmt --check", () => {
   );
 });
 
+Deno.test("quality.sh runs deno check (type checking)", () => {
+  const content = Deno.readTextFileSync(QUALITY_SH_PATH);
+  assertEquals(
+    /\bdeno check\b/.test(content),
+    true,
+    "quality.sh should run deno check for type checking",
+  );
+});
+
+Deno.test("quality.sh runs type check before unit tests", () => {
+  const content = Deno.readTextFileSync(QUALITY_SH_PATH);
+  const checkPos = content.search(/\bdeno check\b/);
+  const testPos = content.indexOf("deno test");
+  assertEquals(
+    checkPos !== -1 && checkPos < testPos,
+    true,
+    "deno check should run before deno test",
+  );
+});
+
 Deno.test("quality.sh runs lint before unit tests", () => {
   const content = Deno.readTextFileSync(QUALITY_SH_PATH);
   const lintPos = content.indexOf("deno lint");

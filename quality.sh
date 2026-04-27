@@ -71,6 +71,22 @@ else
   FAILED=1
 fi
 
+# --- Type Checking ---
+echo "----------------------------------------"
+echo "Running: Deno Type Check"
+echo "----------------------------------------"
+
+if deno check **/*.ts; then
+  echo ""
+  echo "SUCCESS: Deno Type Check"
+  echo ""
+else
+  echo ""
+  echo "FAILED: Deno Type Check"
+  echo ""
+  FAILED=1
+fi
+
 # --- Unit Tests ---
 echo "----------------------------------------"
 echo "Running: Unit Tests"

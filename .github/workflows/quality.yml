@@ -47,6 +47,9 @@ jobs:
       - name: Run Deno format check
         run: deno fmt --check
 
+      - name: Run Deno type check
+        run: deno check **/*.ts
+
       - name: Run unit tests
         run: deno test --no-check --allow-read --allow-write --allow-env
 

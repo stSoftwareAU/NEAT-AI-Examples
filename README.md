@@ -88,22 +88,26 @@ This script runs the following pipeline:
 flowchart LR
     LINT["🔎 Lint<br/>deno lint"]
     FMT["✨ Format Check<br/>deno fmt --check"]
+    CHECK["🧐 Type Check<br/>deno check"]
     TEST["🧪 Unit Tests<br/>deno test"]
     EX["🚀 Example Runners<br/>run.sh scripts"]
     PASS["✅ All Passed"]
     FAIL["❌ Failed"]
 
     LINT -->|pass| FMT
-    FMT -->|pass| TEST
+    FMT -->|pass| CHECK
+    CHECK -->|pass| TEST
     TEST -->|pass| EX
     EX -->|pass| PASS
     LINT -->|fail| FAIL
     FMT -->|fail| FAIL
+    CHECK -->|fail| FAIL
     TEST -->|fail| FAIL
     EX -->|fail| FAIL
 
     style LINT fill:#3498db,stroke:#333,color:#fff
     style FMT fill:#9b59b6,stroke:#333,color:#fff
+    style CHECK fill:#f39c12,stroke:#333,color:#fff
     style TEST fill:#e67e22,stroke:#333,color:#fff
     style EX fill:#1abc9c,stroke:#333,color:#fff
     style PASS fill:#2ecc71,stroke:#333,color:#fff
@@ -113,9 +117,11 @@ flowchart LR
 1. 🔎 **Linting** — `deno lint` with the recommended rule set configured in `deno.json`.
 2. ✨ **Formatting** — `deno fmt --check` to enforce consistent style (2-space indent, 100-char line
    width, double quotes).
-3. 🧪 **Unit tests** — `deno test` across the project (tests live next to each module as `*_test.ts`
+3. 🧐 **Type checking** — `deno check **/*.ts` runs the TypeScript type checker over every source
+   file, catching type mismatches before tests execute.
+4. 🧪 **Unit tests** — `deno test` across the project (tests live next to each module as `*_test.ts`
    files).
-4. 🚀 **Example programs** — each example runner script, verifying the full end-to-end workflow.
+5. 🚀 **Example programs** — each example runner script, verifying the full end-to-end workflow.
 
 ### 🔄 Continuous Integration
 
@@ -141,10 +147,10 @@ deno test --no-check --allow-read --allow-write --allow-env discovery/discover_m
 </details>
 
 <details>
-<summary>✨ Linting and Formatting</summary>
+<summary>✨ Linting, Formatting, and Type Checking</summary>
 
-The project uses `deno lint` (recommended rules) and `deno fmt` for consistent code style. To check
-locally:
+The project uses `deno lint` (recommended rules), `deno fmt` for consistent code style, and
+`deno check` for static type checking. To run these locally:
 
 ```bash
 # Check for lint issues
@@ -155,10 +161,13 @@ deno fmt --check
 
 # Auto-fix formatting
 deno fmt
+
+# Type-check every TypeScript file
+deno check **/*.ts
 ```
 
 The formatting configuration (in `deno.json`) uses 2-space indentation, 100-character line width,
-and double quotes. All code must pass both lint and format checks before merging.
+and double quotes. All code must pass lint, format, and type checks before merging.
 
 </details>
 

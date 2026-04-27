@@ -16,14 +16,7 @@
 
 import { format } from "@std/fmt/duration";
 import { join } from "@std/path";
-import {
-  Creature,
-  type CreatureExport,
-  CreatureUtil,
-  type NeuronExport,
-  safeWriteJson,
-  type SynapseExport,
-} from "@stsoftware/neat-ai";
+import { Creature, CreatureUtil, safeWriteJson } from "@stsoftware/neat-ai";
 import { addTag } from "@stsoftware/tags/mod";
 
 import {
@@ -33,6 +26,12 @@ import {
 } from "../common/synthetic_data.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
+import {
+  asCreatureExport,
+  type LegacyCreatureJSON,
+  type LegacyNeuron,
+  type LegacySynapse,
+} from "../common/legacy_types.ts";
 
 export {
   generateSyntheticData,
@@ -174,7 +173,7 @@ if (import.meta.main) {
  * one "lineage" of neural network architecture.
  */
 export function createParentA(): Creature {
-  const json: CreatureExport = {
+  const json: LegacyCreatureJSON = {
     neurons: [
       { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
       { type: "input", squash: "LOGISTIC", index: 1, uuid: "input-1" },
@@ -225,7 +224,7 @@ export function createParentA(): Creature {
     output: 1,
   };
 
-  return Creature.fromJSON(json);
+  return Creature.fromJSON(asCreatureExport(json));
 }
 
 /**
@@ -235,7 +234,7 @@ export function createParentA(): Creature {
  * a different "lineage" of neural network architecture.
  */
 export function createParentB(): Creature {
-  const json: CreatureExport = {
+  const json: LegacyCreatureJSON = {
     neurons: [
       { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
       { type: "input", squash: "LOGISTIC", index: 1, uuid: "input-1" },
@@ -286,7 +285,7 @@ export function createParentB(): Creature {
     output: 1,
   };
 
-  return Creature.fromJSON(json);
+  return Creature.fromJSON(asCreatureExport(json));
 }
 
 /**
@@ -321,7 +320,7 @@ export function performCrossover(
   const neuronsB = parentB.neurons;
 
   // Collect hidden neurons from both parents by UUID
-  const motherHidden: NeuronExport[] = [];
+  const motherHidden: LegacyNeuron[] = [];
   for (let i = inputCount; i < neuronsA.length; i++) {
     const n = neuronsA[i];
     motherHidden.push({
@@ -333,8 +332,8 @@ export function performCrossover(
     });
   }
 
-  const fatherHiddenMap = new Map<string, { bias: number; squash: string }>();
-  const fatherOnlyNeurons: NeuronExport[] = [];
+  const fatherHiddenMap = new Map<string, { bias: number; squash: string | undefined }>();
+  const fatherOnlyNeurons: LegacyNeuron[] = [];
   const motherUUIDs = new Set(motherHidden.map((n) => n.uuid));
 
   for (let i = inputCount; i < neuronsB.length; i++) {
@@ -354,7 +353,7 @@ export function performCrossover(
   }
 
   // Build offspring neuron list: inputs + mother's hidden + selected father hidden + outputs
-  const offspringNeurons: NeuronExport[] = [];
+  const offspringNeurons: LegacyNeuron[] = [];
 
   // Input neurons
   for (let i = 0; i < inputCount; i++) {
@@ -454,7 +453,7 @@ export function performCrossover(
   }
 
   // Build synapse array
-  const offspringSynapses: SynapseExport[] = [];
+  const offspringSynapses: LegacySynapse[] = [];
   for (const entry of synapseMap.values()) {
     offspringSynapses.push({
       from: entry.from,
@@ -463,7 +462,7 @@ export function performCrossover(
     });
   }
 
-  const offspringJSON: CreatureExport = {
+  const offspringJSON: LegacyCreatureJSON = {
     neurons: offspringNeurons,
     synapses: offspringSynapses,
     input: inputCount,
@@ -471,7 +470,7 @@ export function performCrossover(
   };
 
   try {
-    const offspring = Creature.fromJSON(offspringJSON);
+    const offspring = Creature.fromJSON(asCreatureExport(offspringJSON));
     offspring.validate();
     CreatureUtil.makeUUID(offspring);
     return offspring;
