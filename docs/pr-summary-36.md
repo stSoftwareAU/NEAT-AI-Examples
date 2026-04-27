@@ -1,14 +1,14 @@
 ## Summary
 
 Adds a new GitHub Actions workflow, `.github/workflows/deno-outdated.yml`, that runs
-`deno outdated --update --latest` weekly (and on demand) and opens a pull request with
-the refreshed `deno.json` / `deno.lock`. Closes #36.
+`deno outdated --update --latest` weekly (and on demand) and opens a pull request with the refreshed
+`deno.json` / `deno.lock`. Closes #36.
 
 ## Evidence
 
-This is a CI/configuration change with no UI to screenshot. Verification is via the
-new YAML-parsing tests in `.github/workflows/deno_outdated_test.ts` and the full
-`./quality.sh` run, both of which pass cleanly.
+This is a CI/configuration change with no UI to screenshot. Verification is via the new YAML-parsing
+tests in `.github/workflows/deno_outdated_test.ts` and the full `./quality.sh` run, both of which
+pass cleanly.
 
 ```mermaid
 flowchart LR

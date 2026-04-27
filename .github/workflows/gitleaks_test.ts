@@ -93,25 +93,32 @@ Deno.test("gitleaks workflow checks out the full git history", () => {
   );
 });
 
-Deno.test("gitleaks workflow runs the gitleaks-action", () => {
+Deno.test("gitleaks workflow runs gitleaks to scan for secrets", () => {
   const workflow = loadWorkflow();
   const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
 
-  let usesGitleaks = false;
+  let runsGitleaks = false;
   for (const name of Object.keys(jobs)) {
     const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
     if (!steps) continue;
     for (const step of steps) {
+      // Support both the gitleaks-action and direct CLI invocation.
       const uses = step["uses"] as string | undefined;
       if (uses && uses.startsWith("gitleaks/gitleaks-action@")) {
-        usesGitleaks = true;
+        runsGitleaks = true;
+        break;
+      }
+      const run = step["run"] as string | undefined;
+      if (run && run.includes("gitleaks")) {
+        runsGitleaks = true;
         break;
       }
     }
+    if (runsGitleaks) break;
   }
   assertEquals(
-    usesGitleaks,
+    runsGitleaks,
     true,
-    "Workflow should run the gitleaks/gitleaks-action step",
+    "Workflow should run gitleaks to scan for secrets",
   );
 });
