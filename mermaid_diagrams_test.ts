@@ -97,6 +97,22 @@ Deno.test("README.md has a diagram covering the example modules", () => {
     true,
     "Should have a diagram mentioning the Crossover example",
   );
+  assertEquals(
+    allDiagrams.includes("XOR") || allDiagrams.includes("xor_classification"),
+    true,
+    "Should have a diagram mentioning the XOR example",
+  );
+  assertEquals(
+    allDiagrams.includes("Cart-Pole") || allDiagrams.includes("Cart Pole") ||
+      allDiagrams.includes("cart_pole"),
+    true,
+    "Should have a diagram mentioning the Cart-Pole example",
+  );
+  assertEquals(
+    allDiagrams.includes("Lunar Lander") || allDiagrams.includes("lunar_lander"),
+    true,
+    "Should have a diagram mentioning the Lunar Lander example",
+  );
 });
 
 Deno.test("README.md has a diagram covering the quality check pipeline", () => {
