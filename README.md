@@ -15,23 +15,57 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 
 | Example                                                   | What it shows                                                                                            | How to run                      |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| [🧠 XOR](xor_classification/README.md)                    | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table.             | `./xor_classification/run.sh`   |
+| [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.  | `./cart_pole/run.sh`            |
+| [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.               | `./lunar_lander/run.sh`         |
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation. | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.          | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.     | `./crossover/run.sh`            |
-| [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.  | `./cart_pole/run.sh`            |
 | [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.          | `./suggest_improvements/run.sh` |
+
+## 📸 Screenshots
+
+Each control / classification example renders a deterministic SVG you can preview here without
+running the code locally.
+
+### 🧠 XOR — decision boundary
+
+![XOR decision boundary — a 2D scatter of the four XOR truth-table points overlaid on the champion network's learnt decision surface](docs/screenshots/xor_decision_boundary.svg)
+
+The champion network's learnt decision surface, sampled across the unit square. The four XOR
+truth-table points sit on opposite corners of the boundary.
+
+### 🎢 Cart-Pole — balancing run
+
+![Cart-Pole champion run — a horizontal strip of frames showing the cart sliding under a balanced inverted pole](docs/screenshots/cart_pole.svg)
+
+A horizontal strip of simulation frames from the champion's run. Each frame shows the cart's
+position and the pole angle at that timestep.
+
+### 🚀 Lunar Lander — descent trajectory
+
+![Lunar Lander champion descent — the lander's trajectory above the lunar surface, ending on a flagged landing pad](docs/screenshots/lunar_lander.svg)
+
+The lander's descent trajectory, rendered above the lunar surface. The marked pad shows the target
+touchdown zone; the lander's tilt and thruster bursts trace the controller's behaviour.
 
 ```mermaid
 flowchart TD
     NEAT["🧠 NEAT-AI Library"]
     COMMON["📦 Common Utilities<br/>Shared data generation,<br/>scoring & directory setup"]
 
+    XOR["🧠 XOR<br/>Hello World of NEAT —<br/>learn the XOR truth table"]
+    CART["🎢 Cart-Pole<br/>Balance an inverted pole<br/>on a moving cart"]
+    LUNAR["🚀 Lunar Lander<br/>Land softly on a flat<br/>pad with limited fuel"]
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
     DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
     SUGGEST["💡 Suggest Improvements<br/>Analyse project &<br/>generate suggestions"]
 
     NEAT --> COMMON
+    COMMON --> XOR
+    COMMON --> CART
+    COMMON --> LUNAR
     COMMON --> ID
     COMMON --> DISC
     COMMON --> CROSS
@@ -39,6 +73,9 @@ flowchart TD
 
     style NEAT fill:#4a90d9,stroke:#333,color:#fff
     style COMMON fill:#f5a623,stroke:#333,color:#fff
+    style XOR fill:#3498db,stroke:#333,color:#fff
+    style CART fill:#9b59b6,stroke:#333,color:#fff
+    style LUNAR fill:#1abc9c,stroke:#333,color:#fff
     style ID fill:#7ed321,stroke:#333,color:#fff
     style DISC fill:#bd10e0,stroke:#333,color:#fff
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
@@ -65,6 +102,9 @@ flowchart BT
     end
 
     subgraph examples ["🧬 Example Modules"]
+        XOR["🧠 xor_classification/"]
+        CART["🎢 cart_pole/"]
+        LUNAR["🚀 lunar_lander/"]
         ID["🧬 intelligent_design/"]
         DISC["🔍 discovery/"]
         CROSS["🔀 crossover/"]
@@ -72,6 +112,9 @@ flowchart BT
     end
 
     RNG --> DATA
+    common --> XOR
+    common --> CART
+    common --> LUNAR
     common --> ID
     common --> DISC
     common --> CROSS

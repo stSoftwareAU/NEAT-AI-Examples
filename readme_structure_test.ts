@@ -16,7 +16,15 @@ const EXAMPLE_DIRS = [
   "crossover",
   "discovery",
   "intelligent_design",
+  "lunar_lander",
   "suggest_improvements",
+  "xor_classification",
+] as const;
+
+const SCREENSHOT_PATHS = [
+  "docs/screenshots/xor_decision_boundary.svg",
+  "docs/screenshots/cart_pole.svg",
+  "docs/screenshots/lunar_lander.svg",
 ] as const;
 
 function loadReadme(): string {
@@ -86,6 +94,8 @@ Deno.test("README.md introduces every example by name", () => {
     "Crossover",
     "Cart-Pole",
     "Suggest Improvements",
+    "XOR",
+    "Lunar Lander",
   ];
   for (const name of required) {
     assertStringIncludes(
@@ -95,6 +105,36 @@ Deno.test("README.md introduces every example by name", () => {
     );
   }
 });
+
+Deno.test("README.md has a Screenshots section", () => {
+  const content = loadReadme();
+  assertEquals(
+    /^##\s+.*Screenshots/im.test(content),
+    true,
+    "README.md should have a Screenshots section heading",
+  );
+});
+
+for (const path of SCREENSHOT_PATHS) {
+  Deno.test(`README.md embeds the ${path} screenshot`, () => {
+    const content = loadReadme();
+    assertStringIncludes(
+      content,
+      path,
+      `README.md should embed the ${path} screenshot`,
+    );
+  });
+
+  Deno.test(`screenshot file ${path} exists on disk`, () => {
+    const stat = Deno.statSync(path);
+    assertEquals(stat.isFile, true, `${path} should be a committed file`);
+    assertEquals(
+      stat.size > 0,
+      true,
+      `${path} should be a non-empty file`,
+    );
+  });
+}
 
 Deno.test("README.md keeps a short one-line summary for each example", () => {
   // The Examples Overview section should hold a concise table or bullet
