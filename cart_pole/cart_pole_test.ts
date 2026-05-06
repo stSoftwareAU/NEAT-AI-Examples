@@ -1,0 +1,161 @@
+/**
+ * Unit tests for the cart-pole NEAT controller. "What" tests only —
+ * each test calls a real function, runs the simulator or evolver, and
+ * asserts on the observable outputs (scores, file contents, SVG
+ * structure).
+ */
+import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
+import { ensureDirSync, existsSync } from "@std/fs";
+import { join } from "@std/path";
+import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
+
+import { asCreatureExport } from "../common/legacy_types.ts";
+import {
+  buildInitialCreatureJSON,
+  DEFAULT_EVOLVE_OPTIONS,
+  evolveCartPoleController,
+  genesFromCreatureJSON,
+  MAX_STEPS,
+  mutateCreatureJSON,
+  randomCreatureJSON,
+  replayController,
+  scoreController,
+  scoreTiltDirectionPolicy,
+  SVG_FRAME_COUNT,
+} from "./cart_pole.ts";
+import { renderRunSVG } from "./svg.ts";
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
+
+Deno.test("buildInitialCreatureJSON has 4 inputs and 1 output", () => {
+  const json = buildInitialCreatureJSON([0.1, 0.2, 0.3, 0.4], 0.5);
+  assertEquals(json.input, 4);
+  assertEquals(json.output, 1);
+  assertEquals(json.synapses.length, 4);
+});
+
+Deno.test("buildInitialCreatureJSON produces a valid creature", () => {
+  const json = buildInitialCreatureJSON([0.1, 0.2, 0.3, 0.4], 0.5);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  creature.validate();
+});
+
+Deno.test("genesFromCreatureJSON round-trips the weights and bias", () => {
+  const weights: [number, number, number, number] = [0.11, -0.22, 0.33, -0.44];
+  const bias = 0.55;
+  const json = buildInitialCreatureJSON(weights, bias);
+  const genes = genesFromCreatureJSON(json);
+  assertEquals(genes.weights, weights);
+  assertEquals(genes.bias, bias);
+});
+
+Deno.test("randomCreatureJSON is deterministic for the same seed", () => {
+  const r1 = createDeterministicRandom(99);
+  const r2 = createDeterministicRandom(99);
+  assertEquals(randomCreatureJSON(r1), randomCreatureJSON(r2));
+});
+
+Deno.test("mutateCreatureJSON yields a valid creature", () => {
+  const random = createDeterministicRandom(7);
+  const parent = buildInitialCreatureJSON([0, 0, 0, 0], 0);
+  const child = mutateCreatureJSON(parent, random, 1.0, 0.3);
+  const creature = Creature.fromJSON(asCreatureExport(child));
+  creature.validate();
+});
+
+Deno.test("scoreTiltDirectionPolicy beats a 'do nothing' baseline", () => {
+  // The hand-crafted policy isn't perfect, but it should clearly out-survive
+  // 50 steps — the simulator is solvable with simple feedback.
+  const score = scoreTiltDirectionPolicy(MAX_STEPS);
+  assertGreater(
+    score,
+    50,
+    `tilt-direction policy should survive >50 steps, got ${score}`,
+  );
+});
+
+Deno.test("scoreController returns a value between 0 and MAX_STEPS", () => {
+  const json = buildInitialCreatureJSON([0, 0, 0, 0], 0);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const score = scoreController(creature, MAX_STEPS);
+  assertGreaterOrEqual(score, 0);
+  assertGreaterOrEqual(MAX_STEPS, score);
+});
+
+Deno.test(
+  "evolveCartPoleController finds a controller that solves the task with the default seed",
+  async () => {
+    const result = evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+    assertEquals(
+      result.solved,
+      true,
+      `expected the champion to reach MAX_STEPS=${MAX_STEPS}, got ${result.bestScore} ` +
+        `after ${result.generations} generations`,
+    );
+    assertEquals(result.bestScore, MAX_STEPS);
+
+    // Champion must serialise cleanly for downstream consumption.
+    const tmp = await Deno.makeTempDir({ prefix: "cart_pole_test_" });
+    try {
+      const path = join(tmp, "champion.json");
+      await safeWriteJson(path, result.champion.exportJSON());
+      assertEquals(existsSync(path), true);
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test("replayController returns a non-empty trace with the initial state first", () => {
+  const json = buildInitialCreatureJSON([0, 0, 1, 0], 0);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const trace = replayController(creature, 50);
+  assert(trace.length > 0, "trace must not be empty");
+  assertEquals(trace[0].x, 0);
+  assertEquals(trace[0].theta, 0);
+});
+
+Deno.test("renderRunSVG emits an <svg> root with the expected number of frame groups", () => {
+  const json = buildInitialCreatureJSON([0, 0, 1, 0], 0);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const trace = replayController(creature, 50);
+  const svg = renderRunSVG(trace, SVG_FRAME_COUNT);
+  assert(svg.startsWith("<svg"), "must start with <svg>");
+  assert(svg.includes("</svg>"), "must contain </svg>");
+  // One <g class="frame" ...> per requested frame.
+  const matches = svg.match(/<g class="frame"/g) ?? [];
+  assertEquals(matches.length, SVG_FRAME_COUNT);
+});
+
+Deno.test("renderRunSVG output renders both cart and pole primitives", () => {
+  const json = buildInitialCreatureJSON([0, 0, 1, 0], 0);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const trace = replayController(creature, 30);
+  const svg = renderRunSVG(trace, 4);
+  assert(svg.includes("<rect"), "expected at least one cart rectangle");
+  assert(svg.includes("<line"), "expected at least one pole line");
+});
+
+Deno.test(
+  "running cart_pole.ts via run.sh-style execution emits champion.json and SVG",
+  async () => {
+    // Smoke-test that the SVG rendering path writes a sensible file when
+    // wired up the same way the runner does. We use a temp dir to
+    // avoid polluting the workspace.
+    const tmp = await Deno.makeTempDir({ prefix: "cart_pole_smoke_" });
+    try {
+      ensureDirSync(join(tmp, "screenshots"));
+      const result = evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+      const trace = replayController(result.champion);
+      const svg = renderRunSVG(trace, SVG_FRAME_COUNT);
+      const svgPath = join(tmp, "screenshots", "cart_pole.svg");
+      await Deno.writeTextFile(svgPath, svg);
+      const written = await Deno.readTextFile(svgPath);
+      assert(written.startsWith("<svg"));
+      const championPath = join(tmp, "champion.json");
+      await safeWriteJson(championPath, result.champion.exportJSON());
+      assertEquals(existsSync(championPath), true);
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+);

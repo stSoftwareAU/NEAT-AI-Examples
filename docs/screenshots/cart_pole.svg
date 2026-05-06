@@ -1,0 +1,139 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1440 220"
+  width="1440"
+  height="220"
+  role="img"
+  aria-label="Cart-pole champion run, 8 frames"
+>
+  <title>Cart-Pole Champion Run</title>
+  <rect width="1440" height="220" fill="#fafafa" />
+  <g class="frame" data-frame="0" data-step="0" transform="translate(0,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="60" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="90.00"
+      y1="160"
+      x2="90.00"
+      y2="70.00"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="90.00" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 0</text>
+  </g>
+  <g class="frame" data-frame="1" data-step="71" transform="translate(180,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="55.47505512423814" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="85.48"
+      y1="160"
+      x2="83.85"
+      y2="70.01"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="85.48" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 71</text>
+  </g>
+  <g class="frame" data-frame="2" data-step="143" transform="translate(360,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="48.91502516180928" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="78.92"
+      y1="160"
+      x2="78.44"
+      y2="70.00"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="78.92" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 143</text>
+  </g>
+  <g class="frame" data-frame="3" data-step="214" transform="translate(540,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="42.09143379100519" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="72.09"
+      y1="160"
+      x2="72.04"
+      y2="70.00"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="72.09" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 214</text>
+  </g>
+  <g class="frame" data-frame="4" data-step="286" transform="translate(720,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="34.63387649650247" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="64.63"
+      y1="160"
+      x2="64.81"
+      y2="70.00"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="64.63" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 286</text>
+  </g>
+  <g class="frame" data-frame="5" data-step="357" transform="translate(900,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="26.823017091931987" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="56.82"
+      y1="160"
+      x2="56.42"
+      y2="70.00"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="56.82" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 357</text>
+  </g>
+  <g class="frame" data-frame="6" data-step="429" transform="translate(1080,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="18.096686322390433" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="48.10"
+      y1="160"
+      x2="47.60"
+      y2="70.00"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="48.10" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 429</text>
+  </g>
+  <g class="frame" data-frame="7" data-step="500" transform="translate(1260,0)">
+    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
+    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
+    <rect x="8.568582417224675" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
+    <line
+      x1="38.57"
+      y1="160"
+      x2="36.68"
+      y2="70.02"
+      stroke="#e74c3c"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <circle cx="38.57" cy="160" r="4" fill="#1f4d80" />
+    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 500</text>
+  </g>
+</svg>

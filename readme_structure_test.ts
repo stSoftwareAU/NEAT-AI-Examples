@@ -12,6 +12,7 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 const README_PATH = "README.md";
 
 const EXAMPLE_DIRS = [
+  "cart_pole",
   "crossover",
   "discovery",
   "intelligent_design",
@@ -83,6 +84,7 @@ Deno.test("README.md introduces every example by name", () => {
     "Intelligent Design",
     "Discovery",
     "Crossover",
+    "Cart-Pole",
     "Suggest Improvements",
   ];
   for (const name of required) {
