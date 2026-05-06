@@ -92,7 +92,7 @@ echo "----------------------------------------"
 echo "Running: Unit Tests"
 echo "----------------------------------------"
 
-if deno test --no-check --allow-read --allow-write --allow-env; then
+if deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi; then
   echo ""
   echo "SUCCESS: Unit Tests"
   echo ""

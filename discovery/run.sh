@@ -25,6 +25,7 @@ deno run \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
   --allow-ffi \
   discovery/discover_missing_neuron.ts \
   "$@"

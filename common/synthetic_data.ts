@@ -86,7 +86,10 @@ export function generateSyntheticData(
  *
  * Returns the numeric score (higher is better; scores are typically negative).
  */
-export function scoreCreature(creature: Creature, dataDir: string): number {
-  const result = creature.scoreDir(dataDir, {});
+export async function scoreCreature(
+  creature: Creature,
+  dataDir: string,
+): Promise<number> {
+  const result = await creature.scoreDir(dataDir, {});
   return result.score;
 }

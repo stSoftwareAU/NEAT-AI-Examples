@@ -93,12 +93,12 @@ generateSyntheticData(scoreCreatureInstance, scoreDataDir, {
   seed: 42424242,
 });
 
-Deno.bench("intelligent_design: score creature against data (scoreDir)", () => {
-  scoreCreatureInstance.scoreDir(scoreDataDir, {});
+Deno.bench("intelligent_design: score creature against data (scoreDir)", async () => {
+  await scoreCreatureInstance.scoreDir(scoreDataDir, {});
 });
 
-Deno.bench("intelligent_design: score creature against data (scoreCreature)", () => {
-  scoreCreature(scoreCreatureInstance, scoreDataDir);
+Deno.bench("intelligent_design: score creature against data (scoreCreature)", async () => {
+  await scoreCreature(scoreCreatureInstance, scoreDataDir);
 });
 
 // Clean up scoring data when the process exits

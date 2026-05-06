@@ -171,7 +171,7 @@ Deno.test("generateSyntheticData produces different data for different seeds", (
 /*  scoreCreature                                                      */
 /* ------------------------------------------------------------------ */
 
-Deno.test("scoreCreature returns a finite numeric score", () => {
+Deno.test("scoreCreature returns a finite numeric score", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_common_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -181,7 +181,7 @@ Deno.test("scoreCreature returns a finite numeric score", () => {
     const config: SyntheticConfig = { totalRecords: 64, recordsPerFile: 64, seed: 42 };
     generateSyntheticData(creature, dataDir, config);
 
-    const score = scoreCreature(creature, dataDir);
+    const score = await scoreCreature(creature, dataDir);
     assertEquals(typeof score, "number", "score should be a number");
     assertEquals(Number.isFinite(score), true, "score should be finite");
   } finally {
@@ -189,7 +189,7 @@ Deno.test("scoreCreature returns a finite numeric score", () => {
   }
 });
 
-Deno.test("scoreCreature returns deterministic results", () => {
+Deno.test("scoreCreature returns deterministic results", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_common_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -199,15 +199,15 @@ Deno.test("scoreCreature returns deterministic results", () => {
     const config: SyntheticConfig = { totalRecords: 64, recordsPerFile: 64, seed: 42 };
     generateSyntheticData(creature, dataDir, config);
 
-    const score1 = scoreCreature(creature, dataDir);
-    const score2 = scoreCreature(creature, dataDir);
+    const score1 = await scoreCreature(creature, dataDir);
+    const score2 = await scoreCreature(creature, dataDir);
     assertEquals(score1, score2, "same creature and data should yield same score");
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
   }
 });
 
-Deno.test("scoreCreature scores higher for matching creature", () => {
+Deno.test("scoreCreature scores higher for matching creature", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_common_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -235,8 +235,8 @@ Deno.test("scoreCreature scores higher for matching creature", () => {
     };
     const differentCreature = Creature.fromJSON(asCreatureExport(differentJSON));
 
-    const matchingScore = scoreCreature(creature, dataDir);
-    const differentScore = scoreCreature(differentCreature, dataDir);
+    const matchingScore = await scoreCreature(creature, dataDir);
+    const differentScore = await scoreCreature(differentCreature, dataDir);
 
     // The creature that generated the data should score better
     assertGreater(

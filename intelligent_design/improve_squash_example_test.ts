@@ -136,7 +136,7 @@ Deno.test("generateSyntheticData creates a file with correct size", () => {
   }
 });
 
-Deno.test("generateSyntheticData produces data that can be scored by the creature", () => {
+Deno.test("generateSyntheticData produces data that can be scored by the creature", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_id_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -147,7 +147,7 @@ Deno.test("generateSyntheticData produces data that can be scored by the creatur
     generateSyntheticData(creature, dataDir, config);
 
     // The creature should be able to score against the generated data
-    const result = creature.scoreDir(dataDir, {});
+    const result = await creature.scoreDir(dataDir, {});
     assertEquals(typeof result.score, "number", "score should be a number");
     assertEquals(Number.isFinite(result.score), true, "score should be finite");
   } finally {

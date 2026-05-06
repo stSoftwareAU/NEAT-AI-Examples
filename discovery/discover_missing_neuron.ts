@@ -224,8 +224,8 @@ async function runDiscoveryExample(): Promise<void> {
   console.log(`   Saved crippled creature to ${crippledPath}`);
 
   // Score both creatures to show the difference
-  const baselineScore = referenceCreature.scoreDir(dataDir, {});
-  const crippledScore = crippledCreature.scoreDir(dataDir, {});
+  const baselineScore = await referenceCreature.scoreDir(dataDir, {});
+  const crippledScore = await crippledCreature.scoreDir(dataDir, {});
   console.log(
     `   Baseline score: ${baselineScore.score.toPrecision(6)}, ` +
       `Crippled score: ${crippledScore.score.toPrecision(6)}`,
@@ -242,7 +242,6 @@ async function runDiscoveryExample(): Promise<void> {
     discoveryBatchSize: 4,
     discoveryRecordTimeOutMinutes: 1,
     discoveryAnalysisTimeoutMinutes: 1,
-    discoveryMinImprovementVsCostOfGrowthMultiplier: 0.001,
     discoveryMaxNeurons: 2,
   };
 
@@ -265,7 +264,7 @@ async function runDiscoveryExample(): Promise<void> {
       "discovered.json",
     );
 
-    const improvedScore = improvedCreature.scoreDir(dataDir, {});
+    const improvedScore = await improvedCreature.scoreDir(dataDir, {});
     console.log(`\n   Discovery found an improvement!`);
     console.log(`   Improved score: ${improvedScore.score.toPrecision(6)}`);
     console.log(`   Score delta: ${improvement.scoreDelta.toFixed(6)}`);
