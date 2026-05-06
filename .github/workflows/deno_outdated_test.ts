@@ -151,3 +151,36 @@ Deno.test("deno-outdated workflow opens a pull request via create-pull-request a
     "Workflow should use peter-evans/create-pull-request to open the update PR",
   );
 });
+
+Deno.test("deno-outdated workflow uses ACTIONS_PUSH PAT with GITHUB_TOKEN fallback", () => {
+  // Issue #1636: passing the org-level PAT to create-pull-request lets
+  // the resulting PR trigger downstream workflows (e.g. quality.yml).
+  // Without this token, PRs opened by GITHUB_TOKEN do not fire `on: pull_request`.
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+
+  let token: string | undefined;
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const uses = step["uses"] as string | undefined;
+      if (uses && uses.startsWith("peter-evans/create-pull-request@")) {
+        const withBlock = step["with"] as Record<string, unknown> | undefined;
+        if (withBlock && typeof withBlock["token"] === "string") {
+          token = withBlock["token"] as string;
+        }
+      }
+    }
+  }
+  assertExists(
+    token,
+    "create-pull-request step should set a token to allow downstream workflows to fire",
+  );
+  assertEquals(
+    token!.includes("secrets.ACTIONS_PUSH") &&
+      token!.includes("secrets.GITHUB_TOKEN"),
+    true,
+    "Token should reference secrets.ACTIONS_PUSH with secrets.GITHUB_TOKEN as fallback",
+  );
+});
