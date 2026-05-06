@@ -27,6 +27,9 @@ deno run \
   --v8-flags=--max-old-space-size=4096 \
   --allow-read \
   --allow-write \
+  --allow-env \
+  --allow-net \
+  --allow-ffi \
   intelligent_design/improve_squash_example.ts \
   --squash="${SQUASH}" \
   "${@:2}"

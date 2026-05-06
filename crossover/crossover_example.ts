@@ -84,8 +84,8 @@ if (import.meta.main) {
 
   // Step 3: Score both parents
   console.log("\n📈 Step 3: Scoring parents...");
-  const scoreA = scoreCreature(parentA, dataDir);
-  const scoreB = scoreCreature(parentB, dataDir);
+  const scoreA = await scoreCreature(parentA, dataDir);
+  const scoreB = await scoreCreature(parentB, dataDir);
   addTag(parentAExport, "score", `${scoreA}`);
   addTag(parentBExport, "score", `${scoreB}`);
   console.log(`   Parent A score: ${scoreA.toPrecision(6)}`);
@@ -108,7 +108,7 @@ if (import.meta.main) {
 
     // Step 5: Score the offspring
     console.log("\n📊 Step 5: Scoring offspring...");
-    const scoreOffspring = scoreCreature(offspring, dataDir);
+    const scoreOffspring = await scoreCreature(offspring, dataDir);
     addTag(offspringExport, "score", `${scoreOffspring}`);
     console.log(`   Offspring score: ${scoreOffspring.toPrecision(6)}`);
 
@@ -139,7 +139,7 @@ if (import.meta.main) {
       costOfGrowth: 0,
     });
     // evolveDir mutates the creature in-place and returns statistics
-    const evolvedScore = scoreCreature(offspring, dataDir);
+    const evolvedScore = await scoreCreature(offspring, dataDir);
     console.log(
       `   Evolved score after ${evolveResult.generation} generations: ` +
         `${evolvedScore.toPrecision(6)}`,
@@ -319,10 +319,12 @@ export function performCrossover(
   const neuronsA = parentA.neurons;
   const neuronsB = parentB.neurons;
 
-  // Collect hidden neurons from both parents by UUID
+  // Collect hidden neurons from both parents by UUID. Neurons without a
+  // UUID cannot participate in the UUID-keyed crossover and are skipped.
   const motherHidden: LegacyNeuron[] = [];
   for (let i = inputCount; i < neuronsA.length; i++) {
     const n = neuronsA[i];
+    if (n.uuid === undefined) continue;
     motherHidden.push({
       type: n.type === "output" ? "output" : "hidden",
       squash: n.squash,
@@ -339,6 +341,7 @@ export function performCrossover(
   for (let i = inputCount; i < neuronsB.length; i++) {
     const n = neuronsB[i];
     if (n.type === "output") continue;
+    if (n.uuid === undefined) continue;
     if (motherUUIDs.has(n.uuid)) {
       fatherHiddenMap.set(n.uuid, { bias: n.bias, squash: n.squash });
     } else {
@@ -420,6 +423,7 @@ export function performCrossover(
   for (const s of synapsesA) {
     const fromUUID = parentA.neurons[s.from].uuid;
     const toUUID = parentA.neurons[s.to].uuid;
+    if (fromUUID === undefined || toUUID === undefined) continue;
     const fromIdx = uuidToIndex.get(fromUUID);
     const toIdx = uuidToIndex.get(toUUID);
     if (fromIdx !== undefined && toIdx !== undefined) {
@@ -436,6 +440,7 @@ export function performCrossover(
   for (const s of synapsesB) {
     const fromUUID = parentB.neurons[s.from].uuid;
     const toUUID = parentB.neurons[s.to].uuid;
+    if (fromUUID === undefined || toUUID === undefined) continue;
     const key = `${fromUUID}->${toUUID}`;
 
     const existing = synapseMap.get(key);

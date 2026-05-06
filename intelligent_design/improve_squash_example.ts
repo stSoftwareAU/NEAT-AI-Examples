@@ -75,7 +75,7 @@ if (import.meta.main) {
 
   // Step 3: Score the baseline creature
   console.log("\n📈 Step 3: Scoring baseline creature...");
-  const baselineResult = creature.scoreDir(dataDir, {});
+  const baselineResult = await creature.scoreDir(dataDir, {});
   const baselineScore = baselineResult.score;
   addTag(creatureExport, "score", `${baselineScore}`);
   addTag(creatureExport, "error", `${baselineResult.error}`);
@@ -114,7 +114,7 @@ if (import.meta.main) {
   if (scanResult.improvements.size > 0) {
     console.log("\n🧪 Step 5: Combining improvements...");
 
-    const { creature: improvedCreature, message } = combineImprovements(
+    const { creature: improvedCreature, message } = await combineImprovements(
       creatureExport,
       scanResult.improvements,
       dataDir,

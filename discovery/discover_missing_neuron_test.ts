@@ -295,7 +295,7 @@ Deno.test("SYNTHETIC_CONFIG has expected properties", () => {
 /*  Scoring: baseline vs crippled                                      */
 /* ------------------------------------------------------------------ */
 
-Deno.test("crippled creature scores worse than baseline on generated data", () => {
+Deno.test("crippled creature scores worse than baseline on generated data", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -310,8 +310,8 @@ Deno.test("crippled creature scores worse than baseline on generated data", () =
 
     const crippled = createCrippledCreature(json, "hidden-1");
 
-    const baselineScore = baseline.scoreDir(dataDir, {});
-    const crippledScore = crippled.scoreDir(dataDir, {});
+    const baselineScore = await baseline.scoreDir(dataDir, {});
+    const crippledScore = await crippled.scoreDir(dataDir, {});
 
     // The baseline trained on its own data should score better
     // (scores are negative; closer to 0 is better)

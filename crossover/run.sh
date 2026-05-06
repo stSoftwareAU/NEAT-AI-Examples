@@ -24,6 +24,8 @@ deno run \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
+  --allow-ffi \
   --allow-run \
   crossover/crossover_example.ts \
   "$@"

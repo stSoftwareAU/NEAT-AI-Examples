@@ -250,7 +250,7 @@ Deno.test("generateSyntheticData file contains valid float32 values", () => {
 /*  scoreCreature                                                      */
 /* ------------------------------------------------------------------ */
 
-Deno.test("scoreCreature returns a finite numeric score", () => {
+Deno.test("scoreCreature returns a finite numeric score", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -260,7 +260,7 @@ Deno.test("scoreCreature returns a finite numeric score", () => {
     const config = { totalRecords: 64, recordsPerFile: 64, seed: 42 };
     generateSyntheticData(creature, dataDir, config);
 
-    const score = scoreCreature(creature, dataDir);
+    const score = await scoreCreature(creature, dataDir);
     assertEquals(typeof score, "number", "score should be a number");
     assertEquals(Number.isFinite(score), true, "score should be finite");
   } finally {
@@ -268,7 +268,7 @@ Deno.test("scoreCreature returns a finite numeric score", () => {
   }
 });
 
-Deno.test("scoreCreature returns deterministic results", () => {
+Deno.test("scoreCreature returns deterministic results", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -278,8 +278,8 @@ Deno.test("scoreCreature returns deterministic results", () => {
     const config = { totalRecords: 64, recordsPerFile: 64, seed: 42 };
     generateSyntheticData(creature, dataDir, config);
 
-    const score1 = scoreCreature(creature, dataDir);
-    const score2 = scoreCreature(creature, dataDir);
+    const score1 = await scoreCreature(creature, dataDir);
+    const score2 = await scoreCreature(creature, dataDir);
     assertEquals(score1, score2, "same creature and data should yield same score");
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
@@ -324,7 +324,7 @@ Deno.test("performCrossover offspring produces finite output", () => {
   }
 });
 
-Deno.test("performCrossover offspring can be scored against data", () => {
+Deno.test("performCrossover offspring can be scored against data", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -338,7 +338,7 @@ Deno.test("performCrossover offspring can be scored against data", () => {
     const offspring = performCrossover(parentA, parentB);
 
     if (offspring !== undefined) {
-      const score = scoreCreature(offspring, dataDir);
+      const score = await scoreCreature(offspring, dataDir);
       assertEquals(typeof score, "number", "offspring score should be a number");
       assertEquals(Number.isFinite(score), true, "offspring score should be finite");
     }
