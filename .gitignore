@@ -3,5 +3,6 @@
 *~
 !.gitignore
 !.github
+!.markdownlint-cli2.jsonc
 deno.lock
 run.log
