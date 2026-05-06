@@ -1,0 +1,30 @@
+// markdownlint-cli2 configuration
+//
+// Tunes the default markdownlint rules to suit this repository.
+// The CI workflow `.github/workflows/markdown-lint.yml` runs
+// `markdownlint-cli2` against all Markdown files.
+{
+  "config": {
+    // MD013: line length — the repo favours readable prose over hard wrapping.
+    "MD013": false,
+    // MD033: inline HTML — README uses <details>/<summary> for collapsible
+    // sections, which is supported on GitHub.
+    "MD033": false,
+    // MD041: first line in a file should be a top-level heading — pr-summary
+    // files in docs/ legitimately start with `## Summary`.
+    "MD041": false,
+    // MD040: fenced code blocks language — historic pr-summary fences omit a
+    // language; not worth a sweeping rewrite.
+    "MD040": false,
+    // MD018: missing space after hash — one archived pr-summary uses `#NN.`
+    // as a literal issue reference, not a heading.
+    "MD018": false,
+    // MD029: ordered list prefix — archived pr-summary intersperses prose
+    // between numbered items; rewriting historical docs is out of scope.
+    "MD029": false
+  },
+  "ignores": [
+    "node_modules",
+    ".git"
+  ]
+}
