@@ -18,6 +18,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation. | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.          | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.     | `./crossover/run.sh`            |
+| [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.  | `./cart_pole/run.sh`            |
 | [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.          | `./suggest_improvements/run.sh` |
 
 ```mermaid
