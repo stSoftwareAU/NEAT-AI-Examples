@@ -1636,7 +1636,34 @@
   </g>
   <g class="samples">
     <g class="sample" data-index="0" data-target="0">
-      <circle cx="70.00" cy="410.00" r="8" fill="#4a90d9" stroke="#222222" stroke-width="2" />
+      <circle
+        class="pulse"
+        cx="70.00"
+        cy="410.00"
+        r="8"
+        fill="none"
+        stroke="#4a90d9"
+        stroke-width="2"
+        opacity="0"
+      >
+        <animate attributeName="r" values="8;22" dur="4s" begin="0.000s" repeatCount="indefinite" />
+        <animate
+          attributeName="opacity"
+          values="0.85;0"
+          dur="4s"
+          begin="0.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx="70.00" cy="410.00" r="8" fill="#4a90d9" stroke="#222222" stroke-width="2">
+        <animate
+          attributeName="r"
+          values="8;10;8"
+          dur="4s"
+          begin="0.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
       <text
         x="82.00"
         y="400.00"
@@ -1646,11 +1673,65 @@
       >(0,0)→0</text>
     </g>
     <g class="sample" data-index="1" data-target="1">
-      <circle cx="70.00" cy="50.00" r="8" fill="#e74c3c" stroke="#222222" stroke-width="2" />
+      <circle
+        class="pulse"
+        cx="70.00"
+        cy="50.00"
+        r="8"
+        fill="none"
+        stroke="#e74c3c"
+        stroke-width="2"
+        opacity="0"
+      >
+        <animate attributeName="r" values="8;22" dur="4s" begin="1.000s" repeatCount="indefinite" />
+        <animate
+          attributeName="opacity"
+          values="0.85;0"
+          dur="4s"
+          begin="1.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx="70.00" cy="50.00" r="8" fill="#e74c3c" stroke="#222222" stroke-width="2">
+        <animate
+          attributeName="r"
+          values="8;10;8"
+          dur="4s"
+          begin="1.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
       <text x="82.00" y="40.00" font-family="monospace" font-size="12" fill="#222222">(0,1)→1</text>
     </g>
     <g class="sample" data-index="2" data-target="1">
-      <circle cx="430.00" cy="410.00" r="8" fill="#e74c3c" stroke="#222222" stroke-width="2" />
+      <circle
+        class="pulse"
+        cx="430.00"
+        cy="410.00"
+        r="8"
+        fill="none"
+        stroke="#e74c3c"
+        stroke-width="2"
+        opacity="0"
+      >
+        <animate attributeName="r" values="8;22" dur="4s" begin="2.000s" repeatCount="indefinite" />
+        <animate
+          attributeName="opacity"
+          values="0.85;0"
+          dur="4s"
+          begin="2.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx="430.00" cy="410.00" r="8" fill="#e74c3c" stroke="#222222" stroke-width="2">
+        <animate
+          attributeName="r"
+          values="8;10;8"
+          dur="4s"
+          begin="2.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
       <text
         x="442.00"
         y="400.00"
@@ -1660,7 +1741,34 @@
       >(1,0)→1</text>
     </g>
     <g class="sample" data-index="3" data-target="0">
-      <circle cx="430.00" cy="50.00" r="8" fill="#4a90d9" stroke="#222222" stroke-width="2" />
+      <circle
+        class="pulse"
+        cx="430.00"
+        cy="50.00"
+        r="8"
+        fill="none"
+        stroke="#4a90d9"
+        stroke-width="2"
+        opacity="0"
+      >
+        <animate attributeName="r" values="8;22" dur="4s" begin="3.000s" repeatCount="indefinite" />
+        <animate
+          attributeName="opacity"
+          values="0.85;0"
+          dur="4s"
+          begin="3.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx="430.00" cy="50.00" r="8" fill="#4a90d9" stroke="#222222" stroke-width="2">
+        <animate
+          attributeName="r"
+          values="8;10;8"
+          dur="4s"
+          begin="3.000s"
+          repeatCount="indefinite"
+        />
+      </circle>
       <text
         x="442.00"
         y="40.00"

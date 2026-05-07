@@ -33,6 +33,9 @@ const FLAME_LENGTH = 14;
 /** Number of pose markers drawn along the trajectory. Always 3 (start/mid/end). */
 export const POSE_MARKER_COUNT = 3;
 
+/** Total animation duration (seconds) for one full descent replay. */
+export const ANIMATION_DURATION_SECONDS = 6;
+
 /** A single sampled trace step: state plus the action that produced the next state. */
 export interface TraceFrame {
   state: LanderState;
@@ -93,11 +96,41 @@ export function renderRunSVG(
     .map((idx) => renderPose(trace[idx], idx, terrain, ceiling))
     .join("\n");
 
+  // Build SMIL keyframes for an animated lander icon that follows the
+  // entire trajectory. Sample at most 80 points so the value lists stay
+  // small even for long traces.
+  const sampleStride = Math.max(1, Math.floor(trace.length / 80));
+  const animSamples: TraceFrame[] = [];
+  for (let i = 0; i < trace.length; i += sampleStride) {
+    animSamples.push(trace[i]);
+  }
+  if (animSamples[animSamples.length - 1] !== trace[trace.length - 1]) {
+    animSamples.push(trace[trace.length - 1]);
+  }
+  const cxValues = animSamples
+    .map((f) => projectX(f.state.x, terrain).toFixed(2))
+    .join(";");
+  const cyValues = animSamples
+    .map((f) => projectY(f.state.y, ceiling).toFixed(2))
+    .join(";");
+  // Main-thruster flame visibility: 1 when firing, 0 otherwise.
+  const flameValues = animSamples
+    .map((f) => (f.action.main ? "1" : "0"))
+    .join(";");
+
+  const animDur = `${ANIMATION_DURATION_SECONDS}s`;
+  const firstSample = animSamples[0];
+  const startCx = projectX(firstSample.state.x, terrain);
+  const startCy = projectY(firstSample.state.y, ceiling);
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" ` +
     `width="${SVG_WIDTH}" height="${SVG_HEIGHT}" role="img" ` +
-    `aria-label="Lunar lander champion descent trajectory">`,
-    `  <title>Lunar Lander Champion Descent</title>`,
+    `aria-label="Lunar lander champion descent trajectory (animated)">`,
+    `  <title>Lunar Lander Champion Descent (animated)</title>`,
+    `  <desc>SMIL-animated SVG: a lander icon descends along the recorded ` +
+    `trajectory while its main-thruster flame flickers when the controller ` +
+    `fires it. Loops every ${ANIMATION_DURATION_SECONDS} seconds.</desc>`,
     `  <rect width="${SVG_WIDTH}" height="${SVG_HEIGHT}" fill="#0b0b1a"/>`,
     // Stars — purely cosmetic, deterministic positions for reproducibility.
     renderStars(),
@@ -111,6 +144,47 @@ export function renderRunSVG(
     `  <polyline class="trajectory" points="${trajectoryPoints}" ` +
     `fill="none" stroke="#9ad9ff" stroke-width="2" stroke-dasharray="4 3"/>`,
     poseGroups,
+    // Animated lander: a small group containing the body, a hull dot,
+    // and a flame that flickers when the main thruster fires. The
+    // group is animated by translating its origin (cx, cy) and rotating
+    // by `state.angle`. We use SMIL `<animate>`/`<animateTransform>`
+    // so GitHub renders the motion natively.
+    `  <g class="animated-lander">`,
+    `    <line class="anim-flame" x1="${startCx.toFixed(2)}" y1="${
+      (startCy + LANDER_HALF_LENGTH).toFixed(2)
+    }" ` +
+    `x2="${startCx.toFixed(2)}" y2="${(startCy + LANDER_HALF_LENGTH + FLAME_LENGTH).toFixed(2)}" ` +
+    `stroke="#ff8c1a" stroke-width="3" stroke-linecap="round" opacity="${
+      firstSample.action.main ? 1 : 0
+    }">`,
+    `      <animate attributeName="x1" values="${cxValues}" dur="${animDur}" ` +
+    `repeatCount="indefinite" calcMode="linear"/>`,
+    `      <animate attributeName="x2" values="${cxValues}" dur="${animDur}" ` +
+    `repeatCount="indefinite" calcMode="linear"/>`,
+    `      <animate attributeName="y1" values="${
+      animSamples.map((f) => (projectY(f.state.y, ceiling) + LANDER_HALF_LENGTH).toFixed(2)).join(
+        ";",
+      )
+    }" dur="${animDur}" repeatCount="indefinite" calcMode="linear"/>`,
+    `      <animate attributeName="y2" values="${
+      animSamples.map((f) =>
+        (projectY(f.state.y, ceiling) + LANDER_HALF_LENGTH + FLAME_LENGTH).toFixed(2)
+      ).join(";")
+    }" dur="${animDur}" repeatCount="indefinite" calcMode="linear"/>`,
+    `      <animate attributeName="opacity" values="${flameValues}" dur="${animDur}" ` +
+    `repeatCount="indefinite" calcMode="discrete"/>`,
+    `    </line>`,
+    `    <circle class="anim-hull" cx="${startCx.toFixed(2)}" cy="${startCy.toFixed(2)}" ` +
+    `r="6" fill="#4a90d9" stroke="#dddddd" stroke-width="2">`,
+    `      <animate attributeName="cx" values="${cxValues}" dur="${animDur}" ` +
+    `repeatCount="indefinite" calcMode="linear"/>`,
+    `      <animate attributeName="cy" values="${cyValues}" dur="${animDur}" ` +
+    `repeatCount="indefinite" calcMode="linear"/>`,
+    `    </circle>`,
+    `  </g>`,
+    `  <text x="${SVG_WIDTH - 12}" y="${SVG_HEIGHT - 12}" text-anchor="end" ` +
+    `font-family="sans-serif" font-size="11" fill="#9ad9ff">animated · loops every ` +
+    `${ANIMATION_DURATION_SECONDS}s</text>`,
     `</svg>`,
     "",
   ].join("\n");

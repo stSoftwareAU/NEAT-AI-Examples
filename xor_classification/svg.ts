@@ -30,6 +30,9 @@ const GRID_X = 70;
 /** Top-left y coordinate of the grid area. */
 const GRID_Y = 50;
 
+/** Total animation duration (seconds) for one full marker pulse cycle. */
+export const ANIMATION_DURATION_SECONDS = 4;
+
 /** Options controlling the decision-boundary render. */
 export interface RenderOptions {
   /** Number of cells per side. Higher = smoother boundary, slower. */
@@ -139,10 +142,28 @@ function renderSampleMarker(sample: XorSample, index: number): string {
   const stroke = "#222222";
   const labelX = cx + 12;
   const labelY = cy - 10;
+  // Stagger each marker's pulse so the four samples ripple in turn,
+  // making it obvious that the boundary separates the highlighted XOR
+  // truth-table corners.
+  const animDur = `${ANIMATION_DURATION_SECONDS}s`;
+  const beginOffset = (index * ANIMATION_DURATION_SECONDS) / 4;
+  const beginAttr = `${beginOffset.toFixed(3)}s`;
   return [
     `    <g class="sample" data-index="${index}" data-target="${sample.target}">`,
+    // Outer pulse ring — fades out and grows to draw attention to each
+    // labelled XOR truth-table point in sequence.
+    `      <circle class="pulse" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="8" ` +
+    `fill="none" stroke="${fill}" stroke-width="2" opacity="0">`,
+    `        <animate attributeName="r" values="8;22" dur="${animDur}" ` +
+    `begin="${beginAttr}" repeatCount="indefinite"/>`,
+    `        <animate attributeName="opacity" values="0.85;0" dur="${animDur}" ` +
+    `begin="${beginAttr}" repeatCount="indefinite"/>`,
+    `      </circle>`,
     `      <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="8" ` +
-    `fill="${fill}" stroke="${stroke}" stroke-width="2"/>`,
+    `fill="${fill}" stroke="${stroke}" stroke-width="2">`,
+    `        <animate attributeName="r" values="8;10;8" dur="${animDur}" ` +
+    `begin="${beginAttr}" repeatCount="indefinite"/>`,
+    `      </circle>`,
     `      <text x="${labelX.toFixed(2)}" y="${labelY.toFixed(2)}" ` +
     `font-family="monospace" font-size="12" fill="#222222">` +
     `(${sample.inputs[0]},${sample.inputs[1]})→${sample.target}</text>`,

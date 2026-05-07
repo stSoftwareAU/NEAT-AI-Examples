@@ -308,8 +308,8 @@ export function evolveCartPoleController(
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/cart_pole.svg";
 
-/** Number of evenly-spaced replay frames captured into the SVG strip. */
-export const SVG_FRAME_COUNT = 8;
+/** Number of evenly-spaced keyframes sampled for the SMIL-animated SVG. */
+export const SVG_FRAME_COUNT = 60;
 
 if (import.meta.main) {
   const start = Date.now();
