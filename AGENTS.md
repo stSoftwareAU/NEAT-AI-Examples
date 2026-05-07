@@ -66,6 +66,48 @@ benchmark will expose the regression.
 Run `./quality.sh` before merging. It executes linting, formatting, unit tests, and all example
 programs. See [README.md](README.md#-quality-check) for full details.
 
+## 📦 Shared Utilities
+
+The `common/` directory holds helpers that every example may reuse. Reach for these before
+reinventing equivalent logic in a new example.
+
+| Module                           | Purpose                                                       |
+| -------------------------------- | ------------------------------------------------------------- |
+| `common/deterministic_random.ts` | Seeded PRNG for reproducible data generation.                 |
+| `common/synthetic_data.ts`       | Synthetic dataset generation and scoring.                     |
+| `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.        |
+| `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache. |
+
+### `common/data_cache.ts`
+
+`fetchDataset(opts)` downloads a dataset file into a hidden per-example directory (e.g.
+`.synthetic-mnist/data/train.csv`) and caches it on disk so subsequent runs do not re-download. Pass
+a single URL or an array of mirror URLs and (optionally) a SHA-256 digest:
+
+```ts
+import { fetchDataset } from "../common/data_cache.ts";
+
+await fetchDataset({
+  url: [
+    "https://primary.example.com/mnist/train.csv",
+    "https://mirror.example.com/mnist/train.csv",
+  ],
+  path: ".synthetic-mnist/data/train.csv",
+  sha256: "abc123…",
+});
+```
+
+Behaviour:
+
+- Skips the download when the file already exists (and, when a digest is supplied, when the on-disk
+  digest matches).
+- Streams the response body straight to disk — no in-memory buffering.
+- Verifies the digest after writing; on mismatch the partial file is deleted and the call rejects.
+- Tries each mirror in turn; an HTTP error or network failure on one mirror falls back to the next,
+  and the final error message lists every URL that was tried.
+
+The helper relies on Deno's built-in `fetch` and `crypto.subtle` — no extra dependencies are added.
+
 ## 📂 Project Structure
 
 ```
@@ -76,6 +118,8 @@ common/
   synthetic_data_test.ts           — Unit tests for data generation and scoring
   working_dirs.ts                  — Shared working directory setup
   working_dirs_test.ts             — Unit tests for directory setup
+  data_cache.ts                    — Hidden-directory dataset download with on-disk cache
+  data_cache_test.ts               — Unit tests for the dataset cache
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)

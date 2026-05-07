@@ -95,6 +95,19 @@ import { generateSyntheticData, scoreCreature } from "../common/synthetic_data.t
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 ```
 
+If your example needs a real-world dataset, do **not** commit the raw data — download it at runtime
+with [`common/data_cache.ts`](AGENTS.md#-shared-utilities) so the repository stays small:
+
+```ts
+import { fetchDataset } from "../common/data_cache.ts";
+
+await fetchDataset({
+  url: "https://example.com/dataset.csv",
+  path: ".my-example/data/dataset.csv",
+  sha256: "abc123…", // optional integrity check
+});
+```
+
 ### 3. 🧪 Write unit tests
 
 Create `my_example/my_example_test.ts` next to the module. Tests must be "what" tests — call real
