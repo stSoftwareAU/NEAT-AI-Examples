@@ -16,6 +16,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | Example                                                   | What it shows                                                                                            | How to run                      |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | [🧠 XOR](xor_classification/README.md)                    | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table.             | `./xor_classification/run.sh`   |
+| [🔢 MNIST](mnist_classification/README.md)                | Evolve a 196→10 classifier for handwritten digits and render an animated 5×4 grid of test predictions.   | `./mnist_classification/run.sh` |
 | [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.  | `./cart_pole/run.sh`            |
 | [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.               | `./lunar_lander/run.sh`         |
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation. | `./intelligent_design/run.sh`   |
@@ -35,6 +36,14 @@ running the code locally.
 
 The champion network's learnt decision surface, sampled across the unit square. The four XOR
 truth-table points sit on opposite corners of the boundary.
+
+### 🔢 MNIST — animated digit grid
+
+![MNIST classification grid — a 5×4 grid of test digits with predicted vs. actual labels and green ✓ / red ✗ overlays](docs/screenshots/mnist_classification.svg)
+
+A 5 × 4 grid of test digits, each cell cross-fading through several samples. The label overlay is
+green when the network's prediction matches the ground truth and red when it does not. The caption
+shows the overall test-fold accuracy.
 
 ### 🎢 Cart-Pole — balancing run
 
@@ -65,6 +74,7 @@ flowchart TD
     COMMON["📦 Common Utilities<br/>Shared data generation,<br/>scoring & directory setup"]
 
     XOR["🧠 XOR<br/>Hello World of NEAT —<br/>learn the XOR truth table"]
+    MNIST["🔢 MNIST<br/>Classify handwritten digits<br/>from a 14×14 down-sample"]
     CART["🎢 Cart-Pole<br/>Balance an inverted pole<br/>on a moving cart"]
     LUNAR["🚀 Lunar Lander<br/>Land softly on a flat<br/>pad with limited fuel"]
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
@@ -75,6 +85,7 @@ flowchart TD
 
     NEAT --> COMMON
     COMMON --> XOR
+    COMMON --> MNIST
     COMMON --> CART
     COMMON --> LUNAR
     COMMON --> ID
@@ -86,6 +97,7 @@ flowchart TD
     style NEAT fill:#4a90d9,stroke:#333,color:#fff
     style COMMON fill:#f5a623,stroke:#333,color:#fff
     style XOR fill:#3498db,stroke:#333,color:#fff
+    style MNIST fill:#e91e63,stroke:#333,color:#fff
     style CART fill:#9b59b6,stroke:#333,color:#fff
     style LUNAR fill:#1abc9c,stroke:#333,color:#fff
     style ID fill:#7ed321,stroke:#333,color:#fff
@@ -116,6 +128,7 @@ flowchart BT
 
     subgraph examples ["🧬 Example Modules"]
         XOR["🧠 xor_classification/"]
+        MNIST["🔢 mnist_classification/"]
         CART["🎢 cart_pole/"]
         LUNAR["🚀 lunar_lander/"]
         ID["🧬 intelligent_design/"]
@@ -127,6 +140,7 @@ flowchart BT
 
     RNG --> DATA
     common --> XOR
+    common --> MNIST
     common --> CART
     common --> LUNAR
     common --> ID
