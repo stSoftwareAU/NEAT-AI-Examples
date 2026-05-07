@@ -21,6 +21,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation. | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.          | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.     | `./crossover/run.sh`            |
+| [📈 Stock Market](stock_market/README.md)                 | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.       | `./stock_market/run.sh`         |
 | [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.          | `./suggest_improvements/run.sh` |
 
 ## 📸 Screenshots
@@ -49,6 +50,15 @@ position and the pole angle at that timestep.
 The lander's descent trajectory, rendered above the lunar surface. The marked pad shows the target
 touchdown zone; the lander's tilt and thruster bursts trace the controller's behaviour.
 
+### 📈 Stock Market — direction predictions
+
+![Stock Market champion test window — an animated S&P 500 close-price line with four-colour ▲/▼ markers showing predicted-vs-realised direction at each bar](docs/screenshots/stock_market.svg)
+
+The S&P 500 close-price polyline over the held-out test window. Four-colour ▲/▼ markers encode each
+prediction-vs-outcome combination (green ▲ correct up, orange ▲ missed up; blue ▼ correct down, red
+▼ missed down). A dashed play-head sweeps left-to-right so viewers can walk the controller's
+decisions chronologically. **Teaching example only — not investment advice.**
+
 ```mermaid
 flowchart TD
     NEAT["🧠 NEAT-AI Library"]
@@ -60,6 +70,7 @@ flowchart TD
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
     DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
+    STOCK["📈 Stock Market<br/>Predict next-period S&P 500<br/>direction from prior returns"]
     SUGGEST["💡 Suggest Improvements<br/>Analyse project &<br/>generate suggestions"]
 
     NEAT --> COMMON
@@ -69,6 +80,7 @@ flowchart TD
     COMMON --> ID
     COMMON --> DISC
     COMMON --> CROSS
+    COMMON --> STOCK
     COMMON --> SUGGEST
 
     style NEAT fill:#4a90d9,stroke:#333,color:#fff
@@ -79,6 +91,7 @@ flowchart TD
     style ID fill:#7ed321,stroke:#333,color:#fff
     style DISC fill:#bd10e0,stroke:#333,color:#fff
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
+    style STOCK fill:#16a085,stroke:#333,color:#fff
     style SUGGEST fill:#50e3c2,stroke:#333,color:#fff
 ```
 
@@ -108,6 +121,7 @@ flowchart BT
         ID["🧬 intelligent_design/"]
         DISC["🔍 discovery/"]
         CROSS["🔀 crossover/"]
+        STOCK["📈 stock_market/"]
         SUGGEST["💡 suggest_improvements/"]
     end
 
@@ -118,6 +132,7 @@ flowchart BT
     common --> ID
     common --> DISC
     common --> CROSS
+    common --> STOCK
     common --> SUGGEST
 
     style common fill:#fff3cd,stroke:#f5a623,color:#333
