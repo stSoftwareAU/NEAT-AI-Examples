@@ -113,6 +113,11 @@ Deno.test("README.md has a diagram covering the example modules", () => {
     true,
     "Should have a diagram mentioning the Lunar Lander example",
   );
+  assertEquals(
+    allDiagrams.includes("MNIST") || allDiagrams.includes("mnist_classification"),
+    true,
+    "Should have a diagram mentioning the MNIST example",
+  );
 });
 
 Deno.test("README.md has a diagram covering the quality check pipeline", () => {
