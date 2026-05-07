@@ -18,6 +18,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🧠 XOR](xor_classification/README.md)                    | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table.              | `./xor_classification/run.sh`   |
 | [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.   | `./cart_pole/run.sh`            |
 | [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.                | `./lunar_lander/run.sh`         |
+| [🚗 Mountain Car](mountain_car/README.md)                 | Evolve a swing-up controller that drives an under-powered car up a sinusoidal hill to the goal flag.      | `./mountain_car/run.sh`         |
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.  | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.           | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.      | `./crossover/run.sh`            |
@@ -51,6 +52,14 @@ position and the pole angle at that timestep.
 The lander's descent trajectory, rendered above the lunar surface. The marked pad shows the target
 touchdown zone; the lander's tilt and thruster bursts trace the controller's behaviour.
 
+### 🚗 Mountain Car — swing-up to the summit
+
+![Mountain Car champion run — an animated SVG of a car oscillating across a sinusoidal valley and finally cresting the goal flag](docs/screenshots/mountain_car.svg)
+
+An under-powered car oscillates across a sinusoidal valley and finally crests the goal flag at
+`x = 0.5`. The car icon animates along the recorded trajectory and changes colour the moment it
+crosses the flag line, with a bottom progress bar marking the playhead.
+
 ### 📈 Stock Market — direction predictions
 
 ![Stock Market champion test window — an animated S&P 500 close-price line with four-colour ▲/▼ markers showing predicted-vs-realised direction at each bar](docs/screenshots/stock_market.svg)
@@ -77,6 +86,7 @@ flowchart TD
     XOR["🧠 XOR<br/>Hello World of NEAT —<br/>learn the XOR truth table"]
     CART["🎢 Cart-Pole<br/>Balance an inverted pole<br/>on a moving cart"]
     LUNAR["🚀 Lunar Lander<br/>Land softly on a flat<br/>pad with limited fuel"]
+    MCAR["🚗 Mountain Car<br/>Swing up an under-powered<br/>car to crest the goal flag"]
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
     DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
@@ -88,6 +98,7 @@ flowchart TD
     COMMON --> XOR
     COMMON --> CART
     COMMON --> LUNAR
+    COMMON --> MCAR
     COMMON --> ID
     COMMON --> DISC
     COMMON --> CROSS
@@ -100,6 +111,7 @@ flowchart TD
     style XOR fill:#3498db,stroke:#333,color:#fff
     style CART fill:#9b59b6,stroke:#333,color:#fff
     style LUNAR fill:#1abc9c,stroke:#333,color:#fff
+    style MCAR fill:#e67e22,stroke:#333,color:#fff
     style ID fill:#7ed321,stroke:#333,color:#fff
     style DISC fill:#bd10e0,stroke:#333,color:#fff
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
@@ -131,6 +143,7 @@ flowchart BT
         XOR["🧠 xor_classification/"]
         CART["🎢 cart_pole/"]
         LUNAR["🚀 lunar_lander/"]
+        MCAR["🚗 mountain_car/"]
         ID["🧬 intelligent_design/"]
         DISC["🔍 discovery/"]
         CROSS["🔀 crossover/"]
@@ -143,6 +156,7 @@ flowchart BT
     common --> XOR
     common --> CART
     common --> LUNAR
+    common --> MCAR
     common --> ID
     common --> DISC
     common --> CROSS
