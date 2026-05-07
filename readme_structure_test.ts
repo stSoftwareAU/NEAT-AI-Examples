@@ -17,6 +17,7 @@ const EXAMPLE_DIRS = [
   "discovery",
   "intelligent_design",
   "lunar_lander",
+  "stock_market",
   "suggest_improvements",
   "xor_classification",
 ] as const;
@@ -25,6 +26,7 @@ const SCREENSHOT_PATHS = [
   "docs/screenshots/xor_decision_boundary.svg",
   "docs/screenshots/cart_pole.svg",
   "docs/screenshots/lunar_lander.svg",
+  "docs/screenshots/stock_market.svg",
 ] as const;
 
 function loadReadme(): string {
@@ -96,6 +98,7 @@ Deno.test("README.md introduces every example by name", () => {
     "Suggest Improvements",
     "XOR",
     "Lunar Lander",
+    "Stock Market",
   ];
   for (const name of required) {
     assertStringIncludes(
