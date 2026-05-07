@@ -106,7 +106,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-cart-pole .synthetic-lunar-lander .synthetic-xor .synthetic-stock .discovery
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-cart-pole .synthetic-lunar-lander .synthetic-xor .synthetic-stock .synthetic-mnist .discovery
 echo ""
 
 # Run the Intelligent Design example
@@ -129,6 +129,9 @@ run_example "XOR Classification Example" "./xor_classification/run.sh"
 
 # Run the Stock Market Direction Prediction example
 run_example "Stock Market Direction Prediction Example" "./stock_market/run.sh"
+
+# Run the MNIST Handwritten-Digit Classification example
+run_example "MNIST Handwritten-Digit Classification Example" "./mnist_classification/run.sh"
 
 # Run the Suggest Improvements example
 run_example "Suggest Improvements" "./suggest_improvements/run.sh"

@@ -1,258 +1,290 @@
 /**
- * SVG rendering helpers for the MNIST classification example.
+ * Animated grid SVG renderer for the MNIST classification example.
  *
- * Produces a single animated SVG with a 5 × 4 grid of test digits.
- * Each cell shows the original 28 × 28 greyscale image plus a label
- * overlay — green when the network's prediction matches the ground
- * truth, red when it does not. Cells cross-fade through several test
- * samples per slot using SMIL `<animate>` so the visualisation pulses
- * and feels alive.
+ * Lays out a `GRID_ROWS × GRID_COLS` grid of digit "cells". Each cell
+ * pre-renders several digits as `<g>` groups stacked on top of each
+ * other, and a SMIL `<animate>` with `calcMode="discrete"` switches
+ * which group is visible — so during a single 9-second loop every
+ * cell pulses through several test samples without needing JavaScript
+ * or external images.
+ *
+ * Each digit pixel is emitted as a tiny `<rect>` so the SVG renders
+ * everywhere (Markdown, GitHub Pages, raw `img` tags) and stays
+ * digest-stable. Black background pixels are skipped to keep the
+ * file size manageable.
+ *
+ * The predicted-vs-actual label sits below each cell in green when
+ * the prediction is correct and red when it is wrong, so the chart
+ * doubles as a confusion-matrix style visualisation.
  */
-import type { Creature } from "@stsoftware/neat-ai";
 
-import { type MnistSample, predictDigit, SOURCE_GRID } from "./mnist_classification.ts";
+/** Number of cell columns in the rendered grid. */
+export const GRID_COLS = 5;
 
-/** Width (in SVG user units) of the rendered grid. */
-export const PLOT_WIDTH = 640;
+/** Number of cell rows in the rendered grid. */
+export const GRID_ROWS = 4;
 
-/** Height (in SVG user units) of the rendered grid. */
-export const PLOT_HEIGHT = 560;
+/** Total animation duration (seconds) for one full sweep across all frames. */
+export const ANIMATION_DURATION_SECONDS = 9;
 
-/** Width of the cell area inside the plot. */
-const CELL_W = 110;
+/** Native side length of an MNIST image (pixels). */
+export const SOURCE_IMAGE_SIZE = 28;
 
-/** Height of the cell area inside the plot. */
-const CELL_H = 110;
+/** SVG units per source pixel — keeps each digit at 84×84 SVG units. */
+const PIXEL_SCALE = 3;
 
-/** Top-left corner of the grid. */
-const GRID_X = 30;
-const GRID_Y = 60;
+/** SVG units occupied by each cell's image area. */
+const CELL_IMAGE_SIZE = SOURCE_IMAGE_SIZE * PIXEL_SCALE;
 
-/** Gap between cells. */
-const CELL_GAP = 14;
+/** Vertical space (SVG units) reserved for the "T:x P:y" label below each cell. */
+const CELL_LABEL_HEIGHT = 26;
 
-/** Total animation duration (seconds) for one full cross-fade cycle. */
-export const ANIMATION_DURATION_SECONDS = 6;
+/** Padding (SVG units) between adjacent cells. */
+const CELL_PADDING = 14;
 
-/** Options controlling the grid render. */
-export interface RenderOptions {
-  /** Number of cell columns. */
-  cols: number;
-  /** Number of cell rows. */
-  rows: number;
-  /** Number of samples cross-faded inside each cell. */
-  samplesPerCell: number;
-  /** Overall test-fold accuracy in `[0, 1]` for the caption. */
+/** Outer padding (SVG units) around the whole grid. */
+const OUTER_MARGIN = 28;
+
+/** Height (SVG units) of the caption below the grid. */
+const CAPTION_HEIGHT = 60;
+
+/** Total SVG width derived from the grid layout. */
+export const SVG_WIDTH = OUTER_MARGIN * 2 +
+  GRID_COLS * CELL_IMAGE_SIZE +
+  (GRID_COLS - 1) * CELL_PADDING;
+
+/** Total SVG height derived from the grid layout. */
+export const SVG_HEIGHT = OUTER_MARGIN * 2 +
+  GRID_ROWS * (CELL_IMAGE_SIZE + CELL_LABEL_HEIGHT) +
+  (GRID_ROWS - 1) * CELL_PADDING +
+  CAPTION_HEIGHT;
+
+/** A single frame within a cell — one digit + its prediction. */
+export interface CellFrame {
+  /**
+   * Raw 28×28 pixels in row-major order, values in `0..255`. Pixels
+   * with a value at or below {@link DigitGridOptions.pixelThreshold}
+   * are not emitted, keeping the output tractable.
+   */
+  pixels: ArrayLike<number>;
+  /** Ground-truth class label (0..9). */
+  label: number;
+  /** Network's argmax prediction (0..9). */
+  prediction: number;
+}
+
+/** A grid cell — several frames that crossfade via SMIL opacity. */
+export interface DigitCell {
+  frames: CellFrame[];
+}
+
+/** Options for {@link renderDigitGridSVG}. */
+export interface DigitGridOptions {
+  /**
+   * Cells in reading order (row-major). May be shorter than
+   * `GRID_ROWS * GRID_COLS` — empty positions stay blank but the SVG
+   * still renders.
+   */
+  cells: DigitCell[];
+  /** Test-set accuracy used in the caption. */
   accuracy: number;
+  /** Held-out validation accuracy used in the caption. */
+  validationAccuracy: number;
+  /** Pixel-value threshold below which pixels are not emitted. Default 24. */
+  pixelThreshold?: number;
+  /** Override the source-image side length (default {@link SOURCE_IMAGE_SIZE}). */
+  imageSize?: number;
+}
+
+/** Right-pads `n` to two decimals to keep SVG output stable. */
+function fmt(n: number): string {
+  return n.toFixed(2);
+}
+
+/** Minimal XML escaping for text nodes and attribute values. */
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 /**
- * Render the animated digit grid. The renderer takes the first
- * `cols * rows * samplesPerCell` samples from `testSamples` and
- * cycles them through the cells with SMIL opacity cross-fades.
+ * Build the SMIL `values` / `keyTimes` pair for a discrete
+ * opacity animation that makes frame `i` of `K` total visible during
+ * the interval `[i/K, (i+1)/K]` of the cycle.
  *
- * Fewer samples than required is allowed — the renderer simply repeats
- * the available samples so the grid always fills.
+ * For `K = 1` no animation is needed — return null.
  */
-export function renderMnistGridSVG(
-  creature: Creature,
-  testSamples: readonly MnistSample[],
-  options: RenderOptions,
-): string {
-  const { cols, rows, samplesPerCell, accuracy } = options;
-  if (cols < 1 || rows < 1) {
-    throw new Error(`grid dimensions must be positive, got ${cols}×${rows}`);
+function frameAnimation(
+  i: number,
+  K: number,
+): { values: string; keyTimes: string } | null {
+  if (K <= 1) return null;
+  const values: string[] = [];
+  const keyTimes: string[] = [];
+  for (let j = 0; j < K; j++) {
+    keyTimes.push((j / K).toFixed(4));
+    values.push(j === i ? "1" : "0");
   }
-  if (samplesPerCell < 1) {
-    throw new Error(`samplesPerCell must be at least 1, got ${samplesPerCell}`);
-  }
-  if (testSamples.length === 0) {
-    throw new Error("renderMnistGridSVG: testSamples must be non-empty");
-  }
-
-  const cellCount = cols * rows;
-  const cells: string[] = [];
-  let sampleIdx = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cellSamples: MnistSample[] = [];
-      for (let s = 0; s < samplesPerCell; s++) {
-        cellSamples.push(testSamples[sampleIdx % testSamples.length]);
-        sampleIdx++;
-      }
-      const cellIndex = r * cols + c;
-      cells.push(renderCell(creature, cellSamples, c, r, cellIndex, cellCount));
-    }
-  }
-
-  const correct = countCorrect(creature, testSamples);
-  const evaluatedAcc = testSamples.length > 0 ? correct / testSamples.length : accuracy;
-  const accuracyPct = (evaluatedAcc * 100).toFixed(1);
-  const caption = `<text x="${PLOT_WIDTH / 2}" y="${PLOT_HEIGHT - 22}" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="15" fill="#222">` +
-    `Test accuracy: ${accuracyPct}% (${correct} / ${testSamples.length} correct)</text>`;
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}" ` +
-    `width="${PLOT_WIDTH}" height="${PLOT_HEIGHT}" role="img" ` +
-    `aria-label="MNIST classification grid with predicted vs. actual labels">`,
-    `  <title>MNIST Classification — Predicted vs. Actual</title>`,
-    `  <rect width="${PLOT_WIDTH}" height="${PLOT_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${PLOT_WIDTH / 2}" y="32" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="18" font-weight="bold" fill="#222">` +
-    `MNIST Classification Champion</text>`,
-    `  <g class="cells">`,
-    cells.join("\n"),
-    `  </g>`,
-    caption,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
-/** Count correctly classified samples (used in the caption). */
-function countCorrect(creature: Creature, samples: readonly MnistSample[]): number {
-  let correct = 0;
-  for (const s of samples) {
-    if (predictDigit(creature, s.pixels) === s.label) correct++;
-  }
-  return correct;
+  return { values: values.join(";"), keyTimes: keyTimes.join(";") };
 }
 
 /**
- * Render one grid cell — a stack of {@link MnistSample} layers that
- * cross-fade in and out, plus a frame and a label overlay.
+ * Render one frame's pixel grid as a sequence of small `<rect>`
+ * elements. Background pixels (`<= pixelThreshold`) are skipped to
+ * keep the file size manageable.
  */
-function renderCell(
-  creature: Creature,
-  samples: readonly MnistSample[],
-  col: number,
-  row: number,
-  cellIndex: number,
-  cellCount: number,
-): string {
-  const x = GRID_X + col * (CELL_W + CELL_GAP);
-  const y = GRID_Y + row * (CELL_H + CELL_GAP);
-  const dur = ANIMATION_DURATION_SECONDS;
-  // Stagger the start of each cell's fade so the grid ripples rather
-  // than blinking in unison.
-  const cellOffset = (cellIndex / cellCount) * (dur / samples.length);
-
-  const layers: string[] = [];
-  for (let s = 0; s < samples.length; s++) {
-    layers.push(renderSampleLayer(creature, samples[s], x, y, s, samples.length, dur, cellOffset));
+function renderPixels(
+  pixels: ArrayLike<number>,
+  imageSize: number,
+  threshold: number,
+  originX: number,
+  originY: number,
+): string[] {
+  if (pixels.length !== imageSize * imageSize) {
+    throw new Error(
+      `renderPixels: expected ${imageSize * imageSize} pixels, got ${pixels.length}`,
+    );
   }
-
-  return [
-    `    <g class="cell" data-row="${row}" data-col="${col}">`,
-    `      <rect x="${x}" y="${y}" width="${CELL_W}" height="${CELL_H}" ` +
-    `fill="#111" stroke="#333" stroke-width="1"/>`,
-    layers.join("\n"),
-    `    </g>`,
-  ].join("\n");
-}
-
-/** Render one cross-fade layer — pixel rects, label, animations. */
-function renderSampleLayer(
-  creature: Creature,
-  sample: MnistSample,
-  cellX: number,
-  cellY: number,
-  layerIndex: number,
-  layerCount: number,
-  totalDur: number,
-  cellOffset: number,
-): string {
-  const slotDur = totalDur / layerCount;
-  const begin = (cellOffset + layerIndex * slotDur).toFixed(3);
-  // SMIL keyTimes for an opacity ramp: fade-in → hold → fade-out → 0.
-  // Values are normalised against `totalDur` because SMIL keyTimes must
-  // span [0, 1] over the full animation duration.
-  const fadeIn = (slotDur * 0.05) / totalDur;
-  const holdEnd = (slotDur * 0.85) / totalDur;
-  const fadeOut = (slotDur * 0.95) / totalDur;
-  const slotEnd = slotDur / totalDur;
-
-  // Predict on the downsampled pixels; render the source 28×28 image.
-  const predicted = predictDigit(creature, sample.pixels);
-  const correct = predicted === sample.label;
-  const labelColour = correct ? "#2ecc71" : "#e74c3c";
-  const tick = correct ? "✓" : "✗";
-
-  const pixelGrid = renderPixels(sample.source ?? sample.pixels, cellX, cellY);
-
-  return [
-    `      <g class="layer" opacity="${layerIndex === 0 ? 1 : 0}">`,
-    pixelGrid,
-    `        <rect x="${cellX + CELL_W - 38}" y="${cellY + 4}" width="34" height="22" ` +
-    `rx="4" ry="4" fill="${labelColour}" opacity="0.85"/>`,
-    `        <text x="${cellX + CELL_W - 21}" y="${cellY + 20}" text-anchor="middle" ` +
-    `font-family="monospace" font-size="13" font-weight="bold" fill="#fff">` +
-    `${predicted}${tick}</text>`,
-    `        <text x="${cellX + 4}" y="${cellY + CELL_H - 6}" text-anchor="start" ` +
-    `font-family="monospace" font-size="11" fill="#eee">` +
-    `actual ${sample.label}</text>`,
-    `        <animate attributeName="opacity" ` +
-    `values="0;1;1;0;0" ` +
-    `keyTimes="0;${fadeIn.toFixed(4)};${holdEnd.toFixed(4)};` +
-    `${fadeOut.toFixed(4)};${slotEnd.toFixed(4)}" ` +
-    `dur="${totalDur}s" begin="${begin}s" repeatCount="indefinite"/>`,
-    `      </g>`,
-  ].join("\n");
-}
-
-/**
- * Emit one `<rect>` per pixel for a sample. The image is rendered as a
- * 28×28 grid scaled to `(CELL_W - 8) × (CELL_H - 8)` so it sits inside
- * the cell with a small border.
- */
-function renderPixels(pixels: Float32Array, cellX: number, cellY: number): string {
-  const padX = 4;
-  const padY = 28; // leave room for the label overlay at the top
-  const drawW = CELL_W - 2 * padX;
-  const drawH = CELL_H - padY - 8;
-  const cellSize = Math.min(drawW, drawH) / SOURCE_GRID;
-  const gridSide = SOURCE_GRID;
-
-  // If the supplied pixels are not 28×28, fall back to whatever square grid they form.
-  const expectedLen = gridSide * gridSide;
-  const usePixels = pixels.length === expectedLen ? pixels : pixels;
-  const side = pixels.length === expectedLen ? gridSide : Math.round(Math.sqrt(pixels.length));
-  const sz = pixels.length === expectedLen ? cellSize : Math.min(drawW, drawH) / side;
-
-  const rects: string[] = [];
-  for (let r = 0; r < side; r++) {
-    for (let c = 0; c < side; c++) {
-      const v = Math.max(0, Math.min(1, usePixels[r * side + c]));
-      if (v < 0.04) continue; // skip near-black pixels for size
-      const px = (cellX + padX + c * sz).toFixed(2);
-      const py = (cellY + padY + r * sz).toFixed(2);
-      const sw = (sz + 0.5).toFixed(2);
-      const intensity = Math.round(v * 255);
-      rects.push(
-        `        <rect x="${px}" y="${py}" width="${sw}" height="${sw}" ` +
-          `fill="${pixelColour(intensity)}"/>`,
+  const out: string[] = [];
+  for (let y = 0; y < imageSize; y++) {
+    for (let x = 0; x < imageSize; x++) {
+      const v = pixels[y * imageSize + x];
+      if (v <= threshold) continue;
+      // Map 0..255 -> a high-contrast viridis-ish ramp:
+      //   low intensity → indigo, mid → teal, high → yellow.
+      // Keeps the visual "fun and colourful" without fancy gradients.
+      const t = v / 255;
+      const r = Math.round(255 * Math.max(0, Math.min(1, 1.5 * t - 0.2)));
+      const g = Math.round(255 * Math.max(0, Math.min(1, 1.6 * t)));
+      const b = Math.round(255 * Math.max(0, Math.min(1, 1.6 * (1 - t) - 0.1)));
+      const colour = `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+      const rectX = originX + x * PIXEL_SCALE;
+      const rectY = originY + y * PIXEL_SCALE;
+      out.push(
+        `<rect x="${fmt(rectX)}" y="${fmt(rectY)}" width="${PIXEL_SCALE}" ` +
+          `height="${PIXEL_SCALE}" fill="${colour}"/>`,
       );
     }
   }
-  return rects.join("\n");
+  return out;
 }
 
-/** Map a greyscale intensity 0..255 to a yellow-orange-red ramp. */
-export function pixelColour(intensity: number): string {
-  const v = Math.max(0, Math.min(255, Math.round(intensity)));
-  // Background is dark; foreground ramp is yellow → orange → red.
-  // t = 0  → black (#111)
-  // t = 1  → bright yellow (#ffe066)
-  const t = v / 255;
-  const dark = { r: 0x11, g: 0x11, b: 0x11 };
-  const bright = { r: 0xff, g: 0xe0, b: 0x66 };
-  const r = Math.round(dark.r + (bright.r - dark.r) * t);
-  const g = Math.round(dark.g + (bright.g - dark.g) * t);
-  const b = Math.round(dark.b + (bright.b - dark.b) * t);
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+/**
+ * Render a single cell at the given `originX`, `originY`. Returns the
+ * SVG fragment for that cell.
+ */
+function renderCell(
+  cell: DigitCell,
+  originX: number,
+  originY: number,
+  imageSize: number,
+  threshold: number,
+): string {
+  const K = cell.frames.length;
+  const fragments: string[] = [
+    `<g class="cell">`,
+    // Cell background panel — purple to make the colourful pixels pop.
+    `  <rect x="${fmt(originX)}" y="${fmt(originY)}" width="${CELL_IMAGE_SIZE}" ` +
+    `height="${CELL_IMAGE_SIZE}" fill="#1a1230" stroke="#3a2a5a" stroke-width="1"/>`,
+  ];
+
+  for (let i = 0; i < K; i++) {
+    const frame = cell.frames[i];
+    const correct = frame.prediction === frame.label;
+    const labelColour = correct ? "#2ecc71" : "#e74c3c";
+    const labelText = correct
+      ? `T:${frame.label} P:${frame.prediction} ✓`
+      : `T:${frame.label} P:${frame.prediction} ✗`;
+
+    const anim = frameAnimation(i, K);
+    const initialOpacity = i === 0 ? "1" : "0";
+    fragments.push(
+      `  <g class="frame frame-${i}" opacity="${initialOpacity}">`,
+    );
+    if (anim) {
+      fragments.push(
+        `    <animate attributeName="opacity" calcMode="discrete" ` +
+          `values="${anim.values}" keyTimes="${anim.keyTimes}" ` +
+          `dur="${ANIMATION_DURATION_SECONDS}s" repeatCount="indefinite"/>`,
+      );
+    }
+    const pixelRects = renderPixels(
+      frame.pixels,
+      imageSize,
+      threshold,
+      originX,
+      originY,
+    );
+    for (const r of pixelRects) fragments.push(`    ${r}`);
+
+    // Predicted-vs-actual label below the image.
+    const labelX = originX + CELL_IMAGE_SIZE / 2;
+    const labelY = originY + CELL_IMAGE_SIZE + CELL_LABEL_HEIGHT - 8;
+    fragments.push(
+      `    <text x="${fmt(labelX)}" y="${fmt(labelY)}" text-anchor="middle" ` +
+        `font-family="monospace" font-size="14" fill="${labelColour}">` +
+        `${escapeXml(labelText)}</text>`,
+    );
+    fragments.push(`  </g>`);
+  }
+  fragments.push(`</g>`);
+  return fragments.join("\n");
 }
 
-function toHex(n: number): string {
-  return n.toString(16).padStart(2, "0");
+/**
+ * Render the animated digit grid SVG.
+ *
+ * Throws when no cells are provided — there is nothing meaningful to
+ * draw. Cells beyond `GRID_ROWS * GRID_COLS` are silently truncated.
+ */
+export function renderDigitGridSVG(opts: DigitGridOptions): string {
+  if (opts.cells.length === 0) {
+    throw new Error("renderDigitGridSVG: at least one cell is required");
+  }
+  const imageSize = opts.imageSize ?? SOURCE_IMAGE_SIZE;
+  const threshold = opts.pixelThreshold ?? 24;
+  const cellCount = Math.min(opts.cells.length, GRID_ROWS * GRID_COLS);
+
+  const cellsSvg: string[] = [];
+  for (let idx = 0; idx < cellCount; idx++) {
+    const row = Math.floor(idx / GRID_COLS);
+    const col = idx % GRID_COLS;
+    const originX = OUTER_MARGIN + col * (CELL_IMAGE_SIZE + CELL_PADDING);
+    const originY = OUTER_MARGIN + row * (CELL_IMAGE_SIZE + CELL_LABEL_HEIGHT + CELL_PADDING);
+    cellsSvg.push(renderCell(opts.cells[idx], originX, originY, imageSize, threshold));
+  }
+
+  const captionTop = SVG_HEIGHT - CAPTION_HEIGHT - 4;
+  const accPct = (opts.accuracy * 100).toFixed(2);
+  const valAccPct = (opts.validationAccuracy * 100).toFixed(2);
+  const caption = `Validation accuracy: ${valAccPct}%  ·  Test accuracy: ${accPct}%  ·  ` +
+    `Green ✓ = correct prediction, red ✗ = wrong`;
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" ` +
+    `width="${SVG_WIDTH}" height="${SVG_HEIGHT}" role="img" ` +
+    `aria-label="Animated 5×4 grid of MNIST predictions, with green ticks for correct ` +
+    `predictions and red crosses for misclassifications">`,
+    `  <title>MNIST Champion — Animated Test Grid</title>`,
+    `  <desc>Each cell cross-fades through several test digits over a ` +
+    `${ANIMATION_DURATION_SECONDS}-second loop. Pixel intensity is mapped to a ` +
+    `purple-to-yellow ramp; the label below shows true/predicted classes — ` +
+    `green when the network is correct, red when it is wrong.</desc>`,
+    `  <rect width="${SVG_WIDTH}" height="${SVG_HEIGHT}" fill="#0d0820"/>`,
+    `  <rect x="0" y="0" width="${SVG_WIDTH}" height="${SVG_HEIGHT}" fill="none" ` +
+    `stroke="#3a2a5a" stroke-width="1"/>`,
+    cellsSvg.join("\n"),
+    `  <text x="${SVG_WIDTH / 2}" y="${captionTop + 26}" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" fill="#f5e9ff">${escapeXml(caption)}</text>`,
+    `  <text x="${SVG_WIDTH / 2}" y="${captionTop + 46}" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="11" fill="#a89cd6">` +
+    `Animated cells cycle every ${ANIMATION_DURATION_SECONDS}s — each cell shows ` +
+    `several held-out test digits classified by the champion network.</text>`,
+    `</svg>`,
+    "",
+  ].join("\n");
 }

@@ -13,17 +13,17 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 
 ## 🧬 Examples at a Glance
 
-| Example                                                   | What it shows                                                                                            | How to run                      |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| [🧠 XOR](xor_classification/README.md)                    | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table.             | `./xor_classification/run.sh`   |
-| [🔢 MNIST](mnist_classification/README.md)                | Evolve a 196→10 classifier for handwritten digits and render an animated 5×4 grid of test predictions.   | `./mnist_classification/run.sh` |
-| [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.  | `./cart_pole/run.sh`            |
-| [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.               | `./lunar_lander/run.sh`         |
-| [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation. | `./intelligent_design/run.sh`   |
-| [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.          | `./discovery/run.sh`            |
-| [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.     | `./crossover/run.sh`            |
-| [📈 Stock Market](stock_market/README.md)                 | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.       | `./stock_market/run.sh`         |
-| [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.          | `./suggest_improvements/run.sh` |
+| Example                                                   | What it shows                                                                                             | How to run                      |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| [🧠 XOR](xor_classification/README.md)                    | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table.              | `./xor_classification/run.sh`   |
+| [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.   | `./cart_pole/run.sh`            |
+| [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.                | `./lunar_lander/run.sh`         |
+| [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.  | `./intelligent_design/run.sh`   |
+| [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.           | `./discovery/run.sh`            |
+| [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.      | `./crossover/run.sh`            |
+| [📈 Stock Market](stock_market/README.md)                 | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.        | `./stock_market/run.sh`         |
+| [🔢 MNIST](mnist_classification/README.md)                | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions. | `./mnist_classification/run.sh` |
+| [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.           | `./suggest_improvements/run.sh` |
 
 ## 📸 Screenshots
 
@@ -36,14 +36,6 @@ running the code locally.
 
 The champion network's learnt decision surface, sampled across the unit square. The four XOR
 truth-table points sit on opposite corners of the boundary.
-
-### 🔢 MNIST — animated digit grid
-
-![MNIST classification grid — a 5×4 grid of test digits with predicted vs. actual labels and green ✓ / red ✗ overlays](docs/screenshots/mnist_classification.svg)
-
-A 5 × 4 grid of test digits, each cell cross-fading through several samples. The label overlay is
-green when the network's prediction matches the ground truth and red when it does not. The caption
-shows the overall test-fold accuracy.
 
 ### 🎢 Cart-Pole — balancing run
 
@@ -68,42 +60,51 @@ prediction-vs-outcome combination (green ▲ correct up, orange ▲ missed up; b
 ▼ missed down). A dashed play-head sweeps left-to-right so viewers can walk the controller's
 decisions chronologically. **Teaching example only — not investment advice.**
 
+### 🔢 MNIST — handwritten digit predictions
+
+![MNIST champion grid — an animated 5×4 grid of test digits, each cell pulsing through several samples with green ✓ for correct and red ✗ for wrong predictions](docs/screenshots/mnist_classification.svg)
+
+A 5 × 4 grid of held-out MNIST test digits. Each cell cross-fades through three samples over the
+9-second loop, and the label below each cell shows `T:<true> P:<predicted>` — green when the
+champion classifies correctly, red on a miss. Pixel intensity is rendered through a purple → teal →
+yellow ramp.
+
 ```mermaid
 flowchart TD
     NEAT["🧠 NEAT-AI Library"]
     COMMON["📦 Common Utilities<br/>Shared data generation,<br/>scoring & directory setup"]
 
     XOR["🧠 XOR<br/>Hello World of NEAT —<br/>learn the XOR truth table"]
-    MNIST["🔢 MNIST<br/>Classify handwritten digits<br/>from a 14×14 down-sample"]
     CART["🎢 Cart-Pole<br/>Balance an inverted pole<br/>on a moving cart"]
     LUNAR["🚀 Lunar Lander<br/>Land softly on a flat<br/>pad with limited fuel"]
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
     DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
     STOCK["📈 Stock Market<br/>Predict next-period S&P 500<br/>direction from prior returns"]
+    MNIST["🔢 MNIST<br/>Classify handwritten digits<br/>from a 14×14 down-sample"]
     SUGGEST["💡 Suggest Improvements<br/>Analyse project &<br/>generate suggestions"]
 
     NEAT --> COMMON
     COMMON --> XOR
-    COMMON --> MNIST
     COMMON --> CART
     COMMON --> LUNAR
     COMMON --> ID
     COMMON --> DISC
     COMMON --> CROSS
     COMMON --> STOCK
+    COMMON --> MNIST
     COMMON --> SUGGEST
 
     style NEAT fill:#4a90d9,stroke:#333,color:#fff
     style COMMON fill:#f5a623,stroke:#333,color:#fff
     style XOR fill:#3498db,stroke:#333,color:#fff
-    style MNIST fill:#e91e63,stroke:#333,color:#fff
     style CART fill:#9b59b6,stroke:#333,color:#fff
     style LUNAR fill:#1abc9c,stroke:#333,color:#fff
     style ID fill:#7ed321,stroke:#333,color:#fff
     style DISC fill:#bd10e0,stroke:#333,color:#fff
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
     style STOCK fill:#16a085,stroke:#333,color:#fff
+    style MNIST fill:#34495e,stroke:#333,color:#fff
     style SUGGEST fill:#50e3c2,stroke:#333,color:#fff
 ```
 
@@ -128,25 +129,25 @@ flowchart BT
 
     subgraph examples ["🧬 Example Modules"]
         XOR["🧠 xor_classification/"]
-        MNIST["🔢 mnist_classification/"]
         CART["🎢 cart_pole/"]
         LUNAR["🚀 lunar_lander/"]
         ID["🧬 intelligent_design/"]
         DISC["🔍 discovery/"]
         CROSS["🔀 crossover/"]
         STOCK["📈 stock_market/"]
+        MNIST["🔢 mnist_classification/"]
         SUGGEST["💡 suggest_improvements/"]
     end
 
     RNG --> DATA
     common --> XOR
-    common --> MNIST
     common --> CART
     common --> LUNAR
     common --> ID
     common --> DISC
     common --> CROSS
     common --> STOCK
+    common --> MNIST
     common --> SUGGEST
 
     style common fill:#fff3cd,stroke:#f5a623,color:#333

@@ -1,13 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-# MNIST Classification Example Runner
+# MNIST Handwritten-Digit Classification Example Runner
 #
-# Downloads a small subset of the classic MNIST handwritten-digit
-# dataset, evolves a 196-input/10-output classifier, and writes an
-# animated SVG grid to docs/screenshots/mnist_classification.svg.
-# Network access is required for the first run; subsequent runs
-# reuse the cached CSV under .synthetic-mnist/data/.
+# Evolves a NEAT-AI 196 → 10 LOGISTIC linear classifier on a 1000/200/200
+# slice of the canonical MNIST test set, saves the champion creature
+# and confusion matrix, and renders an animated 5×4 grid SVG snapshot
+# of the held-out test predictions to docs/screenshots/mnist_classification.svg.
+#
+# Network access is required on the first run to download the gzipped
+# IDX files into .synthetic-mnist/data/; subsequent runs use the cached
+# copies.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -18,7 +21,7 @@ if ! command -v deno &> /dev/null; then
   export PATH="$HOME/.deno/bin:$PATH"
 fi
 
-echo "🔢 MNIST Classification Example"
+echo "🔢 MNIST Handwritten-Digit Classification Example"
 echo ""
 
 deno run \
