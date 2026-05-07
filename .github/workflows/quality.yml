@@ -50,8 +50,12 @@ jobs:
       - name: Run Deno type check
         run: deno check **/*.ts
 
+      # Tests need --allow-net so the @stsoftware/neat-ai WASM
+      # activation module can fetch its remote payload from jsr.io,
+      # and --allow-ffi so the optional native discovery library can
+      # load when present. Issue #73.
       - name: Run unit tests
-        run: deno test --no-check --allow-read --allow-write --allow-env
+        run: deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi
 
       - name: Run Intelligent Design example
         run: ./intelligent_design/run.sh
