@@ -36,6 +36,15 @@ export const POSE_MARKER_COUNT = 3;
 /** Total animation duration (seconds) for one full descent replay. */
 export const ANIMATION_DURATION_SECONDS = 6;
 
+/** HUD fuel-bar origin (top-left x, in SVG user units). */
+const HUD_X = 16;
+
+/** HUD fuel-bar origin (y, in SVG user units). */
+const HUD_Y = 24;
+
+/** HUD fuel-bar full width (in SVG user units). */
+const HUD_FUEL_BAR_WIDTH = 100;
+
 /** A single sampled trace step: state plus the action that produced the next state. */
 export interface TraceFrame {
   state: LanderState;
@@ -107,21 +116,50 @@ export function renderRunSVG(
   if (animSamples[animSamples.length - 1] !== trace[trace.length - 1]) {
     animSamples.push(trace[trace.length - 1]);
   }
-  const cxValues = animSamples
-    .map((f) => projectX(f.state.x, terrain).toFixed(2))
+  // Translate keyframes: "x,y;x,y;..." for the outer group.
+  const translateValues = animSamples
+    .map((f) =>
+      `${projectX(f.state.x, terrain).toFixed(2)},${projectY(f.state.y, ceiling).toFixed(2)}`
+    )
     .join(";");
-  const cyValues = animSamples
-    .map((f) => projectY(f.state.y, ceiling).toFixed(2))
+  // Rotation keyframes (degrees). Physics convention: positive angle =
+  // lean left (anti-clockwise). SVG y is flipped so a left lean in
+  // screen-space requires a NEGATIVE SVG rotate value.
+  const rotateValues = animSamples
+    .map((f) => (-f.state.angle * 180 / Math.PI).toFixed(2))
     .join(";");
-  // Main-thruster flame visibility: 1 when firing, 0 otherwise.
-  const flameValues = animSamples
+  // Per-thruster flame visibility — 1 when firing, 0 otherwise.
+  const mainFlameValues = animSamples
     .map((f) => (f.action.main ? "1" : "0"))
+    .join(";");
+  const leftFlameValues = animSamples
+    .map((f) => (f.action.left ? "1" : "0"))
+    .join(";");
+  const rightFlameValues = animSamples
+    .map((f) => (f.action.right ? "1" : "0"))
+    .join(";");
+  // Fuel bar width (HUD): scales 0..HUD_FUEL_BAR_WIDTH. Issue #72:
+  // surfacing fuel as a shrinking bar makes the "fighting fuel" budget
+  // visible while watching the descent.
+  const startFuel = animSamples[0].state.fuel;
+  const fuelBarValues = animSamples
+    .map((f) =>
+      (HUD_FUEL_BAR_WIDTH * Math.max(0, Math.min(1, f.state.fuel / Math.max(startFuel, 1e-6))))
+        .toFixed(2)
+    )
     .join(";");
 
   const animDur = `${ANIMATION_DURATION_SECONDS}s`;
   const firstSample = animSamples[0];
   const startCx = projectX(firstSample.state.x, terrain);
   const startCy = projectY(firstSample.state.y, ceiling);
+  const startRotateDeg = (-firstSample.state.angle * 180 / Math.PI).toFixed(2);
+
+  // Pad-target marker geometry: a downward arrow with "TARGET" label
+  // hovering above the pad so the lander's destination is unmistakable.
+  const padCx = projectX(terrain.padX, terrain);
+  const targetTipY = groundSvg - 8;
+  const targetTopY = targetTipY - 26;
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" ` +
@@ -129,8 +167,9 @@ export function renderRunSVG(
     `aria-label="Lunar lander champion descent trajectory (animated)">`,
     `  <title>Lunar Lander Champion Descent (animated)</title>`,
     `  <desc>SMIL-animated SVG: a lander icon descends along the recorded ` +
-    `trajectory while its main-thruster flame flickers when the controller ` +
-    `fires it. Loops every ${ANIMATION_DURATION_SECONDS} seconds.</desc>`,
+    `trajectory, tilting with its angle and flickering its main, left, and ` +
+    `right thruster flames as the controller fires them. A HUD shows the ` +
+    `remaining fuel budget. Loops every ${ANIMATION_DURATION_SECONDS} seconds.</desc>`,
     `  <rect width="${SVG_WIDTH}" height="${SVG_HEIGHT}" fill="#0b0b1a"/>`,
     // Stars — purely cosmetic, deterministic positions for reproducibility.
     renderStars(),
@@ -140,47 +179,85 @@ export function renderRunSVG(
     // Landing pad: bright strip on top of the terrain.
     `  <rect class="pad" x="${padLeft.toFixed(2)}" y="${(groundSvg - 4).toFixed(2)}" ` +
     `width="${(padRight - padLeft).toFixed(2)}" height="6" fill="#f5d76e" stroke="#b8860b"/>`,
+    // Pad-target arrow + label so the destination is obvious.
+    `  <g class="target-marker">`,
+    `    <line x1="${padCx.toFixed(2)}" y1="${targetTopY.toFixed(2)}" ` +
+    `x2="${padCx.toFixed(2)}" y2="${targetTipY.toFixed(2)}" ` +
+    `stroke="#f5d76e" stroke-width="2" stroke-dasharray="3 2"/>`,
+    `    <polygon points="${(padCx - 5).toFixed(2)},${(targetTipY - 6).toFixed(2)} ` +
+    `${(padCx + 5).toFixed(2)},${(targetTipY - 6).toFixed(2)} ` +
+    `${padCx.toFixed(2)},${targetTipY.toFixed(2)}" fill="#f5d76e"/>`,
+    `    <text x="${padCx.toFixed(2)}" y="${(targetTopY - 4).toFixed(2)}" ` +
+    `text-anchor="middle" font-family="monospace" font-size="11" fill="#f5d76e">TARGET</text>`,
+    `  </g>`,
     // Trajectory polyline.
     `  <polyline class="trajectory" points="${trajectoryPoints}" ` +
     `fill="none" stroke="#9ad9ff" stroke-width="2" stroke-dasharray="4 3"/>`,
     poseGroups,
-    // Animated lander: a small group containing the body, a hull dot,
-    // and a flame that flickers when the main thruster fires. The
-    // group is animated by translating its origin (cx, cy) and rotating
-    // by `state.angle`. We use SMIL `<animate>`/`<animateTransform>`
-    // so GitHub renders the motion natively.
-    `  <g class="animated-lander">`,
-    `    <line class="anim-flame" x1="${startCx.toFixed(2)}" y1="${
-      (startCy + LANDER_HALF_LENGTH).toFixed(2)
-    }" ` +
-    `x2="${startCx.toFixed(2)}" y2="${(startCy + LANDER_HALF_LENGTH + FLAME_LENGTH).toFixed(2)}" ` +
+    // Animated lander: a translate-then-rotate group lets us draw the
+    // lander geometry (body, hull, three thruster flames) once in a
+    // local frame at (0,0) and animate the whole package through the
+    // trajectory while it tilts with the controller's angle. Each
+    // flame's opacity is keyframed so the controls are visible in
+    // motion — not just in the static pose markers.
+    `  <g class="animated-lander" transform="translate(${startCx.toFixed(2)} ${
+      startCy.toFixed(2)
+    })">`,
+    `    <animateTransform attributeName="transform" type="translate" ` +
+    `values="${translateValues}" dur="${animDur}" repeatCount="indefinite" ` +
+    `calcMode="linear"/>`,
+    `    <g class="lander-rotor" transform="rotate(${startRotateDeg})">`,
+    `      <animateTransform attributeName="transform" type="rotate" ` +
+    `values="${rotateValues}" dur="${animDur}" repeatCount="indefinite" ` +
+    `calcMode="linear"/>`,
+    // Body line — drawn vertically so rotate(0) leaves the lander upright.
+    `      <line class="anim-body" x1="0" y1="${(-LANDER_HALF_LENGTH).toFixed(2)}" ` +
+    `x2="0" y2="${LANDER_HALF_LENGTH.toFixed(2)}" stroke="#dddddd" stroke-width="6" ` +
+    `stroke-linecap="round"/>`,
+    // Hull marker.
+    `      <circle class="anim-hull" cx="0" cy="0" r="6" fill="#4a90d9" ` +
+    `stroke="#dddddd" stroke-width="2"/>`,
+    // Main-thruster flame: shoots straight down (local frame) when fired.
+    `      <line class="anim-flame main" x1="0" y1="${LANDER_HALF_LENGTH.toFixed(2)}" ` +
+    `x2="0" y2="${(LANDER_HALF_LENGTH + FLAME_LENGTH).toFixed(2)}" ` +
     `stroke="#ff8c1a" stroke-width="3" stroke-linecap="round" opacity="${
       firstSample.action.main ? 1 : 0
     }">`,
-    `      <animate attributeName="x1" values="${cxValues}" dur="${animDur}" ` +
-    `repeatCount="indefinite" calcMode="linear"/>`,
-    `      <animate attributeName="x2" values="${cxValues}" dur="${animDur}" ` +
-    `repeatCount="indefinite" calcMode="linear"/>`,
-    `      <animate attributeName="y1" values="${
-      animSamples.map((f) => (projectY(f.state.y, ceiling) + LANDER_HALF_LENGTH).toFixed(2)).join(
-        ";",
-      )
-    }" dur="${animDur}" repeatCount="indefinite" calcMode="linear"/>`,
-    `      <animate attributeName="y2" values="${
-      animSamples.map((f) =>
-        (projectY(f.state.y, ceiling) + LANDER_HALF_LENGTH + FLAME_LENGTH).toFixed(2)
-      ).join(";")
-    }" dur="${animDur}" repeatCount="indefinite" calcMode="linear"/>`,
-    `      <animate attributeName="opacity" values="${flameValues}" dur="${animDur}" ` +
-    `repeatCount="indefinite" calcMode="discrete"/>`,
-    `    </line>`,
-    `    <circle class="anim-hull" cx="${startCx.toFixed(2)}" cy="${startCy.toFixed(2)}" ` +
-    `r="6" fill="#4a90d9" stroke="#dddddd" stroke-width="2">`,
-    `      <animate attributeName="cx" values="${cxValues}" dur="${animDur}" ` +
-    `repeatCount="indefinite" calcMode="linear"/>`,
-    `      <animate attributeName="cy" values="${cyValues}" dur="${animDur}" ` +
-    `repeatCount="indefinite" calcMode="linear"/>`,
-    `    </circle>`,
+    `        <animate attributeName="opacity" values="${mainFlameValues}" ` +
+    `dur="${animDur}" repeatCount="indefinite" calcMode="discrete"/>`,
+    `      </line>`,
+    // Left-RCS flame: shoots leftward from the lower-left of the body.
+    `      <line class="anim-flame left" x1="${(-LANDER_HALF_LENGTH * 0.7).toFixed(2)}" ` +
+    `y1="${LANDER_HALF_LENGTH.toFixed(2)}" ` +
+    `x2="${(-LANDER_HALF_LENGTH * 0.7 - FLAME_LENGTH * 0.6).toFixed(2)}" ` +
+    `y2="${LANDER_HALF_LENGTH.toFixed(2)}" stroke="#ffd166" stroke-width="2" ` +
+    `stroke-linecap="round" opacity="${firstSample.action.left ? 1 : 0}">`,
+    `        <animate attributeName="opacity" values="${leftFlameValues}" ` +
+    `dur="${animDur}" repeatCount="indefinite" calcMode="discrete"/>`,
+    `      </line>`,
+    // Right-RCS flame: shoots rightward from the lower-right of the body.
+    `      <line class="anim-flame right" x1="${(LANDER_HALF_LENGTH * 0.7).toFixed(2)}" ` +
+    `y1="${LANDER_HALF_LENGTH.toFixed(2)}" ` +
+    `x2="${(LANDER_HALF_LENGTH * 0.7 + FLAME_LENGTH * 0.6).toFixed(2)}" ` +
+    `y2="${LANDER_HALF_LENGTH.toFixed(2)}" stroke="#ffd166" stroke-width="2" ` +
+    `stroke-linecap="round" opacity="${firstSample.action.right ? 1 : 0}">`,
+    `        <animate attributeName="opacity" values="${rightFlameValues}" ` +
+    `dur="${animDur}" repeatCount="indefinite" calcMode="discrete"/>`,
+    `      </line>`,
+    `    </g>`,
+    `  </g>`,
+    // HUD: animated fuel bar — shrinks as fuel is consumed.
+    `  <g class="hud">`,
+    `    <text x="${HUD_X}" y="${(HUD_Y - 4).toFixed(2)}" font-family="monospace" ` +
+    `font-size="10" fill="#cccccc">FUEL</text>`,
+    `    <rect class="hud-fuel-track" x="${HUD_X}" y="${HUD_Y}" ` +
+    `width="${HUD_FUEL_BAR_WIDTH}" height="8" fill="#222" stroke="#666" ` +
+    `stroke-width="1"/>`,
+    `    <rect class="hud-fuel-bar" x="${HUD_X}" y="${HUD_Y}" ` +
+    `width="${HUD_FUEL_BAR_WIDTH}" height="8" fill="#7ed321">`,
+    `      <animate attributeName="width" values="${fuelBarValues}" ` +
+    `dur="${animDur}" repeatCount="indefinite" calcMode="linear"/>`,
+    `    </rect>`,
     `  </g>`,
     `  <text x="${SVG_WIDTH - 12}" y="${SVG_HEIGHT - 12}" text-anchor="end" ` +
     `font-family="sans-serif" font-size="11" fill="#9ad9ff">animated · loops every ` +

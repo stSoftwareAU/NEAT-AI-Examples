@@ -117,16 +117,32 @@ export const DEFAULT_START_ALTITUDE = 80;
 export const DEFAULT_START_FUEL = 100;
 
 /**
- * Build the canonical initial state: lander hovering above the pad,
- * stationary, upright, full fuel.
+ * Default starting horizontal offset (metres). Issue #72: the lander
+ * begins off the pad so the controller has to translate sideways
+ * while fighting gravity and a finite fuel budget — matching the
+ * classic Atari Lunar Lander challenge.
+ */
+export const DEFAULT_START_X = -20;
+
+/**
+ * Default starting horizontal velocity (m/s). A modest drift towards
+ * the pad on entry; the controller must brake before it overshoots.
+ */
+export const DEFAULT_START_VX = 2;
+
+/**
+ * Build the canonical initial state: lander entering from the upper
+ * left, drifting towards the pad, upright, full fuel. The horizontal
+ * offset and drift force the controller to actively manoeuvre rather
+ * than simply throttle vertical descent.
  */
 export function initialState(
   overrides: Partial<LanderState> = {},
 ): LanderState {
   return {
-    x: 0,
+    x: DEFAULT_START_X,
     y: DEFAULT_START_ALTITUDE,
-    vx: 0,
+    vx: DEFAULT_START_VX,
     vy: 0,
     angle: 0,
     angularV: 0,
