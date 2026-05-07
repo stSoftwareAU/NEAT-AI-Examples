@@ -78,8 +78,27 @@ A run terminates as soon as one of these conditions holds:
 Artefacts:
 
 - `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the run
-- `docs/screenshots/lunar_lander.svg` — descent diagram with terrain, pad, trajectory polyline, and
-  the lander rendered at start, mid-descent, and touchdown (with flame markers when thrusters fired)
+- `docs/screenshots/lunar_lander.svg` — animated descent diagram with terrain, the pad marked with a
+  `TARGET` arrow, a polyline trace, the lander rendered at start, mid-descent, and touchdown, plus a
+  moving lander icon that **tilts with the controller's angle** and lights its **main / left RCS /
+  right RCS** flames as the thrusters fire. A shrinking `FUEL` HUD bar surfaces the fuel budget so
+  viewers can see the controller "fight gravity & fuel" while aiming for the pad.
+
+## 🛬 Entry Profile
+
+Issue [#72](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/72): the lander now enters
+**off-pad and drifting**, rather than hovering directly above the touchdown zone, so the controller
+must actively manoeuvre — exactly like the classic Atari Lunar Lander.
+
+| Quantity                     | Value                      |
+| ---------------------------- | -------------------------- |
+| Starting horizontal position | `DEFAULT_START_X` m        |
+| Starting horizontal velocity | `DEFAULT_START_VX` m/s     |
+| Starting altitude            | `DEFAULT_START_ALTITUDE` m |
+| Starting fuel                | `DEFAULT_START_FUEL` units |
+
+The controller has to translate sideways towards the pad while braking against gravity AND its own
+horizontal drift, all on a finite fuel budget.
 
 ## 🧠 Why This Task Benefits from Temporal Memory
 

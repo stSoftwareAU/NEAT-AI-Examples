@@ -27,11 +27,23 @@ const FIRE_MAIN: LanderAction = { main: true, left: false, right: false };
 const FIRE_LEFT: LanderAction = { main: false, left: true, right: false };
 const FIRE_RIGHT: LanderAction = { main: false, left: false, right: true };
 
-Deno.test("initialState places the lander above the pad, stationary, upright", () => {
+// Issue #72: the lander now enters the scene off-pad and drifting so
+// the controller is forced to fight gravity, fuel, AND lateral motion
+// just like the classic Atari Lunar Lander. The original assertion
+// (x===0, vx===0) is updated below to reflect the new entry profile.
+Deno.test("initialState places the lander off the pad, drifting, upright", () => {
   const s = initialState();
-  assertEquals(s.x, 0);
+  assert(s.x !== 0, `should start off-pad (got x=${s.x})`);
+  assert(
+    Math.abs(s.x) < DEFAULT_TERRAIN.worldHalfWidth,
+    `should start within world bounds (got x=${s.x})`,
+  );
+  assert(
+    Math.abs(s.x) > DEFAULT_TERRAIN.padHalfWidth,
+    `should start outside the landing pad (got x=${s.x})`,
+  );
   assert(s.y > 0, "should start above the ground");
-  assertEquals(s.vx, 0);
+  assert(s.vx !== 0, `should start drifting horizontally (got vx=${s.vx})`);
   assertEquals(s.vy, 0);
   assertEquals(s.angle, 0);
   assertEquals(s.angularV, 0);

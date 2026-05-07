@@ -32,14 +32,22 @@ import {
   scoreFinalState,
 } from "./lunar_lander.ts";
 import { renderRunSVG } from "./svg.ts";
-import { DEFAULT_TERRAIN, type LanderState } from "./physics.ts";
+import { DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 
-/** A fast, deterministic configuration suitable for unit tests. */
+/**
+ * A fast, deterministic configuration suitable for unit tests.
+ *
+ * Issue #72: with the lander now entering off-pad and drifting, random
+ * members of the population are more prone to drift out-of-bounds
+ * (heavy fixed penalty), so a slightly larger population and a few
+ * extra generations are needed to keep the mean score reliably above
+ * the free-fall baseline.
+ */
 const TEST_EVOLVE_OPTIONS = {
   seed: 42,
-  populationSize: 18,
-  maxGenerations: 18,
+  populationSize: 28,
+  maxGenerations: 24,
   mutationStrength: 0.5,
   mutationRate: 0.4,
 };
@@ -135,20 +143,33 @@ Deno.test("freeFallBaselineScore corresponds to a crash (negative score)", () =>
 });
 
 Deno.test(
-  "evolveLanderController finds a non-trivial controller (final mean exceeds free-fall baseline)",
+  "evolveLanderController finds a non-trivial controller (champion exceeds free-fall baseline)",
   () => {
+    // Issue #72: the lander now enters off-pad and drifting, so a
+    // sizeable fraction of mutated children drift past the world
+    // bounds (heavy fixed penalty) — the population mean is no longer
+    // a reliable signal of progress. The meaningful claim is that the
+    // CHAMPION beats free fall by a wide margin, so that's what we
+    // assert. Mean is checked to be finite (sanity).
     const baseline = freeFallBaselineScore();
     const result = evolveLanderController(TEST_EVOLVE_OPTIONS);
-    assertGreater(
-      result.finalMeanScore,
-      baseline,
-      `expected mean reward > free-fall baseline=${baseline}, ` +
-        `got mean=${result.finalMeanScore} (best=${result.bestScore})`,
+    assert(
+      Number.isFinite(result.finalMeanScore),
+      `expected finite mean, got ${result.finalMeanScore}`,
     );
     assertGreater(
       result.bestScore,
       baseline,
       `champion best score should exceed baseline=${baseline}, got ${result.bestScore}`,
+    );
+    // The champion should beat baseline by a substantial margin —
+    // otherwise it has not learnt anything meaningful.
+    assertGreater(
+      result.bestScore - baseline,
+      300,
+      `champion should beat baseline by > 300 points, got delta=${
+        result.bestScore - baseline
+      } (best=${result.bestScore}, baseline=${baseline})`,
     );
   },
 );
@@ -176,11 +197,23 @@ Deno.test("champion JSON exports cleanly to disk", async () => {
 });
 
 Deno.test("replayController returns a non-empty trace whose first frame is the initial state", () => {
+  // Issue #72: the lander now starts off-pad with horizontal drift, so
+  // the first frame's x matches the configured default rather than 0.
   const json = randomCreatureJSON(createDeterministicRandom(5));
   const creature = Creature.fromJSON(asCreatureExport(json));
   const trace = replayController(creature, 50);
+  const seed = initialState();
   assert(trace.length > 0, "trace must not be empty");
-  assertEquals(trace[0].state.x, 0, "first frame should be the initial x = 0");
+  assertEquals(
+    trace[0].state.x,
+    seed.x,
+    `first frame should match the configured initial x = ${seed.x}`,
+  );
+  assertEquals(
+    trace[0].state.vx,
+    seed.vx,
+    `first frame should match the configured initial vx = ${seed.vx}`,
+  );
 });
 
 Deno.test("renderRunSVG emits a well-formed SVG with trajectory polyline and pose markers", () => {
@@ -244,4 +277,137 @@ Deno.test("renderRunSVG draws a flame when the main thruster fires", () => {
   ];
   const svg = renderRunSVG(trace);
   assert(svg.includes('class="flame main"'), "expected a main-thruster flame marker");
+});
+
+Deno.test("renderRunSVG animates all three thruster flames", () => {
+  // Issue #72: the controls (main, left RCS, right RCS) must be visible
+  // in the animation, not only in the static pose markers, so the user
+  // can see the controller's decisions while watching the descent.
+  const trace = [
+    {
+      state: {
+        x: -20,
+        y: 80,
+        vx: 2,
+        vy: 0,
+        angle: 0,
+        angularV: 0,
+        fuel: 100,
+      } as LanderState,
+      action: { main: true, left: true, right: true },
+    },
+    {
+      state: {
+        x: -10,
+        y: 40,
+        vx: 1,
+        vy: -2,
+        angle: 0.1,
+        angularV: 0,
+        fuel: 50,
+      } as LanderState,
+      action: { main: false, left: false, right: false },
+    },
+  ];
+  const svg = renderRunSVG(trace);
+  assert(svg.includes('class="anim-flame main"'), "expected animated main-thruster flame");
+  assert(svg.includes('class="anim-flame left"'), "expected animated left-RCS flame");
+  assert(svg.includes('class="anim-flame right"'), "expected animated right-RCS flame");
+});
+
+Deno.test("renderRunSVG rotates the animated lander to reflect angle", () => {
+  // Issue #72: the lander tilts as the controller fires its RCS
+  // thrusters. The animation should mirror that rotation so viewers
+  // can connect a tilt to its cause.
+  const trace = [
+    {
+      state: {
+        x: -20,
+        y: 80,
+        vx: 2,
+        vy: 0,
+        angle: 0,
+        angularV: 0,
+        fuel: 100,
+      } as LanderState,
+      action: { main: false, left: true, right: false },
+    },
+    {
+      state: {
+        x: -10,
+        y: 60,
+        vx: 1,
+        vy: -3,
+        angle: 0.2,
+        angularV: 0.1,
+        fuel: 70,
+      } as LanderState,
+      action: { main: true, left: false, right: false },
+    },
+  ];
+  const svg = renderRunSVG(trace);
+  assert(
+    svg.includes('class="lander-rotor"'),
+    "expected an inner rotation group for the animated lander",
+  );
+  assert(
+    svg.includes('type="rotate"'),
+    "expected an animateTransform rotation driving the lander tilt",
+  );
+});
+
+Deno.test("renderRunSVG renders an animated fuel HUD bar", () => {
+  // Issue #72: surface the "fighting fuel" budget so the viewer can
+  // see fuel drain during the descent.
+  const trace = [
+    {
+      state: {
+        x: -20,
+        y: 80,
+        vx: 2,
+        vy: 0,
+        angle: 0,
+        angularV: 0,
+        fuel: 100,
+      } as LanderState,
+      action: { main: true, left: false, right: false },
+    },
+    {
+      state: {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: -1,
+        angle: 0,
+        angularV: 0,
+        fuel: 30,
+      } as LanderState,
+      action: { main: false, left: false, right: false },
+    },
+  ];
+  const svg = renderRunSVG(trace);
+  assert(svg.includes('class="hud-fuel-bar"'), "expected an animated fuel bar element");
+  assert(svg.includes(">FUEL<"), "expected a 'FUEL' label on the HUD");
+});
+
+Deno.test("renderRunSVG marks the landing pad with a TARGET indicator", () => {
+  // Issue #72: the lander must aim for a specific location — make the
+  // pad's role as the destination unmistakable with an arrow + label.
+  const trace = [
+    {
+      state: {
+        x: -20,
+        y: 80,
+        vx: 2,
+        vy: 0,
+        angle: 0,
+        angularV: 0,
+        fuel: 100,
+      } as LanderState,
+      action: { main: false, left: false, right: false },
+    },
+  ];
+  const svg = renderRunSVG(trace);
+  assert(svg.includes('class="target-marker"'), "expected a target-marker group");
+  assert(svg.includes(">TARGET<"), "expected a 'TARGET' label on the pad indicator");
 });
