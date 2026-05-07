@@ -2,13 +2,13 @@
 
 ## Summary
 
-Adds a new `mnist_classification/` example that downloads a small MNIST subset, evolves a
-196 → 10 LOGISTIC linear classifier with a per-class mean template warm-start, and renders an
-animated 5 × 4 grid SVG showing test predictions vs. ground truth (green ✓ / red ✗).
+Adds a new `mnist_classification/` example that downloads a small MNIST subset, evolves a 196 → 10
+LOGISTIC linear classifier with a per-class mean template warm-start, and renders an animated 5 × 4
+grid SVG showing test predictions vs. ground truth (green ✓ / red ✗).
 
 The example follows the established directory pattern (`data.ts`, `mnist_classification.ts`,
-`svg.ts`, `_test.ts`, `run.sh`, `README.md`), is wired into `quality.sh` and the top-level
-README's Examples table, gitGraph, and Screenshots section, and produces a committed
+`svg.ts`, `_test.ts`, `run.sh`, `README.md`), is wired into `quality.sh` and the top-level README's
+Examples table, gitGraph, and Screenshots section, and produces a committed
 `docs/screenshots/mnist_classification.svg` snapshot.
 
 Closes #77.
@@ -59,11 +59,12 @@ flowchart LR
 
 ### Animated SVG snapshot
 
-The committed [`docs/screenshots/mnist_classification.svg`](docs/screenshots/mnist_classification.svg)
-is an animated 5 × 4 grid. Each cell cross-fades through three held-out test digits over a
-9-second SMIL `<animate>` loop, rendered via per-pixel `<rect>` elements with a purple → teal →
-yellow intensity ramp. The label below each cell shows `T:<true> P:<predicted>` in green for
-correct predictions and red for misclassifications.
+The committed
+[`docs/screenshots/mnist_classification.svg`](docs/screenshots/mnist_classification.svg) is an
+animated 5 × 4 grid. Each cell cross-fades through three held-out test digits over a 9-second SMIL
+`<animate>` loop, rendered via per-pixel `<rect>` elements with a purple → teal → yellow intensity
+ramp. The label below each cell shows `T:<true> P:<predicted>` in green for correct predictions and
+red for misclassifications.
 
 ### Quality and test results
 
@@ -73,10 +74,9 @@ correct predictions and red for misclassifications.
 ### Decision: IDX over CSV
 
 The issue text suggested a "stable public CSV mirror"; in practice the canonical IDX gzip pair
-hosted by the Common Visual Data Foundation
-(`storage.googleapis.com/cvdf-datasets/mnist/`) is ~1.6 MB compared with ~18 MB for the equivalent
-CSV, and is the canonical primary distribution of MNIST. Both files are SHA-256 pinned in
-`mnist_classification.ts`. The trade-off is documented in
+hosted by the Common Visual Data Foundation (`storage.googleapis.com/cvdf-datasets/mnist/`) is ~1.6
+MB compared with ~18 MB for the equivalent CSV, and is the canonical primary distribution of MNIST.
+Both files are SHA-256 pinned in `mnist_classification.ts`. The trade-off is documented in
 [`mnist_classification/README.md`](mnist_classification/README.md).
 
 ## Test Plan
@@ -88,21 +88,21 @@ New tests in `mnist_classification/mnist_classification_test.ts` (31 tests):
 - **Build samples / split** — contiguous slicing, edge cases (empty dataset, oversize split).
 - **Network construction** — `buildInitialCreatureJSON` shape & validation; bias-count guard.
 - **Genome round-trip & mutation** — gene encode/decode, mutation perturbs at least one gene.
-- **Template warm-start** — per-class means produce a usable creature; predicts the seeded
-  template label exactly with zero noise; rejects empty samples.
+- **Template warm-start** — per-class means produce a usable creature; predicts the seeded template
+  label exactly with zero noise; rejects empty samples.
 - **Predict / accuracy / confusion** — argmax behaviour, fractional accuracy, square confusion.
-- **Evolve** — happy-path floor (≥ 50 % on synthetic stripe data); empty train and empty
-  validation each raise a clear error; reproducibility with the same seed produces a
-  byte-identical champion JSON.
+- **Evolve** — happy-path floor (≥ 50 % on synthetic stripe data); empty train and empty validation
+  each raise a clear error; reproducibility with the same seed produces a byte-identical champion
+  JSON.
 - **Grid sample selection** — `pickGridSamples` spreads picks across all ten classes.
-- **SVG renderer** — emits a well-formed animated SVG with both green and red colour codes;
-  throws on an empty cell list.
+- **SVG renderer** — emits a well-formed animated SVG with both green and red colour codes; throws
+  on an empty cell list.
 - **Gzip helper** — round-trips a payload via `CompressionStream` → file → `readGzippedFile`;
   rejects missing files.
 
 Existing structure tests (`readme_structure_test.ts`) were extended to cover the new example
-directory and screenshot — these were updated to match the new acceptance criteria, not to
-mask broken behaviour.
+directory and screenshot — these were updated to match the new acceptance criteria, not to mask
+broken behaviour.
 
 ## Acceptance Criteria
 
@@ -111,7 +111,7 @@ mask broken behaviour.
 - [x] `./mnist_classification/run.sh` completes in ~5 s on the local machine (well under the
       5-minute CI budget).
 - [x] All unit tests pass (`deno test`, 390 tests green).
-- [x] `docs/screenshots/mnist_classification.svg` is animated and shows predicted vs actual
-      labels with green ✓ / red ✗ status.
+- [x] `docs/screenshots/mnist_classification.svg` is animated and shows predicted vs actual labels
+      with green ✓ / red ✗ status.
 - [x] `./quality.sh` passes end-to-end.
 - [x] Top-level `README.md` lists the example in the Examples table and Screenshots section.
