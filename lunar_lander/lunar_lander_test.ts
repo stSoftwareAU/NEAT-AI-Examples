@@ -205,6 +205,27 @@ Deno.test("renderRunSVG emits a well-formed SVG with trajectory polyline and pos
   assert(svg.includes('class="pad"'), "expected the pad to be rendered");
 });
 
+Deno.test("renderRunSVG embeds SMIL animation elements that loop", () => {
+  // Issue #70: the lander screenshot is now an animated SVG showing
+  // the descent in motion. The static pose markers remain for static
+  // viewers, but additional SMIL `<animate>` elements drive a moving
+  // lander icon along the trajectory.
+  const json = randomCreatureJSON(createDeterministicRandom(13));
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const trace = replayController(creature, 50);
+  const svg = renderRunSVG(trace);
+  const animateMatches = svg.match(/<animate /g) ?? [];
+  assertGreaterOrEqual(animateMatches.length, 4);
+  assert(
+    svg.includes('repeatCount="indefinite"'),
+    "expected SMIL repeatCount='indefinite' so the animation loops",
+  );
+  assert(
+    svg.includes('class="animated-lander"'),
+    "expected an animated-lander group",
+  );
+});
+
 Deno.test("renderRunSVG draws a flame when the main thruster fires", () => {
   // Hand-craft a single trace frame that fires only the main thruster.
   const trace = [

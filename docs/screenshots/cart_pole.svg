@@ -1,139 +1,82 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 1440 220"
-  width="1440"
-  height="220"
+  viewBox="0 0 480 320"
+  width="480"
+  height="320"
   role="img"
-  aria-label="Cart-pole champion run, 8 frames"
+  aria-label="Cart-pole champion run, animated through 60 keyframes"
 >
-  <title>Cart-Pole Champion Run</title>
-  <rect width="1440" height="220" fill="#fafafa" />
-  <g class="frame" data-frame="0" data-step="0" transform="translate(0,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="60" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="90.00"
-      y1="160"
-      x2="90.00"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
+  <title>Cart-Pole Champion Run (animated)</title>
+  <desc>SMIL-animated SVG: the cart slides along the track and the pole oscillates through the recorded champion trajectory, looping every 6 seconds.</desc>
+  <rect width="480" height="320" fill="#fafafa" />
+  <rect x="0" y="0" width="480" height="320" fill="none" stroke="#cccccc" />
+  <line x1="30" y1="260" x2="450" y2="260" stroke="#888888" stroke-width="2" />
+  <rect class="cart" x="210.00" y="232" width="60" height="28" fill="#4a90d9" stroke="#1f4d80">
+    <animate
+      attributeName="x"
+      values="210.00;212.36;211.58;207.65;201.45;198.12;196.79;198.04;196.97;195.91;192.86;189.52;187.36;185.76;182.71;180.53;178.36;176.18;173.73;171.55;169.37;166.63;164.46;162.01;159.26;157.11;154.36;151.92;149.17;146.44;144.28;141.27;139.11;135.81;133.07;130.65;127.91;125.20;121.89;119.48;116.75;114.02;110.74;108.01;105.03;101.72;98.45;95.74;92.18;89.47;86.20;82.91;79.36;76.66;72.82;69.55;66.02;62.75;58.94;55.71"
+      dur="6s"
+      repeatCount="indefinite"
+      calcMode="linear"
+      fill="freeze"
     />
-    <circle cx="90.00" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 0</text>
-  </g>
-  <g class="frame" data-frame="1" data-step="71" transform="translate(180,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="55.47505512423814" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="85.48"
-      y1="160"
-      x2="83.85"
-      y2="70.01"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
+  </rect>
+  <line
+    class="pole"
+    x1="240.00"
+    y1="232"
+    x2="240.00"
+    y2="92.00"
+    stroke="#e74c3c"
+    stroke-width="8"
+    stroke-linecap="round"
+  >
+    <animate
+      attributeName="x1"
+      values="240.00;242.36;241.58;237.65;231.45;228.12;226.79;228.04;226.97;225.91;222.86;219.52;217.36;215.76;212.71;210.53;208.36;206.18;203.73;201.55;199.37;196.63;194.46;192.01;189.26;187.11;184.36;181.92;179.17;176.44;174.28;171.27;169.11;165.81;163.07;160.65;157.91;155.20;151.89;149.48;146.75;144.02;140.74;138.01;135.03;131.72;128.45;125.74;122.18;119.47;116.20;112.91;109.36;106.66;102.82;99.55;96.02;92.75;88.94;85.71"
+      dur="6s"
+      repeatCount="indefinite"
+      calcMode="linear"
+      fill="freeze"
     />
-    <circle cx="85.48" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 71</text>
-  </g>
-  <g class="frame" data-frame="2" data-step="143" transform="translate(360,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="48.91502516180928" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="78.92"
-      y1="160"
-      x2="78.44"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
+    <animate
+      attributeName="x2"
+      values="240.00;235.21;232.85;233.37;235.48;234.55;231.65;226.31;224.42;221.96;220.97;220.47;217.50;214.56;213.33;211.28;208.40;206.26;203.75;201.49;199.11;196.88;194.40;191.46;189.86;186.35;184.67;181.54;179.67;176.86;173.82;171.37;168.22;166.16;163.87;160.10;157.70;154.27;152.69;148.57;145.88;143.13;140.33;137.40;133.91;131.82;128.62;125.33;122.33;118.92;115.42;112.76;109.33;105.53;102.49;99.32;95.27;91.68;87.47;82.77"
+      dur="6s"
+      repeatCount="indefinite"
+      calcMode="linear"
+      fill="freeze"
     />
-    <circle cx="78.92" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 143</text>
-  </g>
-  <g class="frame" data-frame="3" data-step="214" transform="translate(540,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="42.09143379100519" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="72.09"
-      y1="160"
-      x2="72.04"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
+    <animate
+      attributeName="y2"
+      values="92.00;92.18;92.27;92.07;92.06;92.15;92.08;92.01;92.02;92.06;92.01;92.00;92.00;92.01;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.00;92.01;92.03"
+      dur="6s"
+      repeatCount="indefinite"
+      calcMode="linear"
+      fill="freeze"
     />
-    <circle cx="72.09" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 214</text>
-  </g>
-  <g class="frame" data-frame="4" data-step="286" transform="translate(720,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="34.63387649650247" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="64.63"
-      y1="160"
-      x2="64.81"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
+  </line>
+  <circle class="hub" cx="240.00" cy="232" r="5" fill="#1f4d80">
+    <animate
+      attributeName="cx"
+      values="240.00;242.36;241.58;237.65;231.45;228.12;226.79;228.04;226.97;225.91;222.86;219.52;217.36;215.76;212.71;210.53;208.36;206.18;203.73;201.55;199.37;196.63;194.46;192.01;189.26;187.11;184.36;181.92;179.17;176.44;174.28;171.27;169.11;165.81;163.07;160.65;157.91;155.20;151.89;149.48;146.75;144.02;140.74;138.01;135.03;131.72;128.45;125.74;122.18;119.47;116.20;112.91;109.36;106.66;102.82;99.55;96.02;92.75;88.94;85.71"
+      dur="6s"
+      repeatCount="indefinite"
+      calcMode="linear"
+      fill="freeze"
     />
-    <circle cx="64.63" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 286</text>
-  </g>
-  <g class="frame" data-frame="5" data-step="357" transform="translate(900,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="26.823017091931987" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="56.82"
-      y1="160"
-      x2="56.42"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
-    />
-    <circle cx="56.82" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 357</text>
-  </g>
-  <g class="frame" data-frame="6" data-step="429" transform="translate(1080,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="18.096686322390433" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="48.10"
-      y1="160"
-      x2="47.60"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
-    />
-    <circle cx="48.10" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 429</text>
-  </g>
-  <g class="frame" data-frame="7" data-step="500" transform="translate(1260,0)">
-    <rect x="0" y="0" width="180" height="220" fill="none" stroke="#cccccc" />
-    <line x1="20" y1="180" x2="160" y2="180" stroke="#888888" stroke-width="2" />
-    <rect x="8.568582417224675" y="160" width="60" height="20" fill="#4a90d9" stroke="#1f4d80" />
-    <line
-      x1="38.57"
-      y1="160"
-      x2="36.68"
-      y2="70.02"
-      stroke="#e74c3c"
-      stroke-width="6"
-      stroke-linecap="round"
-    />
-    <circle cx="38.57" cy="160" r="4" fill="#1f4d80" />
-    <text x="6" y="14" font-family="monospace" font-size="10" fill="#444">step 500</text>
-  </g>
+  </circle>
+  <text x="12" y="22" font-family="monospace" font-size="13" fill="#444">step 0 → 500</text>
+  <text
+    x="468"
+    y="22"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#888"
+  >animated · loops every 6s</text>
+  <rect x="30" y="302" width="420" height="4" fill="#e0e0e0" rx="2" />
+  <rect class="progress" x="30" y="302" width="0" height="4" fill="#4a90d9" rx="2">
+    <animate attributeName="width" values="0;420" dur="6s" repeatCount="indefinite" fill="freeze" />
+  </rect>
 </svg>

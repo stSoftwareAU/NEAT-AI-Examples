@@ -114,16 +114,24 @@ Deno.test("replayController returns a non-empty trace with the initial state fir
   assertEquals(trace[0].theta, 0);
 });
 
-Deno.test("renderRunSVG emits an <svg> root with the expected number of frame groups", () => {
+Deno.test("renderRunSVG emits an <svg> root with SMIL animation elements", () => {
+  // Issue #70: the screenshot is now a single animated frame driven by
+  // SMIL `<animate>` elements rather than a static multi-frame strip.
+  // We verify the SVG carries animation primitives and that the cart's
+  // x-position keyframe list contains the requested number of samples.
   const json = buildInitialCreatureJSON([0, 0, 1, 0], 0);
   const creature = Creature.fromJSON(asCreatureExport(json));
   const trace = replayController(creature, 50);
   const svg = renderRunSVG(trace, SVG_FRAME_COUNT);
   assert(svg.startsWith("<svg"), "must start with <svg>");
   assert(svg.includes("</svg>"), "must contain </svg>");
-  // One <g class="frame" ...> per requested frame.
-  const matches = svg.match(/<g class="frame"/g) ?? [];
-  assertEquals(matches.length, SVG_FRAME_COUNT);
+  const animateMatches = svg.match(/<animate /g) ?? [];
+  assertGreaterOrEqual(animateMatches.length, 4);
+  // Cart `x` animation must enumerate one keyframe per requested sample.
+  const cartXAnim = svg.match(/<animate attributeName="x" values="([^"]+)"/);
+  assert(cartXAnim, "expected the cart's x animation");
+  const valueCount = cartXAnim![1].split(";").length;
+  assertEquals(valueCount, Math.min(SVG_FRAME_COUNT, trace.length));
 });
 
 Deno.test("renderRunSVG output renders both cart and pole primitives", () => {
@@ -131,8 +139,21 @@ Deno.test("renderRunSVG output renders both cart and pole primitives", () => {
   const creature = Creature.fromJSON(asCreatureExport(json));
   const trace = replayController(creature, 30);
   const svg = renderRunSVG(trace, 4);
-  assert(svg.includes("<rect"), "expected at least one cart rectangle");
-  assert(svg.includes("<line"), "expected at least one pole line");
+  assert(svg.includes('class="cart"'), "expected the cart rectangle");
+  assert(svg.includes('class="pole"'), "expected the pole line");
+});
+
+Deno.test("renderRunSVG repeats the animation indefinitely", () => {
+  // The committed SVG must loop so README readers see the motion every
+  // time the page is opened, not just once.
+  const json = buildInitialCreatureJSON([0, 0, 1, 0], 0);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const trace = replayController(creature, 30);
+  const svg = renderRunSVG(trace, SVG_FRAME_COUNT);
+  assert(
+    svg.includes('repeatCount="indefinite"'),
+    "expected SMIL repeatCount='indefinite' so the animation loops",
+  );
 });
 
 Deno.test(

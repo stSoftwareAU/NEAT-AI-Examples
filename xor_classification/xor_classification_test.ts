@@ -267,6 +267,31 @@ Deno.test("renderDecisionBoundarySVG throws on grid resolution < 2", () => {
   assert(threw, "expected an error for tiny grid resolution");
 });
 
+Deno.test("renderDecisionBoundarySVG embeds SMIL pulse animations on each sample", () => {
+  // Issue #70: each XOR sample now carries SMIL `<animate>` elements
+  // that pulse the marker so the screenshot is no longer static.
+  const json = buildInitialCreatureJSON(
+    [1, -1, -1, 1, 1, -1],
+    [-0.5, -0.5, 0],
+  );
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  const svg = renderDecisionBoundarySVG(creature, {
+    gridResolution: 8,
+    samples: xorSamples(),
+  });
+  const animateMatches = svg.match(/<animate /g) ?? [];
+  // Each of the four samples adds at least two animate elements
+  // (radius pulse + outer ring fade), giving 8 minimum.
+  assertGreaterOrEqual(animateMatches.length, 8);
+  assert(
+    svg.includes('repeatCount="indefinite"'),
+    "expected SMIL repeatCount='indefinite' so the animation loops",
+  );
+  // Each sample must carry a "pulse" outer ring.
+  const pulseMatches = svg.match(/class="pulse"/g) ?? [];
+  assertEquals(pulseMatches.length, 4);
+});
+
 Deno.test("renderDecisionBoundarySVG output uses the canonical screenshot resolution", () => {
   const json = buildInitialCreatureJSON(
     [1, -1, -1, 1, 1, -1],
