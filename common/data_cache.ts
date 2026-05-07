@@ -1,0 +1,163 @@
+/**
+ * Shared dataset cache helper for NEAT-AI examples.
+ *
+ * Examples that train on real-world data (e.g. MNIST, stock prices) should
+ * not bloat the repository with raw datasets. Instead, they call
+ * `fetchDataset` to download the file into a hidden working directory the
+ * first time it is needed, and reuse it on subsequent runs.
+ *
+ * The helper:
+ *   - Skips the download when the file already exists (and, when an
+ *     expected SHA-256 digest is supplied, when the on-disk digest matches).
+ *   - Streams the response body to disk so large files do not need to be
+ *     buffered in memory.
+ *   - Verifies the digest after writing and deletes the partial file on
+ *     mismatch so the next call can retry cleanly.
+ *   - Tries each mirror URL in turn so a 404 or transient network failure
+ *     on one mirror falls back to the next.
+ *
+ * Implementation uses Deno's built-in `fetch` and `crypto.subtle` — no
+ * extra dependencies are required.
+ */
+
+import { ensureDir } from "@std/fs";
+import { dirname } from "@std/path";
+
+/** Options for {@link fetchDataset}. */
+export interface FetchDatasetOptions {
+  /** A single URL or a list of mirror URLs to try in order. */
+  url: string | string[];
+  /**
+   * Destination file path on disk. Parent directories are created
+   * automatically. Examples typically place this under a hidden directory
+   * such as `.synthetic-mnist/data/train.csv`.
+   */
+  path: string;
+  /**
+   * Optional lowercase hex-encoded SHA-256 digest of the expected file
+   * contents. When supplied, the helper verifies the digest after writing
+   * and rejects on mismatch. Cache hits also re-validate against this
+   * digest before being trusted.
+   */
+  sha256?: string;
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await Deno.stat(path);
+    return true;
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) {
+      return false;
+    }
+    throw err;
+  }
+}
+
+async function computeSha256(path: string): Promise<string> {
+  const data = await Deno.readFile(path);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function removeIfPresent(path: string): Promise<void> {
+  try {
+    await Deno.remove(path);
+  } catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Downloads a dataset file with on-disk caching and optional integrity
+ * verification.
+ *
+ * Returns the destination path on success. Throws an `Error` with a
+ * message that lists every attempted URL when no mirror succeeds, and
+ * a digest-mismatch error (with the partial file removed) when the
+ * downloaded bytes do not match the expected SHA-256.
+ */
+export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
+  const { path } = opts;
+  const expectedDigest = opts.sha256?.toLowerCase();
+  const urls = Array.isArray(opts.url) ? opts.url : [opts.url];
+
+  if (urls.length === 0) {
+    throw new Error("fetchDataset: at least one URL must be provided");
+  }
+
+  // Cache hit? Optionally re-validate against the expected digest.
+  if (await fileExists(path)) {
+    if (!expectedDigest) {
+      return path;
+    }
+    const onDisk = await computeSha256(path);
+    if (onDisk === expectedDigest) {
+      return path;
+    }
+    // Stale or corrupt cache entry — remove and re-download.
+    await removeIfPresent(path);
+  }
+
+  await ensureDir(dirname(path));
+
+  const errors: string[] = [];
+  for (const url of urls) {
+    let response: Response;
+    try {
+      response = await fetch(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${url}: ${message}`);
+      continue;
+    }
+
+    if (!response.ok) {
+      // Drain the body so the connection can be released.
+      try {
+        await response.body?.cancel();
+      } catch {
+        // ignore — best-effort cleanup
+      }
+      errors.push(`${url}: HTTP ${response.status} ${response.statusText}`.trim());
+      continue;
+    }
+
+    if (!response.body) {
+      errors.push(`${url}: response has no body`);
+      continue;
+    }
+
+    try {
+      const file = await Deno.open(path, { write: true, create: true, truncate: true });
+      await response.body.pipeTo(file.writable);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await removeIfPresent(path);
+      errors.push(`${url}: ${message}`);
+      continue;
+    }
+
+    if (expectedDigest) {
+      const actual = await computeSha256(path);
+      if (actual !== expectedDigest) {
+        await removeIfPresent(path);
+        throw new Error(
+          `fetchDataset: digest mismatch for ${url} ` +
+            `(expected ${expectedDigest}, got ${actual})`,
+        );
+      }
+    }
+
+    return path;
+  }
+
+  throw new Error(
+    `fetchDataset: failed to download ${path} from ${urls.length} URL(s):\n` +
+      errors.map((e) => `  - ${e}`).join("\n"),
+  );
+}
