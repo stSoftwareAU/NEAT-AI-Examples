@@ -17,6 +17,7 @@ import {
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
   evolveXorController,
+  type GenerationInfo,
   genesFromCreatureJSON,
   meanSquaredError,
   mutateCreatureJSON,
@@ -164,6 +165,33 @@ Deno.test(
     } finally {
       await Deno.remove(tmp, { recursive: true });
     }
+  },
+);
+
+Deno.test(
+  "evolveXorController emits GenerationInfo with non-zero positive neuron/synapse counts",
+  () => {
+    const samples: GenerationInfo[] = [];
+    evolveXorController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 5,
+      populationSize: 6,
+      errorThreshold: 0,
+      onGeneration: (info) => samples.push(info),
+    });
+    assertGreater(samples.length, 0);
+    for (const s of samples) {
+      assertEquals(typeof s.neurons, "number");
+      assertEquals(typeof s.synapses, "number");
+      assertEquals(Number.isInteger(s.neurons), true);
+      assertEquals(Number.isInteger(s.synapses), true);
+      assertGreater(s.neurons, 0);
+      assertGreater(s.synapses, 0);
+    }
+    // The fixed XOR topology has 5 neurons (2 input + 2 hidden + 1 output)
+    // and 6 synapses (input→hidden + hidden→output).
+    assertEquals(samples[0].neurons, 5);
+    assertEquals(samples[0].synapses, 6);
   },
 );
 

@@ -22,6 +22,7 @@ import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-a
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
+import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import { renderDecisionBoundarySVG } from "./svg.ts";
 
 /** Number of input features. */
@@ -94,6 +95,10 @@ export interface GenerationInfo {
   bestFitness: number;
   bestError: number;
   meanFitness: number;
+  /** Neuron count of the champion creature for this generation. */
+  neurons: number;
+  /** Synapse count of the champion creature for this generation. */
+  synapses: number;
 }
 
 /** Result of the evolutionary search. */
@@ -319,6 +324,8 @@ export function evolveXorController(
       bestFitness: generationBest.fitness,
       bestError: generationBest.error,
       meanFitness,
+      neurons: generationBest.json.neurons.length,
+      synapses: generationBest.json.synapses.length,
     });
 
     if (bestError <= options.errorThreshold) {
@@ -359,6 +366,9 @@ export function evolveXorController(
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/xor_decision_boundary.svg";
 
+/** Path to the evolution-chart SVG the runner emits for the README. */
+export const EVOLUTION_CHART_PATH = "docs/screenshots/xor_classification/evolution.svg";
+
 /** Resolution (cells per side) of the decision-boundary grid. */
 export const DECISION_BOUNDARY_GRID = 40;
 
@@ -376,9 +386,16 @@ if (import.meta.main) {
   }
 
   console.log("\n🧬 Evolving classifier...");
+  const evolutionSamples: EvolutionSample[] = [];
   const result = evolveXorController({
     ...DEFAULT_EVOLVE_OPTIONS,
-    onGeneration: ({ generation, bestFitness, bestError }) => {
+    onGeneration: ({ generation, bestFitness, bestError, neurons, synapses }) => {
+      evolutionSamples.push({
+        generation,
+        score: bestFitness,
+        neurons,
+        synapses,
+      });
       if (generation % 10 === 0 || bestError <= DEFAULT_EVOLVE_OPTIONS.errorThreshold) {
         console.log(
           `   Gen ${generation.toString().padStart(3)}  ` +
@@ -417,6 +434,17 @@ if (import.meta.main) {
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
+
+  // Render the per-generation evolution chart (score / neurons / synapses).
+  if (evolutionSamples.length > 0) {
+    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
+      title: "XOR Classification — Evolution",
+      scoreLabel: "best fitness (1 - MSE)",
+    });
+    ensureDirSync("docs/screenshots/xor_classification");
+    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
+    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
 
   console.log(
     `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,

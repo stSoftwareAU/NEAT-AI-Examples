@@ -28,9 +28,12 @@ deno run \
   xor_classification/xor_classification.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
+# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
+# stay clean — the renderers emit compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
 if [[ -f "docs/screenshots/xor_decision_boundary.svg" ]]; then
   deno fmt docs/screenshots/xor_decision_boundary.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/xor_classification/evolution.svg" ]]; then
+  deno fmt docs/screenshots/xor_classification/evolution.svg > /dev/null
 fi

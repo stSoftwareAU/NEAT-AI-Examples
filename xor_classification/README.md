@@ -6,6 +6,8 @@ run in pure TypeScript; the only library dependency is NEAT-AI's `Creature.activ
 
 ![XOR decision boundary](../docs/screenshots/xor_decision_boundary.svg)
 
+![XOR evolution chart — best-fitness score curve on the left axis, neuron and synapse counts on the right axis, with a final-generation annotation showing the champion's score and topology](../docs/screenshots/xor_classification/evolution.svg)
+
 ## 🔧 How It Works
 
 ```mermaid
@@ -71,6 +73,8 @@ Artefacts:
 
 - `.synthetic-xor/creatures/champion.json` – the fittest classifier from the run
 - `docs/screenshots/xor_decision_boundary.svg` – the committed decision-boundary plot
+- `docs/screenshots/xor_classification/evolution.svg` – per-generation evolution chart (best-fitness
+  score on the left axis, neuron and synapse counts on the right axis)
 
 > [!TIP]
 > The script writes its working data to `.synthetic-xor/`, a hidden directory ignored by git.
