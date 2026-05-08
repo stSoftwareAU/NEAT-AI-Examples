@@ -78,6 +78,24 @@ export function initialState(): CartPoleState {
 }
 
 /**
+ * Initial state with each component sampled uniformly from
+ * `[-magnitude, +magnitude]`. Mirrors the `CartPole-v1` reference from
+ * OpenAI Gym, which perturbs the start so a controller cannot solve the
+ * task by exploiting a perfectly symmetric (0, 0, 0, 0) launch. The
+ * default magnitude of `0.05` matches the Gym reference value.
+ *
+ * @param random Deterministic PRNG returning values in `[0, 1)`.
+ * @param magnitude Half-width of the per-component sampling window.
+ */
+export function perturbedInitialState(
+  random: () => number,
+  magnitude: number = 0.05,
+): CartPoleState {
+  const sample = () => (random() * 2 - 1) * magnitude;
+  return { x: sample(), v: sample(), theta: sample(), omega: sample() };
+}
+
+/**
  * Advance the cart-pole simulation by one time step using semi-implicit
  * Euler integration.
  *

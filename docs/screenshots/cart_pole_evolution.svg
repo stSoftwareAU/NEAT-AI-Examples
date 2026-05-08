@@ -1,15 +1,15 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 400 376"
-  width="400"
+  viewBox="0 0 600 376"
+  width="600"
   height="376"
   role="img"
   aria-label="Cart-Pole — Evolution Progress multi-panel strip"
 >
   <title>Cart-Pole — Evolution Progress</title>
-  <rect width="400" height="376" fill="#fafafa" />
+  <rect width="600" height="376" fill="#fafafa" />
   <text
-    x="200"
+    x="300"
     y="22"
     text-anchor="middle"
     font-family="sans-serif"
@@ -34,7 +34,7 @@
         begin="0.00s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="1.20s"
+        repeatDur="1.80s"
       />
     </rect>
     <text
@@ -53,7 +53,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 500.000</text>
+    >score 498.300</text>
     <line
       x1="22"
       y1="68"
@@ -113,7 +113,7 @@
         begin="0.60s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="1.20s"
+        repeatDur="1.80s"
       />
     </rect>
     <text
@@ -175,29 +175,109 @@
     <circle cx="222" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
     <circle cx="378" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
-  <g class="progression" data-min="500.000" data-max="500.000">
-    <rect x="0" y="236" width="400" height="100" fill="#f4f4f4" />
+  <g class="panel" data-generation="100" data-index="2">
+    <rect
+      x="406"
+      y="42"
+      width="188"
+      height="188"
+      fill="#ffffff"
+      stroke="#cccccc"
+      stroke-width="1"
+      rx="4"
+    >
+      <animate
+        attributeName="fill"
+        values="#ffffff;#fff7c2;#ffffff"
+        begin="1.20s"
+        dur="0.60s"
+        repeatCount="indefinite"
+        repeatDur="1.80s"
+      />
+    </rect>
+    <text
+      x="500"
+      y="58"
+      text-anchor="middle"
+      font-family="sans-serif"
+      font-size="12"
+      font-weight="bold"
+      fill="#222"
+    >Gen 100</text>
+    <text
+      x="500"
+      y="222"
+      text-anchor="middle"
+      font-family="sans-serif"
+      font-size="11"
+      fill="#555"
+    >score 500.000</text>
+    <line
+      x1="422"
+      y1="68"
+      x2="578"
+      y2="136"
+      stroke="#e74c3c"
+      stroke-width="0.8"
+      stroke-opacity="0.7"
+    />
+    <line
+      x1="422"
+      y1="113.33"
+      x2="578"
+      y2="136"
+      stroke="#27ae60"
+      stroke-width="0.8"
+      stroke-opacity="0.7"
+    />
+    <line
+      x1="422"
+      y1="158.67"
+      x2="578"
+      y2="136"
+      stroke="#27ae60"
+      stroke-width="0.8"
+      stroke-opacity="0.7"
+    />
+    <line
+      x1="422"
+      y1="204"
+      x2="578"
+      y2="136"
+      stroke="#27ae60"
+      stroke-width="0.8"
+      stroke-opacity="0.7"
+    />
+    <circle cx="422" cy="68" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    <circle cx="422" cy="113.33" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    <circle cx="422" cy="158.67" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    <circle cx="422" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    <circle cx="578" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
+  </g>
+  <g class="progression" data-min="498.300" data-max="500.000">
+    <rect x="0" y="236" width="600" height="100" fill="#f4f4f4" />
     <polyline
       class="score-progression"
       fill="none"
       stroke="#1f77b4"
       stroke-width="2"
-      points="100,286 300,286"
+      points="100,322 300,250 500,250"
     />
-    <circle cx="100" cy="286" r="3" fill="#1f77b4" />
-    <circle cx="300" cy="286" r="3" fill="#1f77b4" />
+    <circle cx="100" cy="322" r="3" fill="#1f77b4" />
+    <circle cx="300" cy="250" r="3" fill="#1f77b4" />
+    <circle cx="500" cy="250" r="3" fill="#1f77b4" />
     <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 500.000</text>
-    <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min 500.000</text>
+    <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min 498.300</text>
   </g>
   <g class="caption">
-    <rect x="0" y="336" width="400" height="40" fill="#222222" />
+    <rect x="0" y="336" width="600" height="40" fill="#222222" />
     <text
-      x="200"
+      x="300"
       y="360"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="12"
       fill="#ffffff"
-    >final score 500.000 • 1 generations • 0.1s</text>
+    >final score 500.000 • 2 generations • 56.1s</text>
   </g>
 </svg>

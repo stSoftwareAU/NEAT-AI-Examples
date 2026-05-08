@@ -84,6 +84,71 @@ Deno.test("scoreController returns a value between 0 and MAX_STEPS", () => {
 });
 
 Deno.test(
+  "scoreController with perturbed multi-trial evaluation rejects degenerate zero-genome controllers",
+  () => {
+    // The whole point of perturbing the initial state and averaging across
+    // multiple trials is to stop a degenerate controller — one whose
+    // output is constant or otherwise oblivious to the observables — from
+    // ever scoring MAX_STEPS by sheer luck on a perfectly symmetric
+    // initial state. With (0,0,0,0) inputs every component of `LOGISTIC`
+    // is 0.5 so the action is fixed; the cart accelerates indefinitely
+    // and the pole eventually trips the failure threshold.
+    const json = buildInitialCreatureJSON([0, 0, 0, 0], 0);
+    const creature = Creature.fromJSON(asCreatureExport(json));
+    const score = scoreController(creature, MAX_STEPS, {
+      trials: 5,
+      trialSeed: 1,
+      initialPerturbation: 0.05,
+    });
+    assert(
+      score < MAX_STEPS,
+      `expected the all-zero genome to fail under perturbations, got ${score}`,
+    );
+  },
+);
+
+Deno.test(
+  "scoreController with multiple trials returns the mean across trials",
+  () => {
+    // The mean equals MAX_STEPS only when every trial hits the cap, so a
+    // controller that solves the task generalises across the perturbed
+    // start states.
+    const random = createDeterministicRandom(99);
+    let bestScore = -1;
+    let bestJSON = randomCreatureJSON(random);
+    for (let i = 0; i < 200; i++) {
+      const json = randomCreatureJSON(random);
+      const creature = Creature.fromJSON(asCreatureExport(json));
+      const score = scoreController(creature, MAX_STEPS, {
+        trials: 3,
+        trialSeed: 11,
+        initialPerturbation: 0.05,
+      });
+      if (score > bestScore) {
+        bestScore = score;
+        bestJSON = json;
+      }
+    }
+    // Mean must lie in [0, MAX_STEPS] — the bound the contract promises.
+    assertGreaterOrEqual(bestScore, 0);
+    assertGreaterOrEqual(MAX_STEPS, bestScore);
+    // Re-evaluating the best JSON twice with the same trialSeed must give
+    // an identical mean (deterministic evaluation).
+    const a = scoreController(
+      Creature.fromJSON(asCreatureExport(bestJSON)),
+      MAX_STEPS,
+      { trials: 3, trialSeed: 11, initialPerturbation: 0.05 },
+    );
+    const b = scoreController(
+      Creature.fromJSON(asCreatureExport(bestJSON)),
+      MAX_STEPS,
+      { trials: 3, trialSeed: 11, initialPerturbation: 0.05 },
+    );
+    assertEquals(a, b);
+  },
+);
+
+Deno.test(
   "evolveCartPoleController finds a controller that solves the task with the default seed",
   async () => {
     const result = evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
@@ -104,6 +169,45 @@ Deno.test(
     } finally {
       await Deno.remove(tmp, { recursive: true });
     }
+  },
+);
+
+Deno.test(
+  "evolveCartPoleController under multi-trial evaluation requires more than one generation",
+  () => {
+    // Issue #143 — a perfectly symmetric initial state lets a "lucky"
+    // member of the random initial population claim victory in
+    // generation 1 without any learning. With the default options now
+    // running multiple perturbed trials per evaluation, the search must
+    // genuinely improve over generations.
+    const result = evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+    assertGreater(
+      result.generations,
+      1,
+      `expected the search to take more than one generation under perturbed ` +
+        `multi-trial evaluation, got ${result.generations}`,
+    );
+  },
+);
+
+Deno.test(
+  "evolveCartPoleController champion generalises to unseen perturbed initial states",
+  () => {
+    // Re-evaluating the champion against a fresh, independently seeded
+    // batch of perturbed starts must continue to hit the cap. This is
+    // the proof that the controller learnt to balance rather than
+    // overfitting to a single lucky initial state.
+    const result = evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+    const independentScore = scoreController(result.champion, MAX_STEPS, {
+      trials: 10,
+      trialSeed: 987654,
+      initialPerturbation: 0.05,
+    });
+    assertGreaterOrEqual(
+      independentScore,
+      MAX_STEPS,
+      `champion must generalise to unseen perturbed starts; got ${independentScore}`,
+    );
   },
 );
 
