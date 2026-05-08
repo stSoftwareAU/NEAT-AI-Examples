@@ -118,6 +118,40 @@ Artefacts:
 - `docs/screenshots/snake_game/evolution.svg` – dual-axis evolution chart plotting best score and
   champion neuron / synapse counts against generation
 
+## ❓ FAQ — Streaming observations vs batch supervised training
+
+Issue [#125](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/125) raised four conceptual
+questions about whether NEAT-AI's API actually fits a stream-of-observations game like Snake. The
+short answers, anchored in this example, are:
+
+**Is the NEAT-AI API set up for a stream of observations?** Yes — `Creature.activate(input)` is a
+single forward pass; calling it once per simulator tick _is_ the streaming primitive. The simulator
+owns the world state and decides what the next observation looks like; the creature owns its weights
+and produces an action. There is no built-in `for row of dataset` loop assumed anywhere.
+
+**How is this normally done?** Episode rollout — for each tick: observe → activate → decode action →
+step the world; break on terminal. The `scoreController` function in `snake_game.ts` is a 15-line
+implementation of exactly that loop. Every agent example in this repo (`cart_pole`, `lunar_lander`,
+`mountain_car`, `maze_navigation`) follows the same shape with different physics.
+
+**Does each creature in the population get a different observation stream?** Yes — once two
+creatures pick different actions on tick 1, their state trajectories diverge, so every later
+observation differs. To keep the comparison fair, the _initial_ state and food sequence are derived
+from a per-generation seed shared across creatures (the `episodeSeed` argument threaded into
+`scoreController`), so all creatures face the same world setup before they start acting; the
+divergence is entirely on them.
+
+**How does this work elsewhere — and is it different from "20 GiB of training data"?** Yes,
+fundamentally. This is a Reinforcement-Learning-shaped problem, not batch supervised learning.
+Population × generations × episode-length still parallelises trivially because each rollout is
+independent, but each creature must run its own simulator, so total wall-clock cost grows with
+episode length rather than with dataset size — there is no fixed dataset to pre-load and reuse.
+
+For the side-by-side comparison with the supervised paradigm (XOR, MNIST, Stock Market) and the
+Mermaid diagram of both loops, see the
+[**🧭 Two Training Paradigms — Supervised vs Agent Evolution**](../README.md#-two-training-paradigms--supervised-vs-agent-evolution)
+section in the top-level README.
+
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
