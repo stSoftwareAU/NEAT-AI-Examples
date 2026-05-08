@@ -30,6 +30,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)                       | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                    | `./mcmc_acceptance/run.sh`      |
 | [🧠 Memetic Evolution](memetic_evolution/README.md)                   | Compare evolutions with and without seeding from an archive of the fittest creatures' weights.                | `./memetic_evolution/run.sh`    |
 | [🧬 Synthetic Synapse](synthetic_synapse/README.md)                   | Densify an evolved sparse creature with zero-weight synthetic synapses, train, then prune the unused edges.   | `./synthetic_synapse/run.sh`    |
+| [✂️ Neuron Pruning](neuron_pruning/README.md)                         | Remove neurons whose activations don't vary, folding their bias contribution into downstream neighbours.      | `./neuron_pruning/run.sh`       |
 | [💡 Suggest Improvements](suggest_improvements/README.md)             | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.               | `./suggest_improvements/run.sh` |
 | [🌱 Evolution Showcase](evolution_showcase/README.md) ⏳ long-running | Flagship long-form run: evolve for 10000 generations and render gen 1 / 10 / 100 / 1000 / 10000 side-by-side. | `./evolution_showcase/run.sh`   |
 
@@ -122,6 +123,16 @@ A dual-axis chart of an adaptive Metropolis-Hastings sampler. The blue line is t
 acceptance rate, the orange line is the temperature schedule on a log scale, and the green dashed
 line marks the 23.4% optimum from Roberts/Gelman/Gilks (1997). The cooling controller adjusts
 temperature after every proposal so the empirical acceptance rate converges to the target.
+
+### ✂️ Neuron Pruning — constant-activation removal
+
+![Neuron pruning — pruned neurons greyed out, bias-fold arrows in coral](docs/screenshots/neuron_pruning.svg)
+
+A single-panel topology diagram of the pre-prune creature with its deliberately-constant hidden
+neurons greyed out and dashed; the synapses incident on those neurons are dimmed; coral arrows show
+each pruned neuron's bias-fold contribution to its surviving downstream neighbours. A summary panel
+beside the topology lists pre/post neuron counts, pre/post held-out scores, and the per-neuron
+pruning report.
 
 ### 🌱 Evolution Showcase — gen 1 → 10000
 
