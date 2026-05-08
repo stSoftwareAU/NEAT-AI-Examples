@@ -1,7 +1,9 @@
 # 🐍 Snake — Evolved Controller for the Classic Grid Game
 
-> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
-> evolving from there to a snake that hunts food and avoids walls.
+> 🌱 **Generation 1 starts from random noise.** The initial population is built by NEAT-AI's
+> uniform-random `Creature(8, 4)` constructor — direct input → output connections with weights and
+> biases drawn by the library's RNG. **No hand-crafted topology, no tuned weight init.** Hidden
+> neurons emerge only from the add-neuron structural mutation operator during evolution.
 
 `snake_game.ts` evolves a NEAT-AI controller that plays the classic Snake grid game on a 12×12
 board. The snake starts three segments long, must eat food cells to grow, and dies the moment it
@@ -13,16 +15,22 @@ compute each step's heading.
 
 ## 🧬 Evolution Progress
 
-The runner captures snapshots of the running champion at five checkpoints (generations 1, 10, 50,
-200, and 600) and renders them into a multi-panel SMIL-animated strip — so you can see the topology
-and score grow as the controller learns to eat food.
+The runner captures snapshots of the running champion at five checkpoints (generations
+`[1, 10, 50, 100, 200]`, those that fall inside the configured `maxGenerations`) and renders them
+into a multi-panel SMIL-animated strip — so you can see the topology and score grow as the
+controller learns to eat food. **Gen 1 is uniform-random NEAT noise that bumps into walls;** the
+intermediate milestones at gens 10 / 50 / 100 show the controller learning to chase food as
+add-neuron mutations grow hidden structure; the final captured snapshot meets the food-count
+threshold.
 
 ![Evolution progress](../docs/screenshots/snake_game_evolution.svg)
 
 ## 📈 Evolution Chart
 
 The runner also emits a dual-axis chart plotting the per-generation best score (left axis) alongside
-the champion's neuron and synapse counts (right axis) for the full run.
+the champion's neuron and synapse counts (right axis) for the full run. Because the topology starts
+minimal (no hidden neurons) and grows gradually through structural mutation, the neuron and synapse
+curves climb visibly across the run.
 
 ![Snake-game evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/snake_game/evolution.svg)
 
@@ -32,18 +40,21 @@ the champion's neuron and synapse counts (right axis) for the full run.
 flowchart LR
     GAME["🐍 Snake grid game<br/>(snake.ts)"]
     SENSE["🛰️ Wall, food &amp; tail sensors<br/>(agent.ts)"]
-    POLICY["🧠 8 → 6 hidden → 4 outputs"]
+    INIT["🎲 Uniform-Random NEAT<br/>new Creature(8, 4)"]
+    POLICY["🧠 Variable topology<br/>(grown by add-neuron mutation)"]
     STEP["⏱️ Move + grow / die"]
     DONE{"dead or<br/>500 steps?"}
     SCORE["📏 Food × 100 − penalties"]
     SVG["🖼️ Animated playthrough SVG"]
 
+    INIT --> POLICY
     GAME --> SENSE --> POLICY --> STEP --> DONE
     DONE -- no --> SENSE
     DONE -- yes --> SCORE --> SVG
 
     style GAME fill:#27ae60,stroke:#333,color:#fff
     style SENSE fill:#3498db,stroke:#333,color:#fff
+    style INIT fill:#f5a623,stroke:#333,color:#fff
     style POLICY fill:#9b59b6,stroke:#333,color:#fff
     style STEP fill:#f39c12,stroke:#333,color:#fff
     style SCORE fill:#e67e22,stroke:#333,color:#fff
@@ -64,10 +75,10 @@ The agent observes a small sensor pack (8 channels — well below the issue's 12
 | Input 5  | observable | `tailDx`      | `(tail.x − head.x) / gridSize` (signed)             |
 | Input 6  | observable | `tailDy`      | `(tail.y − head.y) / gridSize` (signed)             |
 | Input 7  | observable | `length`      | `body.length / (gridSize × gridSize)`               |
-| Output 0 | action     | —             | Logistic activation; argmax → heading **Up**        |
-| Output 1 | action     | —             | Logistic activation; argmax → heading **Right**     |
-| Output 2 | action     | —             | Logistic activation; argmax → heading **Down**      |
-| Output 3 | action     | —             | Logistic activation; argmax → heading **Left**      |
+| Output 0 | action     | —             | Argmax → heading **Up**                             |
+| Output 1 | action     | —             | Argmax → heading **Right**                          |
+| Output 2 | action     | —             | Argmax → heading **Down**                           |
+| Output 3 | action     | —             | Argmax → heading **Left**                           |
 
 Each tick the controller chooses one of four headings; a 180° reversal request is rejected and the
 snake keeps its previous heading. Episodes end when the snake collides with a wall or its own body,
@@ -82,6 +93,15 @@ score = (food eaten × 100) − (steps × 0.1) − (50 if died else 0)
 Eating one food gives +100, easily out-weighing the per-step penalty so survival without eating
 cannot beat eating quickly. The 50-point death penalty rewards staying alive when food is genuinely
 out of reach.
+
+The task is "solved" when the champion's **best per-seed food eaten reaches `SOLVED_THRESHOLD = 3`**
+— the same number the SVG playthrough renders after picking the strongest replay seed — **and** the
+running champion's mean across the five evaluation seeds is at least `SOLVED_AVG_FLOOR = 1.5` (so
+the early stop cannot fire on a fragile elite that aces a single seed and fails the rest). Evolution
+stops as soon as both conditions are met or the **hard generation cap of 200** is reached, whichever
+comes first. This matches closed issue #137's "champion ate at least three food on the replay
+episode" target — but the bar means more here because the controller now starts from uniform-random
+NEAT noise (no hand-crafted layered seed).
 
 ## 🚀 Running the Example
 
@@ -102,10 +122,11 @@ Artefacts:
 
 A few things that are not obvious from the code alone:
 
-- **One hidden layer is enough.** Eight inputs feed six logistic hidden neurons that feed four
-  logistic outputs (76 weights, 10 biases). A purely linear policy plateaus after eating one food
-  because no single direction-rule generalises across post-food snake geometries; the hidden layer
-  gives the controller enough non-linearity to chain food encounters.
+- **No hand-crafted topology.** `snake_game.ts` never hard-codes neurons or synapses. The initial
+  population is built with `createSeededPopulation({ inputCount: 8, outputCount: 4, ... })` which
+  delegates to `new Creature(8, 4)` for every member — direct input → output connections with random
+  weights and a random output bias. Hidden neurons appear only when the add-neuron mutation operator
+  splits an existing connection during evolution; structural mutation discovers them.
 - **Multi-episode fitness.** Each creature is evaluated across five distinct food-spawn seeds and
   ranked by mean fitness, so a controller has to generalise rather than overfit to a single
   playthrough.
@@ -113,15 +134,18 @@ A few things that are not obvious from the code alone:
   of progress toward the food). This breaks the flat fitness landscape that previously trapped the
   population at "ate one food" — mutations that nudge the head closer get credit even before the
   snake actually reaches food.
-- **Argmax discretisation.** The four outputs are passed through logistics and then `argmax` — the
-  controller commits to one of four headings every step. Ties favour lower indices but in practice
-  the logistic outputs differ enough that ties are vanishingly rare.
+- **Argmax discretisation.** The four outputs are passed through `argmax` — the controller commits
+  to one of four headings every step. Ties favour lower indices but in practice the outputs differ
+  enough that ties are vanishingly rare.
 - **180° reversals are rejected.** Snake gameplay requires this so the snake cannot trivially
   collide with its own neck. Asking the controller to reverse simply leaves the heading unchanged.
 - **Tail moves before collision check.** When the snake does not eat, the tail cell is freed before
   the head's new cell is checked for body overlap — so the snake can chase its own tail safely,
   matching classic Snake semantics.
-- **Reproducibility.** All randomness flows through `common/deterministic_random.ts`. With a fixed
-  seed the same champion is produced on every run.
+- **Hard generation cap.** Evolution stops at `maxGenerations` even if the threshold has not been
+  reached, so a stuck run never blocks the example forever. The cap is enforced in
+  `evolveSnakeController` and verified by the `honours the hard generation cap` test.
+- **Reproducibility.** All randomness flows through `common/deterministic_random.ts` and the
+  library's seeded RNG. With a fixed seed the same champion is produced on every run.
 - **Per-episode seed is shared.** Every creature in a generation faces the same initial state and
   the same food sequence (given equivalent decisions), so fitness comparisons are fair.

@@ -3,11 +3,9 @@
  * each test calls a real function, runs the simulator or evolver, and
  * asserts on the observable outputs.
  *
- * The controller now uses a small hidden layer (see {@link HIDDEN_COUNT})
- * so the policy is expressive enough to chain food encounters; the
- * tests below were updated alongside that change to assert the new
- * topology and the post-issue-#137 fitness target (champion eats at
- * least three food on its replay episode).
+ * The controller now starts evolution from uniform-random NEAT noise
+ * (issue #150). The previous hand-crafted layered topology has been
+ * removed; hidden neurons emerge only from structural mutation.
  */
 import {
   assert,
@@ -18,106 +16,108 @@ import {
 } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
-import { asCreatureExport } from "../common/legacy_types.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import {
-  buildInitialCreatureJSON,
+  buildRandomPopulation,
   DEFAULT_EVAL_SEEDS,
   DEFAULT_EVOLVE_OPTIONS,
   evaluateController,
   evolveSnakeController,
   type GenerationInfo,
-  genesFromCreatureJSON,
-  HIDDEN_COUNT,
-  mutateCreatureJSON,
+  mutateCreatureExport,
   pickBestReplaySeed,
-  randomCreatureJSON,
   replayController,
   scoreController,
-  type SnakeGenes,
-  TOTAL_SYNAPSES,
+  SOLVED_THRESHOLD,
 } from "./snake_game.ts";
 import { renderRunSVG } from "./svg.ts";
 import { INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 
-function zeroGenes(): SnakeGenes {
-  return {
-    w1: new Array(INPUT_COUNT * HIDDEN_COUNT).fill(0),
-    b1: new Array(HIDDEN_COUNT).fill(0),
-    w2: new Array(HIDDEN_COUNT * OUTPUT_COUNT).fill(0),
-    b2: new Array(OUTPUT_COUNT).fill(0),
-  };
-}
-
-Deno.test("buildInitialCreatureJSON wires the layered topology", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  assertEquals(json.input, INPUT_COUNT);
-  assertEquals(json.output, OUTPUT_COUNT);
-  // input -> hidden + hidden -> output synapses.
-  assertEquals(json.synapses.length, TOTAL_SYNAPSES);
-  // Hidden neurons are present.
-  assertEquals(
-    json.neurons.filter((n) => n.type === "hidden").length,
-    HIDDEN_COUNT,
-  );
+Deno.test("buildRandomPopulation produces uniform-random NEAT genomes", () => {
+  // Topology must NOT be hand-specified — the library decides shape.
+  // We assert only that the population has the requested size and that
+  // every member is a valid Creature with the right input/output counts.
+  const pop = buildRandomPopulation(42, 5);
+  assertEquals(pop.length, 5);
+  for (const json of pop) {
+    assertEquals(json.input, INPUT_COUNT);
+    assertEquals(json.output, OUTPUT_COUNT);
+    const creature = Creature.fromJSON(json);
+    creature.validate();
+    creature.clearState();
+    const out = creature.activate(new Float32Array(INPUT_COUNT));
+    assertEquals(out.length, OUTPUT_COUNT);
+    for (let i = 0; i < out.length; i++) {
+      assert(Number.isFinite(out[i]), `expected finite output, got ${out[i]}`);
+    }
+  }
 });
 
-Deno.test("buildInitialCreatureJSON produces a valid creature", () => {
-  const genes = zeroGenes();
-  genes.w1 = genes.w1.map(() => 0.1);
-  genes.w2 = genes.w2.map(() => 0.1);
-  genes.b1 = genes.b1.map(() => 0.05);
-  genes.b2 = [0.1, 0.2, 0.3, 0.4];
-  const json = buildInitialCreatureJSON(genes);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+Deno.test("buildRandomPopulation is deterministic for the same seed", () => {
+  const a = buildRandomPopulation(99, 4);
+  const b = buildRandomPopulation(99, 4);
+  assertEquals(a.length, b.length);
+  for (let i = 0; i < a.length; i++) {
+    assertEquals(JSON.stringify(a[i]), JSON.stringify(b[i]));
+  }
+});
+
+Deno.test("buildRandomPopulation does not hand-specify hidden topology", () => {
+  // Generation-1 noise: the library's minimal seed has zero hidden
+  // neurons and direct input → output connections. Hidden structure
+  // must emerge from mutation, not be supplied by the example.
+  const pop = buildRandomPopulation(7, 3);
+  for (const json of pop) {
+    const hiddenNeurons = json.neurons.filter((n) => n.type === "hidden");
+    assertEquals(
+      hiddenNeurons.length,
+      0,
+      "no hidden neurons should be hand-specified in the initial population",
+    );
+  }
+});
+
+Deno.test("mutateCreatureExport yields a valid creature", () => {
+  const random = createDeterministicRandom(7);
+  const pop = buildRandomPopulation(1, 1);
+  const child = mutateCreatureExport(pop[0], random, 1.0, 0.3);
+  const creature = Creature.fromJSON(child);
   creature.validate();
 });
 
-Deno.test("buildInitialCreatureJSON rejects wrong-sized weight vectors", () => {
-  let threw = false;
-  try {
-    buildInitialCreatureJSON({ ...zeroGenes(), w1: [1, 2, 3] });
-  } catch {
-    threw = true;
-  }
-  assertEquals(threw, true);
-});
-
-Deno.test("genesFromCreatureJSON round-trips weights and biases", () => {
-  const genes: SnakeGenes = {
-    w1: Array.from({ length: INPUT_COUNT * HIDDEN_COUNT }, (_, i) => i * 0.01),
-    b1: Array.from({ length: HIDDEN_COUNT }, (_, i) => i * 0.1),
-    w2: Array.from({ length: HIDDEN_COUNT * OUTPUT_COUNT }, (_, i) => -i * 0.02),
-    b2: [0.1, -0.2, 0.3, -0.4],
-  };
-  const json = buildInitialCreatureJSON(genes);
-  const decoded = genesFromCreatureJSON(json);
-  assertEquals(decoded.w1.length, genes.w1.length);
-  for (let i = 0; i < genes.w1.length; i++) assertAlmostEquals(decoded.w1[i], genes.w1[i], 1e-9);
-  for (let i = 0; i < genes.b1.length; i++) assertAlmostEquals(decoded.b1[i], genes.b1[i], 1e-9);
-  for (let i = 0; i < genes.w2.length; i++) assertAlmostEquals(decoded.w2[i], genes.w2[i], 1e-9);
-  for (let i = 0; i < genes.b2.length; i++) assertAlmostEquals(decoded.b2[i], genes.b2[i], 1e-9);
-});
-
-Deno.test("randomCreatureJSON is deterministic for the same seed", () => {
-  const a = randomCreatureJSON(createDeterministicRandom(99));
-  const b = randomCreatureJSON(createDeterministicRandom(99));
+Deno.test("mutateCreatureExport is deterministic for the same random stream", () => {
+  const pop = buildRandomPopulation(5, 1);
+  const a = mutateCreatureExport(pop[0], createDeterministicRandom(11), 0.8, 0.2);
+  const b = mutateCreatureExport(pop[0], createDeterministicRandom(11), 0.8, 0.2);
   assertEquals(JSON.stringify(a), JSON.stringify(b));
 });
 
-Deno.test("mutateCreatureJSON yields a valid creature", () => {
-  const random = createDeterministicRandom(7);
-  const parent = buildInitialCreatureJSON(zeroGenes());
-  const child = mutateCreatureJSON(parent, random, 1.0, 0.3);
-  const creature = Creature.fromJSON(asCreatureExport(child));
-  creature.validate();
+Deno.test("mutateCreatureExport with addNeuronRate=1 grows topology", () => {
+  // Forcing addNeuronRate=1 must split exactly one synapse, adding
+  // one hidden neuron and replacing one synapse with two.
+  const pop = buildRandomPopulation(3, 1);
+  const parent = pop[0];
+  const random = createDeterministicRandom(13);
+  const child = mutateCreatureExport(parent, random, 0, 0, {
+    addNeuronRate: 1,
+    hiddenCounter: { value: 0 },
+  });
+  const parentHidden = parent.neurons.filter((n) => n.type === "hidden").length;
+  const childHidden = child.neurons.filter((n) => n.type === "hidden").length;
+  assertEquals(childHidden - parentHidden, 1, "expected exactly one new hidden neuron");
+  assertEquals(
+    child.synapses.length - parent.synapses.length,
+    1,
+    "splitting one synapse adds one net synapse (-1 + 2)",
+  );
+  Creature.fromJSON(child).validate();
 });
 
-Deno.test("scoreController returns a finite score and fitness for an arbitrary creature", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+Deno.test("scoreController returns a finite score and fitness for a random creature", () => {
+  const pop = buildRandomPopulation(2, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const result = scoreController(creature, 1234, 100);
   assert(Number.isFinite(result.score), `expected finite score, got ${result.score}`);
   assert(Number.isFinite(result.fitness), `expected finite fitness, got ${result.fitness}`);
@@ -125,43 +125,110 @@ Deno.test("scoreController returns a finite score and fitness for an arbitrary c
 });
 
 Deno.test("evaluateController averages metrics across the seed set", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(2, 1);
+  const json: CreatureExport = pop[0];
   const seeds = [1, 2, 3];
-  const result = evaluateController(creature, seeds, 50);
+  const result = evaluateController(Creature.fromJSON(json), seeds, 50);
   let total = 0;
-  for (const s of seeds) total += scoreController(creature, s, 50).score;
+  for (const s of seeds) total += scoreController(Creature.fromJSON(json), s, 50).score;
   assertAlmostEquals(result.score, total / seeds.length, 1e-9);
 });
 
-Deno.test("pickBestReplaySeed returns the seed with the largest eaten count", () => {
-  // The handcrafted creature won't eat anything on any seed; ensure
-  // the picker still returns a seed from the supplied list and reports
-  // a finite score.
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+Deno.test("pickBestReplaySeed returns a seed from the supplied list", () => {
+  const pop = buildRandomPopulation(4, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const pick = pickBestReplaySeed(creature, [11, 22, 33], 50);
   assert([11, 22, 33].includes(pick.seed));
   assert(Number.isFinite(pick.score));
 });
 
-Deno.test("evolveSnakeController champion eats at least three food on the replay seed", async () => {
-  const result = evolveSnakeController(DEFAULT_EVOLVE_OPTIONS);
-  assertGreaterOrEqual(
-    result.championEaten,
-    3,
-    `expected the champion to eat at least three food, got ${result.championEaten}`,
-  );
-  // Champion must serialise cleanly for downstream consumption.
-  const tmp = await Deno.makeTempDir({ prefix: "snake_test_" });
-  try {
-    const path = join(tmp, "champion.json");
-    await safeWriteJson(path, result.champion.exportJSON());
-    assertEquals(existsSync(path), true);
-  } finally {
-    await Deno.remove(tmp, { recursive: true });
-  }
-});
+Deno.test(
+  "evolveSnakeController gen-1 best-eaten is well below the solved threshold",
+  () => {
+    // Gen 1 must be noise — the very first generation comes straight
+    // from `new Creature(input, output)` with random weights, so the
+    // best controller in the population should be very far from
+    // eating SOLVED_THRESHOLD food on average. Anything close to the
+    // threshold on gen 1 would imply a warm start.
+    let firstGenBestEaten = Infinity;
+    evolveSnakeController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 1,
+      onGeneration: (info) => {
+        if (info.generation === 0 && firstGenBestEaten === Infinity) {
+          firstGenBestEaten = info.bestEaten;
+        }
+      },
+    });
+    assert(
+      firstGenBestEaten < SOLVED_THRESHOLD,
+      `expected gen-1 best-eaten to sit below the solved threshold ` +
+        `(${SOLVED_THRESHOLD}), got ${firstGenBestEaten}`,
+    );
+  },
+);
+
+Deno.test(
+  "evolveSnakeController honours the hard generation cap",
+  () => {
+    // With a tiny strength + tiny rate, the evolver cannot solve the
+    // task within the cap. The result must therefore stop at the cap
+    // and report `solved=false`.
+    const cap = 3;
+    const result = evolveSnakeController({
+      seed: 999,
+      populationSize: 4,
+      maxGenerations: cap,
+      mutationStrength: 0.01,
+      mutationRate: 0.01,
+      addNeuronRate: 0,
+    });
+    assertEquals(
+      result.generations,
+      cap,
+      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
+    );
+    assertEquals(
+      result.solved,
+      false,
+      "with vanishing mutation the search must not solve snake within the cap",
+    );
+  },
+);
+
+Deno.test(
+  "evolveSnakeController champion reaches the SOLVED_THRESHOLD on its best replay seed",
+  async () => {
+    // The threshold is applied to the **best per-seed eaten count** —
+    // the same number the SVG playthrough renders after
+    // `pickBestReplaySeed`. This matches closed issue #137's
+    // "champion ate at least three food on the replay episode"
+    // target, but the bar means more here because evolution starts
+    // from uniform-random NEAT noise.
+    const result = evolveSnakeController(DEFAULT_EVOLVE_OPTIONS);
+    assertGreaterOrEqual(
+      result.championEaten,
+      SOLVED_THRESHOLD,
+      `expected the champion to eat at least ${SOLVED_THRESHOLD} food on its best ` +
+        `replay seed, got ${result.championEaten} after ${result.generations} generations`,
+    );
+    assertEquals(
+      result.solved,
+      true,
+      `expected the champion to be flagged solved (best=${result.championEaten}, ` +
+        `avg=${result.championEatenAvg})`,
+    );
+    // Champion must serialise cleanly for downstream consumption.
+    const tmp = await Deno.makeTempDir({ prefix: "snake_test_" });
+    try {
+      const path = join(tmp, "champion.json");
+      await safeWriteJson(path, result.champion.exportJSON());
+      assertEquals(existsSync(path), true);
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+);
 
 Deno.test("evolveSnakeController is reproducible — fixed seed, identical champion", () => {
   const a = evolveSnakeController({ ...DEFAULT_EVOLVE_OPTIONS, maxGenerations: 30 });
@@ -195,23 +262,23 @@ Deno.test(
   () => {
     // Issue #110: the per-generation event must include neuron and
     // synapse counts so the runner can plot them on the evolution
-    // chart. The layered genome has INPUT_COUNT + HIDDEN_COUNT +
-    // OUTPUT_COUNT neurons and TOTAL_SYNAPSES synapses, both constant
-    // across the run since this example does not yet add structural
-    // mutation.
+    // chart. With addNeuronRate=0 the topology stays at the library's
+    // minimal seed: INPUT_COUNT + OUTPUT_COUNT neurons and
+    // INPUT_COUNT * OUTPUT_COUNT direct synapses.
     const events: GenerationInfo[] = [];
     evolveSnakeController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 3,
       populationSize: 6,
+      addNeuronRate: 0,
       onGeneration: (info) => events.push(info),
     });
     assertGreaterOrEqual(events.length, 1);
     for (const info of events) {
       assertEquals(typeof info.neurons, "number");
       assertEquals(typeof info.synapses, "number");
-      assertEquals(info.neurons, INPUT_COUNT + HIDDEN_COUNT + OUTPUT_COUNT);
-      assertEquals(info.synapses, TOTAL_SYNAPSES);
+      assertEquals(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertEquals(info.synapses, INPUT_COUNT * OUTPUT_COUNT);
     }
   },
 );
@@ -223,6 +290,12 @@ Deno.test("evolveSnakeController emits checkpoint snapshot files when configured
     evolveSnakeController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 4,
+      // Force a tiny, weak run so the early-stop branch cannot fire
+      // before every checkpoint is captured.
+      populationSize: 3,
+      mutationStrength: 0.01,
+      mutationRate: 0.01,
+      addNeuronRate: 0,
       snapshotConfig: { checkpoints, outputDir: tmp },
     });
     for (const gen of checkpoints) {
@@ -234,16 +307,16 @@ Deno.test("evolveSnakeController emits checkpoint snapshot files when configured
 });
 
 Deno.test("replayController returns a non-empty trace starting at the initial state", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(4, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 4242, 50);
   assert(trace.length > 0);
   assertEquals(trace[0].steps, 0);
 });
 
 Deno.test("renderRunSVG emits an <svg> root with SMIL animation elements", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(4, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 4242, 30);
   const svg = renderRunSVG(trace);
   assert(svg.startsWith("<svg"), "must start with <svg>");
@@ -255,16 +328,16 @@ Deno.test("renderRunSVG emits an <svg> root with SMIL animation elements", () =>
 });
 
 Deno.test("renderRunSVG repeats the animation indefinitely", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(4, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 4242, 30);
   const svg = renderRunSVG(trace);
   assert(svg.includes('repeatCount="indefinite"'));
 });
 
 Deno.test("renderRunSVG draws the snake head and food cells", () => {
-  const json = buildInitialCreatureJSON(zeroGenes());
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(4, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 4242, 30);
   const svg = renderRunSVG(trace);
   assert(svg.includes('class="snake-head"'), "expected the snake head element");

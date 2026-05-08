@@ -4,17 +4,18 @@
  * Evolves a NEAT-AI controller to play the classic Snake grid game.
  * Each agent observes a small sensor pack (wall distances, food
  * direction, tail direction, length — see `agent.ts`) and emits four
- * logistic activations, one per heading; the argmax becomes the next
- * heading. The simulator (`snake.ts`), evolutionary loop, and
- * animated SVG renderer (`svg.ts`) all run in pure TypeScript; the
- * only external dependency is NEAT-AI's `Creature.activate`.
+ * activations, one per heading; the argmax becomes the next heading.
+ * The simulator (`snake.ts`), evolutionary loop, and animated SVG
+ * renderer (`svg.ts`) all run in pure TypeScript; the only external
+ * dependency is NEAT-AI's `Creature.activate`.
  *
- * Network topology: eight inputs feed a hidden layer of
- * {@link HIDDEN_COUNT} LOGISTIC neurons, which feed four LOGISTIC
- * outputs (one per heading). The hidden layer gives the policy enough
- * expressive power to chain food encounters — purely linear policies
- * tend to plateau after eating a single food because no single
- * direction-rule generalises across post-food snake geometries.
+ * 🌱 **Generation 1 starts from random noise.** The initial population
+ * is built by NEAT-AI's uniform-random `Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` constructor — direct input → output connections with
+ * weights and biases drawn by the library's RNG. **No hand-crafted
+ * topology, no tuned weight init.** Hidden neurons appear only when
+ * the add-neuron mutation operator splits an existing connection
+ * during evolution; structural mutation discovers them.
  *
  * Score = `food × FOOD_REWARD − stepCount × STEP_PENALTY` minus a
  * one-off `DEATH_PENALTY` if the snake collided with a wall or
@@ -30,11 +31,19 @@
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
+import {
+  createSeededPopulation,
+  createSeededRng,
+  Creature,
+  type CreatureExport,
+  type NeuronExport,
+  safeWriteJson,
+  setRandomNumberGenerator,
+  type SynapseExport,
+} from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 import {
   captureSnapshot,
   loadSnapshots,
@@ -45,15 +54,6 @@ import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evoluti
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { newGame, type SnakeState, step } from "./snake.ts";
 import { renderRunSVG } from "./svg.ts";
-
-/** Hidden-layer width used by the controller. */
-export const HIDDEN_COUNT = 6;
-
-/** Index of the first hidden neuron. */
-const FIRST_HIDDEN_INDEX = INPUT_COUNT;
-
-/** Index of the first output neuron. */
-const FIRST_OUTPUT_INDEX = INPUT_COUNT + HIDDEN_COUNT;
 
 /** Hard cap on the number of ticks a single episode is allowed. */
 export const MAX_STEPS = 500;
@@ -75,6 +75,30 @@ export const DEATH_PENALTY = 50;
  * reward navigation progress before the first food.
  */
 export const DISTANCE_SHAPING_COEFF = 0.5;
+
+/**
+ * Best-seed food-eaten threshold at or above which the controller is
+ * declared "solved". The threshold is applied to the **maximum
+ * eaten across the evaluation seeds** for the running champion —
+ * i.e. the same number that the SVG playthrough visualises after
+ * `pickBestReplaySeed`. This matches closed issue #137's "champion
+ * ate at least three food on the replay episode" target, but the bar
+ * means more here because evolution now starts from uniform-random
+ * NEAT noise (no hand-crafted layered seed), so reaching three food
+ * on any single seed is a genuine demonstration of evolution
+ * discovering both topology and weights from scratch.
+ */
+export const SOLVED_THRESHOLD = 3;
+
+/**
+ * Minimum mean food eaten across the evaluation seed batch required
+ * before the {@link SOLVED_THRESHOLD} early-stop is allowed to fire.
+ * Without this floor a fragile elite that aces a single seed (and
+ * fails the rest) would short-circuit the run and leave the user
+ * with a flaky champion. Set above the gen-1 noise floor (~0.4) but
+ * below the typical mean reached at the food-three plateau (~1.6).
+ */
+export const SOLVED_AVG_FLOOR = 1.5;
 
 /**
  * Episode seeds used to evaluate every creature during evolution. The
@@ -126,8 +150,15 @@ export function pickBestReplaySeed(
   return { seed: bestSeed, eaten: bestEaten, score: bestScore };
 }
 
-/** Generations at which the runner captures evolution snapshots. */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 50, 200, 600];
+/**
+ * Generations at which the runner captures evolution snapshots. The
+ * cadence matches the typical evolution shape from uniform-random
+ * NEAT noise: gen-1 random scribbles, gen-10 starting to chase food,
+ * gen-50 plateau on "eat one or two", gen-100 add-neuron splits
+ * starting to pay off, gen-200 elite pushes past the food-three
+ * threshold on its best replay seed.
+ */
+export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 50, 100, 200];
 
 /** Hidden directory under which snapshot files are written. */
 export const SNAPSHOTS_DIR = ".synthetic-snake/snapshots";
@@ -142,9 +173,17 @@ export const EVOLUTION_CHART_PATH = "docs/screenshots/snake_game/evolution.svg";
 export interface EvolveOptions {
   seed: number;
   populationSize: number;
+  /** Hard cap on the number of generations before giving up. */
   maxGenerations: number;
   mutationStrength: number;
   mutationRate: number;
+  /**
+   * Per-creature probability of receiving an add-neuron structural
+   * mutation each generation (split an existing connection by
+   * inserting a hidden neuron). Defaults to a small value so topology
+   * grows gradually rather than thrashing.
+   */
+  addNeuronRate?: number;
   /** Hard cap on episode length. Defaults to {@link MAX_STEPS}. */
   maxSteps?: number;
   /** Episode seeds used to evaluate fitness. Defaults to {@link DEFAULT_EVAL_SEEDS}. */
@@ -180,99 +219,51 @@ export interface EvolveResult {
   championSteps: number;
   /** Episode seed used for the replay SVG. */
   championReplaySeed: number;
+  /** Number of generations actually run before stopping (≤ maxGenerations). */
   generations: number;
+  /** True when the champion's mean food eaten reached {@link SOLVED_THRESHOLD}. */
+  solved: boolean;
 }
 
 /** Sensible defaults for the demonstration runner. */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
-  populationSize: 120,
-  maxGenerations: 600,
-  mutationStrength: 0.5,
-  mutationRate: 0.35,
+  populationSize: 200,
+  maxGenerations: 200,
+  mutationStrength: 1.0,
+  mutationRate: 0.5,
+  addNeuronRate: 0.06,
 };
 
-/** Total number of synapses in the layered topology. */
-export const TOTAL_SYNAPSES = INPUT_COUNT * HIDDEN_COUNT + HIDDEN_COUNT * OUTPUT_COUNT;
-
-/** Genome representation: weights and biases for the layered network. */
-export interface SnakeGenes {
-  /** Input → hidden weights, row-major: `w1[h * INPUT_COUNT + i]`. */
-  w1: number[];
-  /** Hidden biases. */
-  b1: number[];
-  /** Hidden → output weights, row-major: `w2[o * HIDDEN_COUNT + h]`. */
-  w2: number[];
-  /** Output biases. */
-  b2: number[];
-}
+/**
+ * Fraction of every generation replaced with fresh uniform-random
+ * NEAT genomes. Keeps a steady supply of structural and weight
+ * diversity so the elite's "eat one or two food and die" lineage
+ * cannot dominate forever.
+ */
+export const RANDOM_INJECTION_FRACTION = 0.1;
 
 /**
- * Build a layered network: eight inputs → {@link HIDDEN_COUNT} hidden
- * LOGISTIC neurons → four LOGISTIC outputs (one per heading). The
- * hidden layer is what lets the controller chain food encounters.
+ * Build the initial population using the NEAT-AI library's
+ * uniform-random creature constructor. Every member has the requested
+ * number of inputs and outputs with random weights and a random output
+ * bias — **no topology is hand-specified by this example**; structural
+ * mutation grows hidden neurons during evolution.
+ *
+ * `seed` controls the global library RNG so the same `seed` reproduces
+ * the same initial population across runs.
  */
-export function buildInitialCreatureJSON(genes: SnakeGenes): LegacyCreatureJSON {
-  if (genes.w1.length !== INPUT_COUNT * HIDDEN_COUNT) {
-    throw new Error(
-      `w1 must contain exactly ${INPUT_COUNT * HIDDEN_COUNT} entries, got ${genes.w1.length}`,
-    );
-  }
-  if (genes.b1.length !== HIDDEN_COUNT) {
-    throw new Error(`b1 must contain exactly ${HIDDEN_COUNT} entries, got ${genes.b1.length}`);
-  }
-  if (genes.w2.length !== HIDDEN_COUNT * OUTPUT_COUNT) {
-    throw new Error(
-      `w2 must contain exactly ${HIDDEN_COUNT * OUTPUT_COUNT} entries, got ${genes.w2.length}`,
-    );
-  }
-  if (genes.b2.length !== OUTPUT_COUNT) {
-    throw new Error(`b2 must contain exactly ${OUTPUT_COUNT} entries, got ${genes.b2.length}`);
-  }
-  const neurons: LegacyCreatureJSON["neurons"] = [];
-  for (let i = 0; i < INPUT_COUNT; i++) {
-    neurons.push({ type: "input", squash: "LOGISTIC", index: i, uuid: `input-${i}` });
-  }
-  for (let h = 0; h < HIDDEN_COUNT; h++) {
-    neurons.push({
-      type: "hidden",
-      squash: "LOGISTIC",
-      index: FIRST_HIDDEN_INDEX + h,
-      bias: genes.b1[h],
-      uuid: `hidden-${h}`,
-    });
-  }
-  for (let o = 0; o < OUTPUT_COUNT; o++) {
-    neurons.push({
-      type: "output",
-      squash: "LOGISTIC",
-      index: FIRST_OUTPUT_INDEX + o,
-      bias: genes.b2[o],
-      uuid: `output-${o}`,
-    });
-  }
-  const synapses: LegacyCreatureJSON["synapses"] = [];
-  // Input → hidden.
-  for (let h = 0; h < HIDDEN_COUNT; h++) {
-    for (let i = 0; i < INPUT_COUNT; i++) {
-      synapses.push({
-        from: i,
-        to: FIRST_HIDDEN_INDEX + h,
-        weight: genes.w1[h * INPUT_COUNT + i],
-      });
-    }
-  }
-  // Hidden → output.
-  for (let o = 0; o < OUTPUT_COUNT; o++) {
-    for (let h = 0; h < HIDDEN_COUNT; h++) {
-      synapses.push({
-        from: FIRST_HIDDEN_INDEX + h,
-        to: FIRST_OUTPUT_INDEX + o,
-        weight: genes.w2[o * HIDDEN_COUNT + h],
-      });
-    }
-  }
-  return { neurons, synapses, input: INPUT_COUNT, output: OUTPUT_COUNT };
+export function buildRandomPopulation(
+  seed: number,
+  populationSize: number,
+): CreatureExport[] {
+  setRandomNumberGenerator(createSeededRng(seed));
+  return createSeededPopulation({
+    inputCount: INPUT_COUNT,
+    outputCount: OUTPUT_COUNT,
+    populationSize,
+    seeds: [],
+  });
 }
 
 /** Sample a value from `[-range, range]` using the supplied PRNG. */
@@ -280,66 +271,128 @@ function uniformSigned(random: () => number, range: number): number {
   return (random() * 2 - 1) * range;
 }
 
-/** Random initial creature: weights in `[-1, 1]`, biases in `[-0.5, 0.5]`. */
-export function randomCreatureJSON(random: () => number): LegacyCreatureJSON {
-  const w1: number[] = [];
-  for (let i = 0; i < INPUT_COUNT * HIDDEN_COUNT; i++) w1.push(uniformSigned(random, 1));
-  const b1: number[] = [];
-  for (let i = 0; i < HIDDEN_COUNT; i++) b1.push(uniformSigned(random, 0.5));
-  const w2: number[] = [];
-  for (let i = 0; i < HIDDEN_COUNT * OUTPUT_COUNT; i++) w2.push(uniformSigned(random, 1));
-  const b2: number[] = [];
-  for (let i = 0; i < OUTPUT_COUNT; i++) b2.push(uniformSigned(random, 0.5));
-  return buildInitialCreatureJSON({ w1, b1, w2, b2 });
+/** Deep-clone a creature export so callers can safely mutate it. */
+function cloneExport(creature: CreatureExport): CreatureExport {
+  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
 }
 
-/** Decode a creature JSON back into its layered weights and biases. */
-export function genesFromCreatureJSON(json: LegacyCreatureJSON): SnakeGenes {
-  const w1 = new Array<number>(INPUT_COUNT * HIDDEN_COUNT).fill(0);
-  const w2 = new Array<number>(HIDDEN_COUNT * OUTPUT_COUNT).fill(0);
-  for (const synapse of json.synapses) {
-    if (synapse.to >= FIRST_HIDDEN_INDEX && synapse.to < FIRST_OUTPUT_INDEX) {
-      const h = synapse.to - FIRST_HIDDEN_INDEX;
-      if (synapse.from >= 0 && synapse.from < INPUT_COUNT) {
-        w1[h * INPUT_COUNT + synapse.from] = synapse.weight;
-      }
-    } else if (synapse.to >= FIRST_OUTPUT_INDEX) {
-      const o = synapse.to - FIRST_OUTPUT_INDEX;
-      const h = synapse.from - FIRST_HIDDEN_INDEX;
-      if (o >= 0 && o < OUTPUT_COUNT && h >= 0 && h < HIDDEN_COUNT) {
-        w2[o * HIDDEN_COUNT + h] = synapse.weight;
-      }
-    }
-  }
-  const b1 = new Array<number>(HIDDEN_COUNT).fill(0);
-  for (let h = 0; h < HIDDEN_COUNT; h++) {
-    const neuron = json.neurons.find((n) => n.uuid === `hidden-${h}`);
-    b1[h] = neuron?.bias ?? 0;
-  }
-  const b2 = new Array<number>(OUTPUT_COUNT).fill(0);
-  for (let o = 0; o < OUTPUT_COUNT; o++) {
-    const neuron = json.neurons.find((n) => n.uuid === `output-${o}`);
-    b2[o] = neuron?.bias ?? 0;
-  }
-  return { w1, b1, w2, b2 };
+/**
+ * Insert a hidden neuron in the middle of an existing connection: the
+ * NEAT "add-node" structural mutation. Picks a random synapse, replaces
+ * it with a path through a fresh hidden neuron, and assigns reasonable
+ * starting weights so the new path approximates the original signal
+ * before further mutation tunes it.
+ *
+ * The new neuron uses LOGISTIC activation — a smooth squash that lets
+ * gradients flow during weight perturbation without the saturating
+ * plateau of HARD_TANH at the edges of its range.
+ */
+function addHiddenNeuron(
+  creature: CreatureExport,
+  random: () => number,
+  hiddenCounter: { value: number },
+): CreatureExport {
+  if (creature.synapses.length === 0) return creature;
+
+  const synapseIdx = Math.floor(random() * creature.synapses.length);
+  const original = creature.synapses[synapseIdx];
+
+  // Issue a deterministic UUID so the export is reproducible across runs
+  // with the same seed. The library treats this string as opaque, so any
+  // unique identifier is acceptable.
+  const uuid = `hidden-${hiddenCounter.value++}`;
+
+  const newNeuron: NeuronExport = {
+    type: "hidden",
+    uuid,
+    bias: uniformSigned(random, 0.5),
+    squash: "LOGISTIC",
+  };
+
+  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
+  // input → hidden: keep the original weight so the path through the
+  // new neuron starts close to the original signal.
+  newSynapses.push({
+    weight: original.weight,
+    fromUUID: original.fromUUID,
+    toUUID: uuid,
+  });
+  // hidden → output: weight 1 so the LOGISTIC pass-through is roughly
+  // identity at the operating point, again preserving original signal.
+  newSynapses.push({
+    weight: 1,
+    fromUUID: uuid,
+    toUUID: original.toUUID,
+  });
+
+  // The library assigns runtime indices in array order, so all
+  // hidden neurons must precede the first output neuron to keep the
+  // topology forward-only (and the library validates this on load).
+  // Inserting the new hidden neuron just before the first output is
+  // the simplest position that satisfies the rule for every possible
+  // split — split target may be an output, a hidden neuron, or
+  // (implicitly) an input. When the new hidden's index ends up
+  // higher than its synapse target's index (e.g. an old hidden
+  // neuron sitting between us and the output), the library silently
+  // strips the resulting recurrent synapse on load. That makes the
+  // mutation a no-op for those rare cases, which is acceptable here
+  // because the search is generational and the next mutation tries
+  // a different split.
+  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
+  const insertAt = firstOutputIdx === -1 ? creature.neurons.length : firstOutputIdx;
+  const newNeurons = [
+    ...creature.neurons.slice(0, insertAt),
+    newNeuron,
+    ...creature.neurons.slice(insertAt),
+  ];
+
+  return {
+    ...creature,
+    neurons: newNeurons,
+    synapses: newSynapses,
+  };
 }
 
-/** Mutate each gene independently with probability `mutationRate`. */
-export function mutateCreatureJSON(
-  parent: LegacyCreatureJSON,
+/**
+ * Mutate a creature genome. Each existing weight and non-input bias is
+ * perturbed independently with probability `mutationRate`; the noise is
+ * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
+ * probability `addNeuronRate` the genome additionally receives a NEAT
+ * add-node structural mutation (split one synapse with a hidden neuron).
+ *
+ * The resulting export is suitable for `Creature.fromJSON(...)`. No
+ * topology is hand-specified — every change here is a generic NEAT
+ * mutation operator that works on whatever variable topology the
+ * creature currently has.
+ */
+export function mutateCreatureExport(
+  parent: CreatureExport,
   random: () => number,
   mutationRate: number,
   mutationStrength: number,
-): LegacyCreatureJSON {
-  const genes = genesFromCreatureJSON(parent);
-  const mutateArray = (a: number[]) =>
-    a.map((v) => random() < mutationRate ? v + uniformSigned(random, mutationStrength) : v);
-  return buildInitialCreatureJSON({
-    w1: mutateArray(genes.w1),
-    b1: mutateArray(genes.b1),
-    w2: mutateArray(genes.w2),
-    b2: mutateArray(genes.b2),
-  });
+  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
+): CreatureExport {
+  const child = cloneExport(parent);
+
+  for (const synapse of child.synapses) {
+    if (random() < mutationRate) {
+      synapse.weight += uniformSigned(random, mutationStrength);
+    }
+  }
+
+  for (const neuron of child.neurons) {
+    if (random() < mutationRate) {
+      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
+    }
+  }
+
+  const addNeuronRate = options?.addNeuronRate ?? 0;
+  const counter = options?.hiddenCounter ?? { value: 0 };
+  if (addNeuronRate > 0 && random() < addNeuronRate) {
+    return addHiddenNeuron(child, random, counter);
+  }
+
+  return child;
 }
 
 /** Outcome of a single scoring episode. */
@@ -402,10 +455,21 @@ export function scoreController(
 
 /** Mean fitness/score/eaten across a list of evaluation seeds. */
 export interface MultiEpisodeResult {
+  /** Mean shaped fitness across the seed batch (used for selection). */
   fitness: number;
+  /** Mean raw game score across the seed batch. */
   score: number;
+  /** Mean food eaten across the seed batch. */
   eaten: number;
+  /** Mean steps survived across the seed batch. */
   steps: number;
+  /**
+   * Maximum food eaten on any single seed in the batch — the same
+   * number the SVG playthrough renders after `pickBestReplaySeed`,
+   * and the value the {@link SOLVED_THRESHOLD} early-stop is checked
+   * against.
+   */
+  maxEaten: number;
 }
 
 /**
@@ -422,15 +486,23 @@ export function evaluateController(
   let score = 0;
   let eaten = 0;
   let steps = 0;
+  let maxEaten = 0;
   for (const seed of seeds) {
     const r = scoreController(creature, seed, maxSteps);
     fitness += r.fitness;
     score += r.score;
     eaten += r.eaten;
     steps += r.steps;
+    if (r.eaten > maxEaten) maxEaten = r.eaten;
   }
   const n = seeds.length;
-  return { fitness: fitness / n, score: score / n, eaten: eaten / n, steps: steps / n };
+  return {
+    fitness: fitness / n,
+    score: score / n,
+    eaten: eaten / n,
+    steps: steps / n,
+    maxEaten,
+  };
 }
 
 /**
@@ -457,10 +529,38 @@ export function replayController(
   return trace;
 }
 
+interface ScoredMember {
+  json: CreatureExport;
+  fitness: number;
+  score: number;
+  eaten: number;
+  steps: number;
+  /** Best per-seed eaten count across the eval seed batch. */
+  maxEaten: number;
+  neurons: number;
+  synapses: number;
+}
+
+function topologyCounts(json: CreatureExport): { neurons: number; synapses: number } {
+  // The export omits input neurons (they are implicit in `input`), so
+  // we add them back to report a comparable "total neurons" figure.
+  return {
+    neurons: json.neurons.length + (json.input ?? INPUT_COUNT),
+    synapses: json.synapses.length,
+  };
+}
+
 /**
  * Run a generational evolutionary algorithm. Truncation selection
  * keeps the top half as parents (ranked by fitness); the elite carries
- * over so the best fitness is monotonically non-decreasing.
+ * over so the best fitness is monotonically non-decreasing. A small
+ * {@link RANDOM_INJECTION_FRACTION} of every generation is replaced
+ * by fresh uniform-random NEAT genomes so structural diversity does
+ * not collapse onto the elite's local optimum. Stops as soon as the
+ * running champion's **best per-seed eaten count** reaches
+ * {@link SOLVED_THRESHOLD} or `maxGenerations` is exhausted,
+ * whichever comes first — the **hard generation cap** is the second
+ * guarantee.
  */
 export function evolveSnakeController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -469,30 +569,38 @@ export function evolveSnakeController(
   const maxSteps = options.maxSteps ?? MAX_STEPS;
   const evalSeeds = options.evalSeeds ?? DEFAULT_EVAL_SEEDS;
 
-  let population: Array<{
-    json: LegacyCreatureJSON;
-    fitness: number;
-    score: number;
-    eaten: number;
-    steps: number;
-  }> = [];
-  for (let i = 0; i < options.populationSize; i++) {
-    const json = randomCreatureJSON(random);
-    const creature = Creature.fromJSON(asCreatureExport(json));
+  // Counter for deterministic hidden-neuron UUIDs so the export stream
+  // is reproducible across runs with the same seed.
+  const hiddenCounter = { value: 0 };
+  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
+
+  // Initial population: uniform-random NEAT genomes from the library.
+  // No hand-crafted topology — `new Creature(input, output)` decides
+  // the initial structure, with random weights and a random output
+  // bias.
+  const initialExports = buildRandomPopulation(options.seed, options.populationSize);
+  let population: ScoredMember[] = initialExports.map((json) => {
+    const creature = Creature.fromJSON(json);
     const r = evaluateController(creature, evalSeeds, maxSteps);
-    population.push({
+    const counts = topologyCounts(json);
+    return {
       json,
       fitness: r.fitness,
       score: r.score,
       eaten: r.eaten,
       steps: r.steps,
-    });
-  }
+      maxEaten: r.maxEaten,
+      neurons: counts.neurons,
+      synapses: counts.synapses,
+    };
+  });
 
   let bestJSON = population[0].json;
   let bestFitness = -Infinity;
   let bestScore = -Infinity;
   let bestEatenAvg = 0;
+  let bestMaxEaten = 0;
+  let solvedAt = -1;
 
   for (let generation = 0; generation < options.maxGenerations; generation++) {
     population.sort((a, b) => b.fitness - a.fitness);
@@ -502,6 +610,7 @@ export function evolveSnakeController(
       bestJSON = generationBest.json;
       bestScore = generationBest.score;
       bestEatenAvg = generationBest.eaten;
+      bestMaxEaten = generationBest.maxEaten;
     }
 
     const meanFitness = population.reduce((acc, p) => acc + p.fitness, 0) /
@@ -512,8 +621,8 @@ export function evolveSnakeController(
       meanFitness,
       bestEaten: generationBest.eaten,
       bestScore: generationBest.score,
-      neurons: generationBest.json.neurons.length,
-      synapses: generationBest.json.synapses.length,
+      neurons: generationBest.neurons,
+      synapses: generationBest.synapses,
     });
 
     if (options.snapshotConfig) {
@@ -523,36 +632,96 @@ export function evolveSnakeController(
       }
     }
 
+    // Two-condition early stop: the running champion must reach the
+    // best-seed eaten threshold AND demonstrate it is not a one-trick
+    // pony — its mean eaten across the seed batch must be above
+    // {@link SOLVED_AVG_FLOOR}. Without the floor the search would
+    // halt the first time a fragile elite gets lucky on a single
+    // seed, leaving the user with a champion that fails most spawns.
+    if (bestMaxEaten >= SOLVED_THRESHOLD && bestEatenAvg >= SOLVED_AVG_FLOOR) {
+      if (solvedAt < 0) solvedAt = generation;
+      // When capturing evolution snapshots, keep running until the
+      // next not-yet-fired checkpoint within maxGenerations is
+      // captured — otherwise the progression strip would be a single
+      // panel.
+      if (options.snapshotConfig) {
+        const nextCheckpoint = options.snapshotConfig.checkpoints
+          .filter((c) => c > generation + 1 && c <= options.maxGenerations)
+          .sort((a, b) => a - b)[0];
+        if (nextCheckpoint === undefined) break;
+      } else {
+        break;
+      }
+    }
+
     const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
     const parents = population.slice(0, parentCount);
 
-    const next: typeof population = [];
+    // Diversity injection: a small fraction of every generation is
+    // freshly-sampled uniform-random NEAT genomes. This keeps a steady
+    // supply of structural and weight diversity in the population so
+    // the search cannot collapse onto the elite's local optimum
+    // forever — without this the elite's "eat one or two food then
+    // die" lineage dominates and escape mutations are rare.
+    const randomCount = Math.max(0, Math.floor(options.populationSize * RANDOM_INJECTION_FRACTION));
+
+    const next: ScoredMember[] = [];
     next.push(parents[0]); // elite
+    // Build fresh uniform-random NEAT members and score them.
+    if (randomCount > 0) {
+      const fresh = createSeededPopulation({
+        inputCount: INPUT_COUNT,
+        outputCount: OUTPUT_COUNT,
+        populationSize: randomCount,
+        seeds: [],
+      });
+      for (const json of fresh) {
+        const creature = Creature.fromJSON(json);
+        const r = evaluateController(creature, evalSeeds, maxSteps);
+        const counts = topologyCounts(json);
+        next.push({
+          json,
+          fitness: r.fitness,
+          score: r.score,
+          eaten: r.eaten,
+          steps: r.steps,
+          maxEaten: r.maxEaten,
+          neurons: counts.neurons,
+          synapses: counts.synapses,
+        });
+      }
+    }
     while (next.length < options.populationSize) {
       const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureJSON(
+      const childJSON = mutateCreatureExport(
         parent.json,
         random,
         options.mutationRate,
         options.mutationStrength,
+        mutationOpts,
       );
-      const childCreature = Creature.fromJSON(asCreatureExport(childJSON));
+      const childCreature = Creature.fromJSON(childJSON);
       const r = evaluateController(childCreature, evalSeeds, maxSteps);
+      const counts = topologyCounts(childJSON);
       next.push({
         json: childJSON,
         fitness: r.fitness,
         score: r.score,
         eaten: r.eaten,
         steps: r.steps,
+        maxEaten: r.maxEaten,
+        neurons: counts.neurons,
+        synapses: counts.synapses,
       });
     }
     population = next;
   }
 
-  const champion = Creature.fromJSON(asCreatureExport(bestJSON));
-  // Pick the seed on which the champion did best — the runner uses this
-  // for the SVG demo so the visualisation showcases the controller's
-  // strongest run rather than a worst-case spawn from the eval set.
+  const champion = Creature.fromJSON(bestJSON);
+  // Pick the seed on which the champion did best — the runner uses
+  // this for the SVG demo so the visualisation showcases the
+  // controller's strongest run rather than a worst-case spawn from the
+  // eval set.
   const pick = pickBestReplaySeed(champion, evalSeeds, maxSteps);
   const replay = scoreController(champion, pick.seed, maxSteps);
   return {
@@ -562,7 +731,8 @@ export function evolveSnakeController(
     championEaten: replay.eaten,
     championSteps: replay.steps,
     championReplaySeed: pick.seed,
-    generations: options.maxGenerations,
+    generations: solvedAt >= 0 ? solvedAt + 1 : options.maxGenerations,
+    solved: replay.eaten >= SOLVED_THRESHOLD && bestEatenAvg >= SOLVED_AVG_FLOOR,
   };
 }
 
@@ -577,7 +747,7 @@ if (import.meta.main) {
 
   const { creaturesDir } = setupWorkingDirs(".synthetic-snake");
 
-  console.log("🧬 Evolving controller...");
+  console.log("🧬 Evolving controller from uniform-random NEAT noise...");
   ensureDirSync(SNAPSHOTS_DIR);
   for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
@@ -594,9 +764,13 @@ if (import.meta.main) {
       { generation, bestFitness, meanFitness, bestEaten, bestScore, neurons, synapses },
     ) => {
       evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
-      if (generation % 25 === 0 || generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1) {
+      if (
+        generation % 25 === 0 ||
+        generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1 ||
+        bestEaten >= SOLVED_THRESHOLD
+      ) {
         console.log(
-          `   Gen ${generation.toString().padStart(3)}  ` +
+          `   Gen ${generation.toString().padStart(4)}  ` +
             `fitness=${bestFitness.toFixed(1).padStart(8)}  ` +
             `score=${bestScore.toFixed(1).padStart(7)}  ` +
             `mean=${meanFitness.toFixed(1).padStart(7)}  ` +
@@ -607,11 +781,12 @@ if (import.meta.main) {
     },
   });
 
-  const verdictIcon = result.championEaten >= 3 ? "✅" : "⚠️";
+  const verdictIcon = result.solved ? "✅" : "⚠️";
   console.log(
     `\n${verdictIcon} Champion ate ${result.championEaten} food on the replay episode ` +
       `(avg=${result.championEatenAvg.toFixed(2)} across ${DEFAULT_EVAL_SEEDS.length} seeds, ` +
-      `score=${result.bestScore.toFixed(2)}, generations=${result.generations}).`,
+      `score=${result.bestScore.toFixed(2)}, generations=${result.generations}, ` +
+      `threshold=${SOLVED_THRESHOLD}).`,
   );
 
   // Save the champion creature.
