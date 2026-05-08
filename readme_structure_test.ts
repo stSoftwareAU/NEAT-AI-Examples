@@ -16,6 +16,7 @@ const EXAMPLE_DIRS = [
   "crispr_injection",
   "crossover",
   "discovery",
+  "evolution_showcase",
   "intelligent_design",
   "lunar_lander",
   "maze_navigation",
@@ -41,6 +42,7 @@ const SCREENSHOT_PATHS = [
   "docs/screenshots/mcmc_acceptance.svg",
   "docs/screenshots/crispr_injection.svg",
   "docs/screenshots/memetic_evolution.svg",
+  "docs/screenshots/evolution_showcase_evolution.svg",
 ] as const;
 
 function loadReadme(): string {
@@ -120,6 +122,7 @@ Deno.test("README.md introduces every example by name", () => {
     "MCMC Acceptance",
     "CRISPR",
     "Memetic Evolution",
+    "Evolution Showcase",
   ];
   for (const name of required) {
     assertStringIncludes(
