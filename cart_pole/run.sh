@@ -37,3 +37,6 @@ fi
 if [[ -f "docs/screenshots/cart_pole_evolution.svg" ]]; then
   deno fmt docs/screenshots/cart_pole_evolution.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/cart_pole/evolution.svg" ]]; then
+  deno fmt docs/screenshots/cart_pole/evolution.svg > /dev/null
+fi
