@@ -118,8 +118,8 @@ Artefacts:
 - `docs/screenshots/stock_market.svg` — animated chart of the test window
 - `docs/screenshots/stock_market_evolution.svg` — multi-panel evolution-progression strip rendered
   from the captured snapshots
-- `docs/screenshots/stock_market_evolution_chart.svg` — dual-axis evolution chart plotting best
-  balanced accuracy on the left and champion neuron / synapse counts on the right
+- `docs/screenshots/stock_market/evolution.svg` — dual-axis evolution chart plotting best balanced
+  accuracy on the left and champion neuron / synapse counts on the right
 
 ## 🖼️ Reading the Chart
 
@@ -138,7 +138,7 @@ The dashed purple play-head sweeps left-to-right, letting viewers walk the test 
 
 ![Stock-Market evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and balanced validation accuracy, linked by a score-progression polyline](../docs/screenshots/stock_market_evolution.svg)
 
-![Stock-Market evolution chart — best balanced accuracy on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/stock_market_evolution_chart.svg)
+![Stock-Market evolution chart — best balanced accuracy on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/stock_market/evolution.svg)
 
 The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
 generations `[1, 10, 100, 500, 1000]` (those that fall inside the configured `maxGenerations`). The
