@@ -27,6 +27,7 @@ const EXAMPLE_DIRS = [
   "snake_game",
   "stock_market",
   "suggest_improvements",
+  "synthetic_synapse",
   "xor_classification",
 ] as const;
 
@@ -122,6 +123,7 @@ Deno.test("README.md introduces every example by name", () => {
     "MCMC Acceptance",
     "CRISPR",
     "Memetic Evolution",
+    "Synthetic Synapse",
     "Evolution Showcase",
   ];
   for (const name of required) {

@@ -29,6 +29,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🔢 MNIST](mnist_classification/README.md)                            | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions.     | `./mnist_classification/run.sh` |
 | [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)                       | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                    | `./mcmc_acceptance/run.sh`      |
 | [🧠 Memetic Evolution](memetic_evolution/README.md)                   | Compare evolutions with and without seeding from an archive of the fittest creatures' weights.                | `./memetic_evolution/run.sh`    |
+| [🧬 Synthetic Synapse](synthetic_synapse/README.md)                   | Densify an evolved sparse creature with zero-weight synthetic synapses, train, then prune the unused edges.   | `./synthetic_synapse/run.sh`    |
 | [💡 Suggest Improvements](suggest_improvements/README.md)             | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.               | `./suggest_improvements/run.sh` |
 | [🌱 Evolution Showcase](evolution_showcase/README.md) ⏳ long-running | Flagship long-form run: evolve for 10000 generations and render gen 1 / 10 / 100 / 1000 / 10000 side-by-side. | `./evolution_showcase/run.sh`   |
 
