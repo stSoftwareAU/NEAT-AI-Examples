@@ -16,7 +16,7 @@ invent at least one hidden neuron during evolution (issues #131, #148).
 
 ![XOR decision boundary](../docs/screenshots/xor_decision_boundary.svg)
 
-![XOR evolution chart — best-fitness score curve on the left axis, neuron and synapse counts on the right axis, with a final-generation annotation showing the champion's score and topology](../docs/screenshots/xor_classification/evolution.svg)
+![XOR evolution chart — best fitness rises as NEAT discovers hidden neurons; the right-axis neuron and synapse counts climb in step with the score, and a final-generation annotation shows the champion's score and topology](../docs/screenshots/xor_classification/evolution.svg)
 
 ## 🔧 How It Works
 
@@ -24,7 +24,7 @@ invent at least one hidden neuron during evolution (issues #131, #148).
 flowchart LR
     DATA["📊 XOR Samples<br/>4 truth-table rows<br/>(written as Float32 binary)"]
     SEED["🎲 Uniform-Random NEAT<br/>new Creature(2, 1)<br/>random weights and bias<br/>(no hand-crafted topology)"]
-    EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE, ADD_CONN, MOD_WEIGHT, …"]
+    EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE (add-neuron),<br/>ADD_CONN (add-synapse),<br/>MOD_WEIGHT, …"]
     SNAP["📸 Snapshots at<br/>[1, 10, 100, 1000]"]
     SOLVED{"MSE ≤ errorThreshold<br/>AND all 4 rows correct?"}
     CAP{"Hit maxGenerations?"}
@@ -98,7 +98,7 @@ Artefacts:
 
 ## Evolution Progress
 
-![XOR evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/xor_classification_evolution.svg)
+![XOR evolution-progression strip — distinct panels per checkpoint generation showing the running champion's topology and score growing from a flat 2 → 1 seed to a multi-neuron solver, linked by a score-progression polyline](../docs/screenshots/xor_classification_evolution.svg)
 
 The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
 generations `[1, 10, 100, 1000, 10000]` (those that fall inside the configured `maxGenerations`).
@@ -108,16 +108,25 @@ neurons during evolution, the resulting strip is a literal picture of NEAT topol
 first panel shows a flat 2 → 1 network at noise-level fitness, the middle panels show the network
 growing structure as add-neuron mutations land, and the final panel shows the champion that solves
 XOR. Each panel displays the champion's topology, the generation label, and the score (`1 - MSE`) at
-that checkpoint.
+that checkpoint — the per-panel neuron and synapse counts visibly differ across the strip, which
+**is** the evolution worth watching. The companion per-generation chart above plots the same neuron
+and synapse counts as a curve on the right axis so structural growth is visible at a glance.
 
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
 
-- **At least one hidden neuron is required.** A purely linear `w·s + b` cannot represent XOR — the
-  classes are not linearly separable. The random direct-only gen-1 seed plateaus near MSE ≈ 0.25 (no
-  combination of input weights and output bias can do better); NEAT must invent at least one hidden
-  neuron via `ADD_NODE` to break out of that plateau.
+- **The seed has no hidden neurons — NEAT must invent them.** `new Creature(2, 1)` produces a
+  uniform-random network with two inputs wired directly to one output and zero hidden neurons. XOR
+  is not linearly separable, so this seed _cannot_ solve the task — any solved champion is therefore
+  proof that structural mutation (`ADD_NODE`, `ADD_CONN`) actually fired during the run. The random
+  direct-only gen-1 seed plateaus near MSE ≈ 0.25; NEAT must invent at least one hidden neuron to
+  break out of that plateau.
+- **Many generations may be required, and that's intentional.** Discovering a working topology from
+  a blank seed takes time — that's the point of the demo. The neuron and synapse counts on the
+  evolution chart and the topology panels in the progression strip rise as NEAT lands its structural
+  mutations, and the captured snapshots at `[1, 10, 100, 1000, 10000]` show the network growing from
+  a flat 2 → 1 wiring into a multi-neuron solver.
 - **Solved-vs-cap.** The runner stops as soon as MSE drops below `errorThreshold` _and_ all four
   rows are classified correctly. If neither happens within `maxGenerations`, the run is reported as
   "did not solve" — but the captured snapshots and SVGs are still written so a debugger can see what
@@ -131,3 +140,11 @@ A few things that are not obvious from the code alone:
 - **Decision boundary, not just labels.** The SVG shades the entire input square `[0, 1]²` by the
   network's continuous output, so you can see the boundary curve. Cleanly-separated XOR shows up as
   four diagonal "quadrants" of alternating colour.
+
+---
+
+> **Why this example was restructured.** Issue
+> [#130](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/130) noticed that an earlier
+> version of this demo started from a hand-fixed 2-2-1 topology and only mutated weights, so the
+> neuron and synapse counts never changed. This page (and the screenshots) reflects the rewrite that
+> replaced the hand-rolled loop with real NEAT structural mutation from a minimal random seed.
