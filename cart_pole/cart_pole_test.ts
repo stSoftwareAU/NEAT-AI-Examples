@@ -155,26 +155,71 @@ Deno.test(
 Deno.test(
   "evolveCartPoleController generation-1 population is noise on average",
   () => {
-    // Gen 1 must be noise. Cart-pole is famously solvable by some lucky
-    // linear policies, so the *best* of a 30-strong uniform-random NEAT
-    // population sometimes already hits the cap. The honest noise check
-    // is therefore the **population mean**, which must sit far below
-    // the SOLVED_THRESHOLD — confirming the population as a whole has
-    // not been warm-started toward a competent controller.
+    // Gen 1 must be noise. Issue #160 enabled a wobble disturbance in
+    // the default options so cart-pole is genuinely non-trivial — a
+    // uniform-random NEAT population should sit *well* below the
+    // threshold so evolution has headroom to climb. We assert the
+    // population mean is below `SOLVED_THRESHOLD / 4` — a much
+    // tighter bound than the original `/2`, reflecting the harder
+    // default. A future regression that re-trivialises the task (e.g.
+    // someone zeroing `disturbanceMagnitude`) will flunk this bound.
     let firstGenMean = -Infinity;
+    let firstGenBest = -Infinity;
     evolveCartPoleController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 1,
       onGeneration: (info) => {
         if (info.generation === 0 && firstGenMean === -Infinity) {
           firstGenMean = info.meanScore;
+          firstGenBest = info.bestScore;
         }
       },
     });
     assert(
-      firstGenMean < SOLVED_THRESHOLD / 2,
-      `expected gen-1 population mean to be well below half the threshold ` +
-        `(${SOLVED_THRESHOLD / 2}), got ${firstGenMean}`,
+      firstGenMean < SOLVED_THRESHOLD / 4,
+      `expected gen-1 population mean to be well below quarter the threshold ` +
+        `(${SOLVED_THRESHOLD / 4}), got ${firstGenMean}`,
+    );
+    // Under the wobble regime no random NEAT individual should reach
+    // the threshold either — a lucky linear policy that scored 500
+    // without wobble cannot survive 10 different wobble patterns.
+    assert(
+      firstGenBest < SOLVED_THRESHOLD,
+      `expected gen-1 best to sit below SOLVED_THRESHOLD=${SOLVED_THRESHOLD} ` +
+        `under the wobble regime, got ${firstGenBest}`,
+    );
+  },
+);
+
+Deno.test(
+  "evolveCartPoleController shows real generation-1-vs-gen-N improvement",
+  () => {
+    // Regression cover for issue #160: with the default wobble, the
+    // gen-N (N=20) mean must be meaningfully higher than the gen-1
+    // mean. A future change that re-trivialises the task — e.g.
+    // someone zeroing `disturbanceMagnitude` so gen-1 is already at
+    // the cap — leaves no headroom for evolution and would produce
+    // gen-1 ≈ gen-N. This test fails fast in that case.
+    let firstGenMean = -Infinity;
+    let lastGenMean = -Infinity;
+    const targetGen = 20;
+    evolveCartPoleController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: targetGen,
+      onGeneration: (info) => {
+        if (info.generation === 0 && firstGenMean === -Infinity) {
+          firstGenMean = info.meanScore;
+        }
+        lastGenMean = info.meanScore;
+      },
+    });
+    assertGreater(
+      lastGenMean,
+      firstGenMean + 30,
+      `expected gen-${targetGen} mean to improve by at least 30 steps over ` +
+        `gen-1; got firstGenMean=${firstGenMean.toFixed(1)} → ` +
+        `lastGenMean=${lastGenMean.toFixed(1)}. If the improvement is small ` +
+        `the task may have been re-trivialised — check disturbanceMagnitude.`,
     );
   },
 );
@@ -242,19 +287,34 @@ Deno.test(
   "evolveCartPoleController champion generalises to unseen perturbed initial states",
   () => {
     // Re-evaluating the champion against a fresh, independently seeded
-    // batch of perturbed starts must continue to score above the
-    // threshold. This is the proof that the controller learnt to
-    // balance rather than overfitting to the training launches.
+    // batch of perturbed starts AND a fresh independently seeded
+    // wobble pattern must still score well — the controller has to
+    // have learnt to balance rather than overfitting to the training
+    // launches or the training wobble pattern (issue #160).
+    //
+    // The threshold here is 0.8 × `SOLVED_THRESHOLD` rather than the
+    // full threshold: the wobble in the default options is strong
+    // enough that even a competent controller will occasionally lose
+    // a pole on a never-before-seen wobble pattern. Asking for 384/500
+    // average steps proves robust generalisation while leaving a
+    // realistic margin for fresh wobble noise.
     const result = evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
     const independentScore = scoreController(result.champion, MAX_STEPS, {
       trials: 10,
       trialSeed: 987654,
       initialPerturbation: 0.05,
+      disturbanceMagnitude: DEFAULT_EVOLVE_OPTIONS.disturbanceMagnitude,
+      disturbanceProbability: DEFAULT_EVOLVE_OPTIONS.disturbanceProbability,
+      // Different from the training disturbance seed so the wobble
+      // pattern is genuinely unseen.
+      disturbanceSeed: 246813,
     });
+    const generalisationThreshold = SOLVED_THRESHOLD * 0.8;
     assertGreaterOrEqual(
       independentScore,
-      SOLVED_THRESHOLD,
-      `champion must generalise to unseen perturbed starts; got ${independentScore}`,
+      generalisationThreshold,
+      `champion must generalise to unseen perturbed starts and wobble ` +
+        `patterns at ≥${generalisationThreshold}; got ${independentScore}`,
     );
   },
 );
@@ -309,6 +369,44 @@ Deno.test("renderRunSVG repeats the animation indefinitely", () => {
     "expected SMIL repeatCount='indefinite' so the animation loops",
   );
 });
+
+Deno.test(
+  "evolveCartPoleController gen-1 and gen-final snapshots differ in score or topology",
+  () => {
+    // Regression cover for issue #160 — the historical bug captured in
+    // issue #158 was that gens 1 / 10 / 100 produced byte-identical
+    // snapshot files at score 500 because cart-pole was already solved
+    // at gen 1. With the wobble disturbance enabled, the gen-1 snapshot
+    // must differ from the gen-final snapshot in either score or
+    // topology so the captured progression actually shows evolution.
+    const tmp = Deno.makeTempDirSync({ prefix: "cart_pole_snap_diff_" });
+    try {
+      const checkpoints = [1, 30];
+      evolveCartPoleController({
+        ...DEFAULT_EVOLVE_OPTIONS,
+        maxGenerations: 30,
+        snapshotConfig: { checkpoints, outputDir: tmp },
+      });
+      const snapshots = loadSnapshots(tmp);
+      assertEquals(snapshots.length, checkpoints.length);
+      const first = snapshots[0];
+      const last = snapshots[snapshots.length - 1];
+      const firstSerialised = JSON.stringify(first.creature);
+      const lastSerialised = JSON.stringify(last.creature);
+      const differ = first.score !== last.score ||
+        firstSerialised !== lastSerialised;
+      assert(
+        differ,
+        `expected gen-${first.generation} and gen-${last.generation} snapshots ` +
+          `to differ in score or topology, but they are byte-identical at score ` +
+          `${first.score}. Cart-pole has been re-trivialised — check that the ` +
+          `default wobble disturbance is enabled.`,
+      );
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
 
 Deno.test(
   "evolveCartPoleController writes evolution snapshots and the strip SVG embeds one panel per snapshot",

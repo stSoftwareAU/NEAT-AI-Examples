@@ -4,12 +4,25 @@
 > uniform-random `Creature(4, 1)` constructor, with **no hand-crafted topology and no tuned weight
 > init**. Structural mutation grows hidden neurons during evolution; the captured milestones show
 > the controller climbing from population-mean noise to a network that balances every perturbed
-> trial.
+> trial under wobble.
 
 `cart_pole.ts` evolves a NEAT-AI controller that balances an inverted pole on a moving cart — the
 classic neuroevolution control benchmark. Both the simulator and the evolutionary loop run entirely
 in pure TypeScript, with the only external dependency being NEAT-AI's `Creature.activate` to compute
 each step's action.
+
+> 🌬️ **Why a wobble disturbance?** Textbook cart-pole is famously trivial for random NEAT — issue
+> [#158] reported there was no visible evolution because gen 1 / 10 / 100 snapshots were
+> byte-identical at score 500 (the elite from gen 1 had already saturated the cap). Issue [#159]
+> added an opt-in disturbance to the physics simulator and issue [#160] turned it on by default so
+> the task is genuinely non-trivial: a deterministic per-step ±18 N kick fires with 30% probability,
+> knocks the pole around, and forces evolution to actually do work to reach the threshold. The
+> wobble seed is held constant per evaluation so reruns with the same seed produce identical
+> artefacts.
+
+[#158]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/158
+[#159]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/159
+[#160]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/160
 
 ![Champion run](../docs/screenshots/cart_pole.svg)
 
@@ -18,6 +31,7 @@ each step's action.
 ```mermaid
 flowchart LR
     PHYS["🧮 Pure-TS Cart-Pole Physics<br/>(physics.ts)"]
+    WOBBLE["🌬️ Wobble Disturbance<br/>±18 N at 30% per step<br/>seeded PRNG"]
     INIT["🎲 Uniform-Random NEAT<br/>new Creature(4, 1)"]
     SCORE["📏 Mean Across 10 Perturbed Trials<br/>(capped at 500 steps each)"]
     SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
@@ -30,6 +44,7 @@ flowchart LR
 
     INIT --> SCORE
     PHYS --> SCORE
+    WOBBLE --> PHYS
     SCORE --> SELECT
     SELECT --> MUTATE
     MUTATE --> SCORE
@@ -42,6 +57,7 @@ flowchart LR
     RUN --> SVG
 
     style PHYS fill:#4a90d9,stroke:#333,color:#fff
+    style WOBBLE fill:#9b59b6,stroke:#333,color:#fff
     style INIT fill:#f5a623,stroke:#333,color:#fff
     style SCORE fill:#f39c12,stroke:#333,color:#fff
     style SELECT fill:#e67e22,stroke:#333,color:#fff
@@ -65,8 +81,9 @@ The score is the **mean** number of timesteps the pole stays within ±12° and t
 ±2.4 m across **ten perturbed-start trials**, capped at 500 steps per trial. The task is "solved"
 when the champion's mean reaches **480** (the `SOLVED_THRESHOLD`) — i.e. the controller balances on
 average for at least 96% of the time across the ten different starting states. Evolution stops as
-soon as the threshold is met or the **hard generation cap** of 400 is reached, whichever comes
-first.
+soon as the threshold is met or the **hard generation cap** of 1200 is reached, whichever comes
+first. (The cap was raised from 400 to 1200 in issue #160 so the canonical 1000-generation
+checkpoint can fire under the harder wobble regime.)
 
 ## 🚀 Running the Example
 
@@ -110,6 +127,12 @@ nearly the full 500 steps from every one of the ten launches. This stops a "luck
 from claiming victory on the perfectly symmetric `(0, 0, 0, 0)` start (issue #143) — the chart shows
 real generation-by-generation improvement as the search grinds out a controller that generalises.
 
+Each of the ten trials also runs under an **independent wobble pattern** — a deterministic per-trial
+PRNG seed derived from the run-wide `disturbanceSeed` ensures every trial faces a different stream
+of ±18 N kicks. A controller that survived one lucky wobble pattern still has to handle nine other
+patterns to reach `SOLVED_THRESHOLD`, so cart-pole is no longer trivially solved by random NEAT
+(issue #160).
+
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
@@ -123,11 +146,17 @@ A few things that are not obvious from the code alone:
   ranging `[-1, 1]`. The natural action threshold is therefore `>= 0` (rather than the legacy
   `>= 0.5` that suited the previous LOGISTIC seed). The controller cannot "do nothing"; it must
   commit to push-left or push-right every step.
-- **Cart-pole is sometimes solvable by random NEAT.** With a uniform-random linear policy, a small
-  fraction of random initial creatures already balance the cart-pole — the problem is famously easy.
-  The honest "noise" check is therefore the **population mean**, which sits well below the threshold
-  even when one or two lucky individuals already hit the cap. The unit tests assert the mean — see
-  `cart_pole_test.ts::generation-1 population is noise on average`.
+- **Wobble keeps random NEAT honest.** Without the wobble disturbance, cart-pole is so easy that
+  even a uniform-random linear policy frequently solved it on gen 1 — issue #158 caught this when it
+  noticed that the captured `snapshot-gen-1.json`, `snapshot-gen-10.json`, and
+  `snapshot-gen-100.json` files were byte-identical at score 500. The default wobble (issue #160)
+  applies a ±18 N kick to the cart at 30% per step, ten different patterns across the ten scoring
+  trials. Random NEAT cannot survive ten independent wobble streams, so gen-1 mean and best both sit
+  well below the threshold and evolution genuinely has work to do.
+- **Wobble is deterministic per evaluation.** The disturbance PRNG is reseeded on every
+  `scoreController` call from a fixed `disturbanceSeed`, with a deterministic golden-ratio offset
+  per trial. Two reruns of the example with the same seed produce byte-identical artefacts — the
+  champion JSON, the snapshots, the SVGs.
 - **Semi-implicit Euler matches OpenAI Gym.** `physics.step` updates velocity before position. This
   is the same scheme as `CartPole-v1`, so behaviour matches the textbook benchmark to floating-point
   precision.
