@@ -138,10 +138,17 @@ export function renderRunSVG(
   if (animSamples[animSamples.length - 1] !== trace[trace.length - 1]) {
     animSamples.push(trace[trace.length - 1]);
   }
-  // Translate keyframes: "x,y;x,y;..." for the outer group.
+  // Translate keyframes: "x,y;x,y;..." for the outer group. Issue #181:
+  // the projected (state.x, state.y) marks the lander's contact point
+  // (legs); the body geometry is centred at the local origin and extends
+  // ±LANDER_HALF_LENGTH, so we shift the translate up by
+  // LANDER_HALF_LENGTH to keep the legs (local +bodyHalf) on the ground
+  // at touchdown rather than punching through it.
   const translateValues = animSamples
     .map((f) =>
-      `${projectX(f.state.x, terrain).toFixed(2)},${projectY(f.state.y, ceiling).toFixed(2)}`
+      `${projectX(f.state.x, terrain).toFixed(2)},${
+        (projectY(f.state.y, ceiling) - LANDER_HALF_LENGTH).toFixed(2)
+      }`
     )
     .join(";");
   // Rotation keyframes (degrees). Physics convention: positive angle =
@@ -174,7 +181,9 @@ export function renderRunSVG(
   const animDur = `${ANIMATION_DURATION_SECONDS}s`;
   const firstSample = animSamples[0];
   const startCx = projectX(firstSample.state.x, terrain);
-  const startCy = projectY(firstSample.state.y, ceiling);
+  // Issue #181: shift up by LANDER_HALF_LENGTH so the legs sit on the
+  // projected ground line — see the matching offset in `translateValues`.
+  const startCy = projectY(firstSample.state.y, ceiling) - LANDER_HALF_LENGTH;
   const startRotateDeg = (-firstSample.state.angle * 180 / Math.PI).toFixed(2);
 
   // Pad-target marker geometry: a downward arrow with "TARGET" label
@@ -321,11 +330,17 @@ function renderPose(
   const upX = -sin;
   const upY = -cos;
 
-  // Top of the lander (canopy) and bottom of the lander (legs).
-  const topX = cx + upX * bodyHalf;
-  const topY = cy + upY * bodyHalf;
-  const botX = cx - upX * bodyHalf;
-  const botY = cy - upY * bodyHalf;
+  // Issue #181: treat (cx, cy) as the lander's contact point (legs).
+  // The body extends 2 × bodyHalf along the local-up direction so the
+  // lander rests ON the ground at touchdown (state.y = groundY) rather
+  // than being half-buried in the terrain silhouette.
+  const botX = cx;
+  const botY = cy;
+  const topX = cx + upX * 2 * bodyHalf;
+  const topY = cy + upY * 2 * bodyHalf;
+  // Body centre — used for the hull marker.
+  const bodyCx = cx + upX * bodyHalf;
+  const bodyCy = cy + upY * bodyHalf;
 
   // Side perpendiculars used for legs and RCS flames.
   const sideX = upY;
@@ -377,7 +392,9 @@ function renderPose(
     `x2="${legL_X.toFixed(2)}" y2="${legL_Y.toFixed(2)}" stroke="#aaaaaa" stroke-width="2"/>`,
     `    <line class="leg" x1="${botX.toFixed(2)}" y1="${botY.toFixed(2)}" ` +
     `x2="${legR_X.toFixed(2)}" y2="${legR_Y.toFixed(2)}" stroke="#aaaaaa" stroke-width="2"/>`,
-    `    <circle class="hull" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="3" fill="#4a90d9"/>`,
+    `    <circle class="hull" cx="${bodyCx.toFixed(2)}" cy="${
+      bodyCy.toFixed(2)
+    }" r="3" fill="#4a90d9"/>`,
     ...flames,
     `    <text x="${(cx + 8).toFixed(2)}" y="${(cy - 8).toFixed(2)}" font-family="monospace" ` +
     `font-size="10" fill="#cccccc">step ${traceIdx}</text>`,
