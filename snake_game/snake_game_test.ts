@@ -28,6 +28,7 @@ import {
   DEFAULT_EVOLVE_OPTIONS,
   evaluateController,
   evolveSnakeController,
+  type GenerationInfo,
   genesFromCreatureJSON,
   HIDDEN_COUNT,
   mutateCreatureJSON,
@@ -188,6 +189,32 @@ Deno.test("DEFAULT_EVAL_SEEDS contains at least three distinct seeds", () => {
   const distinct = new Set(DEFAULT_EVAL_SEEDS);
   assertGreaterOrEqual(distinct.size, 3);
 });
+
+Deno.test(
+  "evolveSnakeController emits neurons and synapses on each generation event",
+  () => {
+    // Issue #110: the per-generation event must include neuron and
+    // synapse counts so the runner can plot them on the evolution
+    // chart. The layered genome has INPUT_COUNT + HIDDEN_COUNT +
+    // OUTPUT_COUNT neurons and TOTAL_SYNAPSES synapses, both constant
+    // across the run since this example does not yet add structural
+    // mutation.
+    const events: GenerationInfo[] = [];
+    evolveSnakeController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 3,
+      populationSize: 6,
+      onGeneration: (info) => events.push(info),
+    });
+    assertGreaterOrEqual(events.length, 1);
+    for (const info of events) {
+      assertEquals(typeof info.neurons, "number");
+      assertEquals(typeof info.synapses, "number");
+      assertEquals(info.neurons, INPUT_COUNT + HIDDEN_COUNT + OUTPUT_COUNT);
+      assertEquals(info.synapses, TOTAL_SYNAPSES);
+    }
+  },
+);
 
 Deno.test("evolveSnakeController emits checkpoint snapshot files when configured", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "snake_snap_" });

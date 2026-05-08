@@ -33,7 +33,8 @@ deno run \
 # `deno fmt` prefers attributes split across multiple lines.
 for svg in \
   "docs/screenshots/snake_game.svg" \
-  "docs/screenshots/snake_game_evolution.svg"; do
+  "docs/screenshots/snake_game_evolution.svg" \
+  "docs/screenshots/snake_game/evolution.svg"; do
   if [[ -f "${svg}" ]]; then
     deno fmt "${svg}" > /dev/null
   fi
