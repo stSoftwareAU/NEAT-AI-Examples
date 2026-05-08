@@ -43,6 +43,7 @@ import {
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
 import {
   type CartPoleState,
   encodeState,
@@ -320,30 +321,21 @@ export function mutateCreatureExport(
 }
 
 /**
- * Run a single cart-pole episode and return the number of steps the
- * pole survived (capped at `maxSteps`). The episode ends as soon as
- * the failure thresholds are crossed.
+ * Build a cart-pole {@link EpisodeAdapter} for the shared rollout helper.
+ *
+ * The library's default output squash is HARD_TANH (range `[-1, 1]`), so
+ * the natural threshold for "push right" is 0. This stays sensible even
+ * after structural mutation injects a LOGISTIC hidden layer because the
+ * **output** neuron's squash is unchanged.
  */
-function runEpisode(
-  creature: Creature,
-  start: CartPoleState,
-  maxSteps: number,
-): number {
-  let state: CartPoleState = start;
-  for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
-    creature.clearState();
-    const out = creature.activate(encodeState(state));
-    // The library's default output squash is HARD_TANH (range [-1, 1]),
-    // so the natural threshold for "push right" is 0. This stays
-    // sensible even after structural mutation injects a LOGISTIC hidden
-    // layer because the **output** neuron's squash is unchanged.
-    const action = out[0] >= 0 ? 1 : -1;
-    state = step(state, action);
-    if (isFailed(state)) {
-      return stepIdx + 1;
-    }
-  }
-  return maxSteps;
+function cartPoleAdapter(start: CartPoleState): EpisodeAdapter<CartPoleState, 1 | -1> {
+  return {
+    initialState: start,
+    encode: encodeState,
+    decode: (out) => (out[0] >= 0 ? 1 : -1),
+    step: (s, a) => step(s, a),
+    isTerminal: isFailed,
+  };
 }
 
 /**
@@ -368,14 +360,14 @@ export function scoreController(
   const perturbation = options?.initialPerturbation ?? 0;
 
   if (trials <= 1 && perturbation === 0) {
-    return runEpisode(creature, initialState(), maxSteps);
+    return runEpisode(creature, cartPoleAdapter(initialState()), { maxSteps }).steps;
   }
 
   const random = createDeterministicRandom(options?.trialSeed ?? 0);
   let total = 0;
   for (let t = 0; t < trials; t++) {
     const start = perturbation > 0 ? perturbedInitialState(random, perturbation) : initialState();
-    total += runEpisode(creature, start, maxSteps);
+    total += runEpisode(creature, cartPoleAdapter(start), { maxSteps }).steps;
   }
   return total / trials;
 }
@@ -405,18 +397,7 @@ export function replayController(
   creature: Creature,
   maxSteps: number = MAX_STEPS,
 ): CartPoleState[] {
-  const trace: CartPoleState[] = [];
-  let state: CartPoleState = initialState();
-  trace.push(state);
-  for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
-    creature.clearState();
-    const out = creature.activate(encodeState(state));
-    const action = out[0] >= 0 ? 1 : -1;
-    state = step(state, action);
-    trace.push(state);
-    if (isFailed(state)) break;
-  }
-  return trace;
+  return runEpisode(creature, cartPoleAdapter(initialState()), { maxSteps }).trace;
 }
 
 interface ScoredMember {
