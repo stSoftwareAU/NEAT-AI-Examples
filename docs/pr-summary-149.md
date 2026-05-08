@@ -11,8 +11,8 @@ generation-cap stop. Closes #149.
 
 ## Evidence
 
-This is a backend/CLI change with no UI. The runner (`cart_pole/cart_pole.ts`) was executed end-to-end
-to regenerate the committed evidence SVGs:
+This is a backend/CLI change with no UI. The runner (`cart_pole/cart_pole.ts`) was executed
+end-to-end to regenerate the committed evidence SVGs:
 
 - `docs/screenshots/cart_pole.svg` — animated balance run of the champion.
 - `docs/screenshots/cart_pole_evolution.svg` — multi-panel evolution-progression strip.
@@ -47,10 +47,12 @@ Test coverage:
 - `buildRandomPopulation produces uniform-random NEAT genomes` — happy path for the new init.
 - `buildRandomPopulation does not hand-specify hidden topology` — confirms zero hidden neurons in
   gen 1.
-- `mutateCreatureExport with addNeuronRate=1 grows topology` — structural mutation grows the network.
+- `mutateCreatureExport with addNeuronRate=1 grows topology` — structural mutation grows the
+  network.
 - `evolveCartPoleController generation-1 population is noise on average` — gen-1 mean far below
   threshold (~75 ≪ 240).
-- `evolveCartPoleController honours the hard generation cap` — vanishing-mutation run stops at the cap.
+- `evolveCartPoleController honours the hard generation cap` — vanishing-mutation run stops at the
+  cap.
 - `evolveCartPoleController finds a controller above SOLVED_THRESHOLD with the default seed` — the
   chosen threshold is achievable on the deterministic seed.
 - `evolveCartPoleController champion generalises to unseen perturbed initial states` — the champion
