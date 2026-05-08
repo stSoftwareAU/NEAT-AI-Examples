@@ -78,6 +78,7 @@ reinventing equivalent logic in a new example.
 | `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.        |
 | `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache. |
 | `common/evolution_chart.ts`      | Dual-axis SVG renderer for NEAT evolution histories.          |
+| `common/evolution_snapshot.ts`   | Capture creature state at checkpoint generations.             |
 
 ### `common/data_cache.ts`
 
@@ -109,6 +110,26 @@ Behaviour:
 
 The helper relies on Deno's built-in `fetch` and `crypto.subtle` — no extra dependencies are added.
 
+### `common/evolution_snapshot.ts`
+
+`captureSnapshot(config, generation, creature, score, sampleOutputs?)` writes a snapshot file when
+`generation` matches one of `config.checkpoints` (default `[1, 10, 100, 1000, 10000]`).
+`loadSnapshots(outputDir)` reads them back, sorted by generation. Snapshots are byte-deterministic —
+no timestamps, no run-specific paths — so reruns with the same seed produce identical files.
+
+```ts
+import { captureSnapshot, DEFAULT_CHECKPOINTS } from "../common/evolution_snapshot.ts";
+
+const config = {
+  checkpoints: [...DEFAULT_CHECKPOINTS],
+  outputDir: ".synthetic-xor/snapshots",
+};
+
+for (let gen = 1; gen <= 10000; gen++) {
+  captureSnapshot(config, gen, champion.exportJSON(), score, samples);
+}
+```
+
 ## 📂 Project Structure
 
 ```
@@ -123,6 +144,8 @@ common/
   data_cache_test.ts               — Unit tests for the dataset cache
   evolution_chart.ts               — Dual-axis SVG renderer for NEAT evolution histories
   evolution_chart_test.ts          — Unit tests for the evolution chart renderer
+  evolution_snapshot.ts            — Capture creature state at checkpoint generations
+  evolution_snapshot_test.ts       — Unit tests for the evolution snapshot helper
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
