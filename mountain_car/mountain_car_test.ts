@@ -21,6 +21,7 @@ import {
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
   evolveMountainCarController,
+  type GenerationInfo,
   genesFromCreatureJSON,
   INPUT_COUNT,
   MAX_STEPS,
@@ -151,6 +152,31 @@ Deno.test(
     const aJson = JSON.stringify(a.champion.exportJSON());
     const bJson = JSON.stringify(b.champion.exportJSON());
     assertNotEquals(aJson, bJson, "different seeds should explore different genomes");
+  },
+);
+
+Deno.test(
+  "evolveMountainCarController emits neurons and synapses on each generation event",
+  () => {
+    // Issue #109: the per-generation event must include neuron and
+    // synapse counts so the runner can plot them on the evolution
+    // chart. The linear genome has INPUT_COUNT + OUTPUT_COUNT neurons
+    // and INPUT_COUNT * OUTPUT_COUNT synapses, both constant across the
+    // run since this example does not yet add structural mutation.
+    const events: GenerationInfo[] = [];
+    evolveMountainCarController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 3,
+      populationSize: 6,
+      onGeneration: (info) => events.push(info),
+    });
+    assertGreaterOrEqual(events.length, 1);
+    for (const info of events) {
+      assertEquals(typeof info.neurons, "number");
+      assertEquals(typeof info.synapses, "number");
+      assertEquals(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertEquals(info.synapses, INPUT_COUNT * OUTPUT_COUNT);
+    }
   },
 );
 

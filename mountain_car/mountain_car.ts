@@ -23,6 +23,7 @@ import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-a
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
+import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import {
   encodeState,
   initialState,
@@ -81,6 +82,10 @@ export interface GenerationInfo {
   generation: number;
   bestScore: number;
   meanScore: number;
+  /** Neuron count of the champion creature for this generation. */
+  neurons: number;
+  /** Synapse count of the champion creature for this generation. */
+  synapses: number;
 }
 
 /** Result of the evolutionary search. */
@@ -354,6 +359,8 @@ export function evolveMountainCarController(
       generation,
       bestScore: generationBest.score,
       meanScore,
+      neurons: generationBest.json.neurons.length,
+      synapses: generationBest.json.synapses.length,
     });
 
     if (bestSolved) {
@@ -394,6 +401,9 @@ export function evolveMountainCarController(
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/mountain_car.svg";
 
+/** Path to the per-generation evolution-chart SVG the runner emits. */
+export const EVOLUTION_CHART_PATH = "docs/screenshots/mountain_car/evolution.svg";
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -410,14 +420,17 @@ if (import.meta.main) {
   );
 
   console.log("\n🧬 Evolving controller...");
+  const evolutionSamples: EvolutionSample[] = [];
   const result = evolveMountainCarController({
     ...DEFAULT_EVOLVE_OPTIONS,
-    onGeneration: ({ generation, bestScore, meanScore }) => {
+    onGeneration: ({ generation, bestScore, meanScore, neurons, synapses }) => {
+      evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
       if (generation % 5 === 0) {
         console.log(
           `   Gen ${generation.toString().padStart(3)}  best=${
             bestScore.toFixed(1).padStart(8)
-          }  mean=${meanScore.toFixed(1).padStart(8)}`,
+          }  mean=${meanScore.toFixed(1).padStart(8)}  ` +
+            `neurons=${neurons}  synapses=${synapses}`,
         );
       }
     },
@@ -442,6 +455,17 @@ if (import.meta.main) {
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+
+  // Render the per-generation evolution chart (score / neurons / synapses).
+  if (evolutionSamples.length > 0) {
+    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
+      title: "Mountain Car — Evolution",
+      scoreLabel: "best score",
+    });
+    ensureDirSync("docs/screenshots/mountain_car");
+    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
+    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
 
   console.log(
     `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,

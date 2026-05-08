@@ -69,6 +69,12 @@ Artefacts:
 
 - `.synthetic-mountain-car/creatures/champion.json` – the fittest controller from the run
 - `docs/screenshots/mountain_car.svg` – an animated SVG showing the champion's drive up the hill
+- `docs/screenshots/mountain_car/evolution.svg` – dual-axis evolution chart plotting best score and
+  champion neuron / synapse counts against generation
+
+## 📈 Evolution Chart
+
+![Mountain-Car evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/mountain_car/evolution.svg)
 
 ## 🧠 Tacit Knowledge
 
