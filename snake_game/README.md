@@ -16,6 +16,13 @@ and score grow as the controller learns to eat food.
 
 ![Evolution progress](../docs/screenshots/snake_game_evolution.svg)
 
+## 📈 Evolution Chart
+
+The runner also emits a dual-axis chart plotting the per-generation best score (left axis) alongside
+the champion's neuron and synapse counts (right axis) for the full run.
+
+![Snake-game evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/snake_game/evolution.svg)
+
 ## 🔧 How It Works
 
 ```mermaid
@@ -85,6 +92,8 @@ Artefacts:
 - `.synthetic-snake/snapshots/snapshot-gen-N.json` – champion captured at each checkpoint
 - `docs/screenshots/snake_game.svg` – animated SVG of the champion's playthrough
 - `docs/screenshots/snake_game_evolution.svg` – multi-panel evolution-progress strip
+- `docs/screenshots/snake_game/evolution.svg` – dual-axis evolution chart plotting best score and
+  champion neuron / synapse counts against generation
 
 ## 🧠 Tacit Knowledge
 

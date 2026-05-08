@@ -41,6 +41,7 @@ import {
   type SnapshotConfig,
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { newGame, type SnakeState, step } from "./snake.ts";
 import { renderRunSVG } from "./svg.ts";
@@ -134,6 +135,9 @@ export const SNAPSHOTS_DIR = ".synthetic-snake/snapshots";
 /** Path to the multi-panel evolution-progression SVG. */
 export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/snake_game_evolution.svg";
 
+/** Path to the per-generation dual-axis evolution-chart SVG. */
+export const EVOLUTION_CHART_PATH = "docs/screenshots/snake_game/evolution.svg";
+
 /** Configuration options for {@link evolveSnakeController}. */
 export interface EvolveOptions {
   seed: number;
@@ -157,6 +161,10 @@ export interface GenerationInfo {
   meanFitness: number;
   bestEaten: number;
   bestScore: number;
+  /** Neuron count of the champion creature for this generation. */
+  neurons: number;
+  /** Synapse count of the champion creature for this generation. */
+  synapses: number;
 }
 
 /** Result of the evolutionary search. */
@@ -504,6 +512,8 @@ export function evolveSnakeController(
       meanFitness,
       bestEaten: generationBest.eaten,
       bestScore: generationBest.score,
+      neurons: generationBest.json.neurons.length,
+      synapses: generationBest.json.synapses.length,
     });
 
     if (options.snapshotConfig) {
@@ -573,20 +583,25 @@ if (import.meta.main) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
   const evolutionStart = Date.now();
+  const evolutionSamples: EvolutionSample[] = [];
   const result = evolveSnakeController({
     ...DEFAULT_EVOLVE_OPTIONS,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
       outputDir: SNAPSHOTS_DIR,
     },
-    onGeneration: ({ generation, bestFitness, meanFitness, bestEaten, bestScore }) => {
+    onGeneration: (
+      { generation, bestFitness, meanFitness, bestEaten, bestScore, neurons, synapses },
+    ) => {
+      evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
       if (generation % 25 === 0 || generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1) {
         console.log(
           `   Gen ${generation.toString().padStart(3)}  ` +
             `fitness=${bestFitness.toFixed(1).padStart(8)}  ` +
             `score=${bestScore.toFixed(1).padStart(7)}  ` +
             `mean=${meanFitness.toFixed(1).padStart(7)}  ` +
-            `eaten=${bestEaten.toFixed(2)}`,
+            `eaten=${bestEaten.toFixed(2)}  ` +
+            `neurons=${neurons}  synapses=${synapses}`,
         );
       }
     },
@@ -612,6 +627,17 @@ if (import.meta.main) {
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+
+  // Render the per-generation evolution chart (score / neurons / synapses).
+  if (evolutionSamples.length > 0) {
+    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
+      title: "Snake — Evolution",
+      scoreLabel: "best score",
+    });
+    ensureDirSync("docs/screenshots/snake_game");
+    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
+    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
 
   // Render the multi-panel evolution-progression strip from the
   // checkpoint snapshots captured during the run.
