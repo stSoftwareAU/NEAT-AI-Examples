@@ -32,6 +32,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🧠 Memetic Evolution](memetic_evolution/README.md)                   | Compare evolutions with and without seeding from an archive of the fittest creatures' weights.                                                                                                          | `./memetic_evolution/run.sh`    |
 | [🧬 Synthetic Synapse](synthetic_synapse/README.md)                   | Densify an evolved sparse creature with zero-weight synthetic synapses, train, then prune the unused edges.                                                                                             | `./synthetic_synapse/run.sh`    |
 | [✂️ Neuron Pruning](neuron_pruning/README.md)                         | Remove neurons whose activations don't vary, folding their bias contribution into downstream neighbours.                                                                                                | `./neuron_pruning/run.sh`       |
+| [🧬 Adaptive Mutation](adaptive_mutation/README.md)                   | Visualise how the mutation operator distribution shifts from topology to weights as a creature grows.                                                                                                   | `./adaptive_mutation/run.sh`    |
 | [💡 Suggest Improvements](suggest_improvements/README.md)             | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.                                                                                                         | `./suggest_improvements/run.sh` |
 | [🌱 Evolution Showcase](evolution_showcase/README.md) ⏳ long-running | Flagship long-form run: evolve for 10000 generations and render gen 1 / 10 / 100 / 1000 / 10000 side-by-side.                                                                                           | `./evolution_showcase/run.sh`   |
 
@@ -134,6 +135,18 @@ neurons greyed out and dashed; the synapses incident on those neurons are dimmed
 each pruned neuron's bias-fold contribution to its surviving downstream neighbours. A summary panel
 beside the topology lists pre/post neuron counts, pre/post held-out scores, and the per-neuron
 pruning report.
+
+### 🧬 Adaptive Mutation — topology share drops as creatures grow
+
+![Adaptive mutation rate — small vs large creature, two-panel line chart showing topology share collapsing toward zero in the large run while the weight share dominates](docs/screenshots/adaptive_mutation.svg)
+
+Two evolution loops on the same synthetic task — left panel starts from a tiny seed creature (~5
+hidden neurons), right panel starts from a large creature (~256 hidden, ~10k synapses). The orange
+line is the share of mutations that targeted **topology** (add/remove neuron, add/remove synapse);
+the blue line is the share that targeted **weights/biases**. NEAT-AI's adaptive policy keeps
+topology mutations active for the small creature (it still has structural growing to do) but
+collapses the topology share toward zero on the large creature, where remaining error is dominated
+by weight tuning.
 
 ### 🌱 Evolution Showcase — gen 1 → 10000
 

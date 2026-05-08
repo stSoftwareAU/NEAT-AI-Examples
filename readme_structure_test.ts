@@ -12,6 +12,7 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 const README_PATH = "README.md";
 
 const EXAMPLE_DIRS = [
+  "adaptive_mutation",
   "cart_pole",
   "crispr_injection",
   "crossover",
@@ -127,6 +128,7 @@ Deno.test("README.md introduces every example by name", () => {
     "Memetic Evolution",
     "Synthetic Synapse",
     "Neuron Pruning",
+    "Adaptive Mutation",
     "Evolution Showcase",
   ];
   for (const name of required) {
