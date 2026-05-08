@@ -8,13 +8,21 @@ compute each step's heading.
 
 ![Champion playthrough](../docs/screenshots/snake_game.svg)
 
+## 🧬 Evolution Progress
+
+The runner captures snapshots of the running champion at five checkpoints (generations 1, 10, 50,
+200, and 600) and renders them into a multi-panel SMIL-animated strip — so you can see the topology
+and score grow as the controller learns to eat food.
+
+![Evolution progress](../docs/screenshots/snake_game_evolution.svg)
+
 ## 🔧 How It Works
 
 ```mermaid
 flowchart LR
     GAME["🐍 Snake grid game<br/>(snake.ts)"]
     SENSE["🛰️ Wall, food &amp; tail sensors<br/>(agent.ts)"]
-    POLICY["🧠 Network → heading"]
+    POLICY["🧠 8 → 6 hidden → 4 outputs"]
     STEP["⏱️ Move + grow / die"]
     DONE{"dead or<br/>500 steps?"}
     SCORE["📏 Food × 100 − penalties"]
@@ -74,15 +82,25 @@ out of reach.
 Artefacts:
 
 - `.synthetic-snake/creatures/champion.json` – the fittest controller from the run
+- `.synthetic-snake/snapshots/snapshot-gen-N.json` – champion captured at each checkpoint
 - `docs/screenshots/snake_game.svg` – animated SVG of the champion's playthrough
+- `docs/screenshots/snake_game_evolution.svg` – multi-panel evolution-progress strip
 
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
 
-- **Linear policy is enough.** Eight inputs and four logistic outputs (32 weights, 4 biases) is a
-  small enough search space that a 60-creature population finds a food-seeking controller in tens of
-  generations. There is no hidden layer.
+- **One hidden layer is enough.** Eight inputs feed six logistic hidden neurons that feed four
+  logistic outputs (76 weights, 10 biases). A purely linear policy plateaus after eating one food
+  because no single direction-rule generalises across post-food snake geometries; the hidden layer
+  gives the controller enough non-linearity to chain food encounters.
+- **Multi-episode fitness.** Each creature is evaluated across five distinct food-spawn seeds and
+  ranked by mean fitness, so a controller has to generalise rather than overfit to a single
+  playthrough.
+- **Distance shaping.** Fitness includes a small Manhattan-distance shaping reward (`±0.5` per cell
+  of progress toward the food). This breaks the flat fitness landscape that previously trapped the
+  population at "ate one food" — mutations that nudge the head closer get credit even before the
+  snake actually reaches food.
 - **Argmax discretisation.** The four outputs are passed through logistics and then `argmax` — the
   controller commits to one of four headings every step. Ties favour lower indices but in practice
   the logistic outputs differ enough that ties are vanishingly rare.

@@ -28,9 +28,13 @@ deno run \
   snake_game/snake_game.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
+# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
+# stay clean — the renderers emit compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/snake_game.svg" ]]; then
-  deno fmt docs/screenshots/snake_game.svg > /dev/null
-fi
+for svg in \
+  "docs/screenshots/snake_game.svg" \
+  "docs/screenshots/snake_game_evolution.svg"; do
+  if [[ -f "${svg}" ]]; then
+    deno fmt "${svg}" > /dev/null
+  fi
+done

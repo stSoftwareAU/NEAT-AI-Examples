@@ -4,7 +4,7 @@
   width="480"
   height="520"
   role="img"
-  aria-label="Snake champion playthrough, animated through 11 keyframes"
+  aria-label="Snake champion playthrough, animated through 59 keyframes"
 >
   <title>Snake Champion Playthrough (animated)</title>
   <desc>SMIL-animated SVG: a NEAT-AI controller plays Snake on a 12×12 grid. The snake body grows whenever the head meets food. Loops every 8 seconds.</desc>
@@ -157,8 +157,8 @@
   </g>
   <rect
     class="food"
-    x="99"
-    y="395"
+    x="163"
+    y="203"
     width="26"
     height="26"
     rx="6"
@@ -169,7 +169,7 @@
   >
     <animate
       attributeName="x"
-      values="99;99;99;99;99;99;99;99;99;99;99"
+      values="163;163;163;195;195;195;195;323;323;323;323;35;35;35;35;35;35;35;35;35;35;35;259;259;259;259;259;259;259;259;259;259;259;259;35;35;35;35;35;35;35;35;35;35;35;35;35;259;259;259;259;259;259;259;259;259;259;259;259"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -177,7 +177,7 @@
     />
     <animate
       attributeName="y"
-      values="395;395;395;395;395;395;395;395;395;107;107"
+      values="203;203;203;107;107;107;107;107;107;107;107;43;43;43;43;43;43;43;43;43;43;43;203;203;203;203;203;203;203;203;203;203;203;203;75;75;75;75;75;75;75;75;75;75;75;75;75;139;139;139;139;139;139;139;139;139;139;139;139"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -206,7 +206,7 @@
   >
     <animate
       attributeName="x"
-      values="227;227;195;163;131;99;99;99;99;99;99"
+      values="227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;195;227;259;291;323;355;355"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -214,7 +214,7 @@
     />
     <animate
       attributeName="y"
-      values="235;267;267;267;267;267;299;331;363;395;395"
+      values="235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75;75;75;75;75;75;75"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -222,7 +222,7 @@
     />
     <animate
       attributeName="opacity"
-      values="1;1;1;1;1;1;1;1;1;1;1"
+      values="1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -244,7 +244,7 @@
   >
     <animate
       attributeName="x"
-      values="195;227;227;195;163;131;99;99;99;99;99"
+      values="195;227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;195;227;259;291;323;323"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -252,7 +252,7 @@
     />
     <animate
       attributeName="y"
-      values="235;235;267;267;267;267;267;299;331;363;363"
+      values="235;235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75;75;75;75;75;75"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -260,7 +260,7 @@
     />
     <animate
       attributeName="opacity"
-      values="1;1;1;1;1;1;1;1;1;1;1"
+      values="1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -282,7 +282,7 @@
   >
     <animate
       attributeName="x"
-      values="163;195;227;227;195;163;131;99;99;99;99"
+      values="163;195;227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;195;227;259;291;291"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -290,7 +290,7 @@
     />
     <animate
       attributeName="y"
-      values="235;235;235;267;267;267;267;267;299;331;331"
+      values="235;235;235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75;75;75;75;75"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -298,7 +298,7 @@
     />
     <animate
       attributeName="opacity"
-      values="1;1;1;1;1;1;1;1;1;1;1"
+      values="1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -320,7 +320,7 @@
   >
     <animate
       attributeName="x"
-      values="227;227;195;163;131;99;99;99;99;99;99"
+      values="227;227;195;227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;195;227;259;259"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -328,7 +328,7 @@
     />
     <animate
       attributeName="y"
-      values="235;267;267;267;267;267;299;331;363;299;299"
+      values="235;203;203;235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75;75;75;75"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -336,7 +336,197 @@
     />
     <animate
       attributeName="opacity"
-      values="0;0;0;0;0;0;0;0;0;1;1"
+      values="0;0;0;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+  </rect>
+  <rect
+    class="snake-body"
+    x="0"
+    y="0"
+    width="26"
+    height="26"
+    rx="6"
+    ry="6"
+    fill="#27ae60"
+    stroke="#1e8449"
+    stroke-width="1"
+    opacity="0"
+  >
+    <animate
+      attributeName="x"
+      values="227;227;195;163;163;163;163;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;195;227;227"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="y"
+      values="235;203;203;203;171;139;107;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75;75;75"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="opacity"
+      values="0;0;0;0;0;0;0;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+  </rect>
+  <rect
+    class="snake-body"
+    x="0"
+    y="0"
+    width="26"
+    height="26"
+    rx="6"
+    ry="6"
+    fill="#27ae60"
+    stroke="#1e8449"
+    stroke-width="1"
+    opacity="0"
+  >
+    <animate
+      attributeName="x"
+      values="227;227;195;163;163;163;163;195;227;259;291;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;195;195"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="y"
+      values="235;203;203;203;171;139;107;107;107;107;107;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75;75"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="opacity"
+      values="0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+  </rect>
+  <rect
+    class="snake-body"
+    x="0"
+    y="0"
+    width="26"
+    height="26"
+    rx="6"
+    ry="6"
+    fill="#27ae60"
+    stroke="#1e8449"
+    stroke-width="1"
+    opacity="0"
+  >
+    <animate
+      attributeName="x"
+      values="227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;163;163"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="y"
+      values="235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75;75"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="opacity"
+      values="0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+  </rect>
+  <rect
+    class="snake-body"
+    x="0"
+    y="0"
+    width="26"
+    height="26"
+    rx="6"
+    ry="6"
+    fill="#27ae60"
+    stroke="#1e8449"
+    stroke-width="1"
+    opacity="0"
+  >
+    <animate
+      attributeName="x"
+      values="227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;35;67;99;131;131"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="y"
+      values="235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;75;75;75;75;75"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="opacity"
+      values="0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+  </rect>
+  <rect
+    class="snake-body"
+    x="0"
+    y="0"
+    width="26"
+    height="26"
+    rx="6"
+    ry="6"
+    fill="#27ae60"
+    stroke="#1e8449"
+    stroke-width="1"
+    opacity="0"
+  >
+    <animate
+      attributeName="x"
+      values="227;227;195;163;163;163;163;195;227;259;291;323;323;291;291;259;227;195;163;131;99;67;35;35;35;35;35;35;67;99;131;163;195;227;259;259;227;227;195;195;163;131;99;67;35;3;3;195;163;131;99;67;35;3;3;35;67;99;99"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="y"
+      values="235;203;203;203;171;139;107;107;107;107;107;107;75;75;43;43;43;43;43;43;43;43;43;75;107;139;171;203;203;203;203;203;203;203;203;171;171;139;139;107;107;107;107;107;107;107;75;107;107;107;107;107;107;107;75;75;75;75;75"
+      dur="8s"
+      repeatCount="indefinite"
+      calcMode="discrete"
+      fill="freeze"
+    />
+    <animate
+      attributeName="opacity"
+      values="0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;1;1;1;1;1;1;1;1"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
@@ -349,7 +539,7 @@
     font-family="monospace"
     font-size="14"
     fill="#ecf0f1"
-  >🐍 Snake · 1 eaten · 10 steps · died</text>
+  >🐍 Snake · 6 eaten · 58 steps · died</text>
   <text
     class="score"
     x="468"
@@ -361,7 +551,7 @@
     display="inline"
   >
     score 0
-    <set attributeName="display" to="none" begin="7.20s; 15.20s" />
+    <set attributeName="display" to="none" begin="0.41s; 8.41s" />
     <set attributeName="display" to="inline" begin="0s; 8s" />
   </text>
   <text
@@ -375,13 +565,83 @@
     display="none"
   >
     score 100
-    <set attributeName="display" to="inline" begin="7.20s; 15.20s" />
+    <set attributeName="display" to="inline" begin="0.41s; 8.41s" />
+    <set attributeName="display" to="none" begin="0s; 8s" />
+  </text>
+  <text
+    class="score"
+    x="468"
+    y="22"
+    text-anchor="end"
+    font-family="monospace"
+    font-size="14"
+    fill="#f1c40f"
+    display="none"
+  >
+    score 200
+    <set attributeName="display" to="inline" begin="0.97s; 8.97s" />
+    <set attributeName="display" to="none" begin="0s; 8s" />
+  </text>
+  <text
+    class="score"
+    x="468"
+    y="22"
+    text-anchor="end"
+    font-family="monospace"
+    font-size="14"
+    fill="#f1c40f"
+    display="none"
+  >
+    score 300
+    <set attributeName="display" to="inline" begin="1.52s; 9.52s" />
+    <set attributeName="display" to="none" begin="0s; 8s" />
+  </text>
+  <text
+    class="score"
+    x="468"
+    y="22"
+    text-anchor="end"
+    font-family="monospace"
+    font-size="14"
+    fill="#f1c40f"
+    display="none"
+  >
+    score 400
+    <set attributeName="display" to="inline" begin="3.03s; 11.03s" />
+    <set attributeName="display" to="none" begin="0s; 8s" />
+  </text>
+  <text
+    class="score"
+    x="468"
+    y="22"
+    text-anchor="end"
+    font-family="monospace"
+    font-size="14"
+    fill="#f1c40f"
+    display="none"
+  >
+    score 500
+    <set attributeName="display" to="inline" begin="4.69s; 12.69s" />
+    <set attributeName="display" to="none" begin="0s; 8s" />
+  </text>
+  <text
+    class="score"
+    x="468"
+    y="22"
+    text-anchor="end"
+    font-family="monospace"
+    font-size="14"
+    fill="#f1c40f"
+    display="none"
+  >
+    score 600
+    <set attributeName="display" to="inline" begin="6.48s; 14.48s" />
     <set attributeName="display" to="none" begin="0s; 8s" />
   </text>
   <rect class="score-pulse" x="410" y="28" width="58" height="4" rx="2" ry="2" fill="#f1c40f">
     <animate
       attributeName="fill"
-      values="#bdc3c7;#bdc3c7;#bdc3c7;#bdc3c7;#bdc3c7;#bdc3c7;#bdc3c7;#bdc3c7;#bdc3c7;#f1c40f;#f1c40f"
+      values="#bdc3c7;#bdc3c7;#bdc3c7;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f;#f1c40f"
       dur="8s"
       repeatCount="indefinite"
       calcMode="discrete"
