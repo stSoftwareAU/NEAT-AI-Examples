@@ -13,6 +13,7 @@ const README_PATH = "README.md";
 
 const EXAMPLE_DIRS = [
   "cart_pole",
+  "crispr_injection",
   "crossover",
   "discovery",
   "intelligent_design",
@@ -37,6 +38,7 @@ const SCREENSHOT_PATHS = [
   "docs/screenshots/stock_market.svg",
   "docs/screenshots/mnist_classification.svg",
   "docs/screenshots/mcmc_acceptance.svg",
+  "docs/screenshots/crispr_injection.svg",
 ] as const;
 
 function loadReadme(): string {
@@ -114,6 +116,7 @@ Deno.test("README.md introduces every example by name", () => {
     "Stock Market",
     "MNIST",
     "MCMC Acceptance",
+    "CRISPR",
   ];
   for (const name of required) {
     assertStringIncludes(

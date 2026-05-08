@@ -129,6 +129,12 @@ crossover/
   crossover_example_test.ts        — Unit tests for the above
   run.sh                           — Runner script for the example
 
+crispr_injection/
+  crispr_injection.ts              — Example: splice a hand-crafted gene into a stalled population
+  crispr_injection_test.ts         — Unit tests for the above
+  svg.ts                           — SVG renderer for gene topology + fitness curve
+  run.sh                           — Runner script for the example
+
 discovery/
   discover_missing_neuron.ts       — Example: recover a removed neuron
   discover_missing_neuron_test.ts  — Unit tests for the above

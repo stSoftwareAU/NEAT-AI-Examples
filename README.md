@@ -24,6 +24,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.  | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.           | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.      | `./crossover/run.sh`            |
+| [🧬 CRISPR Injection](crispr_injection/README.md)         | Splice a hand-crafted "edit gene" into a stalled population mid-evolution and visualise the fitness lift. | `./crispr_injection/run.sh`     |
 | [📈 Stock Market](stock_market/README.md)                 | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.        | `./stock_market/run.sh`         |
 | [🔢 MNIST](mnist_classification/README.md)                | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions. | `./mnist_classification/run.sh` |
 | [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)           | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                | `./mcmc_acceptance/run.sh`      |
@@ -100,6 +101,16 @@ A 5 × 4 grid of held-out MNIST test digits. Each cell cross-fades through three
 champion classifies correctly, red on a miss. Pixel intensity is rendered through a purple → teal →
 yellow ramp.
 
+### 🧬 CRISPR Injection — gene topology and fitness lift
+
+![CRISPR gene injection — top panel shows two TANH hidden neurons spliced between two inputs and one output, bottom panel shows fitness vs generation with a vertical injection marker](docs/screenshots/crispr_injection.svg)
+
+A combined snapshot of the CRISPR gene injection demo. The top panel shows the hand-crafted edit
+gene's topology — two TANH hidden neurons connected to two inputs and the single output. The bottom
+panel plots best fitness per generation across the experiment; a dashed red marker pinpoints the
+generation at which the gene was spliced into the population, after which fitness lifts sharply as
+the gene's incoming weights are tuned.
+
 ### 🌡️ MCMC Acceptance — cooling toward 23.4%
 
 ![MCMC mutation acceptance rate cooling toward the 23.4% optimal target with the temperature schedule overlaid](docs/screenshots/mcmc_acceptance.svg)
@@ -122,6 +133,7 @@ flowchart TD
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
     DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
+    CRISPR["🧬 CRISPR Injection<br/>Splice a hand-crafted<br/>edit gene into a stalled<br/>population"]
     STOCK["📈 Stock Market<br/>Predict next-period S&P 500<br/>direction from prior returns"]
     MNIST["🔢 MNIST<br/>Classify handwritten digits<br/>from a 14×14 down-sample"]
     MCMC["🌡️ MCMC Acceptance<br/>Cool MH acceptance rate<br/>toward the 23.4% optimum"]
@@ -136,6 +148,7 @@ flowchart TD
     COMMON --> ID
     COMMON --> DISC
     COMMON --> CROSS
+    COMMON --> CRISPR
     COMMON --> STOCK
     COMMON --> MNIST
     COMMON --> MCMC
@@ -151,6 +164,7 @@ flowchart TD
     style ID fill:#7ed321,stroke:#333,color:#fff
     style DISC fill:#bd10e0,stroke:#333,color:#fff
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
+    style CRISPR fill:#bd10e0,stroke:#333,color:#fff
     style STOCK fill:#16a085,stroke:#333,color:#fff
     style MNIST fill:#34495e,stroke:#333,color:#fff
     style MCMC fill:#e67e22,stroke:#333,color:#fff
@@ -185,6 +199,7 @@ flowchart BT
         ID["🧬 intelligent_design/"]
         DISC["🔍 discovery/"]
         CROSS["🔀 crossover/"]
+        CRISPR["🧬 crispr_injection/"]
         STOCK["📈 stock_market/"]
         MNIST["🔢 mnist_classification/"]
         MCMC["🌡️ mcmc_acceptance/"]
@@ -200,6 +215,7 @@ flowchart BT
     common --> ID
     common --> DISC
     common --> CROSS
+    common --> CRISPR
     common --> STOCK
     common --> MNIST
     common --> MCMC
