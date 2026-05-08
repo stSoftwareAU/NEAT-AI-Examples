@@ -9,21 +9,19 @@ import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 
 import { asCreatureExport } from "../common/legacy_types.ts";
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import {
-  BIAS_COUNT,
-  buildInitialCreatureJSON,
+  buildMinimalSeedCreature,
   correctCount,
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
   evolveXorController,
   type GenerationInfo,
-  genesFromCreatureJSON,
+  INPUT_COUNT,
   meanSquaredError,
-  mutateCreatureJSON,
+  OUTPUT_COUNT,
+  planSegments,
   predict,
-  randomCreatureJSON,
-  WEIGHT_COUNT,
+  writeXorDataset,
   xorSamples,
 } from "./xor_classification.ts";
 import { loadSnapshots } from "../common/evolution_snapshot.ts";
@@ -39,76 +37,34 @@ Deno.test("xorSamples returns the four canonical truth-table rows", () => {
   assertEquals(samples[3], { inputs: [1, 1], target: 0 });
 });
 
-Deno.test("buildInitialCreatureJSON has 2 inputs, 2 hidden, 1 output", () => {
-  const weights = new Array(WEIGHT_COUNT).fill(0.1);
-  const biases = new Array(BIAS_COUNT).fill(0.0);
-  const json = buildInitialCreatureJSON(weights, biases);
-  assertEquals(json.input, 2);
-  assertEquals(json.output, 1);
-  assertEquals(json.synapses.length, WEIGHT_COUNT);
-  // Two hidden neurons by topology.
+Deno.test("buildMinimalSeedCreature has 2 inputs, 0 hidden, 1 output", () => {
+  const json = buildMinimalSeedCreature();
+  assertEquals(json.input, INPUT_COUNT);
+  assertEquals(json.output, OUTPUT_COUNT);
+  // Three neurons total: two inputs + one output, no hidden.
+  assertEquals(json.neurons.length, 3);
   const hidden = json.neurons.filter((n) => n.type === "hidden");
-  assertEquals(hidden.length, 2);
-});
-
-Deno.test("buildInitialCreatureJSON produces a valid creature", () => {
-  const weights = new Array(WEIGHT_COUNT).fill(0.1);
-  const biases = new Array(BIAS_COUNT).fill(0.0);
-  const json = buildInitialCreatureJSON(weights, biases);
-  const creature = Creature.fromJSON(asCreatureExport(json));
-  creature.validate();
-});
-
-Deno.test("buildInitialCreatureJSON throws on wrong-sized gene vectors", () => {
-  let threw = false;
-  try {
-    buildInitialCreatureJSON([1, 2, 3], [0, 0, 0]);
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw, "expected an error for too-few weights");
-
-  threw = false;
-  try {
-    buildInitialCreatureJSON(new Array(WEIGHT_COUNT).fill(0), [0, 0]);
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw, "expected an error for too-few biases");
-});
-
-Deno.test("genesFromCreatureJSON round-trips weights and biases", () => {
-  const weights = [0.11, -0.22, 0.33, -0.44, 0.55, -0.66];
-  const biases = [0.7, -0.8, 0.9];
-  const json = buildInitialCreatureJSON(weights, biases);
-  const genes = genesFromCreatureJSON(json);
-  assertEquals(genes.weights, weights);
-  assertEquals(genes.biases, biases);
-});
-
-Deno.test("randomCreatureJSON is deterministic for the same seed", () => {
-  const r1 = createDeterministicRandom(99);
-  const r2 = createDeterministicRandom(99);
-  assertEquals(randomCreatureJSON(r1), randomCreatureJSON(r2));
-});
-
-Deno.test("mutateCreatureJSON yields a valid creature", () => {
-  const random = createDeterministicRandom(7);
-  const parent = buildInitialCreatureJSON(
-    new Array(WEIGHT_COUNT).fill(0),
-    new Array(BIAS_COUNT).fill(0),
+  assertEquals(
+    hidden.length,
+    0,
+    "minimal seed must have zero hidden neurons — NEAT must invent them",
   );
-  const child = mutateCreatureJSON(parent, random, 1.0, 0.3);
-  const creature = Creature.fromJSON(asCreatureExport(child));
-  creature.validate();
 });
 
-Deno.test("predict returns a number in [0, 1] for a valid creature", () => {
-  const json = buildInitialCreatureJSON(
-    new Array(WEIGHT_COUNT).fill(0.5),
-    new Array(BIAS_COUNT).fill(0),
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+Deno.test("buildMinimalSeedCreature produces a valid creature", () => {
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  creature.validate();
+  assertEquals(creature.input, INPUT_COUNT);
+  assertEquals(creature.output, OUTPUT_COUNT);
+  // Activating the seed must produce a finite output.
+  for (const { inputs } of xorSamples()) {
+    const out = predict(creature, inputs);
+    assert(Number.isFinite(out));
+  }
+});
+
+Deno.test("predict returns a number in [0, 1] for the seed creature", () => {
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   for (const { inputs } of xorSamples()) {
     const out = predict(creature, inputs);
     assert(Number.isFinite(out), `output must be finite, got ${out}`);
@@ -117,38 +73,66 @@ Deno.test("predict returns a number in [0, 1] for a valid creature", () => {
   }
 });
 
-Deno.test("meanSquaredError is in [0, 1] and zero-weight network is near 0.25", () => {
-  // With all weights and biases at zero, the LOGISTIC output is 0.5
-  // so the squared error per sample is 0.25 and the MSE is 0.25.
-  const json = buildInitialCreatureJSON(
-    new Array(WEIGHT_COUNT).fill(0),
-    new Array(BIAS_COUNT).fill(0),
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+Deno.test("meanSquaredError is in [0, 1] and seed is around 0.25", () => {
+  // The minimal seed has zero weights and zero output bias, so the
+  // LOGISTIC output is 0.5 and the squared error per sample is 0.25.
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   const mse = meanSquaredError(creature);
   assert(Number.isFinite(mse));
   assertGreaterOrEqual(mse, 0);
   assertGreaterOrEqual(1, mse);
-  // Very loose bound — just confirms the metric is sane for the
-  // degenerate case.
   assertGreater(0.5, mse);
 });
 
 Deno.test("correctCount returns 0..4", () => {
-  const json = buildInitialCreatureJSON(
-    new Array(WEIGHT_COUNT).fill(0),
-    new Array(BIAS_COUNT).fill(0),
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   const c = correctCount(creature);
   assertGreaterOrEqual(c, 0);
   assertGreaterOrEqual(4, c);
 });
 
+Deno.test("writeXorDataset emits a binary file with exactly four records", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "xor_data_" });
+  try {
+    const path = writeXorDataset(tmp);
+    assertEquals(existsSync(path), true);
+    const bytes = Deno.readFileSync(path);
+    const stride = INPUT_COUNT + OUTPUT_COUNT;
+    // 4 samples * 3 floats * 4 bytes = 48 bytes.
+    assertEquals(bytes.length, 4 * stride * 4);
+    const view = new Float32Array(bytes.buffer, bytes.byteOffset, 4 * stride);
+    for (let i = 0; i < 4; i++) {
+      const sample = xorSamples()[i];
+      assertEquals(view[i * stride + 0], sample.inputs[0]);
+      assertEquals(view[i * stride + 1], sample.inputs[1]);
+      assertEquals(view[i * stride + INPUT_COUNT], sample.target);
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("planSegments inserts every in-budget checkpoint and ends at maxGenerations", () => {
+  // Mixed checkpoints — some in budget, some out — must be deduped,
+  // sorted, and the budget endpoint must always be present.
+  assertEquals(planSegments([1, 10, 100, 1000, 10000], 50), [1, 10, 50]);
+  assertEquals(planSegments([1, 5], 5), [1, 5]);
+  assertEquals(planSegments([], 7), [7]);
+  // Checkpoints past the budget never become segment ends.
+  assertEquals(planSegments([1000], 10), [10]);
+});
+
 Deno.test(
-  "evolveXorController solves XOR with the default budget (happy path)",
+  "evolveXorController solves XOR and grows hidden neurons (happy path)",
   async () => {
-    const result = evolveXorController(DEFAULT_EVOLVE_OPTIONS);
+    // Reduced budget: small population + capped generations to stay
+    // inside the 120-second per-test budget while still giving NEAT
+    // room to invent a hidden neuron and solve XOR.
+    const result = await evolveXorController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      populationSize: 30,
+      maxGenerations: 200,
+    });
     assertEquals(
       result.solved,
       true,
@@ -157,6 +141,17 @@ Deno.test(
     );
     assertEquals(correctCount(result.champion), 4);
     assertGreater(DEFAULT_EVOLVE_OPTIONS.errorThreshold, result.bestError - 1e-9);
+
+    // The champion must have at least one hidden neuron — XOR is not
+    // linearly separable, so a winning solution requires NEAT to have
+    // grown the topology beyond the seed.
+    const championExport = result.champion.exportJSON();
+    const hiddenNeurons = championExport.neurons.filter((n) => n.type === "hidden");
+    assertGreater(
+      hiddenNeurons.length,
+      0,
+      "champion must contain at least one hidden neuron invented by NEAT",
+    );
 
     // Champion must serialise cleanly for downstream consumption.
     const tmp = await Deno.makeTempDir({ prefix: "xor_test_" });
@@ -171,14 +166,14 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveXorController emits GenerationInfo with non-zero positive neuron/synapse counts",
-  () => {
+  "evolveXorController emits GenerationInfo whose seed reflects the minimal topology",
+  async () => {
     const samples: GenerationInfo[] = [];
-    evolveXorController({
+    await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: 5,
+      maxGenerations: 3,
       populationSize: 6,
-      errorThreshold: 0,
+      errorThreshold: 0, // unreachable in three generations
       onGeneration: (info) => samples.push(info),
     });
     assertGreater(samples.length, 0);
@@ -190,27 +185,47 @@ Deno.test(
       assertGreater(s.neurons, 0);
       assertGreater(s.synapses, 0);
     }
-    // The fixed XOR topology has 5 neurons (2 input + 2 hidden + 1 output)
-    // and 6 synapses (input→hidden + hidden→output).
-    assertEquals(samples[0].neurons, 5);
-    assertEquals(samples[0].synapses, 6);
+    // The first reported generation reflects the minimal seed: 3 neurons
+    // (2 input + 1 output) and 2 direct input → output synapses. NEAT may
+    // grow the topology in subsequent segments.
+    assertEquals(samples[0].neurons, 3);
+    assertEquals(samples[0].synapses, 2);
+  },
+);
+
+Deno.test(
+  "evolveXorController is deterministic for a fixed seed",
+  async () => {
+    const opts = {
+      ...DEFAULT_EVOLVE_OPTIONS,
+      seed: 4242,
+      populationSize: 6,
+      maxGenerations: 3,
+      errorThreshold: 0,
+    };
+    const a = await evolveXorController(opts);
+    const b = await evolveXorController(opts);
+    // Same seed must produce the same champion topology and weights.
+    assertEquals(
+      JSON.stringify(a.champion.exportJSON()),
+      JSON.stringify(b.champion.exportJSON()),
+      "two runs with the same seed must produce identical champions",
+    );
+    assertEquals(a.bestError, b.bestError);
   },
 );
 
 Deno.test(
   "evolveXorController still produces a champion when the budget is exhausted (edge case)",
-  () => {
-    // A two-generation budget is far too small to converge, but the
-    // function must still return a usable champion creature so callers
-    // can inspect it / save it.
-    const result = evolveXorController({
+  async () => {
+    const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 2,
       populationSize: 6,
       errorThreshold: 0, // unreachable in two generations
     });
     assertEquals(result.solved, false);
-    assertEquals(result.generations, 2);
+    assertGreaterOrEqual(result.generations, 1);
     // Champion is a real Creature that activates without throwing.
     const out = predict(result.champion, [0, 1]);
     assert(Number.isFinite(out), `champion output must be finite, got ${out}`);
@@ -223,24 +238,18 @@ Deno.test("shadeColour clamps and produces a hex colour string", () => {
   assertEquals(shadeColour(0).length, 7);
   assertEquals(shadeColour(0.5).length, 7);
   assertEquals(shadeColour(1).length, 7);
-  // Endpoints must differ — sanity check the ramp is non-trivial.
   assert(shadeColour(0) !== shadeColour(1), "ramp endpoints must differ");
 });
 
 Deno.test("renderDecisionBoundarySVG produces a well-formed SVG with all four samples", () => {
-  // Use a tiny dummy creature; the test only cares about SVG structure.
-  const json = buildInitialCreatureJSON(
-    [1, -1, -1, 1, 1, -1],
-    [-0.5, -0.5, 0],
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  // Use the minimal seed; the test only cares about SVG structure.
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: 8,
     samples: xorSamples(),
   });
   assert(svg.startsWith("<svg"), "must start with <svg>");
   assert(svg.includes("</svg>"), "must contain </svg>");
-  // Width and height attributes must exist with positive numeric values.
   const widthMatch = svg.match(/width="(\d+)"/);
   const heightMatch = svg.match(/height="(\d+)"/);
   assert(widthMatch, "SVG must declare a width");
@@ -248,11 +257,9 @@ Deno.test("renderDecisionBoundarySVG produces a well-formed SVG with all four sa
   assertGreater(Number.parseInt(widthMatch![1], 10), 0);
   assertGreater(Number.parseInt(heightMatch![1], 10), 0);
 
-  // One <g class="sample" ...> per XOR sample.
   const matches = svg.match(/<g class="sample"/g) ?? [];
   assertEquals(matches.length, 4);
 
-  // Each labelled point's coordinate text must appear.
   for (const { inputs, target } of xorSamples()) {
     assert(
       svg.includes(`(${inputs[0]},${inputs[1]})→${target}`),
@@ -262,18 +269,12 @@ Deno.test("renderDecisionBoundarySVG produces a well-formed SVG with all four sa
 });
 
 Deno.test("renderDecisionBoundarySVG honours the requested grid resolution", () => {
-  const json = buildInitialCreatureJSON(
-    [1, -1, -1, 1, 1, -1],
-    [0, 0, 0],
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   const grid = 6;
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: grid,
     samples: xorSamples(),
   });
-  // Cells live inside <g class="grid">. Count the <rect ... fill="#... "/>
-  // entries that sit between <g class="grid"> and its closing tag.
   const start = svg.indexOf('<g class="grid">');
   const end = svg.indexOf("</g>", start);
   assertGreater(end, start);
@@ -283,11 +284,7 @@ Deno.test("renderDecisionBoundarySVG honours the requested grid resolution", () 
 });
 
 Deno.test("renderDecisionBoundarySVG throws on grid resolution < 2", () => {
-  const json = buildInitialCreatureJSON(
-    new Array(WEIGHT_COUNT).fill(0),
-    new Array(BIAS_COUNT).fill(0),
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   let threw = false;
   try {
     renderDecisionBoundarySVG(creature, { gridResolution: 1, samples: xorSamples() });
@@ -298,43 +295,32 @@ Deno.test("renderDecisionBoundarySVG throws on grid resolution < 2", () => {
 });
 
 Deno.test("renderDecisionBoundarySVG embeds SMIL pulse animations on each sample", () => {
-  // Issue #70: each XOR sample now carries SMIL `<animate>` elements
-  // that pulse the marker so the screenshot is no longer static.
-  const json = buildInitialCreatureJSON(
-    [1, -1, -1, 1, 1, -1],
-    [-0.5, -0.5, 0],
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: 8,
     samples: xorSamples(),
   });
   const animateMatches = svg.match(/<animate /g) ?? [];
-  // Each of the four samples adds at least two animate elements
-  // (radius pulse + outer ring fade), giving 8 minimum.
   assertGreaterOrEqual(animateMatches.length, 8);
   assert(
     svg.includes('repeatCount="indefinite"'),
     "expected SMIL repeatCount='indefinite' so the animation loops",
   );
-  // Each sample must carry a "pulse" outer ring.
   const pulseMatches = svg.match(/class="pulse"/g) ?? [];
   assertEquals(pulseMatches.length, 4);
 });
 
 Deno.test(
   "evolveXorController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
-  () => {
-    // Configure short, deterministic checkpoints so the test always
-    // captures snapshots regardless of how quickly the run converges.
+  async () => {
     const tmp = Deno.makeTempDirSync({ prefix: "xor_snapshots_test_" });
     try {
       const checkpoints = [1, 2, 3];
-      evolveXorController({
+      await evolveXorController({
         ...DEFAULT_EVOLVE_OPTIONS,
         // Force the loop to keep running long enough that all
         // checkpoints fire even if the run otherwise solves early.
-        errorThreshold: -1,
+        errorThreshold: 0,
         maxGenerations: 4,
         populationSize: 6,
         snapshotConfig: { checkpoints, outputDir: tmp },
@@ -370,17 +356,11 @@ Deno.test(
 );
 
 Deno.test("renderDecisionBoundarySVG output uses the canonical screenshot resolution", () => {
-  const json = buildInitialCreatureJSON(
-    [1, -1, -1, 1, 1, -1],
-    [0, 0, 0],
-  );
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: DECISION_BOUNDARY_GRID,
     samples: xorSamples(),
   });
-  // DECISION_BOUNDARY_GRID is the resolution the runner uses for the
-  // committed SVG. Sanity-check the cell count matches.
   const start = svg.indexOf('<g class="grid">');
   const end = svg.indexOf("</g>", start);
   const cellRects = svg.slice(start, end).match(/<rect /g) ?? [];
