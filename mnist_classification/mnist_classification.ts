@@ -130,7 +130,7 @@ export const TRAIN_LABELS_PATH = join(MNIST_ROOT, "data", "train-labels-idx1-uby
 export const SCREENSHOT_PATH = "docs/screenshots/mnist_classification.svg";
 
 /** Path to the per-generation evolution chart the runner emits for the README. */
-export const EVOLUTION_CHART_PATH = "docs/screenshots/mnist_classification_evolution_chart.svg";
+export const EVOLUTION_CHART_PATH = "docs/screenshots/mnist_classification/evolution.svg";
 
 /**
  * Path to the multi-panel evolution-progression strip emitted by the
@@ -1117,6 +1117,7 @@ if (import.meta.main) {
         title: "MNIST classification — best validation accuracy per generation",
         scoreLabel: "validation accuracy",
       });
+      ensureDirSync("docs/screenshots/mnist_classification");
       await Deno.writeTextFile(EVOLUTION_CHART_PATH, chartSvg);
       console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
     }
@@ -1206,6 +1207,7 @@ if (import.meta.main) {
         title: "MNIST classification — MLP baseline (validation accuracy per epoch)",
         scoreLabel: "validation accuracy",
       });
+      ensureDirSync("docs/screenshots/mnist_classification");
       await Deno.writeTextFile(EVOLUTION_CHART_PATH, chartSvg);
       console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
     }

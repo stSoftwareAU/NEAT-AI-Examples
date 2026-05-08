@@ -498,6 +498,51 @@ Deno.test(
 );
 
 Deno.test(
+  "evolveClassifier — onGeneration emits neurons and synapses for the champion",
+  () => {
+    // The dual-axis evolution chart needs per-generation topology
+    // counts. Assert that the `GenerationInfo` payload exposes sane
+    // `neurons` and `synapses` integers for the generation-1 champion
+    // (gen-1 has no hidden neurons, so neurons = inputs + outputs and
+    // synapses = inputs * outputs for the library's uniform-random
+    // direct-wired topology).
+    const { images, labels } = buildSyntheticIdx(31, 3);
+    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
+    const split = splitDataset(all, { trainCount: 18, validationCount: 6, testCount: 6 });
+    const infos: Array<{ neurons: number; synapses: number; generation: number }> = [];
+    evolveClassifier(split, {
+      seed: 4242,
+      populationSize: 4,
+      maxGenerations: 1,
+      mutationStrength: 0.1,
+      mutationRate: 0.1,
+      addNeuronRate: 0,
+      inputCount: FEATURE_COUNT,
+      classCount: CLASS_COUNT,
+      accuracyThreshold: 1.0,
+      onGeneration: (info) => {
+        infos.push({
+          generation: info.generation,
+          neurons: info.neurons,
+          synapses: info.synapses,
+        });
+      },
+    });
+    assertEquals(infos.length, 1);
+    const gen0 = infos[0];
+    assertEquals(gen0.generation, 0);
+    // Gen-1 (index 0): direct input → output wiring with no hidden
+    // neurons. Library counts include both input and output neurons.
+    assertEquals(gen0.neurons, FEATURE_COUNT + CLASS_COUNT);
+    assertEquals(gen0.synapses, FEATURE_COUNT * CLASS_COUNT);
+    assert(Number.isInteger(gen0.neurons));
+    assert(Number.isInteger(gen0.synapses));
+    assertGreater(gen0.neurons, 0);
+    assertGreater(gen0.synapses, 0);
+  },
+);
+
+Deno.test(
   "evolveClassifier — honours the hard generation cap",
   () => {
     // With a vanishing mutation strength + zero structural mutation the

@@ -32,9 +32,9 @@ hours of wall-clock. The evolution stops as soon as the champion crosses 95 % va
 the 50 000-generation hard cap is reached, whichever comes first. The default `quality.sh`
 invocation runs the SGD baseline instead so CI completes promptly.
 
-![Animated grid of MNIST champion predictions, with green ticks for correct classifications and red crosses for misclassifications](../docs/screenshots/mnist_classification.svg)
+![MNIST classification evolution chart — best validation accuracy on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/mnist_classification/evolution.svg)
 
-![Dual-axis evolution chart — best validation accuracy versus generation, with neuron and synapse counts on the right axis](../docs/screenshots/mnist_classification_evolution_chart.svg)
+![Animated grid of MNIST champion predictions, with green ticks for correct classifications and red crosses for misclassifications](../docs/screenshots/mnist_classification.svg)
 
 ## 🔧 How It Works
 
@@ -46,7 +46,7 @@ flowchart LR
     NOISE["🌱 Uniform-random NEAT<br/>196 inputs · 10 LOGISTIC outputs<br/>direct input→output, random weights"]
     MUT["🧬 Mutation<br/>weight ± noise · add-node split"]
     SCORE["📏 Validation accuracy<br/>(per generation)"]
-    CHART["📈 Evolution chart<br/>mnist_classification_evolution_chart.svg"]
+    CHART["📈 Evolution chart<br/>mnist_classification/evolution.svg"]
     STRIP["🎞️ Evolution-progression<br/>mnist_classification_evolution.svg"]
     CHAMP["💾 champion.json<br/>(best val acc)"]
     CONF["🧮 confusion.json"]
@@ -170,7 +170,7 @@ Artefacts:
 - `.synthetic-mnist/snapshots/` — per-checkpoint snapshots of the running NEAT champion (NEAT run
   only)
 - `docs/screenshots/mnist_classification.svg` — animated 5 × 4 grid of test predictions
-- `docs/screenshots/mnist_classification_evolution_chart.svg` — dual-axis per-generation chart (best
+- `docs/screenshots/mnist_classification/evolution.svg` — dual-axis per-generation chart (best
   validation accuracy + neuron / synapse counts)
 - `docs/screenshots/mnist_classification_evolution.svg` — multi-panel evolution-progression strip
   (NEAT run only)

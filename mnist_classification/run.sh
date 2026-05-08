@@ -8,7 +8,7 @@ set -euo pipefail
 # saves the champion creature, the confusion matrix, the prediction
 # grid SVG (docs/screenshots/mnist_classification.svg) and the
 # dual-axis per-epoch evolution chart
-# (docs/screenshots/mnist_classification_evolution_chart.svg).
+# (docs/screenshots/mnist_classification/evolution.svg).
 #
 # Set MNIST_NEAT_EVOLUTION=1 to instead run the long-form NEAT
 # evolution from uniform-random noise (`evolveClassifier`). This is a
@@ -41,9 +41,14 @@ deno run \
   mnist_classification/mnist_classification.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
+# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
 # stay clean — the renderer emits compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/mnist_classification.svg" ]]; then
-  deno fmt docs/screenshots/mnist_classification.svg > /dev/null
-fi
+for svg in \
+  "docs/screenshots/mnist_classification.svg" \
+  "docs/screenshots/mnist_classification/evolution.svg" \
+  "docs/screenshots/mnist_classification_evolution.svg"; do
+  if [[ -f "${svg}" ]]; then
+    deno fmt "${svg}" > /dev/null
+  fi
+done

@@ -1,0 +1,182 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 800 400"
+  width="800"
+  height="400"
+  role="img"
+  aria-label="MNIST classification — MLP baseline (validation accuracy per epoch) dual-axis chart"
+>
+  <title>MNIST classification — MLP baseline (validation accuracy per epoch)</title>
+  <rect width="800" height="400" fill="#fafafa" />
+  <text
+    x="400"
+    y="24"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="16"
+    font-weight="bold"
+    fill="#222"
+  >MNIST classification — MLP baseline (validation accuracy per epoch)</text>
+  <rect x="70" y="40" width="660" height="300" fill="#ffffff" stroke="#333333" stroke-width="1" />
+  <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
+    <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="70" y="358" text-anchor="middle">0</text>
+    <line x1="136" y1="340" x2="136" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="136" y="358" text-anchor="middle">1</text>
+    <line x1="202" y1="340" x2="202" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="202" y="358" text-anchor="middle">2</text>
+    <line x1="268" y1="340" x2="268" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="268" y="358" text-anchor="middle">3</text>
+    <line x1="334" y1="340" x2="334" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="334" y="358" text-anchor="middle">4</text>
+    <line x1="400" y1="340" x2="400" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="400" y="358" text-anchor="middle">5</text>
+    <line x1="466" y1="340" x2="466" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="466" y="358" text-anchor="middle">6</text>
+    <line x1="532" y1="340" x2="532" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="532" y="358" text-anchor="middle">7</text>
+    <line x1="598" y1="340" x2="598" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="598" y="358" text-anchor="middle">8</text>
+    <line x1="664" y1="340" x2="664" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="664" y="358" text-anchor="middle">9</text>
+    <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="730" y="358" text-anchor="middle">10</text>
+    <text x="400" y="376" text-anchor="middle" font-weight="bold">generation</text>
+  </g>
+  <g class="left-axis" font-family="sans-serif" font-size="11" fill="#1f77b4">
+    <line x1="66" y1="340" x2="70" y2="340" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0.933</text>
+    <line x1="66" y1="295.62" x2="70" y2="295.62" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="295.62" text-anchor="end" dominant-baseline="middle">0.938</text>
+    <line x1="66" y1="251.24" x2="70" y2="251.24" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="251.24" text-anchor="end" dominant-baseline="middle">0.943</text>
+    <line x1="66" y1="206.86" x2="70" y2="206.86" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="206.86" text-anchor="end" dominant-baseline="middle">0.948</text>
+    <line x1="66" y1="162.49" x2="70" y2="162.49" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="162.49" text-anchor="end" dominant-baseline="middle">0.953</text>
+    <line x1="66" y1="118.11" x2="70" y2="118.11" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="118.11" text-anchor="end" dominant-baseline="middle">0.958</text>
+    <line x1="66" y1="73.73" x2="70" y2="73.73" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="73.73" text-anchor="end" dominant-baseline="middle">0.963</text>
+    <line x1="66" y1="40" x2="70" y2="40" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="40" text-anchor="end" dominant-baseline="middle">0.966</text>
+    <text
+      x="22"
+      y="190"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-weight="bold"
+      transform="rotate(-90 22 190)"
+    >validation accuracy</text>
+  </g>
+  <g class="right-axis" font-family="sans-serif" font-size="11" fill="#333333">
+    <line x1="730" y1="340" x2="734" y2="340" stroke="#333333" stroke-width="1" />
+    <text x="738" y="340" text-anchor="start" dominant-baseline="middle">0</text>
+    <line x1="730" y1="280" x2="734" y2="280" stroke="#333333" stroke-width="1" />
+    <text x="738" y="280" text-anchor="start" dominant-baseline="middle">2637</text>
+    <line x1="730" y1="219.99" x2="734" y2="219.99" stroke="#333333" stroke-width="1" />
+    <text x="738" y="219.99" text-anchor="start" dominant-baseline="middle">5274</text>
+    <line x1="730" y1="159.99" x2="734" y2="159.99" stroke="#333333" stroke-width="1" />
+    <text x="738" y="159.99" text-anchor="start" dominant-baseline="middle">7911</text>
+    <line x1="730" y1="99.98" x2="734" y2="99.98" stroke="#333333" stroke-width="1" />
+    <text x="738" y="99.98" text-anchor="start" dominant-baseline="middle">10548</text>
+    <line x1="730" y1="40" x2="734" y2="40" stroke="#333333" stroke-width="1" />
+    <text x="738" y="40" text-anchor="start" dominant-baseline="middle">13184</text>
+    <text
+      x="778"
+      y="190"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-weight="bold"
+      transform="rotate(90 778 190)"
+    >neurons / synapses</text>
+  </g>
+  <g class="score-line">
+    <polyline
+      fill="none"
+      stroke="#1f77b4"
+      stroke-width="1.5"
+      points="70,340 136,227.28 202,200.65 268,136.75 334,136.75 400,94.14 466,93.25 532,88.82 598,64.85 664,52.43 730,40"
+    />
+    <circle class="score-point" cx="70" cy="340" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="136" cy="227.28" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="202" cy="200.65" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="268" cy="136.75" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="334" cy="136.75" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="400" cy="94.14" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="466" cy="93.25" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="532" cy="88.82" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="598" cy="64.85" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="664" cy="52.43" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="730" cy="40" r="1.8" fill="#1f77b4" />
+  </g>
+  <g class="neurons-line">
+    <polyline
+      fill="none"
+      stroke="#2ca02c"
+      stroke-width="1.5"
+      points="70,333.86 136,333.86 202,333.86 268,333.86 334,333.86 400,333.86 466,333.86 532,333.86 598,333.86 664,333.86 730,333.86"
+    />
+    <circle class="neurons-point" cx="70" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="136" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="202" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="268" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="334" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="400" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="466" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="532" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="598" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="664" cy="333.86" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="730" cy="333.86" r="1.8" fill="#2ca02c" />
+  </g>
+  <g class="synapses-line">
+    <polyline
+      fill="none"
+      stroke="#d62728"
+      stroke-width="1.5"
+      points="70,40 136,40 202,40 268,40 334,40 400,40 466,40 532,40 598,40 664,40 730,40"
+    />
+    <circle class="synapses-point" cx="70" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="136" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="202" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="268" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="334" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="400" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="466" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="532" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="598" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="664" cy="40" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="730" cy="40" r="1.8" fill="#d62728" />
+  </g>
+  <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
+    <rect
+      x="76"
+      y="42"
+      width="130"
+      height="56"
+      fill="#ffffff"
+      fill-opacity="0.85"
+      stroke="#cccccc"
+      stroke-width="0.5"
+    />
+    <line x1="82" y1="52" x2="100" y2="52" stroke="#1f77b4" stroke-width="2" />
+    <text x="106" y="56">validation accuracy</text>
+    <line x1="82" y1="68" x2="100" y2="68" stroke="#2ca02c" stroke-width="2" />
+    <text x="106" y="72">neurons</text>
+    <line x1="82" y1="84" x2="100" y2="84" stroke="#d62728" stroke-width="2" />
+    <text x="106" y="88">synapses</text>
+  </g>
+  <g class="final-annotation" font-family="sans-serif" font-size="12" fill="#222222">
+    <line
+      x1="730"
+      y1="40"
+      x2="718"
+      y2="52"
+      stroke="#666666"
+      stroke-width="0.8"
+      stroke-dasharray="2,2"
+    />
+    <circle cx="730" cy="40" r="3.5" fill="#222222" />
+    <text x="718" y="52" text-anchor="end">gen 10: 0.966, 270 neurons, 13184 synapses</text>
+  </g>
+</svg>
