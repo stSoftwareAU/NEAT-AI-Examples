@@ -24,6 +24,7 @@ const EXAMPLE_DIRS = [
   "memetic_evolution",
   "mnist_classification",
   "mountain_car",
+  "neuron_pruning",
   "snake_game",
   "stock_market",
   "suggest_improvements",
@@ -124,6 +125,7 @@ Deno.test("README.md introduces every example by name", () => {
     "CRISPR",
     "Memetic Evolution",
     "Synthetic Synapse",
+    "Neuron Pruning",
     "Evolution Showcase",
   ];
   for (const name of required) {
