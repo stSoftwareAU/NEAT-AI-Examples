@@ -28,9 +28,15 @@ deno run \
   mountain_car/mountain_car.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
+# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
 # stay clean — the renderer emits compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
 if [[ -f "docs/screenshots/mountain_car.svg" ]]; then
   deno fmt docs/screenshots/mountain_car.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/mountain_car_evolution.svg" ]]; then
+  deno fmt docs/screenshots/mountain_car_evolution.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/mountain_car/evolution.svg" ]]; then
+  deno fmt docs/screenshots/mountain_car/evolution.svg > /dev/null
 fi

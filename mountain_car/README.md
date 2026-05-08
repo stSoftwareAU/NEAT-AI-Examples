@@ -1,7 +1,10 @@
 # 🚗 Mountain Car — Swing-up to the Summit
 
-> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
-> evolving from there into a network that swings the car up to the goal flag.
+> 🌱 **Generation 1 starts from random noise** — the initial population is built by NEAT-AI's
+> uniform-random `Creature(2, 3)` constructor, with **no hand-crafted topology and no tuned weight
+> init**. Gen 1 mostly wastes fuel rocking inside the valley; the captured milestones show the
+> controller learning to swing back-and-forth across the bowl until the final champion crests the
+> goal flag.
 
 `mountain_car.ts` evolves a NEAT-AI controller that drives an under-powered car up a sinusoidal hill
 — the second canonical OpenAI-Gym RL benchmark. The engine is too weak to climb the slope directly,
@@ -16,11 +19,12 @@ with the only external dependency being NEAT-AI's `Creature.activate` to compute
 ```mermaid
 flowchart LR
     PHYS["🧮 Pure-TS Mountain-Car Physics<br/>(physics.ts)"]
-    INIT["🎲 Random Population<br/>linear policies"]
-    SCORE["📏 Score: bonus − step penalty<br/>(failure = partial credit)"]
+    INIT["🎲 Uniform-Random NEAT<br/>new Creature(2, 3)"]
+    SCORE["📏 Mean Across 5 Perturbed Trials<br/>(capped at 200 steps each)"]
     SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
-    MUTATE["🧬 Mutate Weights & Biases"]
-    SOLVED{"x ≥ 0.5?"}
+    MUTATE["🧬 Mutate: weights · biases · add-neuron"]
+    SOLVED{"Summit-rate ≥ 80%?"}
+    CAP{"Generation cap reached?"}
     CHAMP["💾 Save champion.json"]
     RUN["▶️ Replay Champion"]
     SVG["🖼️ docs/screenshots/mountain_car.svg"]
@@ -32,7 +36,9 @@ flowchart LR
     MUTATE --> SCORE
     SCORE --> SOLVED
     SOLVED -- yes --> CHAMP
-    SOLVED -- no, more generations --> SELECT
+    SOLVED -- no --> CAP
+    CAP -- no --> SELECT
+    CAP -- yes (give up) --> CHAMP
     CHAMP --> RUN
     RUN --> SVG
 
@@ -52,15 +58,18 @@ flowchart LR
 | -------- | ---------- | ------ | --------------------------------------------------------- |
 | Input 0  | observable | `x`    | Horizontal position along the hill, bounded `[-1.2, 0.6]` |
 | Input 1  | observable | `v`    | Horizontal velocity, bounded `[-0.07, 0.07]`              |
-| Output 0 | action     | —      | Logistic activation; argmax → push left (`-1`)            |
-| Output 1 | action     | —      | Logistic activation; argmax → coast (`0`)                 |
-| Output 2 | action     | —      | Logistic activation; argmax → push right (`+1`)           |
+| Output 0 | action     | —      | Argmax → push left (`-1`)                                 |
+| Output 1 | action     | —      | Argmax → coast (`0`)                                      |
+| Output 2 | action     | —      | Argmax → push right (`+1`)                                |
 
 The episode ends as a **success** the first timestep `x ≥ 0.5` (the goal flag) and as a **failure**
-after 200 timesteps of the canonical `MountainCar-v0` horizon. Successful runs score
-`SUCCESS_BONUS − (SUCCESS_BONUS · steps / 200)`, so faster solves outscore slower ones; failed runs
-receive a flat penalty plus a small bonus for the highest peak reached so the evolutionary search
-still has a gradient to follow before any genome solves the task.
+after 200 timesteps of the canonical `MountainCar-v0` horizon. Each candidate is scored against
+**five different perturbed-start trials**: the starting `x` is sampled uniformly from
+`[-0.55, -0.45]` (the canonical `-0.5` ± `0.05`) so a controller cannot solve the task by exploiting
+a single favourable launch. The `score` reported is the **mean** per-trial score, and the run is
+"solved" when the champion's **summit-reached fraction** reaches the `SOLVED_THRESHOLD` of **0.8** —
+eight in ten trials must crest the flag within the step cap. Evolution stops as soon as that
+threshold is met or the **hard generation cap** of 300 is reached, whichever comes first.
 
 ## 🚀 Running the Example
 
@@ -71,33 +80,64 @@ still has a gradient to follow before any genome solves the task.
 Artefacts:
 
 - `.synthetic-mountain-car/creatures/champion.json` – the fittest controller from the run
-- `docs/screenshots/mountain_car.svg` – an animated SVG showing the champion's drive up the hill
+- `.synthetic-mountain-car/snapshots/snapshot-gen-*.json` – running-champion snapshots captured at
+  the configured checkpoints
+- `docs/screenshots/mountain_car.svg` – animated SVG showing the champion's drive up the hill
+- `docs/screenshots/mountain_car_evolution.svg` – multi-panel evolution-progression strip rendered
+  from the captured snapshots
 - `docs/screenshots/mountain_car/evolution.svg` – dual-axis evolution chart plotting best score and
   champion neuron / synapse counts against generation
 
-## 📈 Evolution Chart
+## 📈 Evolution Progress
+
+![Mountain-Car evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/mountain_car_evolution.svg)
 
 ![Mountain-Car evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/mountain_car/evolution.svg)
+
+The runner captures a snapshot of the **running champion** at each of the checkpoint generations
+`[1, 10, 50, 150, 300]` (those that fall inside the configured `maxGenerations`). The cadence is
+chosen to match variable-topology evolution from uniform-random noise: gen 1 is pure noise, gens 10
+/ 50 / 150 show the controller growing structure and shifting weights, and the final captured panel
+shows the swing-up policy cresting the flag. The chart fits a normal window — the milestones are
+spaced so the score-progression polyline is readable end-to-end.
+
+Generation 1 is the **uniform-random NEAT population** straight from `new Creature(2, 3)` — direct
+input → output connections with weights and biases drawn by the library's RNG. Most gen-1 creatures
+waste their 200 steps rocking inside the valley without ever cresting the flag, so the population
+mean per-trial score sits at the failure baseline (well below any successful score). The
+intermediate milestones show the controller learning the swing-up strategy; the final champion meets
+the 80% summit-rate threshold across the perturbed-start batch.
 
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
 
+- **No hand-crafted topology.** `mountain_car.ts` never hard-codes neurons or synapses. The initial
+  population is built with `createSeededPopulation({ inputCount: 2, outputCount: 3, ... })` which
+  delegates to `new Creature(2, 3)` for every member. Hidden neurons appear only when the add-neuron
+  mutation operator splits an existing connection during evolution — structural mutation discovers
+  them.
 - **Engine is deliberately under-powered.** The acceleration coefficient (`0.001`) is smaller than
   the gravity coefficient on the slope (`0.0025`) at most positions. A purely greedy "push toward
   the goal" controller cannot solve it — the car stalls before the summit. Mountain Car is the
   textbook showcase for evolutionary search precisely because of this non-greedy structure.
-- **Linear policy is enough.** Two inputs and three logistic outputs (six weights, three biases)
-  make a small enough search space that a 30-creature population finds a swing-up controller in tens
-  of generations. There is no hidden layer.
-- **Argmax discretisation.** The three outputs are passed through logistics and then `argmax` — the
-  controller commits to one of `{-1, 0, +1}` every step. Ties favour the lower index but in practice
-  the logistic outputs differ enough that ties are vanishingly rare.
+- **Argmax discretisation.** The three outputs are passed through the library's default squash and
+  then `argmax` — the controller commits to one of `{-1, 0, +1}` every step. Ties favour the lower
+  index but in practice the outputs differ enough that ties are vanishingly rare.
+- **Perturbed starts.** Every candidate is scored on five different starting positions (the same
+  five for every member, every generation) so the search cannot "win" by memorising a single
+  symmetric launch. The `0.05` half-width keeps every start inside the valley bowl so the swing-up
+  problem stays well-posed.
 - **Left-wall collision matters.** When the car slams into `x = -1.2` the velocity is reset to zero.
   Without this, the simulation would let the car push leftward indefinitely past the wall, breaking
   the episode dynamics.
-- **Reproducibility.** All randomness flows through `common/deterministic_random.ts`. With a fixed
-  seed the same champion is produced on every run.
+- **Reproducibility.** The library's global RNG is reseeded at the start of each evolve call via
+  `setRandomNumberGenerator(createSeededRng(seed))`, and our local PRNG
+  (`common/deterministic_random.ts`) drives mutation. With a fixed seed the same champion is
+  produced on every run.
+- **Hard generation cap.** Evolution stops at `maxGenerations` even if the threshold has not been
+  reached, so a stuck run never blocks the example forever. The cap is enforced in
+  `evolveMountainCarController` and verified by the `honours the hard generation cap` test.
 - **OpenAI Gym lineage.** Update rules, bounds, action set, and the 200-step horizon all match the
   canonical `MountainCar-v0` benchmark, so behaviour matches the textbook reference. Despite that
   pedigree, the simulator is plain TypeScript so the project remains "Deno + JSR" with no extra
