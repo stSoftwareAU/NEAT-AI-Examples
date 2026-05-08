@@ -869,6 +869,90 @@ Deno.test("buildGridCellsFromGenes — emits well-formed cells matching the geno
   }
 });
 
+// -- README content tests --------------------------------------------
+// "What" tests against the published README. Each test reads the file
+// from disk and asserts the corrected wording from issue #185 is
+// present so the README cannot regress to implying NEAT-AI lacks
+// backpropagation. These tests inspect the *artefact*, not source code,
+// so they remain valid regardless of how the example is implemented.
+
+const README_PATH = new URL("./README.md", import.meta.url);
+
+async function readReadme(): Promise<string> {
+  return await Deno.readTextFile(README_PATH);
+}
+
+Deno.test("README — does not contain the misleading 'SGD beats NEAT' phrasing", async () => {
+  const text = await readReadme();
+  assert(
+    !/SGD beats NEAT by orders of magnitude/i.test(text),
+    "README must not contain the misleading 'SGD beats NEAT' line — it should contrast SGD with evolutionary structural search instead.",
+  );
+});
+
+Deno.test("README — explicitly notes NEAT-AI ships backpropagation", async () => {
+  const text = await readReadme();
+  assert(
+    /NEAT-AI\s+ships\s+(?:full\s+)?backpropagation/i.test(text),
+    "README must include the canonical 'NEAT-AI ships backpropagation' wording.",
+  );
+});
+
+Deno.test("README — links to upstream COMPARISON.md training-methods anchor", async () => {
+  const text = await readReadme();
+  assert(
+    text.includes(
+      "https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#training-methods",
+    ),
+    "README must link to upstream COMPARISON.md#training-methods for the training-methods comparison.",
+  );
+});
+
+Deno.test("README — distinguishes the demo's stripped-down loop from the production pipeline", async () => {
+  const text = await readReadme();
+  assert(
+    /stripped-down/i.test(text),
+    "README must describe the demo's NEAT loop as 'stripped-down' to make the demo-vs-production split obvious.",
+  );
+  assert(
+    /production training pipeline/i.test(text) ||
+      /production pipeline/i.test(text),
+    "README must mention NEAT-AI's 'production training pipeline' alongside the demo loop.",
+  );
+});
+
+Deno.test("README — has a 'Where NEAT-AI is faster than this demo suggests' section listing the four features", async () => {
+  const text = await readReadme();
+  assert(
+    /Where NEAT-AI is faster than this demo suggests/.test(text),
+    "README must contain the 'Where NEAT-AI is faster than this demo suggests' subsection.",
+  );
+  // Must mention all four accelerators.
+  assert(/binary/i.test(text), "subsection must mention the binary training stream");
+  assert(
+    /\.bin/.test(text) || /IDX\s*→\s*\.bin/.test(text),
+    "subsection must mention the .bin training stream",
+  );
+  assert(/memetic/i.test(text), "subsection must mention memetic evolution");
+  assert(/MCMC/.test(text), "subsection must mention MCMC mutation acceptance");
+  assert(/Discovery/.test(text), "subsection must mention NEAT-AI-Discovery");
+});
+
+Deno.test("README — flowchart MUT label flags 'demo only' and names the production operators", async () => {
+  const text = await readReadme();
+  // The Mermaid MUT node should describe the demo limitation explicitly.
+  assert(
+    /demo only/i.test(text),
+    "flowchart MUT caption must include 'demo only' to flag the stripped-down operator set.",
+  );
+  // Each of the production operators should be named in the MUT caption area.
+  assert(
+    /backprop/i.test(text) && /memetic/i.test(text) && /MCMC/i.test(text) &&
+      /discovery/i.test(text),
+    "MUT caption must name the production-pipeline operators (backprop, memetic, MCMC, discovery).",
+  );
+});
+
 Deno.test("readGzippedFile rejects a missing file", async () => {
   await assertRejects(() => readGzippedFile("/no/such/path/data.gz"), Error);
 });

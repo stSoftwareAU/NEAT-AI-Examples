@@ -51,7 +51,7 @@ flowchart LR
     DOWN["🔽 Down-sample<br/>28×28 → 14×14"]
     SPLIT["✂️ canonical 50k / 10k / 10k<br/>train · val · test"]
     NOISE["🌱 Uniform-random NEAT<br/>196 inputs · 10 LOGISTIC outputs<br/>direct input→output, random weights"]
-    MUT["🧬 Mutation<br/>weight ± noise · add-node split"]
+    MUT["🧬 Mutation (demo only)<br/>weight perturbation + add-node split<br/>production pipeline also uses backprop, memetic, MCMC, discovery"]
     SCORE["📏 Validation accuracy<br/>(per generation)"]
     CHART["📈 Evolution chart<br/>mnist_classification/evolution.svg"]
     STRIP["🎞️ Evolution-progression<br/>mnist_classification_evolution.svg"]
@@ -135,6 +135,14 @@ because argmax over LOGISTIC outputs is the natural way to interpret a digit-cla
 operator as evolution progresses, so the captured progression strip honestly tells the noise →
 competent story.
 
+> 🪜 **Operator subset is a teaching choice, not a NEAT-AI limitation.** `evolveClassifier`
+> deliberately uses only weight perturbation + add-node so each panel of the progression strip is
+> visually legible. NEAT-AI's production training pipeline ships the full operator set —
+> backpropagation (mini-batch SGD with momentum, adaptive learning rate, L1/L2 weight decay,
+> dropout, K-fold cross-validation), memetic evolution, Markov chain Monte Carlo (MCMC) mutation
+> acceptance, and GPU-accelerated NEAT-AI-Discovery — see upstream
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#training-methods).
+
 | Hyper-parameter     | Default                    | Why                                                                                |
 | ------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
 | `populationSize`    | 64                         | Enough diversity to keep evolution moving without slowing each generation too much |
@@ -208,13 +216,52 @@ A few things that are not obvious from the code alone:
   caps below 90 % on 14 × 14 mean-pooled MNIST. The NEAT search reaches 95 % by **growing** hidden
   neurons via add-node structural mutation; the SGD baseline reaches it via a hand-prescribed
   64-neuron hidden layer.
-- **SGD beats NEAT by orders of magnitude in wall-clock.** Refining ~13 000 MLP weights via mutation
+- **SGD beats _evolutionary structural search_ by orders of magnitude in wall-clock — but NEAT-AI
+  ships full backpropagation too.** NEAT-AI itself ships full backpropagation (mini-batch SGD with
+  momentum, adaptive learning rate, L1/L2 weight decay, dropout, K-fold cross-validation) — see
+  upstream
+  [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#training-methods)
+  for the full training-methods catalogue. The example's `evolveClassifier` deliberately uses a
+  stripped-down operator set (weight perturbation + add-node) for visual clarity in the progression
+  strip; it is **not** the production training pipeline. Refining ~13 000 MLP weights via mutation
   alone is unbounded — the NEAT screenshot run is intentionally a one-off developer task, not part
-  of CI. Backprop + mini-batch SGD with momentum hits 95 % in roughly a dozen epochs and is what
-  `quality.sh` runs to keep CI fast.
+  of CI. NEAT-AI's hybrid memetic evolution combines NEAT structural search with backprop weight
+  refinement and converges far faster than the stripped-down loop in this example. The
+  `evolveMLPClassifier` baseline illustrates one of those production training methods (mini-batch
+  SGD with momentum) so `quality.sh` stays fast — the two paradigms ship side by side.
 - **Validation comes from the training file.** The 10 000-image MNIST test file is held entirely in
   reserve for the test confusion matrix, while the validation slice (the tail of the 60 000-image
   training file) drives the fitness signal. This avoids leaking test-distribution structure into the
   early-stop decision.
 - **Reproducibility.** All randomness flows through `common/deterministic_random.ts`. With a fixed
   seed and the pinned IDX digests, the same champion is produced on every run.
+
+## ⚡ Where NEAT-AI is faster than this demo suggests
+
+The wall-clock numbers above describe **this stripped-down example**, not NEAT-AI's production
+training pipeline. The full toolkit ships several accelerators that this teaching demo deliberately
+sets aside; reach for them on real workloads:
+
+- **Binary IDX → `.bin` training stream.** NEAT-AI's `creature.evolveDir` consumes the same chunked
+  binary format the rest of the toolkit uses for on-disk training data. Streaming pre-decoded `.bin`
+  chunks cuts data-loading overhead, which dominates wall-clock on large datasets — to quote the
+  reporter, _"if the training data is prepared in a binary format that would be very fast indeed"_.
+  This demo runs against the gzipped IDX files directly to keep the example self-contained.
+- **Memetic seeding from the fittest archive.** NEAT-AI's memetic evolution re-seeds each generation
+  from an archive of historical champions instead of restarting from noise, so structural search
+  converges in far fewer generations than the strict noise → competent loop shown here. See
+  [`memetic_evolution/README.md`](../memetic_evolution/README.md) for the operator in isolation.
+- **MCMC mutation acceptance.** The Metropolis–Hastings acceptance rule keeps useful uphill moves
+  while occasionally accepting downhill ones, escaping plateaus that pure greedy mutation gets stuck
+  on. See [`mcmc_acceptance/README.md`](../mcmc_acceptance/README.md).
+- **GPU-accelerated NEAT-AI-Discovery.** Discovery applies error-driven analysis to suggest
+  beneficial structural changes — _"a bit of science to the structural changes in the network
+  instead of just random mutations"_ (issue #182 reporter). It targets the topology edits worth
+  making rather than rolling dice on every generation. See
+  [`discovery/README.md`](../discovery/README.md) and
+  [`discovery_at_scale/README.md`](../discovery_at_scale/README.md).
+
+For the full training-methods catalogue (backpropagation, dropout, L1/L2 regularisation, K-fold
+cross-validation, synthetic synapses, sparse training, batch processing, early stopping and more)
+see upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#training-methods).
