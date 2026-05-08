@@ -39,6 +39,7 @@ This is a backend/CLI example with no web UI. Verified by:
   moving-average correctness and edge cases, SVG well-formedness, target-line presence, and
   empty-input rejection.
 - Sample run summary (default seed):
+
   ```
   iterations          = 4000
   target acceptance   = 23.4%
@@ -46,6 +47,7 @@ This is a backend/CLI example with no web UI. Verified by:
   best fitness        = -0.3309
   final temperature   = 0.8548
   ```
+
 - The committed SVG `docs/screenshots/mcmc_acceptance.svg` shows the blue moving-average acceptance
   line settling onto the green dashed 23.4% target while the orange temperature curve climbs from
   `T₀ = 0.01` toward equilibrium.
