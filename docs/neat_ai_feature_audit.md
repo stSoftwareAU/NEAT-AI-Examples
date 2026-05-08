@@ -1,0 +1,241 @@
+# 📋 NEAT-AI Feature Audit — README Cross-Reference
+
+> **Status.** Source-of-truth audit produced for issue
+> [#184](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/184) (parent
+> [#182](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/182)). This file does **not**
+> rewrite any README; it lists every gap, inaccuracy, and opportunity so that the follow-up
+> sub-issues can fix the documentation consistently rather than one passage at a time.
+
+## 🎯 Why this audit exists
+
+The reporter on issue #182 pointed out that several READMEs in this repository read as if NEAT-AI
+were "just textbook NEAT" — e.g. that
+[`mnist_classification/README.md`](../mnist_classification/README.md) reads as if NEAT-AI lacks back
+propagation, when in fact backprop is one of many training features inside NEAT-AI (see the upstream
+[COMPARISON.md](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)). The reporter's
+three concrete points:
+
+1. **Back propagation** is implemented in NEAT-AI; the MNIST README should not imply otherwise.
+2. **Binary training data** is one of the speed-up vectors NEAT-AI uses — the production training
+   pipeline expects on-disk `.bin` chunks rather than CSV, which is materially faster than the
+   analytical SGD some examples use.
+3. [**NEAT-AI-Discovery**](https://github.com/stSoftwareAU/NEAT-AI-Discovery) "applies a bit of
+   science to the structural changes" — beneficial mutations are searched for using GPU-accelerated
+   activation analysis (saturated, dead, dormant, bottleneck neurons) rather than purely random
+   structural mutation.
+
+This audit is the foundation; the follow-up sub-issues consume it.
+
+## 🗺️ Capability map (search · training · structure · scale · interop)
+
+The Mermaid summary groups every NEAT-AI capability from upstream `COMPARISON.md` into the five
+categories called out in the issue. Categories are deliberately broad — many features (e.g.
+`Synthetic Synapse Training`) sit at the boundary between _training_ and _structure_ and are placed
+where their primary effect lies.
+
+```mermaid
+flowchart TD
+    subgraph search [🔎 Search]
+        SP[Speciation]
+        HM[Historical Marking]
+        MCMC[MCMC Mutation Acceptance]
+        ME[Memetic Evolution]
+        BR[Advanced Breeding]
+        FS[Fitness Sharing]
+        SS[Stagnant Species Retirement]
+        SQ[Fitness-Driven Squash Mutation]
+        APS[Adaptive Population Sizing]
+        EN[Ensemble Diversity]
+        AQ[Adaptive Quantum Steps]
+    end
+    subgraph training [🎓 Training]
+        BP[Backpropagation]
+        SPT[Sparse Training]
+        BAT[Batch Processing]
+        ES[Early Stopping]
+        PC[Predictive Coding]
+        DR[Dropout]
+        L12[L1/L2 Regularisation]
+        KF[K-Fold Cross-Validation]
+        SY[Synthetic Synapse Training]
+        MUON[Muon-Style Orthogonalised Updates]
+        HSA[Hyperparameter Self-Adaptation]
+    end
+    subgraph structure [🧱 Structure]
+        DISC[GPU-Accelerated Discovery]
+        DCACHE[Discovery Caching]
+        CRIS[CRISPR Gene Injection]
+        GR[Grafting]
+        NP[Neuron Pruning]
+        UAF[Unique Activation Functions]
+        AGG[Improved Aggregate Gradient Flow]
+        FOT[Forward-Only Topology Enforcement]
+        NUM[Numerical Stability Clamps]
+    end
+    subgraph scale [⚡ Scale]
+        UUID[UUID-Based Indexing]
+        DE[Distributed Evolution]
+        PB[Parallel Batch Creature Evaluation]
+        BIN[Binary `.bin` Training Stream]
+        DSM[Disk Space Monitoring]
+        WPR[WASM Panic Recovery]
+        LL[Lifelong Learning]
+        RUST[Optional Rust CLI Scorer]
+    end
+    subgraph interop [🔌 Interop]
+        ONNX[ONNX Format Export]
+        TL[Transfer Learning]
+        DNA[DNA-Sharing Primitives]
+        CORE[NEAT-AI-core Pin & Parity Gate]
+    end
+
+    search --> training
+    training --> structure
+    structure --> scale
+    scale --> interop
+```
+
+## 🚦 NEAT-AI capability vs example coverage
+
+This table is the central artefact of the audit. Every capability listed in upstream `COMPARISON.md`
+("What We've Implemented") is included; for each capability we record whether an example currently
+demonstrates it, which README mentions it, and whether any README misrepresents the capability as
+absent.
+
+| Capability                                         | Demonstrated by                                                  | Mentioned in README                                                                                            | Misrepresented as absent in NEAT-AI?                                                                                                                                              |
+| -------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Evolutionary Topology Search                       | every in-scope example                                           | most READMEs                                                                                                   | No.                                                                                                                                                                               |
+| Speciation                                         | not yet demonstrated                                             | none                                                                                                           | No, but no example explains it either — opportunity for a callout.                                                                                                                |
+| Historical Marking                                 | implicit in `crossover/`                                         | [crossover/README.md](../crossover/README.md)                                                                  | No.                                                                                                                                                                               |
+| Backpropagation                                    | demonstrated by `synthetic_synapse/`                             | [synthetic_synapse/README.md](../synthetic_synapse/README.md)                                                  | **Yes — [`mnist_classification/README.md`](../mnist_classification/README.md) reads as if NEAT-AI lacks backprop.** "SGD beats NEAT" should be "SGD beats _evolutionary search_". |
+| Sparse Training                                    | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Batch Processing                                   | not yet demonstrated                                             | [mnist_classification/README.md](../mnist_classification/README.md) (mini-batch SGD)                           | No.                                                                                                                                                                               |
+| Early Stopping                                     | implicit in many examples (accuracy targets)                     | [mnist_classification/README.md](../mnist_classification/README.md), and others                                | No.                                                                                                                                                                               |
+| Memetic Evolution                                  | demonstrated by `memetic_evolution/`                             | [memetic_evolution/README.md](../memetic_evolution/README.md)                                                  | No.                                                                                                                                                                               |
+| Error-Guided Structural Evolution                  | demonstrated by `discovery_at_scale/`                            | [discovery_at_scale/README.md](../discovery_at_scale/README.md)                                                | The "science-driven" framing from issue #182 is **missing** — see callout below.                                                                                                  |
+| Predictive Coding                                  | not yet demonstrated                                             | none                                                                                                           | No, but no example explains it.                                                                                                                                                   |
+| Dropout                                            | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| L1/L2 Weight & Bias Regularisation                 | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| K-Fold Cross-Validation                            | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Gradient Accumulation Normalisation                | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Synthetic Synapse Training                         | demonstrated by `synthetic_synapse/`                             | [synthetic_synapse/README.md](../synthetic_synapse/README.md)                                                  | The "Pure NEAT" column in the comparison table reads as a NEAT-AI limitation; should be "Vanilla NEAT" or "textbook NEAT".                                                        |
+| MCMC Mutation Acceptance                           | demonstrated by `mcmc_acceptance/`                               | [mcmc_acceptance/README.md](../mcmc_acceptance/README.md)                                                      | No.                                                                                                                                                                               |
+| Muon-Style Orthogonalised Gradient Updates         | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| UUID-Based Indexing                                | implicit in `crispr_injection/`                                  | [crispr_injection/README.md](../crispr_injection/README.md)                                                    | No.                                                                                                                                                                               |
+| Distributed Evolution                              | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Lifelong Learning                                  | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| CRISPR Gene Injection                              | demonstrated by `crispr_injection/`                              | [crispr_injection/README.md](../crispr_injection/README.md)                                                    | No.                                                                                                                                                                               |
+| Grafting                                           | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Neuron Pruning                                     | demonstrated by `neuron_pruning/`                                | [neuron_pruning/README.md](../neuron_pruning/README.md)                                                        | No.                                                                                                                                                                               |
+| GPU-Accelerated Discovery                          | demonstrated by `discovery/`, `discovery_at_scale/`              | [discovery/README.md](../discovery/README.md), [discovery_at_scale/README.md](../discovery_at_scale/README.md) | The READMEs describe Discovery as "search for replacement" without surfacing the _science-driven_ framing the reporter highlighted.                                               |
+| Discovery Caching                                  | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Disk Space Monitoring                              | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Ensemble Diversity                                 | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Adaptive Quantum Steps                             | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Unique Activation Functions (IF, MAX, MIN)         | demonstrated by `intelligent_design/`                            | [intelligent_design/README.md](../intelligent_design/README.md)                                                | No.                                                                                                                                                                               |
+| Improved Aggregate Gradient Flow (MAXIMUM/MINIMUM) | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Transfer Learning                                  | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| ONNX Format Export                                 | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Hyperparameter Self-Adaptation                     | partially — `adaptive_mutation/` shows topology-share auto-shift | [adaptive_mutation/README.md](../adaptive_mutation/README.md)                                                  | No.                                                                                                                                                                               |
+| Adaptive Population Sizing                         | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Parallel Batch Creature Evaluation                 | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Advanced Breeding Strategies                       | partially — `crossover/` shows the basic operator                | [crossover/README.md](../crossover/README.md)                                                                  | The README only describes mother-keep + father-50 % blending, not subgraph transplantation, cosine-similarity alignment, or diversity-driven cross-population pairing.            |
+| WASM Panic Recovery                                | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Forward-Only Topology Enforcement                  | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Numerical Stability Clamps                         | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Fitness Sharing & Per-Species Breeding Quotas      | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Stagnant Species Detection and Retirement          | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Soft Compatibility-Gated Cross-Species Breeding    | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Fitness-Driven Squash Mutation                     | indirectly via `intelligent_design/`                             | [intelligent_design/README.md](../intelligent_design/README.md)                                                | No.                                                                                                                                                                               |
+| DNA-Sharing Primitives                             | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Optional Rust CLI Scorer with WASM Fallback        | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| NEAT-AI-core Pinning and Parity Gate               | not yet demonstrated                                             | none                                                                                                           | No.                                                                                                                                                                               |
+| Binary `.bin` Training Stream                      | not yet demonstrated                                             | [synthetic_synapse/README.md](../synthetic_synapse/README.md) sidesteps it explicitly                          | The reporter's binary-data-format speed-up is mentioned only in passing; no example exhibits it.                                                                                  |
+
+## 📚 Per-README accuracy register
+
+Every README under `<example>/README.md` is listed here. The "current accuracy" column is the
+audit's verdict on whether the README's NEAT-vs-NEAT-AI framing is accurate, in need of
+qualification, or makes no NEAT-vs-NEAT-AI claim at all.
+
+| README path                                                         | NEAT-vs-NEAT-AI claim?                                                                                                                | Current accuracy                                                                                                                                                                                                      |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [adaptive_mutation/README.md](../adaptive_mutation/README.md)       | Describes adaptive mutation as one of NEAT-AI's "hidden but important behaviours".                                                    | Accurate — explicitly frames the feature as NEAT-AI policy, not NEAT in the abstract.                                                                                                                                 |
+| [cart_pole/README.md](../cart_pole/README.md)                       | "Textbook cart-pole is famously trivial for random NEAT" — explicit qualification.                                                    | Accurate. Good model of how to phrase NEAT-vs-NEAT-AI distinctions.                                                                                                                                                   |
+| [crispr_injection/README.md](../crispr_injection/README.md)         | Calls CRISPR injection "unique to NEAT-style neuroevolution". Mentions "NEAT-AI's UUID-keyed neurons".                                | Accurate.                                                                                                                                                                                                             |
+| [crossover/README.md](../crossover/README.md)                       | No NEAT-vs-NEAT-AI claim made; describes one breeding strategy.                                                                       | Accurate but **incomplete** — only one of NEAT-AI's "Advanced Breeding Strategies" is shown, with no callout that more exist. Candidate for a "Further reading" pointer.                                              |
+| [discovery/README.md](../discovery/README.md)                       | No NEAT-vs-NEAT-AI claim made.                                                                                                        | Accurate, but the "science-driven" framing for NEAT-AI-Discovery from issue #182 is **absent**.                                                                                                                       |
+| [discovery_at_scale/README.md](../discovery_at_scale/README.md)     | "thesis: discovering structures at size and speed".                                                                                   | Accurate; same gap as `discovery/README.md`. The "applies a bit of science" framing from issue #182 should be added so readers see Discovery as targeted, not random.                                                 |
+| [evolution_showcase/README.md](../evolution_showcase/README.md)     | No NEAT-vs-NEAT-AI claim made.                                                                                                        | Accurate; flagship long-form run.                                                                                                                                                                                     |
+| [intelligent_design/README.md](../intelligent_design/README.md)     | No NEAT-vs-NEAT-AI claim made.                                                                                                        | Accurate.                                                                                                                                                                                                             |
+| [lunar_lander/README.md](../lunar_lander/README.md)                 | "this is exactly the kind of task where NEAT-AI's CTRNN-style temporal memory shines". Links to NEAT-AI #-key-features.               | Accurate — does the right thing, links upstream for breadth.                                                                                                                                                          |
+| [maze_navigation/README.md](../maze_navigation/README.md)           | No NEAT-vs-NEAT-AI claim made; calls out NEAT-AI's `Creature.activate`.                                                               | Accurate.                                                                                                                                                                                                             |
+| [mcmc_acceptance/README.md](../mcmc_acceptance/README.md)           | "NEAT-AI's mutation-acceptance strategy".                                                                                             | Accurate.                                                                                                                                                                                                             |
+| [memetic_evolution/README.md](../memetic_evolution/README.md)       | No NEAT-vs-NEAT-AI claim made.                                                                                                        | Accurate.                                                                                                                                                                                                             |
+| [mnist_classification/README.md](../mnist_classification/README.md) | "SGD beats NEAT by orders of magnitude in wall-clock"; "Backprop + mini-batch SGD with momentum hits 95 % in roughly a dozen epochs". | **Misleading.** Reads as if NEAT-AI lacks back propagation. The MLP/SGD baseline is contrasted with "NEAT" rather than with "evolutionary topology search" — a reader could infer NEAT-AI is purely evolutionary.     |
+| [mountain_car/README.md](../mountain_car/README.md)                 | No NEAT-vs-NEAT-AI claim made.                                                                                                        | Accurate.                                                                                                                                                                                                             |
+| [neuron_pruning/README.md](../neuron_pruning/README.md)             | "one of NEAT-AI's simplest, most effective tricks".                                                                                   | Accurate.                                                                                                                                                                                                             |
+| [snake_game/README.md](../snake_game/README.md)                     | "Is the NEAT-AI API set up for a stream of observations?" Discusses NEAT-AI as the toolkit.                                           | Accurate.                                                                                                                                                                                                             |
+| [stock_market/README.md](../stock_market/README.md)                 | "evolves a NEAT-AI network from uniform-random noise".                                                                                | Accurate.                                                                                                                                                                                                             |
+| [suggest_improvements/README.md](../suggest_improvements/README.md) | No NEAT-vs-NEAT-AI claim made (utility script).                                                                                       | Accurate.                                                                                                                                                                                                             |
+| [synthetic_synapse/README.md](../synthetic_synapse/README.md)       | "Pure NEAT" column heading in the comparison table; "Vanilla NEAT struggles at scale".                                                | **Mostly accurate** — it explicitly calls the limitation "Vanilla NEAT" and "Pure NEAT", which is correct. But the "Pure NEAT" column heading reads as a generic NEAT-AI shortcoming if skimmed; consider clarifying. |
+| [xor_classification/README.md](../xor_classification/README.md)     | "the canonical 'Hello World' of neuroevolution"; cites Stanley & Miikkulainen 2002.                                                   | Accurate — describes the algorithm's lineage and uses NEAT-AI elsewhere.                                                                                                                                              |
+
+## 🚩 Unqualified-NEAT phrasings to fix
+
+The following passages use the bare word "NEAT" where the surrounding context needs the qualifier
+**standard NEAT** / **textbook NEAT** / **vanilla NEAT** / **evolutionary search** so a reader does
+not infer the limitation applies to NEAT-AI itself.
+
+| README                                                                                                  | Passage                                                                                                                | Suggested rewording                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [mnist_classification/README.md](../mnist_classification/README.md) — "Tacit Knowledge" bullet          | "**SGD beats NEAT by orders of magnitude in wall-clock.**"                                                             | "**SGD beats _evolutionary structural search_ by orders of magnitude in wall-clock**" — backprop is part of NEAT-AI's training pipeline.                          |
+| [mnist_classification/README.md](../mnist_classification/README.md) — "Architecture & Training" intro   | "NEAT evolution from uniform-random noise"                                                                             | Fine as-is, but the surrounding chapter should also note that NEAT-AI offers backprop, dropout, L1/L2, K-fold, synthetic synapses, etc. as training-time options. |
+| [synthetic_synapse/README.md](../synthetic_synapse/README.md) — comparison table                        | "Pure NEAT" column heading                                                                                             | "Vanilla NEAT (no synthetic-synapse step)" — already done in prose; keep the same phrasing in the heading.                                                        |
+| [synthetic_synapse/README.md](../synthetic_synapse/README.md) — "Why does NEAT-AI need this?" paragraph | "Vanilla NEAT struggles at scale because evolutionary search is unlikely to stumble on every useful inter-layer edge." | Already qualified — leave as-is.                                                                                                                                  |
+| [discovery/README.md](../discovery/README.md) — flow description                                        | "Search for replacement"                                                                                               | "**Science-driven search for a replacement neuron** (saturated/dead/dormant detection, GPU-accelerated)" — reflects issue #182 framing.                           |
+| [discovery_at_scale/README.md](../discovery_at_scale/README.md) — top-of-file thesis                    | "discovering structures at size and speed"                                                                             | Add a sentence: "Unlike random structural mutation in textbook NEAT, NEAT-AI's Discovery applies activation analysis to _target_ the changes worth making."       |
+| Top-level [README.md](../README.md) — examples gallery                                                  | Many examples described without a one-liner on which NEAT-AI feature they exercise.                                    | Add a "Feature exercised" column or per-example callout, citing this audit.                                                                                       |
+
+## 🛣️ Specific reporter points (issue #182)
+
+These are the three points the reporter made explicitly. They are extracted here so each follow-up
+sub-issue can cite them verbatim.
+
+1. **Back propagation framing in MNIST.** From issue #182:
+   > "Our implementation does have back propagation and many other features." The MNIST README's
+   > `SGD beats NEAT` line reads as if NEAT-AI is NEAT-only; rewrite to contrast SGD with
+   > _evolutionary topology search_ and link to upstream `COMPARISON.md` for breadth.
+2. **Binary training data speed advantage.** From issue #182:
+   > "if the training data is prepared in a binary format that would be very fast indeed." NEAT-AI's
+   > production pipeline expects on-disk `.bin` chunks, which is materially faster than CSV. None of
+   > the examples currently demonstrate this — `synthetic_synapse/README.md` even calls the binary
+   > pipeline "overkill" for its demo. Worth a dedicated callout in the top-level README.
+3. **NEAT-AI-Discovery's "science-driven" structural mutation.** From issue #182:
+   > "Look at NEAT-AI-Discovery for example, this applies a bit of science to the structural changes
+   > in the network instead of just random mutations." Both `discovery/README.md` and
+   > `discovery_at_scale/README.md` should adopt this framing prominently.
+
+## 🧭 Follow-up sub-issues this audit feeds
+
+```mermaid
+flowchart LR
+    AUDIT[#184 Documentation audit] --> MNIST[MNIST README rewrite]
+    AUDIT --> TOP[Top-level README breadth section]
+    AUDIT --> CALLOUT[Per-example feature callouts]
+    AUDIT --> SYN[Synthetic Synapse clarification]
+    AUDIT --> DISC[Discovery 'applies science' framing]
+    AUDIT --> BIN[Binary `.bin` training callout]
+```
+
+## 🔗 References
+
+- Upstream
+  [stSoftwareAU/NEAT-AI/COMPARISON.md](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)
+  — "What We've Implemented" section drives the capability list above.
+- Issue [#182](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/182) — reporter's original
+  prompt about back propagation, binary data, and Discovery.
+- Issue [#184](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/184) — the umbrella audit
+  issue this file resolves.
+- [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) — the Rust library that
+  delivers the "science-driven" structural mutation framing.

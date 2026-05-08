@@ -488,6 +488,16 @@ graph TD
     Examples -->|depends on| Main
 ```
 
+### Cross-repository documentation audit
+
+[`docs/neat_ai_feature_audit.md`](docs/neat_ai_feature_audit.md) cross-references every README in
+this repository against upstream
+[`NEAT-AI/COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md). It is
+the source of truth for which capabilities are demonstrated by which example, and which README
+passages need rewording so they no longer read as if NEAT-AI were "just textbook NEAT" (issue
+[#184](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/184), parent
+[#182](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/182)).
+
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to add new examples, coding
