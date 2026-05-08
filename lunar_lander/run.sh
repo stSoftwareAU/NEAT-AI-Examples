@@ -37,3 +37,6 @@ fi
 if [[ -f "docs/screenshots/lunar_lander_evolution.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander_evolution.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/lunar_lander/evolution.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander/evolution.svg > /dev/null
+fi

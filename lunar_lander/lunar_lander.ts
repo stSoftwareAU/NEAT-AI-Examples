@@ -26,6 +26,7 @@ import {
   type SnapshotConfig,
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import {
   classifyOutcome,
   DEFAULT_PARAMS,
@@ -98,6 +99,10 @@ export interface GenerationInfo {
   generation: number;
   bestScore: number;
   meanScore: number;
+  /** Neuron count of the champion creature for this generation. */
+  neurons: number;
+  /** Synapse count of the champion creature for this generation. */
+  synapses: number;
 }
 
 /** Result of the evolutionary search. */
@@ -357,6 +362,8 @@ export function evolveLanderController(
       generation,
       bestScore: generationBest.score,
       meanScore: lastMeanScore,
+      neurons: generationBest.json.neurons.length,
+      synapses: generationBest.json.synapses.length,
     });
 
     // Capture an evolution snapshot of the running champion at the
@@ -413,6 +420,9 @@ export const SNAPSHOTS_DIR = ".synthetic-lunar-lander/snapshots";
 /** Path to the multi-panel evolution-progression SVG the runner emits. */
 export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/lunar_lander_evolution.svg";
 
+/** Path to the per-generation evolution-chart SVG the runner emits. */
+export const EVOLUTION_CHART_PATH = "docs/screenshots/lunar_lander/evolution.svg";
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -429,6 +439,7 @@ if (import.meta.main) {
   for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
+  const evolutionSamples: EvolutionSample[] = [];
   const evolutionStart = Date.now();
   const result = evolveLanderController({
     ...DEFAULT_EVOLVE_OPTIONS,
@@ -436,12 +447,14 @@ if (import.meta.main) {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
       outputDir: SNAPSHOTS_DIR,
     },
-    onGeneration: ({ generation, bestScore, meanScore }) => {
+    onGeneration: ({ generation, bestScore, meanScore, neurons, synapses }) => {
+      evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
       if (generation % 5 === 0 || generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1) {
         console.log(
           `   Gen ${generation.toString().padStart(3)}  best=${
             bestScore.toFixed(1).padStart(8)
-          }  mean=${meanScore.toFixed(1).padStart(8)}`,
+          }  mean=${meanScore.toFixed(1).padStart(8)}  ` +
+            `neurons=${neurons}  synapses=${synapses}`,
         );
       }
     },
@@ -463,6 +476,17 @@ if (import.meta.main) {
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+
+  // Render the per-generation evolution chart (score / neurons / synapses).
+  if (evolutionSamples.length > 0) {
+    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
+      title: "Lunar Lander — Evolution",
+      scoreLabel: "best score",
+    });
+    ensureDirSync("docs/screenshots/lunar_lander");
+    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
+    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
 
   // Render the multi-panel evolution-progression strip from the
   // checkpoint snapshots captured during the run.
