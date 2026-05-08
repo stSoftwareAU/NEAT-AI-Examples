@@ -45,7 +45,9 @@ import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts"
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
 import {
+  type CartPoleParams,
   type CartPoleState,
+  DEFAULT_PARAMS,
   encodeState,
   initialState,
   isFailed,
@@ -108,6 +110,25 @@ export interface EvolveOptions {
    * — and across generations — are scored on the same set of starts.
    */
   trialSeed?: number;
+  /**
+   * Magnitude of the in-episode wobble disturbance force (newtons)
+   * applied to the cart in addition to the controller's action force.
+   * Default `0` (no wobble — textbook cart-pole). Non-zero values make
+   * the task non-trivial so a uniform-random NEAT generation 1 cannot
+   * already solve it (issue #160).
+   */
+  disturbanceMagnitude?: number;
+  /**
+   * Per-step probability (in `[0, 1]`) that a wobble disturbance fires.
+   * Default `0`. Only consulted when `disturbanceMagnitude > 0`.
+   */
+  disturbanceProbability?: number;
+  /**
+   * Seed for the deterministic disturbance PRNG. Held constant for the
+   * whole evolve run so the wobble pattern any creature is evaluated
+   * against is reproducible across generations.
+   */
+  disturbanceSeed?: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
@@ -133,6 +154,22 @@ export interface ScoreOptions {
    * perturbation — every trial starts from the symmetric zero state).
    */
   initialPerturbation?: number;
+  /**
+   * Magnitude of the in-episode wobble disturbance force (newtons)
+   * applied to the cart in addition to the controller's action force.
+   * Default `0`.
+   */
+  disturbanceMagnitude?: number;
+  /**
+   * Per-step probability (in `[0, 1]`) that a wobble disturbance fires.
+   * Default `0`. Only consulted when `disturbanceMagnitude > 0`.
+   */
+  disturbanceProbability?: number;
+  /**
+   * Seed for the deterministic disturbance PRNG. Identical inputs
+   * always produce identical scores.
+   */
+  disturbanceSeed?: number;
 }
 
 /** Statistics emitted after each generation. */
@@ -162,9 +199,17 @@ export interface EvolveResult {
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 60,
-  maxGenerations: 400,
+  // Issue #160 — raised from 400 so the canonical 1000-generation
+  // checkpoint can fire under the harder wobble regime.
+  maxGenerations: 1200,
   mutationStrength: 0.6,
   mutationRate: 0.5,
+  // Issue #160 — held at the original 0.03. A higher rate caused
+  // unbounded population complexity once the elite saturated the cap
+  // (children continued mutating freely), driving the per-generation
+  // scoring cost into the seconds and the run time into the
+  // tens-of-minutes range. Topology growth in the running champion is
+  // already captured in the gen-1 → gen-final snapshot diff.
   addNeuronRate: 0.03,
   // Issue #143 — score every candidate against ten different perturbed
   // starts (the same ten for every member, every generation) so the
@@ -175,6 +220,21 @@ export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   trials: 10,
   initialPerturbation: 0.1,
   trialSeed: 24680,
+  // Issue #160 — apply an in-episode wobble disturbance so cart-pole
+  // becomes hard enough for evolution to be visible. A ±18 N kick
+  // (~80% larger than the controller's ±10 N action force) at 30% per
+  // step (≈150 wobbles per 500-step episode) is large enough that no
+  // creature in a 60-strong uniform-random NEAT population scores
+  // anywhere near the cap — gen-1 best and mean both sit well below
+  // `SOLVED_THRESHOLD` — while a competent controller, given a
+  // generous generation cap and a non-zero `addNeuronRate`, can still
+  // learn to compensate. The disturbance is reseeded per trial via a
+  // deterministic golden-ratio offset of `disturbanceSeed` so a
+  // creature has to handle `trials` independent wobble patterns rather
+  // than a single lucky one.
+  disturbanceMagnitude: 18,
+  disturbanceProbability: 0.3,
+  disturbanceSeed: 13579,
 };
 
 /**
@@ -328,14 +388,49 @@ export function mutateCreatureExport(
  * after structural mutation injects a LOGISTIC hidden layer because the
  * **output** neuron's squash is unchanged.
  */
-function cartPoleAdapter(start: CartPoleState): EpisodeAdapter<CartPoleState, 1 | -1> {
+function cartPoleAdapter(
+  start: CartPoleState,
+  params: CartPoleParams = DEFAULT_PARAMS,
+  random?: () => number,
+): EpisodeAdapter<CartPoleState, 1 | -1> {
   return {
     initialState: start,
     encode: encodeState,
     decode: (out) => (out[0] >= 0 ? 1 : -1),
-    step: (s, a) => step(s, a),
+    step: (s, a) => step(s, a, params, random),
     isTerminal: isFailed,
   };
+}
+
+/**
+ * Build a {@link CartPoleParams} record from a {@link ScoreOptions} so
+ * the disturbance settings are plumbed through to the physics step. When
+ * no disturbance is configured, returns `DEFAULT_PARAMS` unchanged so
+ * the no-disturbance code path stays byte-identical to the textbook
+ * cart-pole simulator (issue #159).
+ */
+function paramsFromOptions(options?: ScoreOptions): CartPoleParams {
+  const magnitude = options?.disturbanceMagnitude ?? 0;
+  const probability = options?.disturbanceProbability ?? 0;
+  if (magnitude <= 0 || probability <= 0) return DEFAULT_PARAMS;
+  return {
+    ...DEFAULT_PARAMS,
+    disturbanceMagnitude: magnitude,
+    disturbanceProbability: probability,
+  };
+}
+
+/**
+ * Build the per-evaluation deterministic disturbance PRNG from a
+ * {@link ScoreOptions}. Returns `undefined` when no disturbance is
+ * configured so the simulator falls through to the byte-identical
+ * textbook path (issue #159).
+ */
+function disturbanceRng(options?: ScoreOptions): (() => number) | undefined {
+  const magnitude = options?.disturbanceMagnitude ?? 0;
+  const probability = options?.disturbanceProbability ?? 0;
+  if (magnitude <= 0 || probability <= 0) return undefined;
+  return createDeterministicRandom(options?.disturbanceSeed ?? 0);
 }
 
 /**
@@ -358,16 +453,27 @@ export function scoreController(
 ): number {
   const trials = options?.trials ?? 1;
   const perturbation = options?.initialPerturbation ?? 0;
+  const params = paramsFromOptions(options);
+  const wobbleEnabled = (options?.disturbanceMagnitude ?? 0) > 0 &&
+    (options?.disturbanceProbability ?? 0) > 0;
+  const wobbleBaseSeed = options?.disturbanceSeed ?? 0;
 
-  if (trials <= 1 && perturbation === 0) {
-    return runEpisode(creature, cartPoleAdapter(initialState()), { maxSteps }).steps;
+  if (trials <= 1 && perturbation === 0 && !wobbleEnabled) {
+    return runEpisode(creature, cartPoleAdapter(initialState(), params), { maxSteps }).steps;
   }
 
   const random = createDeterministicRandom(options?.trialSeed ?? 0);
   let total = 0;
   for (let t = 0; t < trials; t++) {
     const start = perturbation > 0 ? perturbedInitialState(random, perturbation) : initialState();
-    total += runEpisode(creature, cartPoleAdapter(start), { maxSteps }).steps;
+    // Issue #160 — derive a different wobble seed for each trial so a
+    // controller cannot win by surviving a single lucky wobble pattern;
+    // it has to handle `trials` different patterns. The seed is still
+    // deterministic across runs and across creatures.
+    const wobble = wobbleEnabled
+      ? createDeterministicRandom((wobbleBaseSeed + t * 0x9E3779B1) >>> 0)
+      : undefined;
+    total += runEpisode(creature, cartPoleAdapter(start, params, wobble), { maxSteps }).steps;
   }
   return total / trials;
 }
@@ -396,8 +502,11 @@ export function scoreTiltDirectionPolicy(maxSteps: number = MAX_STEPS): number {
 export function replayController(
   creature: Creature,
   maxSteps: number = MAX_STEPS,
+  options?: ScoreOptions,
 ): CartPoleState[] {
-  return runEpisode(creature, cartPoleAdapter(initialState()), { maxSteps }).trace;
+  const params = paramsFromOptions(options);
+  const wobble = disturbanceRng(options);
+  return runEpisode(creature, cartPoleAdapter(initialState(), params, wobble), { maxSteps }).trace;
 }
 
 interface ScoredMember {
@@ -432,6 +541,9 @@ export function evolveCartPoleController(
     trials: options.trials,
     trialSeed: options.trialSeed,
     initialPerturbation: options.initialPerturbation,
+    disturbanceMagnitude: options.disturbanceMagnitude,
+    disturbanceProbability: options.disturbanceProbability,
+    disturbanceSeed: options.disturbanceSeed,
   };
   const score = (creature: Creature) => scoreController(creature, MAX_STEPS, scoreOptions);
 
@@ -610,8 +722,14 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Render the SVG strip showing the champion balancing.
-  const trace = replayController(result.champion);
+  // Render the SVG strip showing the champion balancing under the
+  // same wobble regime it was trained on, so the screenshot reflects
+  // the actual task the controller solved (issue #160).
+  const trace = replayController(result.champion, MAX_STEPS, {
+    disturbanceMagnitude: DEFAULT_EVOLVE_OPTIONS.disturbanceMagnitude,
+    disturbanceProbability: DEFAULT_EVOLVE_OPTIONS.disturbanceProbability,
+    disturbanceSeed: DEFAULT_EVOLVE_OPTIONS.disturbanceSeed,
+  });
   const svg = renderRunSVG(trace, SVG_FRAME_COUNT);
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
