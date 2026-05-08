@@ -22,30 +22,89 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 > [AGENTS.md](AGENTS.md#-no-warm-starts--evolution-must-start-from-random-noise) for the full
 > policy.
 
+## 🧭 Two Training Paradigms — Supervised vs Agent Evolution
+
+NEAT-AI runs the same evolutionary loop two very different ways. Knowing which applies to your
+problem is the difference between "this library fits" and "this library fits the next-door problem."
+
+- **📊 Batch supervised** — the dataset is `(input, target)` rows that are independent of each
+  other. Every creature scores against the **same** rows; fitness is aggregated error or accuracy.
+  Used by XOR, MNIST, Stock Market, and the long-form Evolution Showcase.
+- **🎮 Agent / episode-based** — each creature plays its own episode. The next observation depends
+  on the creature's previous action, so once two creatures diverge they see entirely different
+  observation streams. Fitness is the cumulative reward (or survival score) for the rollout. Used by
+  `snake_game`, `cart_pole`, `lunar_lander`, `mountain_car`, and `maze_navigation`.
+
+Both paradigms parallelise trivially: each creature's score (whether a sweep through rows or a fresh
+episode rollout) is independent of every other creature's. The only state that has to be shared
+across the population is the per-generation seed, so that fairness is preserved.
+
+> **"Does NEAT-AI handle stream-of-observation games like Snake?"** Yes — see
+> [`snake_game/README.md`](snake_game/README.md) for the canonical demonstration. Cart-Pole, Lunar
+> Lander, Mountain Car, and Maze Navigation follow the same agent loop with different physics.
+
+```mermaid
+flowchart LR
+    subgraph supervised ["📊 Batch supervised loop"]
+        direction TB
+        S1["dataset:<br/>fixed (input, target) rows"]
+        S2["score(creature, all rows)<br/>= aggregate error"]
+        S3["select &amp; mutate<br/>population"]
+        S1 --> S2 --> S3 --> S2
+    end
+
+    subgraph agent ["🎮 Agent / episode loop"]
+        direction TB
+        A1["population:<br/>for each creature"]
+        A2["rollout episode:<br/>for tick in episode"]
+        A3["observe → activate → step"]
+        A4["fitness =<br/>cumulative reward"]
+        A5["select &amp; mutate<br/>population"]
+        A1 --> A2 --> A3 --> A3
+        A3 --> A4 --> A5 --> A1
+    end
+
+    style supervised fill:#fff3cd,stroke:#f5a623,color:#333
+    style agent fill:#d4edda,stroke:#28a745,color:#333
+    style S1 fill:#3498db,stroke:#333,color:#fff
+    style S2 fill:#3498db,stroke:#333,color:#fff
+    style S3 fill:#3498db,stroke:#333,color:#fff
+    style A1 fill:#27ae60,stroke:#333,color:#fff
+    style A2 fill:#27ae60,stroke:#333,color:#fff
+    style A3 fill:#27ae60,stroke:#333,color:#fff
+    style A4 fill:#27ae60,stroke:#333,color:#fff
+    style A5 fill:#27ae60,stroke:#333,color:#fff
+```
+
+The remaining examples (`intelligent_design`, `discovery`, `discovery_at_scale`, `crossover`,
+`crispr_injection`, `mcmc_acceptance`, `memetic_evolution`, `synthetic_synapse`, `neuron_pruning`,
+`adaptive_mutation`, `suggest_improvements`) are tagged **🛠 technique** — they demonstrate a single
+operator or algorithm rather than a complete training paradigm.
+
 ## 🧬 Examples at a Glance
 
-| Example                                                               | What it shows                                                                                                                                                                                           | How to run                      |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| [🧠 XOR](xor_classification/README.md)                                | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table, plus a multi-panel evolution-progression strip showing the running champion at each checkpoint generation. | `./xor_classification/run.sh`   |
-| [🎢 Cart-Pole](cart_pole/README.md)                                   | Evolve a controller that balances an inverted pole on a moving cart, render the run as an SVG strip, and emit a multi-panel evolution-progression strip linking the captured checkpoint generations.    | `./cart_pole/run.sh`            |
-| [🚀 Lunar Lander](lunar_lander/README.md)                             | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel, plus a multi-panel evolution-progression strip showing the running champion at each checkpoint generation.   | `./lunar_lander/run.sh`         |
-| [🚗 Mountain Car](mountain_car/README.md)                             | Evolve a swing-up controller that drives an under-powered car up a sinusoidal hill to the goal flag.                                                                                                    | `./mountain_car/run.sh`         |
-| [🐍 Snake](snake_game/README.md)                                      | Evolve a controller that plays the classic Snake grid game and render the playthrough as an animated SVG.                                                                                               | `./snake_game/run.sh`           |
-| [🗺️ Maze Navigation](maze_navigation/README.md)                       | Evolve an agent to navigate a fixed grid maze from start to goal using local wall + heading sensors.                                                                                                    | `./maze_navigation/run.sh`      |
-| [🧬 Intelligent Design](intelligent_design/README.md)                 | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.                                                                                                | `./intelligent_design/run.sh`   |
-| [🔍 Discovery](discovery/README.md)                                   | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.                                                                                                         | `./discovery/run.sh`            |
-| [🔬 Discovery at Scale](discovery_at_scale/README.md)                 | Inject saturated, dead, dormant, and bottleneck defects into a ~200-neuron creature; run discovery; render before/after topology with a defect-category legend.                                         | `./discovery_at_scale/run.sh`   |
-| [🔀 Crossover](crossover/README.md)                                   | Breed two parents with different architectures into an offspring and (optionally) evolve it further.                                                                                                    | `./crossover/run.sh`            |
-| [🧬 CRISPR Injection](crispr_injection/README.md)                     | Splice a hand-crafted "edit gene" into a stalled population mid-evolution and visualise the fitness lift.                                                                                               | `./crispr_injection/run.sh`     |
-| [📈 Stock Market](stock_market/README.md)                             | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.                                                                                                      | `./stock_market/run.sh`         |
-| [🔢 MNIST](mnist_classification/README.md)                            | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions.                                                                                               | `./mnist_classification/run.sh` |
-| [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)                       | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                                                                                                              | `./mcmc_acceptance/run.sh`      |
-| [🧠 Memetic Evolution](memetic_evolution/README.md)                   | Compare evolutions with and without seeding from an archive of the fittest creatures' weights.                                                                                                          | `./memetic_evolution/run.sh`    |
-| [🧬 Synthetic Synapse](synthetic_synapse/README.md)                   | Densify an evolved sparse creature with zero-weight synthetic synapses, train, then prune the unused edges.                                                                                             | `./synthetic_synapse/run.sh`    |
-| [✂️ Neuron Pruning](neuron_pruning/README.md)                         | Remove neurons whose activations don't vary, folding their bias contribution into downstream neighbours.                                                                                                | `./neuron_pruning/run.sh`       |
-| [🧬 Adaptive Mutation](adaptive_mutation/README.md)                   | Visualise how the mutation operator distribution shifts from topology to weights as a creature grows.                                                                                                   | `./adaptive_mutation/run.sh`    |
-| [💡 Suggest Improvements](suggest_improvements/README.md)             | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.                                                                                                         | `./suggest_improvements/run.sh` |
-| [🌱 Evolution Showcase](evolution_showcase/README.md) ⏳ long-running | Flagship long-form run: evolve for 10000 generations and render gen 1 / 10 / 100 / 1000 / 10000 side-by-side.                                                                                           | `./evolution_showcase/run.sh`   |
+| Example                                                               | Paradigm      | What it shows                                                                                                                                                                                           | How to run                      |
+| --------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| [🧠 XOR](xor_classification/README.md)                                | 📊 supervised | The "Hello World" of neuroevolution — evolve a tiny network that learns the XOR truth table, plus a multi-panel evolution-progression strip showing the running champion at each checkpoint generation. | `./xor_classification/run.sh`   |
+| [🎢 Cart-Pole](cart_pole/README.md)                                   | 🎮 agent      | Evolve a controller that balances an inverted pole on a moving cart, render the run as an SVG strip, and emit a multi-panel evolution-progression strip linking the captured checkpoint generations.    | `./cart_pole/run.sh`            |
+| [🚀 Lunar Lander](lunar_lander/README.md)                             | 🎮 agent      | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel, plus a multi-panel evolution-progression strip showing the running champion at each checkpoint generation.   | `./lunar_lander/run.sh`         |
+| [🚗 Mountain Car](mountain_car/README.md)                             | 🎮 agent      | Evolve a swing-up controller that drives an under-powered car up a sinusoidal hill to the goal flag.                                                                                                    | `./mountain_car/run.sh`         |
+| [🐍 Snake](snake_game/README.md)                                      | 🎮 agent      | Evolve a controller that plays the classic Snake grid game and render the playthrough as an animated SVG.                                                                                               | `./snake_game/run.sh`           |
+| [🗺️ Maze Navigation](maze_navigation/README.md)                       | 🎮 agent      | Evolve an agent to navigate a fixed grid maze from start to goal using local wall + heading sensors.                                                                                                    | `./maze_navigation/run.sh`      |
+| [🧬 Intelligent Design](intelligent_design/README.md)                 | 🛠 technique   | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.                                                                                                | `./intelligent_design/run.sh`   |
+| [🔍 Discovery](discovery/README.md)                                   | 🛠 technique   | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.                                                                                                         | `./discovery/run.sh`            |
+| [🔬 Discovery at Scale](discovery_at_scale/README.md)                 | 🛠 technique   | Inject saturated, dead, dormant, and bottleneck defects into a ~200-neuron creature; run discovery; render before/after topology with a defect-category legend.                                         | `./discovery_at_scale/run.sh`   |
+| [🔀 Crossover](crossover/README.md)                                   | 🛠 technique   | Breed two parents with different architectures into an offspring and (optionally) evolve it further.                                                                                                    | `./crossover/run.sh`            |
+| [🧬 CRISPR Injection](crispr_injection/README.md)                     | 🛠 technique   | Splice a hand-crafted "edit gene" into a stalled population mid-evolution and visualise the fitness lift.                                                                                               | `./crispr_injection/run.sh`     |
+| [📈 Stock Market](stock_market/README.md)                             | 📊 supervised | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.                                                                                                      | `./stock_market/run.sh`         |
+| [🔢 MNIST](mnist_classification/README.md)                            | 📊 supervised | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions.                                                                                               | `./mnist_classification/run.sh` |
+| [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)                       | 🛠 technique   | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                                                                                                              | `./mcmc_acceptance/run.sh`      |
+| [🧠 Memetic Evolution](memetic_evolution/README.md)                   | 🛠 technique   | Compare evolutions with and without seeding from an archive of the fittest creatures' weights.                                                                                                          | `./memetic_evolution/run.sh`    |
+| [🧬 Synthetic Synapse](synthetic_synapse/README.md)                   | 🛠 technique   | Densify an evolved sparse creature with zero-weight synthetic synapses, train, then prune the unused edges.                                                                                             | `./synthetic_synapse/run.sh`    |
+| [✂️ Neuron Pruning](neuron_pruning/README.md)                         | 🛠 technique   | Remove neurons whose activations don't vary, folding their bias contribution into downstream neighbours.                                                                                                | `./neuron_pruning/run.sh`       |
+| [🧬 Adaptive Mutation](adaptive_mutation/README.md)                   | 🛠 technique   | Visualise how the mutation operator distribution shifts from topology to weights as a creature grows.                                                                                                   | `./adaptive_mutation/run.sh`    |
+| [💡 Suggest Improvements](suggest_improvements/README.md)             | 🛠 technique   | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.                                                                                                         | `./suggest_improvements/run.sh` |
+| [🌱 Evolution Showcase](evolution_showcase/README.md) ⏳ long-running | 📊 supervised | Flagship long-form run: evolve for 10000 generations and render gen 1 / 10 / 100 / 1000 / 10000 side-by-side.                                                                                           | `./evolution_showcase/run.sh`   |
 
 ## 📸 Screenshots
 
