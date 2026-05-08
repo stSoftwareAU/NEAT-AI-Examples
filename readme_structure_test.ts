@@ -16,6 +16,7 @@ const EXAMPLE_DIRS = [
   "crispr_injection",
   "crossover",
   "discovery",
+  "discovery_at_scale",
   "evolution_showcase",
   "intelligent_design",
   "lunar_lander",
