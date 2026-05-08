@@ -26,6 +26,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.      | `./crossover/run.sh`            |
 | [📈 Stock Market](stock_market/README.md)                 | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.        | `./stock_market/run.sh`         |
 | [🔢 MNIST](mnist_classification/README.md)                | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions. | `./mnist_classification/run.sh` |
+| [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)           | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                | `./mcmc_acceptance/run.sh`      |
 | [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.           | `./suggest_improvements/run.sh` |
 
 ## 📸 Screenshots
@@ -99,6 +100,15 @@ A 5 × 4 grid of held-out MNIST test digits. Each cell cross-fades through three
 champion classifies correctly, red on a miss. Pixel intensity is rendered through a purple → teal →
 yellow ramp.
 
+### 🌡️ MCMC Acceptance — cooling toward 23.4%
+
+![MCMC mutation acceptance rate cooling toward the 23.4% optimal target with the temperature schedule overlaid](docs/screenshots/mcmc_acceptance.svg)
+
+A dual-axis chart of an adaptive Metropolis-Hastings sampler. The blue line is the moving-average
+acceptance rate, the orange line is the temperature schedule on a log scale, and the green dashed
+line marks the 23.4% optimum from Roberts/Gelman/Gilks (1997). The cooling controller adjusts
+temperature after every proposal so the empirical acceptance rate converges to the target.
+
 ```mermaid
 flowchart TD
     NEAT["🧠 NEAT-AI Library"]
@@ -114,6 +124,7 @@ flowchart TD
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
     STOCK["📈 Stock Market<br/>Predict next-period S&P 500<br/>direction from prior returns"]
     MNIST["🔢 MNIST<br/>Classify handwritten digits<br/>from a 14×14 down-sample"]
+    MCMC["🌡️ MCMC Acceptance<br/>Cool MH acceptance rate<br/>toward the 23.4% optimum"]
     SUGGEST["💡 Suggest Improvements<br/>Analyse project &<br/>generate suggestions"]
 
     NEAT --> COMMON
@@ -127,6 +138,7 @@ flowchart TD
     COMMON --> CROSS
     COMMON --> STOCK
     COMMON --> MNIST
+    COMMON --> MCMC
     COMMON --> SUGGEST
 
     style NEAT fill:#4a90d9,stroke:#333,color:#fff
@@ -141,6 +153,7 @@ flowchart TD
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
     style STOCK fill:#16a085,stroke:#333,color:#fff
     style MNIST fill:#34495e,stroke:#333,color:#fff
+    style MCMC fill:#e67e22,stroke:#333,color:#fff
     style SUGGEST fill:#50e3c2,stroke:#333,color:#fff
 ```
 
@@ -174,6 +187,7 @@ flowchart BT
         CROSS["🔀 crossover/"]
         STOCK["📈 stock_market/"]
         MNIST["🔢 mnist_classification/"]
+        MCMC["🌡️ mcmc_acceptance/"]
         SUGGEST["💡 suggest_improvements/"]
     end
 
@@ -188,6 +202,7 @@ flowchart BT
     common --> CROSS
     common --> STOCK
     common --> MNIST
+    common --> MCMC
     common --> SUGGEST
 
     style common fill:#fff3cd,stroke:#f5a623,color:#333
