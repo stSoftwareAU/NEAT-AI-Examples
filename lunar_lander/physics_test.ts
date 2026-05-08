@@ -10,6 +10,10 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   classifyOutcome,
   DEFAULT_PARAMS,
+  DEFAULT_START_ALTITUDE,
+  DEFAULT_START_FUEL,
+  DEFAULT_START_VX,
+  DEFAULT_START_X,
   DEFAULT_TERRAIN,
   encodeState,
   initialState,
@@ -17,11 +21,14 @@ import {
   type LanderAction,
   type LanderState,
   NO_ACTION,
+  perturbedInitialState,
   SAFE_LANDING_ANGLE,
   SAFE_LANDING_VX_MAGNITUDE,
   SAFE_LANDING_VY_MAGNITUDE,
   step,
 } from "./physics.ts";
+
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
 
 const FIRE_MAIN: LanderAction = { main: true, left: false, right: false };
 const FIRE_LEFT: LanderAction = { main: false, left: true, right: false };
@@ -276,6 +283,29 @@ Deno.test("encodeState produces a 7-element Float32Array of [x, y, vx, vy, angle
   assertAlmostEquals(arr[4], 0.5, 1e-6);
   assertAlmostEquals(arr[5], -0.25, 1e-6);
   assertAlmostEquals(arr[6], 99, 1e-6);
+});
+
+Deno.test("perturbedInitialState centres on initialState", () => {
+  // Perturbations should be small relative to the canonical entry — at
+  // magnitude=1 the altitude varies by at most 5 m, vx by 0.5 m/s, and
+  // the angle by ~0.05 rad. Fuel and angularV are held fixed.
+  const random = createDeterministicRandom(11);
+  for (let i = 0; i < 100; i++) {
+    const s = perturbedInitialState(random, 1.0);
+    assert(Math.abs(s.x - DEFAULT_START_X) <= 5);
+    assert(Math.abs(s.y - DEFAULT_START_ALTITUDE) <= 5);
+    assert(Math.abs(s.vx - DEFAULT_START_VX) <= 0.5);
+    assert(Math.abs(s.vy) <= 0.5);
+    assert(Math.abs(s.angle) <= 0.05);
+    assertEquals(s.angularV, 0);
+    assertEquals(s.fuel, DEFAULT_START_FUEL);
+  }
+});
+
+Deno.test("perturbedInitialState is deterministic for the same seed", () => {
+  const a = perturbedInitialState(createDeterministicRandom(7), 1.0);
+  const b = perturbedInitialState(createDeterministicRandom(7), 1.0);
+  assertEquals(a, b);
 });
 
 Deno.test("DEFAULT_PARAMS uses lunar-scale gravity", () => {

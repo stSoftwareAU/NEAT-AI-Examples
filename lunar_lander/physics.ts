@@ -152,6 +152,40 @@ export function initialState(
 }
 
 /**
+ * Sample a perturbed starting state. Used to evaluate a controller
+ * across a fixed batch of varied initial conditions so robustness — not
+ * a single lucky launch — drives selection. Each component is sampled
+ * around the canonical {@link initialState} centre using independent
+ * uniform draws scaled by `magnitude`:
+ *
+ *   - `x` ± 5·m metres of horizontal offset
+ *   - `y` ± 5·m metres of altitude
+ *   - `vx`, `vy` ± 0.5·m m/s
+ *   - `angle` ± 0.05·m radians (≈ ±2.9° at `m=1`)
+ *
+ * Fuel and angular velocity are held fixed so every trial in a batch
+ * starts with the same propellant budget.
+ *
+ * @param random Deterministic PRNG returning values in `[0, 1)`.
+ * @param magnitude Scaling factor for the per-component perturbation.
+ */
+export function perturbedInitialState(
+  random: () => number,
+  magnitude: number = 1.0,
+): LanderState {
+  const sample = (range: number) => (random() * 2 - 1) * range;
+  return {
+    x: DEFAULT_START_X + sample(5 * magnitude),
+    y: DEFAULT_START_ALTITUDE + sample(5 * magnitude),
+    vx: DEFAULT_START_VX + sample(0.5 * magnitude),
+    vy: sample(0.5 * magnitude),
+    angle: sample(0.05 * magnitude),
+    angularV: 0,
+    fuel: DEFAULT_START_FUEL,
+  };
+}
+
+/**
  * Advance the lander by one time step using semi-implicit Euler
  * integration. Velocities are updated first, then positions, so the
  * step is energy-stable for small `timeStep` values.
