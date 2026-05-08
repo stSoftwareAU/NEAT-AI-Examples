@@ -19,6 +19,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🎢 Cart-Pole](cart_pole/README.md)                       | Evolve a controller that balances an inverted pole on a moving cart and render the run as an SVG strip.   | `./cart_pole/run.sh`            |
 | [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.                | `./lunar_lander/run.sh`         |
 | [🚗 Mountain Car](mountain_car/README.md)                 | Evolve a swing-up controller that drives an under-powered car up a sinusoidal hill to the goal flag.      | `./mountain_car/run.sh`         |
+| [🐍 Snake](snake_game/README.md)                          | Evolve a controller that plays the classic Snake grid game and render the playthrough as an animated SVG. | `./snake_game/run.sh`           |
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.  | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.           | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.      | `./crossover/run.sh`            |
@@ -60,6 +61,15 @@ An under-powered car oscillates across a sinusoidal valley and finally crests th
 `x = 0.5`. The car icon animates along the recorded trajectory and changes colour the moment it
 crosses the flag line, with a bottom progress bar marking the playhead.
 
+### 🐍 Snake — animated playthrough
+
+![Snake champion playthrough — an animated SVG of the snake moving across a 12×12 board, growing visibly when it eats food](docs/screenshots/snake_game.svg)
+
+A NEAT-AI controller plays the classic Snake grid game on a 12×12 board. The snake is rendered as a
+chain of rounded rectangles (a yellow head and green body); the food cell pulses via opacity
+animation; the score counter ticks up via SMIL `<set>` overlays whenever the snake eats. A bottom
+playhead progress bar sweeps left-to-right to mark the loop.
+
 ### 📈 Stock Market — direction predictions
 
 ![Stock Market champion test window — an animated S&P 500 close-price line with four-colour ▲/▼ markers showing predicted-vs-realised direction at each bar](docs/screenshots/stock_market.svg)
@@ -87,6 +97,7 @@ flowchart TD
     CART["🎢 Cart-Pole<br/>Balance an inverted pole<br/>on a moving cart"]
     LUNAR["🚀 Lunar Lander<br/>Land softly on a flat<br/>pad with limited fuel"]
     MCAR["🚗 Mountain Car<br/>Swing up an under-powered<br/>car to crest the goal flag"]
+    SNAKE["🐍 Snake<br/>Play the classic Snake<br/>grid game"]
     ID["🧬 Intelligent Design<br/>Optimise activation functions<br/>for hidden neurons"]
     DISC["🔍 Discovery<br/>Recover missing neurons<br/>via evolutionary search"]
     CROSS["🔀 Crossover<br/>Breed two creatures<br/>to produce offspring"]
@@ -99,6 +110,7 @@ flowchart TD
     COMMON --> CART
     COMMON --> LUNAR
     COMMON --> MCAR
+    COMMON --> SNAKE
     COMMON --> ID
     COMMON --> DISC
     COMMON --> CROSS
@@ -112,6 +124,7 @@ flowchart TD
     style CART fill:#9b59b6,stroke:#333,color:#fff
     style LUNAR fill:#1abc9c,stroke:#333,color:#fff
     style MCAR fill:#e67e22,stroke:#333,color:#fff
+    style SNAKE fill:#27ae60,stroke:#333,color:#fff
     style ID fill:#7ed321,stroke:#333,color:#fff
     style DISC fill:#bd10e0,stroke:#333,color:#fff
     style CROSS fill:#e74c3c,stroke:#333,color:#fff
@@ -144,6 +157,7 @@ flowchart BT
         CART["🎢 cart_pole/"]
         LUNAR["🚀 lunar_lander/"]
         MCAR["🚗 mountain_car/"]
+        SNAKE["🐍 snake_game/"]
         ID["🧬 intelligent_design/"]
         DISC["🔍 discovery/"]
         CROSS["🔀 crossover/"]
@@ -157,6 +171,7 @@ flowchart BT
     common --> CART
     common --> LUNAR
     common --> MCAR
+    common --> SNAKE
     common --> ID
     common --> DISC
     common --> CROSS
