@@ -106,7 +106,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .discovery
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .discovery
 echo ""
 
 # Run the Intelligent Design example
@@ -150,6 +150,9 @@ run_example "MCMC Mutation Acceptance Demo" "./mcmc_acceptance/run.sh"
 
 # Run the Memetic Evolution demo
 run_example "Memetic Evolution Demo" "./memetic_evolution/run.sh"
+
+# Run the Synthetic Synapse Training demo
+run_example "Synthetic Synapse Training Demo" "./synthetic_synapse/run.sh"
 
 # Run the Suggest Improvements example
 run_example "Suggest Improvements" "./suggest_improvements/run.sh"
