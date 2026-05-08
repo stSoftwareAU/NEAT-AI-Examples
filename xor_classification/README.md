@@ -72,12 +72,27 @@ below the configured `errorThreshold` (default 0.05) and all four samples are cl
 Artefacts:
 
 - `.synthetic-xor/creatures/champion.json` – the fittest classifier from the run
+- `.synthetic-xor/snapshots/snapshot-gen-*.json` – running-champion snapshots captured at the
+  configured checkpoints
 - `docs/screenshots/xor_decision_boundary.svg` – the committed decision-boundary plot
 - `docs/screenshots/xor_classification/evolution.svg` – per-generation evolution chart (best-fitness
   score on the left axis, neuron and synapse counts on the right axis)
+- `docs/screenshots/xor_classification_evolution.svg` – multi-panel evolution-progression strip
+  rendered from the captured snapshots
 
 > [!TIP]
 > The script writes its working data to `.synthetic-xor/`, a hidden directory ignored by git.
+
+## Evolution Progress
+
+![XOR evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/xor_classification_evolution.svg)
+
+The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
+generations `[1, 10, 100, 500]` (those that fall inside the configured `maxGenerations`). The XOR
+example typically solves before generation 100, so the rendered strip usually shows two panels — gen
+1 and gen 10 — linked by a score-progression polyline. Each panel displays the champion's topology
+(inputs → hidden → output), the generation label, and the score (`1 - MSE`) at that checkpoint; the
+bottom strip charts the score over the captured generations.
 
 ## 🧠 Tacit Knowledge
 

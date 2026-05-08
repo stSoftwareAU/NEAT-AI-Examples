@@ -21,6 +21,12 @@ import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 import {
+  captureSnapshot,
+  loadSnapshots,
+  type SnapshotConfig,
+} from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import {
   classifyOutcome,
   DEFAULT_PARAMS,
   DEFAULT_TERRAIN,
@@ -79,6 +85,12 @@ export interface EvolveOptions {
   mutationRate: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
+  /**
+   * Optional snapshot configuration. When supplied, the running champion
+   * is captured at every generation matching `snapshotConfig.checkpoints`
+   * and written to `snapshotConfig.outputDir`.
+   */
+  snapshotConfig?: SnapshotConfig;
 }
 
 /** Statistics emitted after each generation. */
@@ -347,6 +359,16 @@ export function evolveLanderController(
       meanScore: lastMeanScore,
     });
 
+    // Capture an evolution snapshot of the running champion at the
+    // configured checkpoints. The helper is a no-op for non-checkpoint
+    // generations.
+    if (options.snapshotConfig) {
+      const checkpointGen = generation + 1;
+      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
+        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestScore);
+      }
+    }
+
     if (generation === options.maxGenerations - 1) break;
 
     const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
@@ -382,6 +404,15 @@ export function evolveLanderController(
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/lunar_lander.svg";
 
+/** Generations at which the runner captures evolution snapshots. */
+export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 1000];
+
+/** Hidden directory under which snapshot files are written. */
+export const SNAPSHOTS_DIR = ".synthetic-lunar-lander/snapshots";
+
+/** Path to the multi-panel evolution-progression SVG the runner emits. */
+export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/lunar_lander_evolution.svg";
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -394,8 +425,17 @@ if (import.meta.main) {
   console.log(`🪂 Free-fall baseline score: ${baseline.toFixed(1)}`);
 
   console.log("\n🧬 Evolving controller...");
+  ensureDirSync(SNAPSHOTS_DIR);
+  for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
+    if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
+  }
+  const evolutionStart = Date.now();
   const result = evolveLanderController({
     ...DEFAULT_EVOLVE_OPTIONS,
+    snapshotConfig: {
+      checkpoints: [...EVOLUTION_CHECKPOINTS],
+      outputDir: SNAPSHOTS_DIR,
+    },
     onGeneration: ({ generation, bestScore, meanScore }) => {
       if (generation % 5 === 0 || generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1) {
         console.log(
@@ -423,6 +463,25 @@ if (import.meta.main) {
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+
+  // Render the multi-panel evolution-progression strip from the
+  // checkpoint snapshots captured during the run.
+  const snapshots = loadSnapshots(SNAPSHOTS_DIR);
+  if (snapshots.length > 0) {
+    const progressionSvg = renderEvolutionProgressSvg(snapshots, {
+      title: "Lunar Lander — Evolution Progress",
+      caption: {
+        finalScore: result.bestScore,
+        totalGenerations: result.generations,
+        wallClockMs: Date.now() - evolutionStart,
+      },
+    });
+    await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
+    console.log(
+      `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
+        `(${snapshots.length} panels)`,
+    );
+  }
 
   console.log(
     `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,

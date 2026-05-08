@@ -25,6 +25,8 @@ import {
 } from "./cart_pole.ts";
 import { renderRunSVG } from "./svg.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
+import { loadSnapshots } from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 
 Deno.test("buildInitialCreatureJSON has 4 inputs and 1 output", () => {
   const json = buildInitialCreatureJSON([0.1, 0.2, 0.3, 0.4], 0.5);
@@ -155,6 +157,49 @@ Deno.test("renderRunSVG repeats the animation indefinitely", () => {
     "expected SMIL repeatCount='indefinite' so the animation loops",
   );
 });
+
+Deno.test(
+  "evolveCartPoleController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
+  () => {
+    const tmp = Deno.makeTempDirSync({ prefix: "cart_pole_snapshots_test_" });
+    try {
+      // Use a tiny population and a deliberately weak seed so the
+      // evolutionary loop does not accidentally solve cart-pole in a
+      // single generation and trigger the early-stop break before all
+      // configured snapshot checkpoints fire.
+      const checkpoints = [1, 2, 3];
+      evolveCartPoleController({
+        seed: 1,
+        populationSize: 3,
+        maxGenerations: 4,
+        mutationStrength: 0.1,
+        mutationRate: 0.1,
+        snapshotConfig: { checkpoints, outputDir: tmp },
+      });
+
+      for (const gen of checkpoints) {
+        assertEquals(
+          existsSync(join(tmp, `snapshot-gen-${gen}.json`)),
+          true,
+          `expected snapshot-gen-${gen}.json to exist`,
+        );
+      }
+
+      const snapshots = loadSnapshots(tmp);
+      assertEquals(snapshots.length, checkpoints.length);
+
+      const svg = renderEvolutionProgressSvg(snapshots, {
+        title: "Cart-Pole — Evolution Progress",
+      });
+      assert(svg.startsWith("<svg"), "must start with <svg>");
+      assert(svg.length > 0, "SVG must be non-empty");
+      const panels = svg.match(/<g class="panel"/g) ?? [];
+      assertEquals(panels.length, checkpoints.length);
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
 
 Deno.test(
   "running cart_pole.ts via run.sh-style execution emits champion.json and SVG",

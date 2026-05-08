@@ -34,6 +34,8 @@ import {
 import { renderRunSVG } from "./svg.ts";
 import { DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
+import { loadSnapshots } from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 
 /**
  * A fast, deterministic configuration suitable for unit tests.
@@ -389,6 +391,43 @@ Deno.test("renderRunSVG renders an animated fuel HUD bar", () => {
   assert(svg.includes('class="hud-fuel-bar"'), "expected an animated fuel bar element");
   assert(svg.includes(">FUEL<"), "expected a 'FUEL' label on the HUD");
 });
+
+Deno.test(
+  "evolveLanderController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
+  () => {
+    const tmp = Deno.makeTempDirSync({ prefix: "lunar_lander_snapshots_test_" });
+    try {
+      const checkpoints = [1, 2, 3];
+      evolveLanderController({
+        ...TEST_EVOLVE_OPTIONS,
+        maxGenerations: 4,
+        populationSize: 6,
+        snapshotConfig: { checkpoints, outputDir: tmp },
+      });
+
+      for (const gen of checkpoints) {
+        assertEquals(
+          existsSync(join(tmp, `snapshot-gen-${gen}.json`)),
+          true,
+          `expected snapshot-gen-${gen}.json to exist`,
+        );
+      }
+
+      const snapshots = loadSnapshots(tmp);
+      assertEquals(snapshots.length, checkpoints.length);
+
+      const svg = renderEvolutionProgressSvg(snapshots, {
+        title: "Lunar Lander — Evolution Progress",
+      });
+      assert(svg.startsWith("<svg"), "must start with <svg>");
+      assert(svg.length > 0, "SVG must be non-empty");
+      const panels = svg.match(/<g class="panel"/g) ?? [];
+      assertEquals(panels.length, checkpoints.length);
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
 
 Deno.test("renderRunSVG marks the landing pad with a TARGET indicator", () => {
   // Issue #72: the lander must aim for a specific location — make the
