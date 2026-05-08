@@ -51,8 +51,9 @@ import {
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
-import { newGame, type SnakeState, step } from "./snake.ts";
+import { type Heading, newGame, type SnakeState, step } from "./snake.ts";
 import { renderRunSVG } from "./svg.ts";
 
 /** Hard cap on the number of ticks a single episode is allowed. */
@@ -412,6 +413,24 @@ function manhattan(a: { x: number; y: number }, b: { x: number; y: number }): nu
 }
 
 /**
+ * Build a snake-game {@link EpisodeAdapter} bound to a per-episode RNG.
+ * The food sequence is driven by the same `episodeRandom` so two
+ * controllers given the same `episodeSeed` see the same spawns.
+ */
+function snakeAdapter(
+  start: SnakeState,
+  episodeRandom: () => number,
+): EpisodeAdapter<SnakeState, Heading> {
+  return {
+    initialState: start,
+    encode: encodeState,
+    decode: decodeAction,
+    step: (s, a) => step(s, a, episodeRandom),
+    isTerminal: (s) => s.dead,
+  };
+}
+
+/**
  * Play one episode and score the controller. The same per-episode
  * seed is used for every controller in a generation so the comparison
  * is fair (same initial state, same food sequence on equivalent
@@ -428,28 +447,31 @@ export function scoreController(
   maxSteps: number = MAX_STEPS,
 ): EpisodeResult {
   const episodeRandom = createDeterministicRandom(episodeSeed);
-  let state = newGame(episodeRandom);
-  let prevDistance = manhattan(state.body[0], state.food);
+  const start = newGame(episodeRandom);
+  const { trace, finalState } = runEpisode(creature, snakeAdapter(start, episodeRandom), {
+    maxSteps,
+  });
+
+  // Post-hoc Manhattan-distance shaping. Matches the per-step
+  // accumulation the inline loop used to do — for each consecutive pair
+  // of states in the trace, credit/penalty the snake for closing on or
+  // backing away from the food.
   let shaping = 0;
-  for (let i = 0; i < maxSteps; i++) {
-    creature.clearState();
-    const out = creature.activate(encodeState(state));
-    const action = decodeAction(out);
-    state = step(state, action, episodeRandom);
-    const newDistance = manhattan(state.body[0], state.food);
+  for (let i = 1; i < trace.length; i++) {
+    const prevDistance = manhattan(trace[i - 1].body[0], trace[i - 1].food);
+    const newDistance = manhattan(trace[i].body[0], trace[i].food);
     shaping += (prevDistance - newDistance) * DISTANCE_SHAPING_COEFF;
-    prevDistance = newDistance;
-    if (state.dead) break;
   }
-  const score = state.eaten * FOOD_REWARD - state.steps * STEP_PENALTY -
-    (state.dead ? DEATH_PENALTY : 0);
+
+  const score = finalState.eaten * FOOD_REWARD - finalState.steps * STEP_PENALTY -
+    (finalState.dead ? DEATH_PENALTY : 0);
   return {
     score,
     fitness: score + shaping,
-    eaten: state.eaten,
-    steps: state.steps,
-    died: state.dead,
-    finalState: state,
+    eaten: finalState.eaten,
+    steps: finalState.steps,
+    died: finalState.dead,
+    finalState,
   };
 }
 
@@ -516,17 +538,8 @@ export function replayController(
   maxSteps: number = MAX_STEPS,
 ): SnakeState[] {
   const episodeRandom = createDeterministicRandom(episodeSeed);
-  let state = newGame(episodeRandom);
-  const trace: SnakeState[] = [state];
-  for (let i = 0; i < maxSteps; i++) {
-    creature.clearState();
-    const out = creature.activate(encodeState(state));
-    const action = decodeAction(out);
-    state = step(state, action, episodeRandom);
-    trace.push(state);
-    if (state.dead) break;
-  }
-  return trace;
+  const start = newGame(episodeRandom);
+  return runEpisode(creature, snakeAdapter(start, episodeRandom), { maxSteps }).trace;
 }
 
 interface ScoredMember {

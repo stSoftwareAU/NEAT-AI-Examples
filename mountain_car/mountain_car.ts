@@ -46,6 +46,7 @@ import {
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
 import {
   encodeState,
   initialState,
@@ -352,30 +353,47 @@ interface EpisodeResult {
   finalState: MountainCarState;
 }
 
-/** Run a single mountain-car episode from `start` and return the result. */
-function runEpisode(
+/** Build a mountain-car {@link EpisodeAdapter} for the shared rollout helper. */
+function mountainCarAdapter(
+  start: MountainCarState,
+): EpisodeAdapter<MountainCarState, -1 | 0 | 1> {
+  return {
+    initialState: start,
+    encode: encodeState,
+    decode: decodeAction,
+    step,
+    isTerminal: isSuccess,
+  };
+}
+
+/**
+ * Run a single mountain-car episode from `start` and return the score
+ * components. Wraps the shared {@link runEpisode} helper with the
+ * mountain-car-specific reward shaping (success bonus minus a per-step
+ * penalty for solved trials, partial credit for the highest peak
+ * reached on timeouts).
+ */
+function runMountainCarEpisode(
   creature: Creature,
   start: MountainCarState,
   maxSteps: number,
 ): EpisodeResult {
-  let state: MountainCarState = start;
-  let highestX = state.x;
-  for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
-    creature.clearState();
-    const out = creature.activate(encodeState(state));
-    const action = decodeAction(out);
-    state = step(state, action);
-    if (state.x > highestX) highestX = state.x;
-    if (isSuccess(state)) {
-      const steps = stepIdx + 1;
-      const score = SUCCESS_BONUS - (STEP_PENALTY_SCALE * steps) / maxSteps;
-      return { score, steps, solved: true, finalState: state };
-    }
+  const { trace, finalState, steps } = runEpisode(creature, mountainCarAdapter(start), {
+    maxSteps,
+  });
+  const solved = isSuccess(finalState);
+  if (solved) {
+    const score = SUCCESS_BONUS - (STEP_PENALTY_SCALE * steps) / maxSteps;
+    return { score, steps, solved: true, finalState };
   }
   // Timeout: scale [-1.2, 0.5] → [0, 1] for the partial-credit term.
+  let highestX = start.x;
+  for (const s of trace) {
+    if (s.x > highestX) highestX = s.x;
+  }
   const partial = (highestX + 1.2) / (0.5 + 1.2);
   const score = FAILURE_FLAT_PENALTY + 50 * partial;
-  return { score, steps: maxSteps, solved: false, finalState: state };
+  return { score, steps: maxSteps, solved: false, finalState };
 }
 
 /** Aggregated multi-trial score for a single creature. */
@@ -405,7 +423,7 @@ export function scoreController(
   const perturbation = options?.initialPerturbation ?? 0;
 
   if (trials <= 1 && perturbation === 0) {
-    const result = runEpisode(creature, initialState(), maxSteps);
+    const result = runMountainCarEpisode(creature, initialState(), maxSteps);
     return {
       score: result.score,
       summitRate: result.solved ? 1 : 0,
@@ -418,7 +436,7 @@ export function scoreController(
   let solved = 0;
   for (let t = 0; t < trials; t++) {
     const start = perturbation > 0 ? perturbedInitialState(random, perturbation) : initialState();
-    const result = runEpisode(creature, start, maxSteps);
+    const result = runMountainCarEpisode(creature, start, maxSteps);
     total += result.score;
     if (result.solved) solved++;
   }
@@ -434,18 +452,7 @@ export function replayController(
   creature: Creature,
   maxSteps: number = MAX_STEPS,
 ): MountainCarState[] {
-  const trace: MountainCarState[] = [];
-  let state: MountainCarState = initialState();
-  trace.push(state);
-  for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
-    creature.clearState();
-    const out = creature.activate(encodeState(state));
-    const action = decodeAction(out);
-    state = step(state, action);
-    trace.push(state);
-    if (isSuccess(state)) break;
-  }
-  return trace;
+  return runEpisode(creature, mountainCarAdapter(initialState()), { maxSteps }).trace;
 }
 
 /**

@@ -145,6 +145,7 @@ reinventing equivalent logic in a new example.
 | `common/evolution_snapshot.ts`     | Capture creature state at checkpoint generations.             |
 | `common/evolution_progress_svg.ts` | Multi-panel animated SVG strip rendered from snapshots.       |
 | `common/large_creature.ts`         | Deterministic large creatures (~10k synapses) for size demos. |
+| `common/episode_runner.ts`         | Shared per-episode rollout loop for agent examples.           |
 
 ### `common/data_cache.ts`
 
@@ -242,6 +243,8 @@ common/
   evolution_progress_svg_test.ts   — Unit tests for the evolution-progress renderer
   large_creature.ts                — Deterministic large creature builder for size-adaptive demos
   large_creature_test.ts           — Unit tests for the large creature builder
+  episode_runner.ts                — Shared per-episode rollout loop for agent examples
+  episode_runner_test.ts           — Unit tests for the episode runner helper
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
