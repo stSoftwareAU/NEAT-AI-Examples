@@ -49,6 +49,50 @@ const SCREENSHOT_PATHS = [
   "docs/screenshots/evolution_showcase_evolution.svg",
 ] as const;
 
+/**
+ * Unique-feature demos consolidated by issue #91. Each row of the
+ * "Unique Features Showcase" table embeds one of these screenshots.
+ */
+const UNIQUE_FEATURE_SHOWCASE: ReadonlyArray<
+  { name: string; dir: string; screenshot: string }
+> = [
+  {
+    name: "Discovery at Scale",
+    dir: "discovery_at_scale",
+    screenshot: "docs/screenshots/discovery_at_scale.svg",
+  },
+  {
+    name: "Synthetic Synapse",
+    dir: "synthetic_synapse",
+    screenshot: "docs/screenshots/synthetic_synapse.svg",
+  },
+  {
+    name: "Adaptive Mutation",
+    dir: "adaptive_mutation",
+    screenshot: "docs/screenshots/adaptive_mutation.svg",
+  },
+  {
+    name: "Neuron Pruning",
+    dir: "neuron_pruning",
+    screenshot: "docs/screenshots/neuron_pruning.svg",
+  },
+  {
+    name: "CRISPR Injection",
+    dir: "crispr_injection",
+    screenshot: "docs/screenshots/crispr_injection.svg",
+  },
+  {
+    name: "MCMC Acceptance",
+    dir: "mcmc_acceptance",
+    screenshot: "docs/screenshots/mcmc_acceptance.svg",
+  },
+  {
+    name: "Memetic Evolution",
+    dir: "memetic_evolution",
+    screenshot: "docs/screenshots/memetic_evolution.svg",
+  },
+];
+
 function loadReadme(): string {
   return Deno.readTextFileSync(README_PATH);
 }
@@ -213,3 +257,52 @@ Deno.test("README.md retains the Quality Check section", () => {
     "README.md should keep a Quality Check section",
   );
 });
+
+/* ------------------------------------------------------------------ */
+/*  Unique Features Showcase section (issue #91)                       */
+/* ------------------------------------------------------------------ */
+
+Deno.test("README.md has a Unique Features Showcase section", () => {
+  const content = loadReadme();
+  assertEquals(
+    /^##\s+.*Unique Features Showcase/im.test(content),
+    true,
+    "README.md should have a Unique Features Showcase section heading",
+  );
+});
+
+for (const row of UNIQUE_FEATURE_SHOWCASE) {
+  Deno.test(`Unique Features Showcase row exists for ${row.name}`, () => {
+    const content = loadReadme();
+    const showcaseIdx = content.search(/^##\s+.*Unique Features Showcase/im);
+    assertEquals(
+      showcaseIdx >= 0,
+      true,
+      "Unique Features Showcase heading must be present",
+    );
+    // The remainder of the file from the heading onward must be the
+    // showcase section. We slice and confirm each demo is listed and
+    // its screenshot embedded inside that slice.
+    const showcaseSlice = content.slice(showcaseIdx);
+    assertStringIncludes(
+      showcaseSlice,
+      `${row.dir}/README.md`,
+      `Showcase row for ${row.name} should link to ${row.dir}/README.md`,
+    );
+    assertStringIncludes(
+      showcaseSlice,
+      row.screenshot,
+      `Showcase row for ${row.name} should embed ${row.screenshot}`,
+    );
+  });
+
+  Deno.test(`Unique Features Showcase screenshot ${row.screenshot} exists on disk`, () => {
+    const stat = Deno.statSync(row.screenshot);
+    assertEquals(stat.isFile, true, `${row.screenshot} should be a committed file`);
+    assertEquals(
+      stat.size > 0,
+      true,
+      `${row.screenshot} should be a non-empty file`,
+    );
+  });
+}
