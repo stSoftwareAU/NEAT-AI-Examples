@@ -2,29 +2,35 @@
  * XOR Classification Example
  *
  * Evolves a NEAT-AI creature to learn the XOR truth table — the
- * canonical "Hello World" of neuroevolution. The network has two
- * inputs, two hidden neurons (TANH), and a single LOGISTIC output.
- * The evolutionary loop and scoring all run in pure TypeScript;
- * the only library dependency is `Creature.activate`.
+ * canonical "Hello World" of neuroevolution. The evolution starts from
+ * a **minimal seed** (two inputs, zero hidden neurons, one output)
+ * and delegates structural mutation (add-neuron, add-synapse, weight
+ * tuning) to the NEAT-AI library via `creature.evolveDir(...)`. XOR is
+ * not linearly separable, so the seed cannot solve the task — NEAT
+ * must invent at least one hidden neuron to succeed.
  *
  * Inputs (per sample): `[a, b]` ∈ {0, 1}^2.
  * Output: a scalar in `(0, 1)`. Sample is classified as `1` when the
  * output is `>= 0.5`, else `0`.
  * Fitness: 1 - mean squared error across the four samples (higher is
- * better). The task is "solved" when all four samples are classified
- * correctly.
+ * better). The task is "solved" when MSE drops below `errorThreshold`.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
+import {
+  Creature,
+  type CreatureExport,
+  type NeatOptions,
+  safeWriteJson,
+} from "@stsoftware/neat-ai";
 
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import {
   captureSnapshot,
+  DEFAULT_CHECKPOINTS,
   loadSnapshots,
   type SnapshotConfig,
 } from "../common/evolution_snapshot.ts";
@@ -34,22 +40,11 @@ import { renderDecisionBoundarySVG } from "./svg.ts";
 /** Number of input features. */
 export const INPUT_COUNT = 2;
 
-/** Number of hidden neurons. */
-export const HIDDEN_COUNT = 2;
-
 /** Number of outputs. */
 export const OUTPUT_COUNT = 1;
 
-/** Index of the first hidden neuron in the legacy index space. */
-const FIRST_HIDDEN_INDEX = INPUT_COUNT;
-/** Index of the output neuron. */
-const OUTPUT_INDEX = INPUT_COUNT + HIDDEN_COUNT;
-
-/** Number of weights in the genome (input→hidden + hidden→output). */
-export const WEIGHT_COUNT = INPUT_COUNT * HIDDEN_COUNT + HIDDEN_COUNT * OUTPUT_COUNT;
-
-/** Number of biases in the genome (hidden + output). */
-export const BIAS_COUNT = HIDDEN_COUNT + OUTPUT_COUNT;
+/** Index of the output neuron in the minimal seed. */
+const SEED_OUTPUT_INDEX = INPUT_COUNT;
 
 /** A single XOR sample: two binary inputs and the expected output. */
 export interface XorSample {
@@ -60,13 +55,6 @@ export interface XorSample {
 /**
  * The full XOR truth table. The four samples are emitted in a fixed
  * order so any test (and the rendered SVG) can rely on the indexing.
- *
- * Note: the issue asks for the samples to be built "deterministically
- * (using common/deterministic_random.ts)". The truth table itself has
- * no randomness — these four values are the entire data set — so
- * {@link xorSamples} simply emits the canonical order. The seeded PRNG
- * is used for the randomised population initialisation and mutation
- * inside {@link evolveXorController}.
  */
 export function xorSamples(): XorSample[] {
   return [
@@ -85,12 +73,20 @@ export interface EvolveOptions {
   populationSize: number;
   /** Maximum number of generations before giving up. */
   maxGenerations: number;
-  /** Standard deviation of the weight/bias perturbation noise. */
-  mutationStrength: number;
-  /** Probability that any given gene is perturbed each generation. */
-  mutationRate: number;
   /** Mean-squared-error threshold below which the task counts as solved. */
   errorThreshold: number;
+  /**
+   * Probability that any given creature is mutated each generation. The
+   * NEAT-AI default is 0.3 — too conservative for the tiny XOR problem
+   * where the seed must grow at least one hidden neuron from scratch.
+   */
+  mutationRate: number;
+  /**
+   * Number of mutation operators applied per mutated creature each
+   * generation. Higher values bias the search toward structural growth
+   * (ADD_NODE, ADD_CONN). The NEAT-AI default is 1.
+   */
+  mutationAmount: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
@@ -99,6 +95,13 @@ export interface EvolveOptions {
    * and written to `snapshotConfig.outputDir`.
    */
   snapshotConfig?: SnapshotConfig;
+  /**
+   * Existing data directory containing the four XOR samples as a binary
+   * file. When omitted, a temporary directory is created and cleaned up
+   * automatically. Tests that want to inspect the data files can pass
+   * their own directory here.
+   */
+  dataDir?: string;
 }
 
 /** Statistics emitted after each generation. */
@@ -117,7 +120,7 @@ export interface GenerationInfo {
 export interface EvolveResult {
   /** The fittest creature found during the run. */
   champion: Creature;
-  /** Best fitness reached by the champion (1 - MSE). */
+  /** Best fitness reached by the champion (1 - MSE - tiny version penalty). */
   bestFitness: number;
   /** Mean squared error of the champion across the four samples. */
   bestError: number;
@@ -130,133 +133,59 @@ export interface EvolveResult {
 /** Sensible defaults for the demonstration runner. */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
-  populationSize: 60,
-  maxGenerations: 200,
-  mutationStrength: 0.6,
-  mutationRate: 0.4,
+  populationSize: 50,
+  maxGenerations: 500,
   errorThreshold: 0.05,
+  mutationRate: 0.6,
+  mutationAmount: 3,
 };
 
 /**
- * Build a fixed-topology creature: two inputs feed two TANH hidden
- * neurons, which feed a single LOGISTIC output. This is the smallest
- * network capable of representing XOR.
- *
- * Layout of the gene vector:
- * - `weights[0..1]` — input 0/1 → hidden 0
- * - `weights[2..3]` — input 0/1 → hidden 1
- * - `weights[4..5]` — hidden 0/1 → output
- * - `biases[0..1]`  — hidden 0/1
- * - `biases[2]`     — output
+ * Build the **minimal seed creature**: two inputs and one output, with
+ * direct input → output synapses. Zero hidden neurons. XOR is not
+ * linearly separable, so this seed *cannot* solve the task — NEAT must
+ * grow at least one hidden neuron during evolution.
  */
-export function buildInitialCreatureJSON(
-  weights: readonly number[],
-  biases: readonly number[],
-): LegacyCreatureJSON {
-  if (weights.length !== WEIGHT_COUNT) {
-    throw new Error(`weights must contain exactly ${WEIGHT_COUNT} entries, got ${weights.length}`);
-  }
-  if (biases.length !== BIAS_COUNT) {
-    throw new Error(`biases must contain exactly ${BIAS_COUNT} entries, got ${biases.length}`);
-  }
-  const neurons: LegacyCreatureJSON["neurons"] = [
-    { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
-    { type: "input", squash: "LOGISTIC", index: 1, uuid: "input-1" },
-    {
-      type: "hidden",
-      squash: "TANH",
-      index: FIRST_HIDDEN_INDEX,
-      bias: biases[0],
-      uuid: "hidden-0",
-    },
-    {
-      type: "hidden",
-      squash: "TANH",
-      index: FIRST_HIDDEN_INDEX + 1,
-      bias: biases[1],
-      uuid: "hidden-1",
-    },
-    {
-      type: "output",
-      squash: "LOGISTIC",
-      index: OUTPUT_INDEX,
-      bias: biases[2],
-      uuid: "output-0",
-    },
-  ];
-  const synapses: LegacyCreatureJSON["synapses"] = [
-    { from: 0, to: FIRST_HIDDEN_INDEX, weight: weights[0] },
-    { from: 1, to: FIRST_HIDDEN_INDEX, weight: weights[1] },
-    { from: 0, to: FIRST_HIDDEN_INDEX + 1, weight: weights[2] },
-    { from: 1, to: FIRST_HIDDEN_INDEX + 1, weight: weights[3] },
-    { from: FIRST_HIDDEN_INDEX, to: OUTPUT_INDEX, weight: weights[4] },
-    { from: FIRST_HIDDEN_INDEX + 1, to: OUTPUT_INDEX, weight: weights[5] },
-  ];
-  return { neurons, synapses, input: INPUT_COUNT, output: OUTPUT_COUNT };
-}
-
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
+export function buildMinimalSeedCreature(): LegacyCreatureJSON {
+  return {
+    neurons: [
+      { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
+      { type: "input", squash: "LOGISTIC", index: 1, uuid: "input-1" },
+      {
+        type: "output",
+        squash: "LOGISTIC",
+        index: SEED_OUTPUT_INDEX,
+        bias: 0,
+        uuid: "output-0",
+      },
+    ],
+    synapses: [
+      { from: 0, to: SEED_OUTPUT_INDEX, weight: 0 },
+      { from: 1, to: SEED_OUTPUT_INDEX, weight: 0 },
+    ],
+    input: INPUT_COUNT,
+    output: OUTPUT_COUNT,
+  };
 }
 
 /**
- * Construct a random initial creature JSON. Weights are drawn from
- * `[-2, 2]` and biases from `[-1, 1]` — a region wide enough that
- * the seeded population covers both XOR-correct and XOR-incorrect
- * tendencies from the first generation.
+ * Write the four XOR samples as a Float32 binary file the NEAT-AI
+ * library can consume via `creature.evolveDir(dir, ...)`. Each record
+ * is `INPUT_COUNT + OUTPUT_COUNT` floats (input, input, target).
  */
-export function randomCreatureJSON(random: () => number): LegacyCreatureJSON {
-  const weights = new Array(WEIGHT_COUNT).fill(0).map(() => uniformSigned(random, 2));
-  const biases = new Array(BIAS_COUNT).fill(0).map(() => uniformSigned(random, 1));
-  return buildInitialCreatureJSON(weights, biases);
-}
-
-/** Decode a creature JSON into its weight and bias gene vectors. */
-export function genesFromCreatureJSON(
-  json: LegacyCreatureJSON,
-): { weights: number[]; biases: number[] } {
-  const weights = new Array<number>(WEIGHT_COUNT).fill(0);
-  for (const synapse of json.synapses) {
-    if (synapse.from === 0 && synapse.to === FIRST_HIDDEN_INDEX) weights[0] = synapse.weight;
-    else if (synapse.from === 1 && synapse.to === FIRST_HIDDEN_INDEX) weights[1] = synapse.weight;
-    else if (synapse.from === 0 && synapse.to === FIRST_HIDDEN_INDEX + 1) {
-      weights[2] = synapse.weight;
-    } else if (synapse.from === 1 && synapse.to === FIRST_HIDDEN_INDEX + 1) {
-      weights[3] = synapse.weight;
-    } else if (synapse.from === FIRST_HIDDEN_INDEX && synapse.to === OUTPUT_INDEX) {
-      weights[4] = synapse.weight;
-    } else if (synapse.from === FIRST_HIDDEN_INDEX + 1 && synapse.to === OUTPUT_INDEX) {
-      weights[5] = synapse.weight;
-    }
+export function writeXorDataset(dataDir: string): string {
+  ensureDirSync(dataDir);
+  const samples = xorSamples();
+  const stride = INPUT_COUNT + OUTPUT_COUNT;
+  const buffer = new Float32Array(samples.length * stride);
+  for (let i = 0; i < samples.length; i++) {
+    buffer[i * stride + 0] = samples[i].inputs[0];
+    buffer[i * stride + 1] = samples[i].inputs[1];
+    buffer[i * stride + INPUT_COUNT] = samples[i].target;
   }
-  const biases: number[] = [
-    json.neurons.find((n) => n.uuid === "hidden-0")?.bias ?? 0,
-    json.neurons.find((n) => n.uuid === "hidden-1")?.bias ?? 0,
-    json.neurons.find((n) => n.uuid === "output-0")?.bias ?? 0,
-  ];
-  return { weights, biases };
-}
-
-/**
- * Mutate a creature genome: each gene is perturbed independently with
- * probability `mutationRate`. Noise is drawn uniformly from
- * `[-mutationStrength, mutationStrength]`.
- */
-export function mutateCreatureJSON(
-  parent: LegacyCreatureJSON,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-): LegacyCreatureJSON {
-  const { weights, biases } = genesFromCreatureJSON(parent);
-  const newWeights = weights.map((w) =>
-    random() < mutationRate ? w + uniformSigned(random, mutationStrength) : w
-  );
-  const newBiases = biases.map((b) =>
-    random() < mutationRate ? b + uniformSigned(random, mutationStrength) : b
-  );
-  return buildInitialCreatureJSON(newWeights, newBiases);
+  const path = join(dataDir, "xor.bin");
+  Deno.writeFileSync(path, new Uint8Array(buffer.buffer));
+  return path;
 }
 
 /** Activate the creature on a single sample, returning the scalar output. */
@@ -296,103 +225,156 @@ export function correctCount(creature: Creature): number {
 }
 
 /**
- * Run a generational evolutionary algorithm over creature genomes. The
- * top half of each generation seeds the next via mutation; the elite
- * is carried over unchanged so the best fitness is monotonically
- * non-decreasing. Evolution stops early when the champion's MSE drops
- * below `errorThreshold`.
+ * Compute the schedule of segment endpoints. The list always starts
+ * past gen 0 and ends at `maxGenerations`. Checkpoint values that fall
+ * within `[1, maxGenerations]` become extra segment boundaries so a
+ * snapshot can be captured at exactly that generation.
  */
-export function evolveXorController(
-  options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  const random = createDeterministicRandom(options.seed);
-
-  let population: { json: LegacyCreatureJSON; fitness: number; error: number }[] = [];
-  for (let i = 0; i < options.populationSize; i++) {
-    const json = randomCreatureJSON(random);
-    const creature = Creature.fromJSON(asCreatureExport(json));
-    const error = meanSquaredError(creature);
-    population.push({ json, fitness: 1 - error, error });
+export function planSegments(
+  checkpoints: readonly number[],
+  maxGenerations: number,
+): number[] {
+  const set = new Set<number>();
+  for (const c of checkpoints) {
+    if (c >= 1 && c <= maxGenerations) set.add(c);
   }
+  set.add(maxGenerations);
+  return [...set].sort((a, b) => a - b);
+}
 
-  let bestJSON = population[0].json;
-  let bestFitness = -Infinity;
-  let bestError = Infinity;
-  let solvedAt = -1;
+/**
+ * Run NEAT structural evolution to learn XOR.
+ *
+ * The runner builds the minimal seed creature (no hidden neurons) and
+ * delegates structural mutation to the library via `creature.evolveDir`
+ * — add-neuron, add-synapse and weight perturbation are all driven by
+ * the NEAT primitives, not by the example. Snapshots are captured at
+ * `options.snapshotConfig.checkpoints` by splitting the run into
+ * segments that end at each checkpoint, allowing the running champion
+ * (and its discovered topology) to be recorded as it grows.
+ *
+ * Determinism: the seed flows through `NeatOptions.seed` so two runs
+ * with the same `seed` produce the same champion JSON.
+ */
+export async function evolveXorController(
+  options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
+): Promise<EvolveResult> {
+  const ownDataDir = options.dataDir === undefined;
+  const dataDir = options.dataDir ??
+    Deno.makeTempDirSync({ prefix: "xor_evolve_data_" });
 
-  for (let generation = 0; generation < options.maxGenerations; generation++) {
-    population.sort((a, b) => b.fitness - a.fitness);
-    const generationBest = population[0];
-    if (generationBest.fitness > bestFitness) {
-      bestFitness = generationBest.fitness;
-      bestError = generationBest.error;
-      bestJSON = generationBest.json;
-    }
+  try {
+    if (ownDataDir) writeXorDataset(dataDir);
 
-    const meanFitness = population.reduce((acc, p) => acc + p.fitness, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestFitness: generationBest.fitness,
-      bestError: generationBest.error,
-      meanFitness,
-      neurons: generationBest.json.neurons.length,
-      synapses: generationBest.json.synapses.length,
-    });
+    const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
 
-    // Capture an evolution snapshot of the running champion at the
-    // configured checkpoints. The helper is a no-op for non-checkpoint
-    // generations, so this is cheap to call every generation. We capture
-    // the four XOR predictions as `sampleOutputs` so the snapshot files
-    // record the champion's behaviour, not just its topology.
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        const championCreature = Creature.fromJSON(asCreatureExport(bestJSON));
-        const sampleOutputs = xorSamples().map((s) => predict(championCreature, s.inputs));
+    const checkpoints = options.snapshotConfig ? [...options.snapshotConfig.checkpoints] : [];
+    const segmentEnds = planSegments(checkpoints, options.maxGenerations);
+
+    let priorGenerations = 0;
+    let lastError = meanSquaredError(creature);
+    let lastScore = 1 - lastError;
+    let solved = false;
+
+    // Topology captured between segments so per-generation events report
+    // the segment's *starting* neuron/synapse counts. The library only
+    // updates `creature` in-place at the end of each `evolveDir`, so
+    // mid-segment we must rely on these captured values rather than
+    // reading the creature directly.
+    const countTopology = () => {
+      const exp = creature.exportJSON();
+      return {
+        neurons: exp.neurons.length + creature.input,
+        synapses: exp.synapses.length,
+      };
+    };
+    let topology = countTopology();
+
+    // Reusable per-segment evolveDir options. We re-derive the seed for
+    // each segment from the base seed so different segments explore
+    // different mutation paths but the overall run is reproducible.
+    for (const endGen of segmentEnds) {
+      const iterations = endGen - priorGenerations;
+      if (iterations <= 0) continue;
+
+      const segmentOffset = priorGenerations;
+      const neatOptions: NeatOptions = {
+        seed: options.seed + segmentOffset,
+        populationSize: options.populationSize,
+        iterations,
+        targetError: Math.max(0, Math.min(1, options.errorThreshold)),
+        costOfGrowth: 0,
+        mutationRate: options.mutationRate,
+        mutationAmount: options.mutationAmount,
+        verbose: false,
+        log: 0,
+        threads: 1,
+        onTrainingEvent: (event) => {
+          if (event.kind !== "generation_complete") return;
+          const fitness = event.bestFitness;
+          // score = 1 - error - growthPenalty - versionPenalty (1e-6).
+          // With costOfGrowth=0 the growth penalty is 0, so error ≈ 1 - fitness
+          // (within 1e-6).
+          const error = Math.max(0, 1 - fitness);
+          options.onGeneration?.({
+            generation: priorGenerations + event.generation,
+            bestFitness: fitness,
+            bestError: error,
+            meanFitness: event.averageFitness,
+            // Topology of the segment's starting champion (captured
+            // before evolveDir was invoked). The actual within-segment
+            // best may have grown further; we re-read after the segment
+            // ends so the next segment's events reflect the new counts.
+            neurons: topology.neurons,
+            synapses: topology.synapses,
+          });
+        },
+      };
+
+      const result = await creature.evolveDir(dataDir, neatOptions);
+      priorGenerations += result.generation;
+      lastError = result.error;
+      lastScore = result.score;
+      // Refresh the captured topology so the next segment's events
+      // reflect the new champion's neuron / synapse counts.
+      topology = countTopology();
+
+      // Capture a snapshot whenever this segment ends on a configured
+      // checkpoint. The creature has just been mutated in-place to the
+      // current best, so its topology and predictions are accurate.
+      if (options.snapshotConfig && checkpoints.includes(endGen)) {
+        const sampleOutputs = xorSamples().map((s) => predict(creature, s.inputs));
         captureSnapshot(
           options.snapshotConfig,
-          checkpointGen,
-          bestJSON,
-          bestFitness,
+          endGen,
+          creature.exportJSON() as unknown,
+          lastScore,
           sampleOutputs,
         );
       }
+
+      if (lastError <= options.errorThreshold) {
+        solved = true;
+        break;
+      }
     }
 
-    if (bestError <= options.errorThreshold) {
-      solvedAt = generation;
-      break;
+    return {
+      champion: creature,
+      bestFitness: lastScore,
+      bestError: lastError,
+      generations: priorGenerations,
+      solved: solved && correctCount(creature) === 4,
+    };
+  } finally {
+    if (ownDataDir) {
+      try {
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors — the temp dir may already be gone.
+      }
     }
-
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
-
-    const next: typeof population = [];
-    next.push(parents[0]); // elite
-    while (next.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureJSON(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-      );
-      const childCreature = Creature.fromJSON(asCreatureExport(childJSON));
-      const error = meanSquaredError(childCreature);
-      next.push({ json: childJSON, fitness: 1 - error, error });
-    }
-    population = next;
   }
-
-  const champion = Creature.fromJSON(asCreatureExport(bestJSON));
-  return {
-    champion,
-    bestFitness,
-    bestError,
-    generations: solvedAt >= 0 ? solvedAt + 1 : options.maxGenerations,
-    solved: bestError <= options.errorThreshold && correctCount(champion) === 4,
-  };
 }
 
 /** Path to the SVG snapshot the runner emits for the README. */
@@ -404,8 +386,14 @@ export const EVOLUTION_CHART_PATH = "docs/screenshots/xor_classification/evoluti
 /** Resolution (cells per side) of the decision-boundary grid. */
 export const DECISION_BOUNDARY_GRID = 40;
 
-/** Generations at which the runner captures evolution snapshots. */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500];
+/**
+ * Generations at which the runner captures evolution snapshots. The
+ * canonical NEAT-AI strip uses `[1, 10, 100, 1000, 10000]` (matching
+ * `DEFAULT_CHECKPOINTS` from `evolution_snapshot.ts`); any checkpoint
+ * past `DEFAULT_EVOLVE_OPTIONS.maxGenerations` simply does not fire,
+ * so the same list works for reduced-budget test runs.
+ */
+export const EVOLUTION_CHECKPOINTS: number[] = [...DEFAULT_CHECKPOINTS];
 
 /** Hidden directory under which snapshot files are written. */
 export const SNAPSHOTS_DIR = ".synthetic-xor/snapshots";
@@ -426,7 +414,7 @@ if (import.meta.main) {
     console.log(`   (${inputs[0]}, ${inputs[1]}) → ${target}`);
   }
 
-  console.log("\n🧬 Evolving classifier...");
+  console.log("\n🧬 Evolving classifier (NEAT structural mutation from a minimal seed)...");
   const evolutionSamples: EvolutionSample[] = [];
   ensureDirSync(SNAPSHOTS_DIR);
   // Empty any stale snapshot files so reruns do not blend old + new gens.
@@ -434,7 +422,7 @@ if (import.meta.main) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
   const evolutionStart = Date.now();
-  const result = evolveXorController({
+  const result = await evolveXorController({
     ...DEFAULT_EVOLVE_OPTIONS,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
@@ -449,9 +437,10 @@ if (import.meta.main) {
       });
       if (generation % 10 === 0 || bestError <= DEFAULT_EVOLVE_OPTIONS.errorThreshold) {
         console.log(
-          `   Gen ${generation.toString().padStart(3)}  ` +
+          `   Gen ${generation.toString().padStart(4)}  ` +
             `bestFitness=${bestFitness.toFixed(4)}  ` +
-            `bestError=${bestError.toFixed(4)}`,
+            `bestError=${bestError.toFixed(4)}  ` +
+            `neurons=${neurons}  synapses=${synapses}`,
         );
       }
     },
