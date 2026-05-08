@@ -14,6 +14,7 @@ import {
   buildInitialCreatureJSON,
   DEFAULT_EVOLVE_OPTIONS,
   evolveCartPoleController,
+  type GenerationInfo,
   genesFromCreatureJSON,
   MAX_STEPS,
   mutateCreatureJSON,
@@ -301,6 +302,30 @@ Deno.test(
       assertEquals(panels.length, checkpoints.length);
     } finally {
       Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "evolveCartPoleController emits GenerationInfo with neurons and synapses counts",
+  () => {
+    const samples: GenerationInfo[] = [];
+    evolveCartPoleController({
+      seed: 1,
+      populationSize: 3,
+      maxGenerations: 3,
+      mutationStrength: 0.1,
+      mutationRate: 0.1,
+      onGeneration: (info) => samples.push(info),
+    });
+    assertGreater(samples.length, 0, "expected at least one onGeneration call");
+    for (const info of samples) {
+      // The fixed linear topology has 4 inputs + 1 output = 5 neurons and
+      // 4 input→output synapses, matching buildInitialCreatureJSON.
+      assertEquals(info.neurons, 5);
+      assertEquals(info.synapses, 4);
+      assertGreaterOrEqual(info.bestScore, 0);
+      assertGreaterOrEqual(info.meanScore, 0);
     }
   },
 );

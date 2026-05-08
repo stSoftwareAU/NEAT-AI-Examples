@@ -71,10 +71,14 @@ Artefacts:
 - `docs/screenshots/cart_pole.svg` – an 8-frame strip showing the champion balancing
 - `docs/screenshots/cart_pole_evolution.svg` – multi-panel evolution-progression strip rendered from
   the captured snapshots
+- `docs/screenshots/cart_pole/evolution.svg` – dual-axis evolution chart plotting best score and
+  champion neuron / synapse counts against generation
 
 ## Evolution Progress
 
 ![Cart-Pole evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/cart_pole_evolution.svg)
+
+![Cart-Pole evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/cart_pole/evolution.svg)
 
 The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
 generations `[1, 10, 100, 500]` (those that fall inside the configured `maxGenerations`).
