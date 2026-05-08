@@ -1,0 +1,309 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 880 440"
+  width="880"
+  height="440"
+  role="img"
+  aria-label="Memetic vs control fitness curves"
+>
+  <title>Memetic Evolution — Seeding From the Fittest Archive</title>
+  <rect width="880" height="440" fill="#fafafa" />
+  <text
+    x="440"
+    y="28"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="16"
+    font-weight="bold"
+    fill="#222"
+  >Memetic Evolution — Seeding From the Fittest Archive</text>
+  <g class="plot-frame" font-family="sans-serif">
+    <rect x="80" y="56" width="768" height="320" fill="#ffffff" stroke="#333" stroke-width="1" />
+  </g>
+  <g class="ticks-y" font-family="sans-serif">
+    <line x1="80.00" y1="376.00" x2="75.00" y2="376.00" stroke="#333" stroke-width="1" />
+    <text x="72.00" y="380.00" text-anchor="end" font-size="11" fill="#333">-0.116</text>
+    <line x1="80.00" y1="296.00" x2="75.00" y2="296.00" stroke="#333" stroke-width="1" />
+    <text x="72.00" y="300.00" text-anchor="end" font-size="11" fill="#333">-0.086</text>
+    <line x1="80.00" y1="216.00" x2="75.00" y2="216.00" stroke="#333" stroke-width="1" />
+    <text x="72.00" y="220.00" text-anchor="end" font-size="11" fill="#333">-0.056</text>
+    <line x1="80.00" y1="136.00" x2="75.00" y2="136.00" stroke="#333" stroke-width="1" />
+    <text x="72.00" y="140.00" text-anchor="end" font-size="11" fill="#333">-0.026</text>
+    <line x1="80.00" y1="56.00" x2="75.00" y2="56.00" stroke="#333" stroke-width="1" />
+    <text x="72.00" y="60.00" text-anchor="end" font-size="11" fill="#333">0.004</text>
+  </g>
+  <g class="ticks-x" font-family="sans-serif">
+    <line x1="80.00" y1="376.00" x2="80.00" y2="381.00" stroke="#333" stroke-width="1" />
+    <text x="80.00" y="396.00" text-anchor="middle" font-size="11" fill="#333">0</text>
+    <line x1="236.20" y1="376.00" x2="236.20" y2="381.00" stroke="#333" stroke-width="1" />
+    <text x="236.20" y="396.00" text-anchor="middle" font-size="11" fill="#333">12</text>
+    <line x1="392.41" y1="376.00" x2="392.41" y2="381.00" stroke="#333" stroke-width="1" />
+    <text x="392.41" y="396.00" text-anchor="middle" font-size="11" fill="#333">24</text>
+    <line x1="535.59" y1="376.00" x2="535.59" y2="381.00" stroke="#333" stroke-width="1" />
+    <text x="535.59" y="396.00" text-anchor="middle" font-size="11" fill="#333">35</text>
+    <line x1="691.80" y1="376.00" x2="691.80" y2="381.00" stroke="#333" stroke-width="1" />
+    <text x="691.80" y="396.00" text-anchor="middle" font-size="11" fill="#333">47</text>
+    <line x1="848.00" y1="376.00" x2="848.00" y2="381.00" stroke="#333" stroke-width="1" />
+    <text x="848.00" y="396.00" text-anchor="middle" font-size="11" fill="#333">59</text>
+  </g>
+  <line
+    class="seeding-marker"
+    x1="119.05"
+    y1="56.00"
+    x2="119.05"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="158.10"
+    y1="56.00"
+    x2="158.10"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="197.15"
+    y1="56.00"
+    x2="197.15"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="236.20"
+    y1="56.00"
+    x2="236.20"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="275.25"
+    y1="56.00"
+    x2="275.25"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="314.31"
+    y1="56.00"
+    x2="314.31"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="353.36"
+    y1="56.00"
+    x2="353.36"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="392.41"
+    y1="56.00"
+    x2="392.41"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="431.46"
+    y1="56.00"
+    x2="431.46"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="470.51"
+    y1="56.00"
+    x2="470.51"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="509.56"
+    y1="56.00"
+    x2="509.56"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="548.61"
+    y1="56.00"
+    x2="548.61"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="587.66"
+    y1="56.00"
+    x2="587.66"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="626.71"
+    y1="56.00"
+    x2="626.71"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="665.76"
+    y1="56.00"
+    x2="665.76"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="704.81"
+    y1="56.00"
+    x2="704.81"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="743.86"
+    y1="56.00"
+    x2="743.86"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="782.92"
+    y1="56.00"
+    x2="782.92"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <line
+    class="seeding-marker"
+    x1="821.97"
+    y1="56.00"
+    x2="821.97"
+    y2="376.00"
+    stroke="#16a085"
+    stroke-width="1"
+    stroke-dasharray="4 3"
+    opacity="0.55"
+  />
+  <polyline
+    class="control-curve"
+    fill="none"
+    stroke="#7f8c8d"
+    stroke-width="1.6"
+    points="80.00,361.45 93.02,330.36 106.03,330.36 119.05,316.38 132.07,139.96 145.08,103.54 158.10,90.21 171.12,118.90 184.14,100.54 197.15,100.54 210.17,80.87 223.19,80.87 236.20,84.57 249.22,128.80 262.24,171.80 275.25,270.67 288.27,132.42 301.29,146.04 314.31,86.24 327.32,143.91 340.34,86.70 353.36,157.43 366.37,198.63 379.39,112.60 392.41,123.41 405.42,164.74 418.44,179.57 431.46,120.37 444.47,88.54 457.49,228.57 470.51,155.05 483.53,266.24 496.54,182.55 509.56,139.24 522.58,169.97 535.59,196.85 548.61,241.61 561.63,112.09 574.64,94.32 587.66,94.32 600.68,94.32 613.69,97.83 626.71,83.92 639.73,79.97 652.75,83.12 665.76,95.99 678.78,83.86 691.80,83.25 704.81,83.86 717.83,112.03 730.85,133.19 743.86,103.22 756.88,103.35 769.90,91.35 782.92,103.35 795.93,98.56 808.95,145.55 821.97,139.63 834.98,124.51 848.00,87.37"
+  />
+  <polyline
+    class="memetic-curve"
+    fill="none"
+    stroke="#2e86de"
+    stroke-width="2"
+    points="80.00,361.45 93.02,147.42 106.03,135.04 119.05,109.87 132.07,102.44 145.08,116.83 158.10,139.61 171.12,126.19 184.14,201.30 197.15,87.80 210.17,168.69 223.19,155.81 236.20,127.32 249.22,184.97 262.24,86.01 275.25,138.38 288.27,126.77 301.29,138.38 314.31,145.78 327.32,145.78 340.34,122.75 353.36,114.15 366.37,116.50 379.39,103.28 392.41,103.28 405.42,125.47 418.44,122.66 431.46,125.47 444.47,91.35 457.49,91.35 470.51,91.35 483.53,96.61 496.54,77.07 509.56,77.07 522.58,77.07 535.59,87.39 548.61,74.96 561.63,74.96 574.64,124.85 587.66,71.77 600.68,72.89 613.69,72.89 626.71,70.55 639.73,97.47 652.75,78.53 665.76,78.05 678.78,102.20 691.80,102.20 704.81,85.30 717.83,85.51 730.85,85.51 743.86,77.16 756.88,92.20 769.90,92.20 782.92,85.53 795.93,128.07 808.95,124.68 821.97,76.46 834.98,89.09 848.00,106.90"
+  />
+  <g class="axis-labels" font-family="sans-serif" font-size="12" fill="#333">
+    <text x="464" y="420" text-anchor="middle">generation</text>
+    <text
+      x="24"
+      y="216"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      transform="rotate(-90 24 216)"
+    >best true fitness (-MSE)</text>
+  </g>
+  <g class="legend" font-family="sans-serif" font-size="11" fill="#333">
+    <rect
+      x="602"
+      y="56"
+      width="232"
+      height="60"
+      fill="#ffffff"
+      fill-opacity="0.9"
+      stroke="#cccccc"
+      stroke-width="0.5"
+    />
+    <line x1="608" y1="68" x2="630" y2="68" stroke="#2e86de" stroke-width="2" />
+    <text x="636" y="72">memetic (with archive seeding)</text>
+    <line x1="608" y1="84" x2="630" y2="84" stroke="#7f8c8d" stroke-width="1.6" />
+    <text x="636" y="88">control (no seeding)</text>
+    <line
+      x1="608"
+      y1="100"
+      x2="630"
+      y2="100"
+      stroke="#16a085"
+      stroke-width="1"
+      stroke-dasharray="4 3"
+      opacity="0.55"
+    />
+    <text x="636" y="104">memetic seeding generation</text>
+  </g>
+</svg>

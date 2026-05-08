@@ -28,6 +28,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [📈 Stock Market](stock_market/README.md)                 | Evolve a tiny network that predicts next-period S&P 500 direction from a window of recent returns.        | `./stock_market/run.sh`         |
 | [🔢 MNIST](mnist_classification/README.md)                | Evolve a 196 → 10 logistic classifier on a small MNIST subset and render an animated grid of predictions. | `./mnist_classification/run.sh` |
 | [🌡️ MCMC Acceptance](mcmc_acceptance/README.md)           | Visualise Metropolis-Hastings mutation acceptance cooling toward the 23.4% optimal target.                | `./mcmc_acceptance/run.sh`      |
+| [🧠 Memetic Evolution](memetic_evolution/README.md)       | Compare evolutions with and without seeding from an archive of the fittest creatures' weights.            | `./memetic_evolution/run.sh`    |
 | [💡 Suggest Improvements](suggest_improvements/README.md) | Analyse the project and emit categorised improvement suggestions you can file as GitHub issues.           | `./suggest_improvements/run.sh` |
 
 ## 📸 Screenshots
@@ -120,6 +121,17 @@ acceptance rate, the orange line is the temperature schedule on a log scale, and
 line marks the 23.4% optimum from Roberts/Gelman/Gilks (1997). The cooling controller adjusts
 temperature after every proposal so the empirical acceptance rate converges to the target.
 
+### 🧠 Memetic Evolution — seeding from the fittest archive
+
+![Memetic vs control fitness curves — the memetic curve outperforms the control by a measurable margin, with green dashed vertical markers at the generations where memetic seeds were applied](docs/screenshots/memetic_evolution.svg)
+
+Two evolutions on the same synthetic weight-tuning task: the **blue** memetic run maintains an
+archive of the top-K weight vectors observed so far (ranked by averaged fitness across many noisy
+mini-batch evaluations) and periodically re-seeds its population from that archive; the **grey**
+control run uses pure (μ + λ) elitism without an archive. Mini-batch noise causes occasional elite
+drift, and the archive's averaged ranking lets the memetic run shrug it off. Green dashed vertical
+markers pin the generations where memetic seeding was applied.
+
 ```mermaid
 flowchart TD
     NEAT["🧠 NEAT-AI Library"]
@@ -137,6 +149,7 @@ flowchart TD
     STOCK["📈 Stock Market<br/>Predict next-period S&P 500<br/>direction from prior returns"]
     MNIST["🔢 MNIST<br/>Classify handwritten digits<br/>from a 14×14 down-sample"]
     MCMC["🌡️ MCMC Acceptance<br/>Cool MH acceptance rate<br/>toward the 23.4% optimum"]
+    MEME["🧠 Memetic Evolution<br/>Seed future generations<br/>from an archive of the<br/>fittest creatures"]
     SUGGEST["💡 Suggest Improvements<br/>Analyse project &<br/>generate suggestions"]
 
     NEAT --> COMMON
@@ -152,6 +165,7 @@ flowchart TD
     COMMON --> STOCK
     COMMON --> MNIST
     COMMON --> MCMC
+    COMMON --> MEME
     COMMON --> SUGGEST
 
     style NEAT fill:#4a90d9,stroke:#333,color:#fff
@@ -168,6 +182,7 @@ flowchart TD
     style STOCK fill:#16a085,stroke:#333,color:#fff
     style MNIST fill:#34495e,stroke:#333,color:#fff
     style MCMC fill:#e67e22,stroke:#333,color:#fff
+    style MEME fill:#2e86de,stroke:#333,color:#fff
     style SUGGEST fill:#50e3c2,stroke:#333,color:#fff
 ```
 
@@ -203,6 +218,7 @@ flowchart BT
         STOCK["📈 stock_market/"]
         MNIST["🔢 mnist_classification/"]
         MCMC["🌡️ mcmc_acceptance/"]
+        MEME["🧠 memetic_evolution/"]
         SUGGEST["💡 suggest_improvements/"]
     end
 
@@ -219,6 +235,7 @@ flowchart BT
     common --> STOCK
     common --> MNIST
     common --> MCMC
+    common --> MEME
     common --> SUGGEST
 
     style common fill:#fff3cd,stroke:#f5a623,color:#333
