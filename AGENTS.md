@@ -77,6 +77,7 @@ reinventing equivalent logic in a new example.
 | `common/synthetic_data.ts`       | Synthetic dataset generation and scoring.                     |
 | `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.        |
 | `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache. |
+| `common/evolution_chart.ts`      | Dual-axis SVG renderer for NEAT evolution histories.          |
 
 ### `common/data_cache.ts`
 
@@ -120,6 +121,8 @@ common/
   working_dirs_test.ts             — Unit tests for directory setup
   data_cache.ts                    — Hidden-directory dataset download with on-disk cache
   data_cache_test.ts               — Unit tests for the dataset cache
+  evolution_chart.ts               — Dual-axis SVG renderer for NEAT evolution histories
+  evolution_chart_test.ts          — Unit tests for the evolution chart renderer
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
