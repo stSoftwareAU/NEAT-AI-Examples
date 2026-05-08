@@ -42,16 +42,8 @@
     <text x="400" y="376" text-anchor="middle" font-weight="bold">generation</text>
   </g>
   <g class="left-axis" font-family="sans-serif" font-size="11" fill="#1f77b4">
-    <line x1="66" y1="340" x2="70" y2="340" stroke="#1f77b4" stroke-width="1" />
-    <text x="62" y="340" text-anchor="end" dominant-baseline="middle">498.3</text>
-    <line x1="66" y1="251.76" x2="70" y2="251.76" stroke="#1f77b4" stroke-width="1" />
-    <text x="62" y="251.76" text-anchor="end" dominant-baseline="middle">498.8</text>
-    <line x1="66" y1="163.53" x2="70" y2="163.53" stroke="#1f77b4" stroke-width="1" />
-    <text x="62" y="163.53" text-anchor="end" dominant-baseline="middle">499.3</text>
-    <line x1="66" y1="75.29" x2="70" y2="75.29" stroke="#1f77b4" stroke-width="1" />
-    <text x="62" y="75.29" text-anchor="end" dominant-baseline="middle">499.8</text>
-    <line x1="66" y1="40" x2="70" y2="40" stroke="#1f77b4" stroke-width="1" />
-    <text x="62" y="40" text-anchor="end" dominant-baseline="middle">500</text>
+    <line x1="66" y1="190" x2="70" y2="190" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="190" text-anchor="end" dominant-baseline="middle">500</text>
     <text
       x="22"
       y="190"
@@ -88,108 +80,108 @@
       fill="none"
       stroke="#1f77b4"
       stroke-width="1.5"
-      points="70,340 76.67,40 83.33,40 90,40 96.67,40 103.33,40 110,40 116.67,40 123.33,40 130,40 136.67,40 143.33,40 150,40 156.67,40 163.33,40 170,40 176.67,40 183.33,40 190,40 196.67,40 203.33,40 210,40 216.67,40 223.33,40 230,40 236.67,40 243.33,40 250,40 256.67,40 263.33,40 270,40 276.67,40 283.33,40 290,40 296.67,40 303.33,40 310,40 316.67,40 323.33,40 330,40 336.67,40 343.33,40 350,40 356.67,40 363.33,40 370,40 376.67,40 383.33,40 390,40 396.67,40 403.33,40 410,40 416.67,40 423.33,40 430,40 436.67,40 443.33,40 450,40 456.67,40 463.33,40 470,40 476.67,40 483.33,40 490,40 496.67,40 503.33,40 510,40 516.67,40 523.33,40 530,40 536.67,40 543.33,40 550,40 556.67,40 563.33,40 570,40 576.67,40 583.33,40 590,40 596.67,40 603.33,40 610,40 616.67,40 623.33,40 630,40 636.67,40 643.33,40 650,40 656.67,40 663.33,40 670,40 676.67,40 683.33,40 690,40 696.67,40 703.33,40 710,40 716.67,40 723.33,40 730,40"
+      points="70,190 76.67,190 83.33,190 90,190 96.67,190 103.33,190 110,190 116.67,190 123.33,190 130,190 136.67,190 143.33,190 150,190 156.67,190 163.33,190 170,190 176.67,190 183.33,190 190,190 196.67,190 203.33,190 210,190 216.67,190 223.33,190 230,190 236.67,190 243.33,190 250,190 256.67,190 263.33,190 270,190 276.67,190 283.33,190 290,190 296.67,190 303.33,190 310,190 316.67,190 323.33,190 330,190 336.67,190 343.33,190 350,190 356.67,190 363.33,190 370,190 376.67,190 383.33,190 390,190 396.67,190 403.33,190 410,190 416.67,190 423.33,190 430,190 436.67,190 443.33,190 450,190 456.67,190 463.33,190 470,190 476.67,190 483.33,190 490,190 496.67,190 503.33,190 510,190 516.67,190 523.33,190 530,190 536.67,190 543.33,190 550,190 556.67,190 563.33,190 570,190 576.67,190 583.33,190 590,190 596.67,190 603.33,190 610,190 616.67,190 623.33,190 630,190 636.67,190 643.33,190 650,190 656.67,190 663.33,190 670,190 676.67,190 683.33,190 690,190 696.67,190 703.33,190 710,190 716.67,190 723.33,190 730,190"
     />
-    <circle class="score-point" cx="70" cy="340" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="76.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="83.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="90" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="96.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="103.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="110" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="116.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="123.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="130" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="136.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="143.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="150" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="156.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="163.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="170" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="176.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="183.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="190" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="196.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="203.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="210" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="216.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="223.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="230" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="236.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="243.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="250" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="256.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="263.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="270" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="276.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="283.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="290" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="296.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="303.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="310" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="316.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="323.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="330" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="336.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="343.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="350" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="356.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="363.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="370" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="376.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="383.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="390" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="396.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="403.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="410" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="416.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="423.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="430" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="436.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="443.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="450" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="456.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="463.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="470" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="476.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="483.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="490" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="496.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="503.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="510" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="516.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="523.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="530" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="536.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="543.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="550" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="556.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="563.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="570" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="576.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="583.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="590" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="596.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="603.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="610" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="616.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="623.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="630" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="636.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="643.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="650" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="656.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="663.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="670" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="676.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="683.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="690" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="696.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="703.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="710" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="716.67" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="723.33" cy="40" r="1.8" fill="#1f77b4" />
-    <circle class="score-point" cx="730" cy="40" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="70" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="76.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="83.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="90" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="96.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="103.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="110" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="116.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="123.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="130" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="136.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="143.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="150" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="156.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="163.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="170" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="176.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="183.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="190" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="196.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="203.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="210" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="216.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="223.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="230" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="236.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="243.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="250" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="256.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="263.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="270" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="276.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="283.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="290" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="296.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="303.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="310" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="316.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="323.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="330" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="336.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="343.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="350" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="356.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="363.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="370" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="376.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="383.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="390" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="396.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="403.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="410" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="416.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="423.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="430" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="436.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="443.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="450" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="456.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="463.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="470" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="476.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="483.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="490" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="496.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="503.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="510" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="516.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="523.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="530" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="536.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="543.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="550" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="556.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="563.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="570" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="576.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="583.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="590" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="596.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="603.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="610" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="616.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="623.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="630" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="636.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="643.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="650" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="656.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="663.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="670" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="676.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="683.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="690" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="696.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="703.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="710" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="716.67" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="723.33" cy="190" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="730" cy="190" r="1.8" fill="#1f77b4" />
   </g>
   <g class="neurons-line">
     <polyline
@@ -428,14 +420,14 @@
   <g class="final-annotation" font-family="sans-serif" font-size="12" fill="#222222">
     <line
       x1="730"
-      y1="40"
+      y1="190"
       x2="718"
-      y2="52"
+      y2="178"
       stroke="#666666"
       stroke-width="0.8"
       stroke-dasharray="2,2"
     />
-    <circle cx="730" cy="40" r="3.5" fill="#222222" />
-    <text x="718" y="52" text-anchor="end">gen 99: 500, 5 neurons, 4 synapses</text>
+    <circle cx="730" cy="190" r="3.5" fill="#222222" />
+    <text x="718" y="178" text-anchor="end">gen 99: 500, 5 neurons, 4 synapses</text>
   </g>
 </svg>
