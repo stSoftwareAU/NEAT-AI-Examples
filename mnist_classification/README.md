@@ -1,5 +1,8 @@
 # 🔢 MNIST — Handwritten Digit Classification
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the classifier
+> evolving from there into a working digit recogniser.
+
 `mnist_classification.ts` evolves a small NEAT-AI network to classify handwritten digits from the
 full canonical MNIST dataset (60 000-image training file + 10 000-image test file). The IDX gzip
 files are downloaded once into `.synthetic-mnist/data/` (with SHA-256 digests pinned so runs are

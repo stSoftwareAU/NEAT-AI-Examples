@@ -1,5 +1,8 @@
 # 📈 Stock Market — Direction Prediction
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the predictor evolving
+> from there into a network that beats chance on direction.
+
 `stock_market.ts` evolves a small NEAT-AI network to predict next-period direction (up vs. down) on
 the public S&P 500 monthly-close dataset. The dataset is downloaded once into
 `.synthetic-stock/data/prices.csv` (with a SHA-256 digest pinned to a specific upstream commit so

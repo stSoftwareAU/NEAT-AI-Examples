@@ -1,5 +1,8 @@
 # 🧠 XOR Classification — Hello World of NEAT
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the network evolving
+> from there to a working XOR classifier.
+
 `xor_classification.ts` evolves a tiny NEAT-AI network that learns the XOR truth table — the
 canonical "Hello World" of neuroevolution. Evolution starts from a **minimal seed** (two inputs,
 zero hidden neurons, one output) and delegates structural mutation — add-neuron, add-synapse and

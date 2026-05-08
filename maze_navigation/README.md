@@ -1,5 +1,8 @@
 # 🗺️ Maze Navigation — Evolved Agent for a Grid Maze
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the agent evolving
+> from there into a network that walks from start to goal.
+
 `maze_navigation.ts` evolves a NEAT-AI controller that navigates a fixed 12×12 grid maze from a
 start cell to a goal cell using only local sensor inputs (wall distances plus a packed
 heading-to-goal). The simulator (`maze.ts`), evolutionary loop, and animated SVG renderer (`svg.ts`)

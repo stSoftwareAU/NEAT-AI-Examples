@@ -11,6 +11,17 @@ external dependencies beyond Deno (and, for Discovery, the NEAT-AI-Discovery Rus
 This page is the **what** and **how** at a glance. Follow the link in each row for the full
 walkthrough — the per-example README explains the workflow, options, and output artefacts.
 
+> 🌱 **Random noise → competent network.** The control and classification examples here (XOR,
+> Cart-Pole, Lunar Lander, Mountain Car, Snake, Maze Navigation, MNIST, Stock Market) all start
+> evolution from uniform-random noise. Generation 1 is barely better than chance; the captured
+> checkpoint snapshots (typically gen 1, 10, 100, 1000, 10000) show the network climbing from there
+> to a working solution. That arc — noise → competent — _is_ the demo. A handful of examples (CRISPR
+> Injection, Neuron Pruning, Discovery, Intelligent Design, Crossover, Memetic Evolution, MCMC
+> Acceptance, Synthetic Synapse, Adaptive Mutation, and the long-form Evolution Showcase) are exempt
+> because hand-crafted or pre-existing state is the point of the demo. See
+> [AGENTS.md](AGENTS.md#-no-warm-starts--evolution-must-start-from-random-noise) for the full
+> policy.
+
 ## 🧬 Examples at a Glance
 
 | Example                                                               | What it shows                                                                                                                                                                                           | How to run                      |

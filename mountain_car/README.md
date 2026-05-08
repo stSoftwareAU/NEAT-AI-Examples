@@ -1,5 +1,8 @@
 # 🚗 Mountain Car — Swing-up to the Summit
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
+> evolving from there into a network that swings the car up to the goal flag.
+
 `mountain_car.ts` evolves a NEAT-AI controller that drives an under-powered car up a sinusoidal hill
 — the second canonical OpenAI-Gym RL benchmark. The engine is too weak to climb the slope directly,
 so the controller has to learn to swing back-and-forth across the valley to build enough momentum to
