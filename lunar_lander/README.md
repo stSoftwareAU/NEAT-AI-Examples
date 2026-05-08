@@ -1,7 +1,9 @@
 # 🚀 Lunar Lander — Descending onto a Flat Pad
 
-> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
-> evolving from there into a network that lands softly on the pad.
+> 🌱 **Generation 1 starts from random noise** — uniform-random NEAT genomes built by
+> `createSeededPopulation`, with no hand-crafted topology. The captured milestones show the
+> controller evolving from chaotic crashes into a network that throttles, orients, and lands softly
+> on the pad.
 
 `lunar_lander.ts` evolves a NEAT-AI controller that lands a simplified 2D lunar lander on a marked
 landing pad. The simulator and the evolutionary loop run entirely in pure TypeScript, so the only
@@ -14,10 +16,11 @@ external dependency is NEAT-AI's `Creature.activate` to compute each step's thru
 ```mermaid
 flowchart LR
     PHYS["🧮 Pure-TS Lander Physics<br/>(physics.ts)"]
-    INIT["🎲 Random Population<br/>linear policies"]
-    SCORE["📏 Score Final State<br/>landed / crashed / oob / flying"]
+    INIT["🎲 Uniform-random NEAT<br/>(no hand-crafted topology)"]
+    SCORE["📏 Multi-Trial Score<br/>landed / crashed / oob / flying"]
     SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
-    MUTATE["🧬 Mutate Weights & Biases"]
+    MUTATE["🧬 Weight + Bias + Add-Neuron"]
+    SOLVED{"landed-rate ≥ 60%?"}
     CHAMP["💾 Save champion.json"]
     RUN["▶️ Replay Champion<br/>record trajectory"]
     SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg"]
@@ -27,7 +30,9 @@ flowchart LR
     SCORE --> SELECT
     SELECT --> MUTATE
     MUTATE --> SCORE
-    SCORE --> CHAMP
+    SCORE --> SOLVED
+    SOLVED -- "no, gens < cap" --> SELECT
+    SOLVED -- "yes, or cap reached" --> CHAMP
     CHAMP --> RUN
     RUN --> SVG
 
@@ -36,10 +41,26 @@ flowchart LR
     style SCORE fill:#f39c12,stroke:#333,color:#fff
     style SELECT fill:#e67e22,stroke:#333,color:#fff
     style MUTATE fill:#e74c3c,stroke:#333,color:#fff
+    style SOLVED fill:#9b59b6,stroke:#333,color:#fff
     style CHAMP fill:#7ed321,stroke:#333,color:#fff
     style RUN fill:#bd10e0,stroke:#333,color:#fff
     style SVG fill:#50e3c2,stroke:#333,color:#fff
 ```
+
+## 🎯 Soft-Landing Threshold and Hard Generation Cap
+
+Two stop conditions bound the search:
+
+- **Soft-landing threshold** — the champion must achieve a **landed-on-pad rate ≥ 60%**
+  (`SOLVED_LANDED_RATE = 0.6`) across a fixed deterministic batch of perturbed-start trials. Each
+  landed trial obeys the safe-landing limits (≤ 11.5° tilt, ≤ 2 m/s vertical and ≤ 2 m/s horizontal
+  speed at touchdown), so the threshold checks both pad accuracy _and_ gentleness, not just one.
+- **Hard generation cap** — `DEFAULT_EVOLVE_OPTIONS.maxGenerations = 1000`. The evolver always stops
+  at the cap even when the threshold is not reached, so the example terminates predictably.
+
+Multi-trial scoring (`trials = 10`, `initialPerturbation = 1.0`) means a controller cannot win by
+getting lucky on a single canonical launch — it has to land robustly across a varied batch of
+starts.
 
 ## 🎯 Inputs and Outputs
 
@@ -99,12 +120,16 @@ Artefacts:
 
 ![Lunar-Lander evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/lunar_lander/evolution.svg)
 
-The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
-generations `[1, 10, 100, 1000]` (those that fall inside the configured `maxGenerations`). The
-default budget evolves for sixty generations, so the rendered strip typically shows two panels — gen
-1 and gen 10 — linked by a score-progression polyline. Each panel displays the champion's topology
-(inputs → output), the generation label, and the score at that checkpoint; the bottom strip charts
-the score over the captured generations.
+The runner captures a snapshot of the **running champion** at the canonical checkpoint generations
+`[1, 10, 100, 500, 1000]` (those that fall inside the configured `maxGenerations`). The cadence is
+wider than the previous fixed-topology demo because variable-topology evolution from uniform-random
+noise typically needs more generations to find structure.
+
+Each panel displays the champion's topology (inputs → hidden → outputs), the generation label, and
+the score at that checkpoint; the bottom strip charts the score over the captured generations. The
+narrative the panels tell is consistent: **gen 1 is random noise** (the panel-1 lander crashes most
+attempts), the middle panels show the controller learning to throttle and orient, and the final
+panel is a champion that lands softly on the pad on the majority of perturbed starts.
 
 ## 🛬 Entry Profile
 
@@ -154,6 +179,9 @@ A few things that are not obvious from the code alone:
   `timeStep` values and matches the integration convention used in `cart_pole/`.
 - **Reproducibility.** All randomness flows through `common/deterministic_random.ts`. With a fixed
   seed the same champion is produced on every run.
-- **Linear genome is enough for a respectable controller.** Seven inputs feed three logistic outputs
-  — twenty-one weights and three biases. Larger architectures land with more margin to spare, but
-  the linear case already produces a recognisable descent.
+- **No hand-crafted topology.** Issue
+  [#153](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/153) replaced the original
+  hand-specified 7-input → 3-output dense layer with a uniform-random NEAT initial population. The
+  library's `createSeededPopulation` decides the gen-1 structure (direct input → output connections,
+  random weights, random output biases); the add-neuron structural mutation grows hidden topology
+  during evolution. There is no "warm start" — gen 1 is genuine noise.
