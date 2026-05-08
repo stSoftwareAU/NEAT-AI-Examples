@@ -3,6 +3,10 @@
 > 🌱 **Generation 1 starts from random noise** — the captured milestones show the network evolving
 > from there to a working XOR classifier.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies (the Stanley & Miikkulainen 2002
+algorithm that grows topology and weights together). _XOR_ = exclusive OR (the two-input boolean
+that returns true when exactly one input is true). _PRNG_ = pseudorandom number generator.
+
 `xor_classification.ts` evolves a tiny NEAT-AI network that learns the XOR truth table — the
 canonical "Hello World" of neuroevolution. The initial creature is built by the NEAT-AI library's
 uniform-random `new Creature(2, 1)` constructor — direct input → output synapses with random weights

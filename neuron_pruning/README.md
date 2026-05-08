@@ -1,5 +1,8 @@
 # ✂️ Neuron Pruning — Constant-Activation Removal With Bias Fold
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _SGD_ = stochastic gradient descent
+(backpropagation that updates weights from a small mini-batch each step).
+
 `neuron_pruning.ts` demonstrates one of NEAT-AI's simplest, most effective tricks for keeping large
 creatures lean: removing hidden neurons whose activations don't vary across the held-out dataset and
 folding their bias contribution into the surviving downstream neurons. Because the pruned neurons

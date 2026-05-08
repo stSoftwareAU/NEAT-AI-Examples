@@ -1,5 +1,10 @@
 # 🧬 CRISPR Gene Injection — Hand-Crafted Subgraph Splicing
 
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies. (CRISPR is borrowed as a metaphor
+from molecular biology — Clustered Regularly Interspaced Short Palindromic Repeats — where it
+describes a precise gene-editing technique. Here it stands for the same idea applied to neural
+network topology.)
+
 `crispr_injection.ts` demonstrates a structural intervention that is unique to NEAT-style
 neuroevolution: a hand-crafted **edit gene** — a small subgraph of neurons and synapses with
 known-good behaviour — is spliced directly into a stalled population, then evolution continues.

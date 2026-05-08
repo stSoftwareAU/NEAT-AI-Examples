@@ -5,6 +5,10 @@
 > biases drawn by the library's RNG. **No hand-crafted topology, no tuned weight init.** Hidden
 > neurons emerge only from the add-neuron structural mutation operator during evolution.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _RL_ = reinforcement learning. _XOR_
+= exclusive OR. _MNIST_ = Modified National Institute of Standards and Technology handwritten-digit
+dataset (referenced from the supervised-vs-agent comparison).
+
 `snake_game.ts` evolves a NEAT-AI controller that plays the classic Snake grid game on a 12×12
 board. The snake starts three segments long, must eat food cells to grow, and dies the moment it
 runs into a wall or its own body. Both the simulator (`snake.ts`) and the evolutionary loop run

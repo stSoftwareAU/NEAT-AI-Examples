@@ -1,5 +1,8 @@
 # 🔬 Discovery at Scale — Multi-Defect Detection on Large Creatures
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _FFI_ = Foreign Function Interface
+(Deno's mechanism for calling native libraries from TypeScript).
+
 `discovery_at_scale.ts` is the flagship demo for the "discovering structures at size and speed"
 thesis (parent issue [#75](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/75)).
 

@@ -5,6 +5,9 @@
 > init**. Structural mutation grows hidden neurons during evolution; the captured milestones show
 > the agent climbing from a gen-1 wall-bumper to a network that walks straight from start to goal.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _PRNG_ = pseudorandom number
+generator.
+
 `maze_navigation.ts` evolves a NEAT-AI controller that navigates a fixed 12×12 grid maze from a
 start cell to a goal cell using only local sensor inputs (wall distances plus a packed
 heading-to-goal). The simulator (`maze.ts`), evolutionary loop, and animated SVG renderer (`svg.ts`)

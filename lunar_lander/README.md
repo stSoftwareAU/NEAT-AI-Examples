@@ -5,6 +5,11 @@
 > controller evolving from chaotic crashes into a network that throttles, orients, and lands softly
 > on the pad.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _RCS_ = reaction control system
+(small attitude-control thrusters that apply torque without changing translation). _CTRNN_ =
+continuous-time recurrent neural network — the temporal-memory style NEAT-AI uses for stateful
+controllers.
+
 `lunar_lander.ts` evolves a NEAT-AI controller that lands a simplified 2D lunar lander on a marked
 landing pad. The simulator and the evolutionary loop run entirely in pure TypeScript, so the only
 external dependency is NEAT-AI's `Creature.activate` to compute each step's thruster commands.
