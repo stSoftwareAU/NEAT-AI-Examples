@@ -1,5 +1,8 @@
 # 🐍 Snake — Evolved Controller for the Classic Grid Game
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
+> evolving from there to a snake that hunts food and avoids walls.
+
 `snake_game.ts` evolves a NEAT-AI controller that plays the classic Snake grid game on a 12×12
 board. The snake starts three segments long, must eat food cells to grow, and dies the moment it
 runs into a wall or its own body. Both the simulator (`snake.ts`) and the evolutionary loop run

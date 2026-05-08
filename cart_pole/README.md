@@ -1,5 +1,8 @@
 # 🎢 Cart-Pole — Balancing an Inverted Pendulum
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
+> evolving from there to a network that balances the pole.
+
 `cart_pole.ts` evolves a NEAT-AI controller that balances an inverted pole on a moving cart — the
 classic neuroevolution control benchmark. Both the simulator and the evolutionary loop run entirely
 in pure TypeScript, with the only external dependency being NEAT-AI's `Creature.activate` to compute

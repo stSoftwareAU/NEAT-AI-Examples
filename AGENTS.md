@@ -27,6 +27,70 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
 **Why?** "How" tests break whenever the implementation is refactored, even when behaviour is
 unchanged. They add maintenance cost without catching real bugs.
 
+## 🌱 No warm starts — evolution must start from random noise
+
+Every in-scope example in this repository starts evolution from **uniform-random noise**. That is
+the whole point of these demos: gen 1 is barely better than chance, and the captured checkpoint
+snapshots show the network climbing from there to a competent solution. Telling the noise →
+competent story is non-negotiable for an in-scope example — without it the demo loses its narrative.
+
+### What counts as a warm start
+
+Any of the following disqualifies the first generation as "random noise":
+
+- A pretrained champion JSON loaded from disk and used to seed the population.
+- A hand-crafted starting topology (specific neurons, layers, or wiring chosen by the author).
+- Hand-crafted starting weights or biases — anything other than uniformly random initialisation.
+- A resumed saved population or checkpoint restored from a previous run.
+- Any other non-uniform-random initialisation of the first generation.
+
+### The story we tell
+
+Gen 1 is little better than noise; the example evolves to a competent solution from there. The
+captured milestones (typically generations 1, 10, 100, 1000, and 10000) are the demo — they show the
+network growing structure and finding weights as evolution progresses.
+
+### In-scope examples (must start from random noise)
+
+These examples exist to demonstrate evolution from noise → competent and must obey the policy:
+
+- `xor_classification`
+- `cart_pole`
+- `snake_game`
+- `mnist_classification`
+- `stock_market`
+- `lunar_lander`
+- `mountain_car`
+- `maze_navigation`
+
+### Exempt examples (hand-crafted state IS the demo)
+
+These examples demonstrate specific techniques where hand-crafted or pre-existing state is the
+entire point of the demo, so the no-warm-start policy does not apply:
+
+- `crispr_injection` — splices a hand-crafted edit gene into a stalled population.
+- `neuron_pruning` — injects deliberately-constant neurons so pruning has something to remove.
+- `discovery` — recovers a removed neuron from a known-good creature.
+- `discovery_at_scale` — recovers from injected defects in a large pre-built creature.
+- `intelligent_design` — systematically optimises activation functions on an existing creature.
+- `crossover` — breeds two parent creatures into an offspring.
+- `memetic_evolution` — re-seeds the population from an archive of fittest creatures.
+- `mcmc_acceptance` — pure Metropolis-Hastings sampler, not an evolution demo.
+- `synthetic_synapse` — densify-train-prune on an evolved sparse creature.
+- `adaptive_mutation` — visualises the mutation operator distribution on a pre-built creature.
+- `evolution_showcase` — long-form flagship run (still seeded minimally; see its README).
+
+### Enforcement
+
+The no-warm-start policy is enforced by **review and agent instructions** — humans and AI agents
+read this section before touching an example. It is **not** enforced by a CI test, because the only
+way a test could detect a warm start is by inspecting source code for specific patterns (e.g.
+`importJSON`, hand-coded synapse arrays). That would be a "how" test and is explicitly forbidden by
+the [Testing Philosophy](#-testing-philosophy) above.
+
+If you are adding or modifying an in-scope example, confirm in the PR description that the first
+generation is initialised from uniform-random noise.
+
 ## ⚡ Unit Tests vs Benchmarks
 
 | Aspect                 | Unit test                      | Benchmark                       |

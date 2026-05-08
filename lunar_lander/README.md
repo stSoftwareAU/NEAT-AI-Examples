@@ -1,5 +1,8 @@
 # 🚀 Lunar Lander — Descending onto a Flat Pad
 
+> 🌱 **Generation 1 starts from random noise** — the captured milestones show the controller
+> evolving from there into a network that lands softly on the pad.
+
 `lunar_lander.ts` evolves a NEAT-AI controller that lands a simplified 2D lunar lander on a marked
 landing pad. The simulator and the evolutionary loop run entirely in pure TypeScript, so the only
 external dependency is NEAT-AI's `Creature.activate` to compute each step's thruster commands.
