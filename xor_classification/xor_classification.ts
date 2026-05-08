@@ -23,6 +23,12 @@ import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import {
+  captureSnapshot,
+  loadSnapshots,
+  type SnapshotConfig,
+} from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { renderDecisionBoundarySVG } from "./svg.ts";
 
 /** Number of input features. */
@@ -87,6 +93,12 @@ export interface EvolveOptions {
   errorThreshold: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
+  /**
+   * Optional snapshot configuration. When supplied, the running champion
+   * is captured at every generation matching `snapshotConfig.checkpoints`
+   * and written to `snapshotConfig.outputDir`.
+   */
+  snapshotConfig?: SnapshotConfig;
 }
 
 /** Statistics emitted after each generation. */
@@ -328,6 +340,26 @@ export function evolveXorController(
       synapses: generationBest.json.synapses.length,
     });
 
+    // Capture an evolution snapshot of the running champion at the
+    // configured checkpoints. The helper is a no-op for non-checkpoint
+    // generations, so this is cheap to call every generation. We capture
+    // the four XOR predictions as `sampleOutputs` so the snapshot files
+    // record the champion's behaviour, not just its topology.
+    if (options.snapshotConfig) {
+      const checkpointGen = generation + 1;
+      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
+        const championCreature = Creature.fromJSON(asCreatureExport(bestJSON));
+        const sampleOutputs = xorSamples().map((s) => predict(championCreature, s.inputs));
+        captureSnapshot(
+          options.snapshotConfig,
+          checkpointGen,
+          bestJSON,
+          bestFitness,
+          sampleOutputs,
+        );
+      }
+    }
+
     if (bestError <= options.errorThreshold) {
       solvedAt = generation;
       break;
@@ -372,6 +404,15 @@ export const EVOLUTION_CHART_PATH = "docs/screenshots/xor_classification/evoluti
 /** Resolution (cells per side) of the decision-boundary grid. */
 export const DECISION_BOUNDARY_GRID = 40;
 
+/** Generations at which the runner captures evolution snapshots. */
+export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500];
+
+/** Hidden directory under which snapshot files are written. */
+export const SNAPSHOTS_DIR = ".synthetic-xor/snapshots";
+
+/** Path to the multi-panel evolution-progression SVG the runner emits. */
+export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/xor_classification_evolution.svg";
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -387,8 +428,18 @@ if (import.meta.main) {
 
   console.log("\n🧬 Evolving classifier...");
   const evolutionSamples: EvolutionSample[] = [];
+  ensureDirSync(SNAPSHOTS_DIR);
+  // Empty any stale snapshot files so reruns do not blend old + new gens.
+  for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
+    if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
+  }
+  const evolutionStart = Date.now();
   const result = evolveXorController({
     ...DEFAULT_EVOLVE_OPTIONS,
+    snapshotConfig: {
+      checkpoints: [...EVOLUTION_CHECKPOINTS],
+      outputDir: SNAPSHOTS_DIR,
+    },
     onGeneration: ({ generation, bestFitness, bestError, neurons, synapses }) => {
       evolutionSamples.push({
         generation,
@@ -444,6 +495,26 @@ if (import.meta.main) {
     ensureDirSync("docs/screenshots/xor_classification");
     await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
+
+  // Render the multi-panel evolution-progression strip from the
+  // checkpoint snapshots captured during the run.
+  const snapshots = loadSnapshots(SNAPSHOTS_DIR);
+  if (snapshots.length > 0) {
+    const progressionSvg = renderEvolutionProgressSvg(snapshots, {
+      title: "XOR Classification — Evolution Progress",
+      caption: {
+        finalScore: result.bestFitness,
+        totalGenerations: result.generations,
+        wallClockMs: Date.now() - evolutionStart,
+      },
+    });
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
+    console.log(
+      `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
+        `(${snapshots.length} panels)`,
+    );
   }
 
   console.log(

@@ -37,3 +37,6 @@ fi
 if [[ -f "docs/screenshots/xor_classification/evolution.svg" ]]; then
   deno fmt docs/screenshots/xor_classification/evolution.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/xor_classification_evolution.svg" ]]; then
+  deno fmt docs/screenshots/xor_classification_evolution.svg > /dev/null
+fi

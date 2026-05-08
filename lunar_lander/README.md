@@ -78,11 +78,26 @@ A run terminates as soon as one of these conditions holds:
 Artefacts:
 
 - `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the run
+- `.synthetic-lunar-lander/snapshots/snapshot-gen-*.json` — running-champion snapshots captured at
+  the configured checkpoints
 - `docs/screenshots/lunar_lander.svg` — animated descent diagram with terrain, the pad marked with a
   `TARGET` arrow, a polyline trace, the lander rendered at start, mid-descent, and touchdown, plus a
   moving lander icon that **tilts with the controller's angle** and lights its **main / left RCS /
   right RCS** flames as the thrusters fire. A shrinking `FUEL` HUD bar surfaces the fuel budget so
   viewers can see the controller "fight gravity & fuel" while aiming for the pad.
+- `docs/screenshots/lunar_lander_evolution.svg` — multi-panel evolution-progression strip rendered
+  from the captured snapshots
+
+## Evolution Progress
+
+![Lunar-Lander evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/lunar_lander_evolution.svg)
+
+The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
+generations `[1, 10, 100, 1000]` (those that fall inside the configured `maxGenerations`). The
+default budget evolves for sixty generations, so the rendered strip typically shows two panels — gen
+1 and gen 10 — linked by a score-progression polyline. Each panel displays the champion's topology
+(inputs → output), the generation label, and the score at that checkpoint; the bottom strip charts
+the score over the captured generations.
 
 ## 🛬 Entry Profile
 

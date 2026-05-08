@@ -26,6 +26,8 @@ import {
   WEIGHT_COUNT,
   xorSamples,
 } from "./xor_classification.ts";
+import { loadSnapshots } from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { renderDecisionBoundarySVG, shadeColour } from "./svg.ts";
 
 Deno.test("xorSamples returns the four canonical truth-table rows", () => {
@@ -319,6 +321,53 @@ Deno.test("renderDecisionBoundarySVG embeds SMIL pulse animations on each sample
   const pulseMatches = svg.match(/class="pulse"/g) ?? [];
   assertEquals(pulseMatches.length, 4);
 });
+
+Deno.test(
+  "evolveXorController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
+  () => {
+    // Configure short, deterministic checkpoints so the test always
+    // captures snapshots regardless of how quickly the run converges.
+    const tmp = Deno.makeTempDirSync({ prefix: "xor_snapshots_test_" });
+    try {
+      const checkpoints = [1, 2, 3];
+      evolveXorController({
+        ...DEFAULT_EVOLVE_OPTIONS,
+        // Force the loop to keep running long enough that all
+        // checkpoints fire even if the run otherwise solves early.
+        errorThreshold: -1,
+        maxGenerations: 4,
+        populationSize: 6,
+        snapshotConfig: { checkpoints, outputDir: tmp },
+      });
+
+      // Each configured checkpoint writes a snapshot file.
+      for (const gen of checkpoints) {
+        assertEquals(
+          existsSync(join(tmp, `snapshot-gen-${gen}.json`)),
+          true,
+          `expected snapshot-gen-${gen}.json to exist`,
+        );
+      }
+
+      const snapshots = loadSnapshots(tmp);
+      assertEquals(snapshots.length, checkpoints.length);
+
+      const svg = renderEvolutionProgressSvg(snapshots, {
+        title: "XOR Classification — Evolution Progress",
+      });
+      assert(svg.startsWith("<svg"), "must start with <svg>");
+      assert(svg.length > 0, "SVG must be non-empty");
+      const panels = svg.match(/<g class="panel"/g) ?? [];
+      assertEquals(
+        panels.length,
+        checkpoints.length,
+        `expected one panel per snapshot, got ${panels.length}`,
+      );
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
 
 Deno.test("renderDecisionBoundarySVG output uses the canonical screenshot resolution", () => {
   const json = buildInitialCreatureJSON(

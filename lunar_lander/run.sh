@@ -34,3 +34,6 @@ deno run \
 if [[ -f "docs/screenshots/lunar_lander.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/lunar_lander_evolution.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander_evolution.svg > /dev/null
+fi

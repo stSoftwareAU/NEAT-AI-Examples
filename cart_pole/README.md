@@ -64,7 +64,22 @@ capped at 500 steps. The task is "solved" when the champion reaches the cap.
 Artefacts:
 
 - `.synthetic-cart-pole/creatures/champion.json` – the fittest controller from the run
+- `.synthetic-cart-pole/snapshots/snapshot-gen-*.json` – running-champion snapshots captured at the
+  configured checkpoints
 - `docs/screenshots/cart_pole.svg` – an 8-frame strip showing the champion balancing
+- `docs/screenshots/cart_pole_evolution.svg` – multi-panel evolution-progression strip rendered from
+  the captured snapshots
+
+## Evolution Progress
+
+![Cart-Pole evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/cart_pole_evolution.svg)
+
+The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
+generations `[1, 10, 100, 500]` (those that fall inside the configured `maxGenerations`). Cart-pole
+is solvable by a linear policy, so a lucky member of the random initial population typically reaches
+`MAX_STEPS` on the first generation. When `snapshotConfig` is supplied the runner does not break
+early, so the strip captures the gen 1 champion plus the next checkpoint (gen 10) — linked by a
+score-progression polyline so growth (or its absence) over those generations is visible at a glance.
 
 ## 🧠 Tacit Knowledge
 
