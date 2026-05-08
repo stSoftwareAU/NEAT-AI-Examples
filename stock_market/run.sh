@@ -41,6 +41,6 @@ fi
 if [[ -f "docs/screenshots/stock_market_evolution.svg" ]]; then
   deno fmt docs/screenshots/stock_market_evolution.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/stock_market_evolution_chart.svg" ]]; then
-  deno fmt docs/screenshots/stock_market_evolution_chart.svg > /dev/null
+if [[ -f "docs/screenshots/stock_market/evolution.svg" ]]; then
+  deno fmt docs/screenshots/stock_market/evolution.svg > /dev/null
 fi

@@ -84,7 +84,7 @@ export const SCREENSHOT_PATH = "docs/screenshots/stock_market.svg";
 export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/stock_market_evolution.svg";
 
 /** Path to the per-generation evolution-chart SVG the runner emits. */
-export const EVOLUTION_CHART_PATH = "docs/screenshots/stock_market_evolution_chart.svg";
+export const EVOLUTION_CHART_PATH = "docs/screenshots/stock_market/evolution.svg";
 
 /** Hidden directory under which snapshot files are written. */
 export const SNAPSHOTS_DIR = ".synthetic-stock/snapshots";
@@ -720,6 +720,7 @@ if (import.meta.main) {
       title: "Stock-Market — Evolution",
       scoreLabel: "best accuracy",
     });
+    ensureDirSync("docs/screenshots/stock_market");
     await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
   }
