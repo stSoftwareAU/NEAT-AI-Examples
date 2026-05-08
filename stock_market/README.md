@@ -6,6 +6,8 @@
 > captured milestones show the predictor climbing from population-mean chance toward a network that
 > beats the chance baseline on direction.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies.
+
 `stock_market.ts` evolves a NEAT-AI network from uniform-random noise to predict next-period
 direction (up vs. down) on the public S&P 500 monthly-close dataset. The dataset is downloaded once
 into `.synthetic-stock/data/prices.csv` (with a SHA-256 digest pinned to a specific upstream commit

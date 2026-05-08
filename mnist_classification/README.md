@@ -7,6 +7,13 @@
 > captured milestones show the network climbing from ~10 % chance accuracy to a competent digit
 > recogniser.
 
+**Acronyms.** _MNIST_ = Modified National Institute of Standards and Technology — the 70 000-image
+handwritten-digit dataset that has been the default vision benchmark since LeCun et al. 1998. _NEAT_
+= NeuroEvolution of Augmenting Topologies. _MLP_ = multi-layer perceptron — the classical
+fully-connected feed-forward network. _SGD_ = stochastic gradient descent — backpropagation that
+updates weights from a small random sample (mini-batch) of the training data each step. _BCE_ =
+binary cross-entropy, the standard per-output loss for sigmoid (LOGISTIC) classifiers.
+
 `mnist_classification.ts` ships **two** classifiers, both operating over the canonical MNIST dataset
 (60 000-image training file + 10 000-image test file) downloaded once into `.synthetic-mnist/data/`
 (with SHA-256 digests pinned so runs are byte-stable), down-sampled from 28 × 28 to 14 × 14:

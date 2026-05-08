@@ -1,5 +1,8 @@
 # 🔍 Discovery — Recover a Missing Neuron
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _FFI_ = Foreign Function Interface
+(Deno's mechanism for calling native libraries from TypeScript).
+
 `discover_missing_neuron.ts` demonstrates the neuron discovery workflow. It creates a simple
 creature, generates synthetic training data, removes a hidden neuron to "cripple" the creature, and
 then runs discovery to attempt to recover the missing functionality.

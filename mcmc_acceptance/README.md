@@ -1,5 +1,10 @@
 # 🌡️ MCMC Mutation Acceptance — Cooling Toward 23.4%
 
+**Acronyms.** _MCMC_ = Markov chain Monte Carlo — a family of sampling algorithms that explore a
+target distribution by walking a probability-weighted chain of proposals. _MH_ = Metropolis-Hastings
+— the canonical MCMC accept/reject rule, defined inline below. _NEAT_ = NeuroEvolution of Augmenting
+Topologies (the algorithm whose mutation operator borrows this acceptance pattern).
+
 `mcmc_acceptance.ts` demonstrates the Metropolis-Hastings (MH) acceptance pattern that underpins
 NEAT-AI's mutation-acceptance strategy: probabilistically accepting worse-fitness moves with a
 cooling temperature schedule. The temperature is updated after every proposal so that the empirical

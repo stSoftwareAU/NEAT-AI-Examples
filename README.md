@@ -4,15 +4,19 @@
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-blue.svg)](LICENSE)
 [![Deno](https://img.shields.io/badge/Deno-2.x-black?logo=deno)](https://deno.land/)
 
-Worked examples for [`NEAT-AI`](https://github.com/stSoftwareAU/NEAT-AI). Each example is a small,
-self-contained program that generates its own synthetic data, so you can run it immediately with no
-external dependencies beyond Deno (and, for Discovery, the NEAT-AI-Discovery Rust library).
+Worked examples for [`NEAT-AI`](https://github.com/stSoftwareAU/NEAT-AI) — short for
+**NeuroEvolution of Augmenting Topologies** (the algorithm popularised by Stanley & Miikkulainen,
+2002, that grows neural-network topology and weights together with an evolutionary search). Each
+example is a small, self-contained program that generates its own synthetic data, so you can run it
+immediately with no external dependencies beyond Deno (and, for Discovery, the NEAT-AI-Discovery
+Rust library).
 
 This page is the **what** and **how** at a glance. Follow the link in each row for the full
 walkthrough — the per-example README explains the workflow, options, and output artefacts.
 
-> 🌱 **Random noise → competent network.** The control and classification examples here (XOR,
-> Cart-Pole, Lunar Lander, Mountain Car, Snake, Maze Navigation, MNIST, Stock Market) all start
+> 🌱 **Random noise → competent network.** The control and classification examples here (XOR
+> [exclusive OR], Cart-Pole, Lunar Lander, Mountain Car, Snake, Maze Navigation, MNIST [Modified
+> National Institute of Standards and Technology handwritten-digit dataset], Stock Market) all start
 > evolution from uniform-random noise. Generation 1 is barely better than chance; the captured
 > checkpoint snapshots (typically gen 1, 10, 100, 1000, 10000) show the network climbing from there
 > to a working solution. That arc — noise → competent — _is_ the demo. A handful of examples (CRISPR
@@ -203,7 +207,7 @@ panel plots best fitness per generation across the experiment; a dashed red mark
 generation at which the gene was spliced into the population, after which fitness lifts sharply as
 the gene's incoming weights are tuned.
 
-### 🌡️ MCMC Acceptance — cooling toward 23.4%
+### 🌡️ MCMC (Markov chain Monte Carlo) Acceptance — cooling toward 23.4%
 
 ![MCMC mutation acceptance rate cooling toward the 23.4% optimal target with the temperature schedule overlaid](docs/screenshots/mcmc_acceptance.svg)
 
@@ -314,8 +318,8 @@ flowchart TD
 
 The [`common/`](common/) module provides the building blocks every example reuses:
 
-- 🎲 **`deterministic_random.ts`** — splitmix32-style seeded PRNG so runs are reproducible across
-  machines.
+- 🎲 **`deterministic_random.ts`** — splitmix32-style seeded PRNG (pseudorandom number generator) so
+  runs are reproducible across machines.
 - 📊 **`synthetic_data.ts`** — `generateSyntheticData` and `scoreCreature`. Each example picks its
   own seed so data sets are independent but deterministic.
 - 📁 **`working_dirs.ts`** — `setupWorkingDirs` creates `data/`, `creatures/`, and `output/`
@@ -421,8 +425,8 @@ A GitHub Actions workflow ([`.github/workflows/quality.yml`](.github/workflows/q
 the same pipeline on every push and pull request to `Develop`. Failing checks block merges.
 
 > [!NOTE]
-> The Discovery example needs a native Rust FFI library that is not yet available in CI, so its step
-> is allowed to fail gracefully there.
+> The Discovery example needs a native Rust FFI (Foreign Function Interface) library that is not yet
+> available in CI, so its step is allowed to fail gracefully there.
 
 <details>
 <summary>🧪 Running tests, lint, fmt, and benchmarks independently</summary>
@@ -457,7 +461,7 @@ composes with the others as shown below.
 
 | Repository                                                             | Role                                                                                                              |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| [NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI)                     | Primary Deno/TypeScript neural-network engine (evolution, training, WASM activation).                             |
+| [NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI)                     | Primary Deno/TypeScript neural-network engine (evolution, training, WebAssembly (WASM) activation).               |
 | [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)           | Shared native Rust library (`neat-core`) with numerics, topology helpers, and the chunked `.bin` training stream. |
 | [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) | Rust discovery module invoked by NEAT-AI via Deno FFI to search architectures and hyper-parameters.               |
 | [NEAT-AI-Snapshot](https://github.com/stSoftwareAU/NEAT-AI-Snapshot)   | Creature/genome snapshot format and fixtures produced by NEAT-AI and consumed by downstream tools.                |

@@ -6,6 +6,9 @@
 > the controller climbing from population-mean noise to a network that balances every perturbed
 > trial under wobble.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _PRNG_ = pseudorandom number
+generator.
+
 `cart_pole.ts` evolves a NEAT-AI controller that balances an inverted pole on a moving cart — the
 classic neuroevolution control benchmark. Both the simulator and the evolutionary loop run entirely
 in pure TypeScript, with the only external dependency being NEAT-AI's `Creature.activate` to compute

@@ -1,5 +1,7 @@
 # 🧬 Evolution Showcase — long-running flagship
 
+**Acronym.** _PRNG_ = pseudorandom number generator.
+
 A deliberately long-running example whose purpose is to make the **gen-1-vs-gen-10000 contrast**
 visible. Most other examples in this repository target "under five minutes on CI" so they fit normal
 quality gates; this one fills the missing gap by evolving for ten thousand generations on a

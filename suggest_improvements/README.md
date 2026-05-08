@@ -1,5 +1,8 @@
 # 💡 Suggest Improvements — Project Analyser
 
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies (the algorithm whose example
+repository this script analyses).
+
 `suggest_improvements.ts` analyses the NEAT-AI-Examples project structure and produces actionable
 improvement suggestions. These suggestions can be filed as GitHub issues using the `gh` CLI.
 

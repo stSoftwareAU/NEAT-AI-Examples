@@ -1,5 +1,10 @@
 # 🧬 Synthetic Synapse Training — Densify Then Prune
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _SGD_ = stochastic gradient descent
+(backpropagation that updates weights from a small mini-batch each step). _WASM_ = WebAssembly (the
+sandboxed binary instruction format NEAT-AI uses to run activation functions natively in the browser
+or Deno).
+
 `synthetic_synapse_example.ts` demonstrates one of NEAT-AI's most distinctive techniques for keeping
 large creatures trainable: **synthetic-synapse training**. The example temporarily densifies the
 inter-layer connectivity of an evolved sparse creature, trains every weight (existing and synthetic)

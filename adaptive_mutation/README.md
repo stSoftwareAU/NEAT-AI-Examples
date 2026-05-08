@@ -1,5 +1,8 @@
 # 🧬 Adaptive Mutation Rate — Topology vs Weight Shift
 
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies — the algorithm that grows neural
+network topology and weights together with an evolutionary search.
+
 `adaptive_mutation.ts` visualises one of NEAT-AI's hidden but important behaviours: as a creature
 grows, the mutation operator distribution shifts away from **topology mutations** (add/remove
 neuron, add/remove synapse) and toward **weight/bias mutations**. Tiny seed creatures need new

@@ -6,6 +6,9 @@
 > controller learning to swing back-and-forth across the bowl until the final champion crests the
 > goal flag.
 
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _RL_ = reinforcement learning (the
+agent-and-reward paradigm Mountain Car comes from). _PRNG_ = pseudorandom number generator.
+
 `mountain_car.ts` evolves a NEAT-AI controller that drives an under-powered car up a sinusoidal hill
 — the second canonical OpenAI-Gym RL benchmark. The engine is too weak to climb the slope directly,
 so the controller has to learn to swing back-and-forth across the valley to build enough momentum to
