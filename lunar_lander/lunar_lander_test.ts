@@ -21,6 +21,7 @@ import {
   decodeAction,
   evolveLanderController,
   freeFallBaselineScore,
+  type GenerationInfo,
   genesFromCreatureJSON,
   INPUT_COUNT,
   MAX_STEPS,
@@ -425,6 +426,31 @@ Deno.test(
       assertEquals(panels.length, checkpoints.length);
     } finally {
       Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "evolveLanderController emits neurons and synapses on each generation event",
+  () => {
+    // Issue #108: the per-generation event must include neuron and
+    // synapse counts so the runner can plot them on the evolution
+    // chart. The linear genome has INPUT_COUNT + OUTPUT_COUNT neurons
+    // and INPUT_COUNT * OUTPUT_COUNT synapses, both constant across the
+    // run since this example does not yet add structural mutation.
+    const events: GenerationInfo[] = [];
+    evolveLanderController({
+      ...TEST_EVOLVE_OPTIONS,
+      maxGenerations: 3,
+      populationSize: 6,
+      onGeneration: (info) => events.push(info),
+    });
+    assertEquals(events.length, 3);
+    for (const info of events) {
+      assertEquals(typeof info.neurons, "number");
+      assertEquals(typeof info.synapses, "number");
+      assertEquals(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertEquals(info.synapses, INPUT_COUNT * OUTPUT_COUNT);
     }
   },
 );

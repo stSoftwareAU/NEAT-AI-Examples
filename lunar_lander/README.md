@@ -87,10 +87,14 @@ Artefacts:
   viewers can see the controller "fight gravity & fuel" while aiming for the pad.
 - `docs/screenshots/lunar_lander_evolution.svg` — multi-panel evolution-progression strip rendered
   from the captured snapshots
+- `docs/screenshots/lunar_lander/evolution.svg` — dual-axis evolution chart plotting best score and
+  champion neuron / synapse counts against generation
 
 ## Evolution Progress
 
 ![Lunar-Lander evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/lunar_lander_evolution.svg)
+
+![Lunar-Lander evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/lunar_lander/evolution.svg)
 
 The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
 generations `[1, 10, 100, 1000]` (those that fall inside the configured `maxGenerations`). The
