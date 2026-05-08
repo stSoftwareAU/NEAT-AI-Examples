@@ -20,6 +20,7 @@ walkthrough — the per-example README explains the workflow, options, and outpu
 | [🚀 Lunar Lander](lunar_lander/README.md)                 | Evolve a controller that lands a 2D lunar lander softly on a marked pad with limited fuel.                | `./lunar_lander/run.sh`         |
 | [🚗 Mountain Car](mountain_car/README.md)                 | Evolve a swing-up controller that drives an under-powered car up a sinusoidal hill to the goal flag.      | `./mountain_car/run.sh`         |
 | [🐍 Snake](snake_game/README.md)                          | Evolve a controller that plays the classic Snake grid game and render the playthrough as an animated SVG. | `./snake_game/run.sh`           |
+| [🗺️ Maze Navigation](maze_navigation/README.md)           | Evolve an agent to navigate a fixed grid maze from start to goal using local wall + heading sensors.      | `./maze_navigation/run.sh`      |
 | [🧬 Intelligent Design](intelligent_design/README.md)     | Systematically swap activation functions on hidden neurons to find better squashes than random mutation.  | `./intelligent_design/run.sh`   |
 | [🔍 Discovery](discovery/README.md)                       | Cripple a creature by removing a neuron, then use evolutionary search to recover its behaviour.           | `./discovery/run.sh`            |
 | [🔀 Crossover](crossover/README.md)                       | Breed two parents with different architectures into an offspring and (optionally) evolve it further.      | `./crossover/run.sh`            |
@@ -69,6 +70,16 @@ A NEAT-AI controller plays the classic Snake grid game on a 12×12 board. The sn
 chain of rounded rectangles (a yellow head and green body); the food cell pulses via opacity
 animation; the score counter ticks up via SMIL `<set>` overlays whenever the snake eats. A bottom
 playhead progress bar sweeps left-to-right to mark the loop.
+
+### 🗺️ Maze Navigation — agent traverses the maze
+
+![Maze Navigation champion run — an animated SVG of a circle moving along a dotted footprint trail through a 12×12 grid maze from the start cell to a pulsing goal cell](docs/screenshots/maze_navigation.svg)
+
+A NEAT-AI agent navigates a fixed 12×12 grid maze using only local sensors: four wall-distance
+readings (N/E/S/W) and a packed unit-vector heading-to-goal. The agent renders as a circle that
+animates along the recorded trajectory; a dotted breadcrumb polyline traces the path so the run
+remains readable after the loop ends; the goal cell pulses via opacity animation when the agent
+arrives.
 
 ### 📈 Stock Market — direction predictions
 
