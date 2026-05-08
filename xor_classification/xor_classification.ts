@@ -2,31 +2,41 @@
  * XOR Classification Example
  *
  * Evolves a NEAT-AI creature to learn the XOR truth table — the
- * canonical "Hello World" of neuroevolution. The evolution starts from
- * a **minimal seed** (two inputs, zero hidden neurons, one output)
- * and delegates structural mutation (add-neuron, add-synapse, weight
- * tuning) to the NEAT-AI library via `creature.evolveDir(...)`. XOR is
- * not linearly separable, so the seed cannot solve the task — NEAT
- * must invent at least one hidden neuron to succeed.
+ * canonical "Hello World" of neuroevolution.
+ *
+ * 🌱 **Generation 1 starts from random noise.** The initial creature is
+ * built by the NEAT-AI library's uniform-random `new Creature(2, 1)`
+ * constructor — direct input → output synapses with random weights and
+ * a random output bias drawn from the seeded global PRNG. **No
+ * topology, weights, or biases are hand-specified by this example.**
+ * Structural mutation (add-neuron, add-synapse, weight tuning) is
+ * delegated to the NEAT-AI library via `creature.evolveDir(...)`. XOR
+ * is not linearly separable, so the random direct-only seed cannot
+ * solve the task — NEAT must invent at least one hidden neuron to
+ * succeed.
  *
  * Inputs (per sample): `[a, b]` ∈ {0, 1}^2.
  * Output: a scalar in `(0, 1)`. Sample is classified as `1` when the
  * output is `>= 0.5`, else `0`.
  * Fitness: 1 - mean squared error across the four samples (higher is
- * better). The task is "solved" when MSE drops below `errorThreshold`.
+ * better). The task is "solved" when every truth-table row is
+ * classified correctly AND the mean squared error drops below
+ * `errorThreshold`. A hard `maxGenerations` cap stops the run even if
+ * the threshold is not reached.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
+  createSeededRng,
   Creature,
   type CreatureExport,
   type NeatOptions,
   safeWriteJson,
+  setRandomNumberGenerator,
 } from "@stsoftware/neat-ai";
 
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import {
   captureSnapshot,
@@ -42,9 +52,6 @@ export const INPUT_COUNT = 2;
 
 /** Number of outputs. */
 export const OUTPUT_COUNT = 1;
-
-/** Index of the output neuron in the minimal seed. */
-const SEED_OUTPUT_INDEX = INPUT_COUNT;
 
 /** A single XOR sample: two binary inputs and the expected output. */
 export interface XorSample {
@@ -134,38 +141,38 @@ export interface EvolveResult {
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 50,
-  maxGenerations: 500,
+  maxGenerations: 2000,
   errorThreshold: 0.05,
   mutationRate: 0.6,
   mutationAmount: 3,
 };
 
 /**
- * Build the **minimal seed creature**: two inputs and one output, with
- * direct input → output synapses. Zero hidden neurons. XOR is not
- * linearly separable, so this seed *cannot* solve the task — NEAT must
- * grow at least one hidden neuron during evolution.
+ * Build a uniform-random NEAT seed creature. Seeds the library's global
+ * PRNG with {@link createSeededRng} and then defers to
+ * `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, the library's uniform-random
+ * constructor — every weight, bias, and synapse is drawn from the
+ * seeded PRNG. No topology, weight, or bias is hand-specified by this
+ * example.
+ *
+ * The constructor produces direct input → output synapses with no
+ * hidden neurons, so the gen-1 creature cannot represent XOR (the
+ * problem is not linearly separable). NEAT must invent at least one
+ * hidden neuron during evolution to break the 0.25 MSE plateau.
+ *
+ * The single output neuron's activation is pinned to LOGISTIC. This is
+ * the example's classification interface — predictions are interpreted
+ * via a `>= 0.5` threshold and MSE is taken against `{0, 1}` targets,
+ * both of which assume an output bounded to `[0, 1]`. Hidden neurons
+ * (added later by structural mutation) are not constrained.
  */
-export function buildMinimalSeedCreature(): LegacyCreatureJSON {
-  return {
-    neurons: [
-      { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
-      { type: "input", squash: "LOGISTIC", index: 1, uuid: "input-1" },
-      {
-        type: "output",
-        squash: "LOGISTIC",
-        index: SEED_OUTPUT_INDEX,
-        bias: 0,
-        uuid: "output-0",
-      },
-    ],
-    synapses: [
-      { from: 0, to: SEED_OUTPUT_INDEX, weight: 0 },
-      { from: 1, to: SEED_OUTPUT_INDEX, weight: 0 },
-    ],
-    input: INPUT_COUNT,
-    output: OUTPUT_COUNT,
-  };
+export function buildRandomSeedCreature(seed: number): CreatureExport {
+  setRandomNumberGenerator(createSeededRng(seed));
+  const json = new Creature(INPUT_COUNT, OUTPUT_COUNT).exportJSON();
+  for (const neuron of json.neurons) {
+    if (neuron.type === "output") neuron.squash = "LOGISTIC";
+  }
+  return json;
 }
 
 /**
@@ -245,16 +252,19 @@ export function planSegments(
 /**
  * Run NEAT structural evolution to learn XOR.
  *
- * The runner builds the minimal seed creature (no hidden neurons) and
- * delegates structural mutation to the library via `creature.evolveDir`
- * — add-neuron, add-synapse and weight perturbation are all driven by
- * the NEAT primitives, not by the example. Snapshots are captured at
+ * The runner builds the **uniform-random seed creature** via
+ * {@link buildRandomSeedCreature} (no hidden neurons, random weights and
+ * output bias from the seeded PRNG) and delegates structural mutation
+ * to the library via `creature.evolveDir` — add-neuron, add-synapse and
+ * weight perturbation are all driven by the NEAT primitives, not by
+ * the example. Snapshots are captured at
  * `options.snapshotConfig.checkpoints` by splitting the run into
  * segments that end at each checkpoint, allowing the running champion
  * (and its discovered topology) to be recorded as it grows.
  *
- * Determinism: the seed flows through `NeatOptions.seed` so two runs
- * with the same `seed` produce the same champion JSON.
+ * Determinism: the seed flows through `NeatOptions.seed` and is also
+ * used to construct the initial creature, so two runs with the same
+ * `seed` produce the same gen-1 seed creature and the same champion.
  */
 export async function evolveXorController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -266,7 +276,7 @@ export async function evolveXorController(
   try {
     if (ownDataDir) writeXorDataset(dataDir);
 
-    const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+    const creature = Creature.fromJSON(buildRandomSeedCreature(options.seed));
 
     const checkpoints = options.snapshotConfig ? [...options.snapshotConfig.checkpoints] : [];
     const segmentEnds = planSegments(checkpoints, options.maxGenerations);
@@ -414,7 +424,7 @@ if (import.meta.main) {
     console.log(`   (${inputs[0]}, ${inputs[1]}) → ${target}`);
   }
 
-  console.log("\n🧬 Evolving classifier (NEAT structural mutation from a minimal seed)...");
+  console.log("\n🧬 Evolving classifier (NEAT structural mutation from random noise)...");
   const evolutionSamples: EvolutionSample[] = [];
   ensureDirSync(SNAPSHOTS_DIR);
   // Empty any stale snapshot files so reruns do not blend old + new gens.
