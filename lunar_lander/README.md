@@ -108,7 +108,12 @@ Artefacts:
   `TARGET` arrow, a polyline trace, the lander rendered at start, mid-descent, and touchdown, plus a
   moving lander icon that **tilts with the controller's angle** and lights its **main / left RCS /
   right RCS** flames as the thrusters fire. A shrinking `FUEL` HUD bar surfaces the fuel budget so
-  viewers can see the controller "fight gravity & fuel" while aiming for the pad.
+  viewers can see the controller "fight gravity & fuel" while aiming for the pad. **When the
+  champion crashes or drifts out of bounds**, the renderer replaces the resting lander with a
+  pulsing starburst-and-debris **explosion** plus an `EXPLODED` / `OUT OF BOUNDS` caption, and a
+  colour-coded outcome badge (`✓ LANDED` / `✗ CRASHED` / `✗ OUT OF BOUNDS` / `… TIMED OUT`) sits in
+  the top-right corner so the result is unmistakable
+  ([issue #177](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/177)).
 - `docs/screenshots/lunar_lander_evolution.svg` — multi-panel evolution-progression strip rendered
   from the captured snapshots
 - `docs/screenshots/lunar_lander/evolution.svg` — dual-axis evolution chart plotting best score and

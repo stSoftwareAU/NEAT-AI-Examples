@@ -206,6 +206,7 @@
       fill="#cccccc"
     >step 129</text>
   </g>
+
   <g class="animated-lander" transform="translate(252.00 60.91)">
     <animateTransform
       attributeName="transform"
@@ -332,4 +333,16 @@
     font-size="11"
     fill="#9ad9ff"
   >animated · loops every 6s</text>
+  <g class="outcome-badge" data-outcome="landed">
+    <rect x="710.40" y="12" width="77.60" height="22" rx="4" fill="#7ed321" opacity="0.92" />
+    <text
+      x="749.20"
+      y="28.00"
+      text-anchor="middle"
+      font-family="monospace"
+      font-size="12"
+      font-weight="bold"
+      fill="#0b0b1a"
+    >✓ LANDED</text>
+  </g>
 </svg>

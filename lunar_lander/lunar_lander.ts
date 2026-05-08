@@ -760,6 +760,9 @@ if (import.meta.main) {
   console.log(`💾 Saved champion to ${championPath}`);
 
   const trace = replayController(result.champion);
+  // Renderer defaults to classifying the trace's own final state, so
+  // the explosion graphic + outcome badge match what the trace shows
+  // rather than the multi-trial worst-case outcome (issue #177).
   const svg = renderRunSVG(trace);
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);

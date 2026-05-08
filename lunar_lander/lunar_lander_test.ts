@@ -586,6 +586,181 @@ Deno.test(
   },
 );
 
+Deno.test(
+  "renderRunSVG draws an explosion when the run crashed (issue #177)",
+  () => {
+    // Hand-craft a trace whose final frame is a hard crash off the pad —
+    // the renderer must visualise the wreck rather than showing the
+    // resting-pose lander.
+    const trace = [
+      {
+        state: {
+          x: -20,
+          y: 80,
+          vx: 2,
+          vy: 0,
+          angle: 0,
+          angularV: 0,
+          fuel: 100,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+      {
+        state: {
+          // Far from the pad, fast horizontal speed, large tilt: classifies
+          // as `crashed`.
+          x: -30,
+          y: 0,
+          vx: 8,
+          vy: -15,
+          angle: 0.9,
+          angularV: 0,
+          fuel: 0,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+    ];
+    const svg = renderRunSVG(trace);
+    assert(
+      svg.includes('class="explosion"'),
+      "expected an explosion group on a crashed run",
+    );
+    assert(svg.includes(">EXPLODED<"), "expected an EXPLODED caption on the wreck");
+    assert(
+      svg.includes('class="starburst"'),
+      "expected a starburst polygon as part of the explosion",
+    );
+    assert(
+      svg.includes('class="outcome-badge"'),
+      "expected an outcome badge identifying the run result",
+    );
+    assert(svg.includes(">✗ CRASHED<"), "expected the badge to label the run as CRASHED");
+  },
+);
+
+Deno.test(
+  "renderRunSVG draws an out-of-bounds explosion when the lander drifted off-world",
+  () => {
+    // Final state outside the world half-width — classifies as
+    // `out_of_bounds`. The renderer should still show debris, but with
+    // an "OUT OF BOUNDS" caption on the wreck and a matching badge.
+    const trace = [
+      {
+        state: {
+          x: -20,
+          y: 80,
+          vx: 0,
+          vy: 0,
+          angle: 0,
+          angularV: 0,
+          fuel: 100,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+      {
+        state: {
+          // Beyond DEFAULT_TERRAIN.worldHalfWidth = 50.
+          x: -80,
+          y: 30,
+          vx: -10,
+          vy: -2,
+          angle: 0,
+          angularV: 0,
+          fuel: 0,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+    ];
+    const svg = renderRunSVG(trace);
+    assert(
+      svg.includes('class="explosion"'),
+      "expected an explosion group on out-of-bounds runs",
+    );
+    assert(
+      svg.includes(">OUT OF BOUNDS<"),
+      "expected an OUT OF BOUNDS caption on the wreck",
+    );
+    assert(
+      svg.includes(">✗ OUT OF BOUNDS<"),
+      "expected the outcome badge to label the run as OUT OF BOUNDS",
+    );
+  },
+);
+
+Deno.test(
+  "renderRunSVG does NOT draw an explosion on a clean landing",
+  () => {
+    // Final state inside the pad with all safe-landing limits met —
+    // classifies as `landed`. The renderer must keep the resting-pose
+    // lander and omit the wreck graphic.
+    const trace = [
+      {
+        state: {
+          x: -20,
+          y: 80,
+          vx: 2,
+          vy: 0,
+          angle: 0,
+          angularV: 0,
+          fuel: 100,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+      {
+        state: {
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: -0.5,
+          angle: 0,
+          angularV: 0,
+          fuel: 50,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+    ];
+    const svg = renderRunSVG(trace);
+    assert(
+      !svg.includes('class="explosion"'),
+      "expected no explosion group on a successful landing",
+    );
+    assert(
+      svg.includes(">✓ LANDED<"),
+      "expected the outcome badge to label the run as LANDED",
+    );
+  },
+);
+
+Deno.test(
+  "renderRunSVG accepts an explicit outcome override (issue #177)",
+  () => {
+    // The lunar-lander runner classifies the champion's run with the
+    // multi-trial `championOutcome` and forwards that to the renderer.
+    // The renderer must honour the override even if the trace's final
+    // frame would classify differently.
+    const trace = [
+      {
+        state: {
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: -0.5,
+          angle: 0,
+          angularV: 0,
+          fuel: 50,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+    ];
+    const svg = renderRunSVG(trace, DEFAULT_TERRAIN, "crashed");
+    assert(
+      svg.includes('class="explosion"'),
+      "expected an explosion group when the override outcome is `crashed`",
+    );
+    assert(svg.includes(">✗ CRASHED<"), "expected the badge to honour the override");
+  },
+);
+
 Deno.test("renderRunSVG marks the landing pad with a TARGET indicator", () => {
   // Issue #72: the lander must aim for a specific location — make the
   // pad's role as the destination unmistakable with an arrow + label.
