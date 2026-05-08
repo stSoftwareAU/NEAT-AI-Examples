@@ -135,6 +135,63 @@ Deno.test("perturbedInitialState produces a non-zero starting state with a non-z
   );
 });
 
+Deno.test("step with disturbanceMagnitude=0 ignores the PRNG and matches the no-PRNG path", () => {
+  // Regression cover: the opt-in disturbance path must never alter the
+  // textbook integrator when the magnitude is zero, even if a PRNG is
+  // passed through. Identical inputs must yield identical outputs.
+  const state: CartPoleState = { x: 0.1, v: 0.2, theta: 0.05, omega: -0.1 };
+  const random = createDeterministicRandom(99);
+  const withoutPrng = step(state, 1);
+  const withPrng = step(state, 1, DEFAULT_PARAMS, random);
+  assertEquals(withPrng, withoutPrng);
+});
+
+Deno.test("step with a fixed PRNG and disturbance is deterministic across runs", () => {
+  // Two independent runs from the same seed must produce identical state
+  // sequences when the disturbance is active.
+  const params = {
+    ...DEFAULT_PARAMS,
+    disturbanceMagnitude: 5.0,
+    disturbanceProbability: 0.5,
+  };
+  const run = (): CartPoleState[] => {
+    const random = createDeterministicRandom(2024);
+    let s: CartPoleState = initialState();
+    const trace: CartPoleState[] = [];
+    for (let i = 0; i < 50; i++) {
+      s = step(s, 0, params, random);
+      trace.push(s);
+    }
+    return trace;
+  };
+  assertEquals(run(), run());
+});
+
+Deno.test("a sustained disturbance perturbs an otherwise-zero-action upright pole", () => {
+  // Drive the simulator from the upright initial state with zero action.
+  // Without a disturbance the pole stays upright (zero gravity disabled
+  // here so the no-disturbance baseline is genuinely quiescent). With a
+  // sustained probability-1 disturbance, the cart must drift.
+  const baseParams = { ...DEFAULT_PARAMS, gravity: 0, forceMagnitude: 0 };
+  const disturbedParams = {
+    ...baseParams,
+    disturbanceMagnitude: 5.0,
+    disturbanceProbability: 1.0,
+  };
+  const random = createDeterministicRandom(7);
+  let baseline: CartPoleState = initialState();
+  let perturbed: CartPoleState = initialState();
+  for (let i = 0; i < 50; i++) {
+    baseline = step(baseline, 0, baseParams);
+    perturbed = step(perturbed, 0, disturbedParams, random);
+  }
+  assertAlmostEquals(baseline.x, 0, 1e-9, "baseline cart must not drift");
+  assert(
+    Math.abs(perturbed.x) > Math.abs(baseline.x) + 0.01,
+    `expected disturbance to drive |x|>0, got baseline=${baseline.x}, perturbed=${perturbed.x}`,
+  );
+});
+
 Deno.test("encodeState produces a 4-element Float32Array of [x, v, theta, omega]", () => {
   const arr = encodeState({ x: 1, v: 2, theta: 0.1, omega: -0.3 });
   assertEquals(arr.length, 4);
