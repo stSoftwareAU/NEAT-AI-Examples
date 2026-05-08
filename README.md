@@ -208,6 +208,9 @@ The [`common/`](common/) module provides the building blocks every example reuse
   own seed so data sets are independent but deterministic.
 - 📁 **`working_dirs.ts`** — `setupWorkingDirs` creates `data/`, `creatures/`, and `output/`
   subdirectories under a per-example hidden root and clears `output/` on each run.
+- 🐘 **`large_creature.ts`** — `buildLargeCreature(opts)` constructs a deterministic creature with
+  configurable input/hidden/output counts and connection density (defaults yield ~10,000 synapses)
+  for size-adaptive demos.
 
 ```mermaid
 flowchart BT

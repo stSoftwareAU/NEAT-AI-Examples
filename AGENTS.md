@@ -80,6 +80,7 @@ reinventing equivalent logic in a new example.
 | `common/evolution_chart.ts`        | Dual-axis SVG renderer for NEAT evolution histories.          |
 | `common/evolution_snapshot.ts`     | Capture creature state at checkpoint generations.             |
 | `common/evolution_progress_svg.ts` | Multi-panel animated SVG strip rendered from snapshots.       |
+| `common/large_creature.ts`         | Deterministic large creatures (~10k synapses) for size demos. |
 
 ### `common/data_cache.ts`
 
@@ -175,6 +176,8 @@ common/
   evolution_snapshot_test.ts       — Unit tests for the evolution snapshot helper
   evolution_progress_svg.ts        — Multi-panel animated SVG strip rendered from snapshots
   evolution_progress_svg_test.ts   — Unit tests for the evolution-progress renderer
+  large_creature.ts                — Deterministic large creature builder for size-adaptive demos
+  large_creature_test.ts           — Unit tests for the large creature builder
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
