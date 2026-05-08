@@ -106,7 +106,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .neuron-pruning .discovery
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .neuron-pruning .discovery .discovery-at-scale
 echo ""
 
 # Run the Intelligent Design example
@@ -114,6 +114,9 @@ run_example "Intelligent Design Example" "./intelligent_design/run.sh"
 
 # Run the Discovery example
 run_example "Discovery Example" "./discovery/run.sh"
+
+# Run the Discovery-at-Scale demo (issue #84)
+run_example "Discovery at Scale Demo" "./discovery_at_scale/run.sh"
 
 # Run the Crossover (Breeding) example
 run_example "Crossover (Breeding) Example" "./crossover/run.sh"
