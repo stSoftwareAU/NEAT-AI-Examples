@@ -36,17 +36,23 @@ import {
 } from "./data.ts";
 import {
   buildGridCells,
+  buildGridCellsFromGenes,
   buildInitialCreatureJSON,
+  buildMLPCreatureJSON,
   classificationAccuracy,
   classMeanFeatures,
   confusionMatrix,
+  confusionMatrixGenes,
   evolveClassifier,
+  evolveMLPClassifier,
   genesFromCreatureJSON,
   mutateCreatureJSON,
   pickGridSamples,
   predict,
+  predictWithGenes,
   templateCreatureJSON,
 } from "./mnist_classification.ts";
+import { initMLPGenes } from "./gradient.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
 
 /**
@@ -493,6 +499,156 @@ Deno.test("renderDigitGridSVG throws on an empty cell list", () => {
     Error,
     "at least one cell",
   );
+});
+
+Deno.test("buildMLPCreatureJSON — produces a creature that round-trips through Creature.fromJSON", () => {
+  const random = createDeterministicRandom(101);
+  const genes = initMLPGenes(random, 4, 3, 2);
+  const json = buildMLPCreatureJSON(genes);
+  assertEquals(json.input, 4);
+  assertEquals(json.output, 2);
+  // 4 inputs × 3 hidden + 3 hidden × 2 outputs = 18 synapses.
+  assertEquals(json.synapses.length, 4 * 3 + 3 * 2);
+  // 4 inputs + 3 hidden + 2 outputs = 9 neurons.
+  assertEquals(json.neurons.length, 4 + 3 + 2);
+  const creature = Creature.fromJSON(asCreatureExport(json));
+  creature.validate();
+  const out = creature.activate(Float32Array.from([0.1, 0.2, 0.3, 0.4]));
+  assertEquals(out.length, 2);
+});
+
+Deno.test("buildMLPCreatureJSON — rejects mismatched layer sizes", () => {
+  // W2 row length must equal hiddenCount = W1.length.
+  assertThrows(
+    () =>
+      buildMLPCreatureJSON({
+        W1: [[0, 0]],
+        b1: [0],
+        W2: [[0, 0]],
+        b2: [0],
+      }),
+    Error,
+    "W2 row 0 has 2 weights",
+  );
+});
+
+Deno.test(
+  "evolveMLPClassifier — reaches high validation accuracy on a trivially separable synthetic split",
+  () => {
+    // Build a synthetic dataset where each class has a unique hot
+    // feature — a simple MLP should master this in a handful of
+    // epochs even with a tiny hidden layer.
+    const samples: DigitSample[] = [];
+    for (let i = 0; i < 300; i++) {
+      const label = i % CLASS_COUNT;
+      const features = new Array<number>(FEATURE_COUNT).fill(0);
+      features[label] = 1;
+      samples.push({
+        index: i,
+        label,
+        features,
+        pixels: new Array<number>(IMAGE_SIZE * IMAGE_SIZE).fill(0),
+      });
+    }
+    const split = {
+      train: samples.slice(0, 200),
+      validation: samples.slice(200, 250),
+      test: samples.slice(250, 300),
+    };
+    const result = evolveMLPClassifier(split, {
+      seed: 13579,
+      inputCount: FEATURE_COUNT,
+      classCount: CLASS_COUNT,
+      hiddenCount: 16,
+      maxEpochs: 30,
+      batchSize: 16,
+      learningRate: 0.5,
+      momentum: 0.9,
+      accuracyThreshold: 0.99,
+    });
+    assertGreater(result.validationAccuracy, 0.9);
+    // History captures one entry per executed epoch.
+    assertEquals(result.history.length, result.epochs);
+    // The lifted creature serialises and re-loads cleanly.
+    Creature.fromJSON(result.champion.exportJSON()).validate();
+  },
+);
+
+Deno.test("evolveMLPClassifier — empty validation slice raises a clear error", () => {
+  const sample: DigitSample = {
+    index: 0,
+    label: 0,
+    features: new Array<number>(FEATURE_COUNT).fill(0.5),
+    pixels: [],
+  };
+  assertThrows(
+    () =>
+      evolveMLPClassifier(
+        { train: [sample], validation: [], test: [] },
+        {
+          seed: 1,
+          inputCount: FEATURE_COUNT,
+          classCount: CLASS_COUNT,
+          hiddenCount: 4,
+          maxEpochs: 1,
+          batchSize: 1,
+          learningRate: 0.1,
+          momentum: 0,
+        },
+      ),
+    Error,
+    "validation set must not be empty",
+  );
+});
+
+Deno.test(
+  "predictWithGenes / confusionMatrixGenes — agree with the lifted creature on a small set",
+  () => {
+    const random = createDeterministicRandom(71);
+    const genes = initMLPGenes(random, FEATURE_COUNT, 8, CLASS_COUNT);
+    const json = buildMLPCreatureJSON(genes);
+    const creature = Creature.fromJSON(asCreatureExport(json));
+    const samples: DigitSample[] = [];
+    for (let i = 0; i < 5; i++) {
+      const features = new Array<number>(FEATURE_COUNT).fill(0).map((_, k) => (k % (i + 2)) / 10);
+      samples.push({
+        index: i,
+        label: i % CLASS_COUNT,
+        features,
+        pixels: new Array<number>(IMAGE_SIZE * IMAGE_SIZE).fill(0),
+      });
+    }
+    for (const s of samples) {
+      assertEquals(predictWithGenes(genes, s.features), predict(creature, s.features));
+    }
+    const m1 = confusionMatrixGenes(genes, samples);
+    const m2 = confusionMatrix(creature, samples);
+    assertEquals(m1, m2);
+  },
+);
+
+Deno.test("buildGridCellsFromGenes — emits well-formed cells matching the genome predictions", () => {
+  const samples: DigitSample[] = [];
+  for (let i = 0; i < 30; i++) {
+    samples.push({
+      index: i,
+      label: i % CLASS_COUNT,
+      features: new Array<number>(FEATURE_COUNT).fill(0),
+      pixels: new Array<number>(IMAGE_SIZE * IMAGE_SIZE).fill(0),
+    });
+  }
+  const random = createDeterministicRandom(83);
+  const genes = initMLPGenes(random, FEATURE_COUNT, 8, CLASS_COUNT);
+  const cells = buildGridCellsFromGenes(genes, samples, 2);
+  assertGreaterOrEqual(cells.length, 1);
+  for (const cell of cells) {
+    assert(cell.frames.length > 0);
+    for (const frame of cell.frames) {
+      assertEquals(frame.pixels.length, IMAGE_SIZE * IMAGE_SIZE);
+      assert(frame.label >= 0 && frame.label < CLASS_COUNT);
+      assert(frame.prediction >= 0 && frame.prediction < CLASS_COUNT);
+    }
+  }
 });
 
 Deno.test("readGzippedFile rejects a missing file", async () => {
