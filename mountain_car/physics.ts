@@ -76,6 +76,33 @@ export function initialState(
   return { x: DEFAULT_START_X, v: DEFAULT_START_V, ...overrides };
 }
 
+/**
+ * Initial state perturbed around the valley centre. The position is
+ * sampled uniformly from `[DEFAULT_START_X - magnitude,
+ * DEFAULT_START_X + magnitude]` (clamped to the track), and the
+ * starting velocity stays at zero — matching the canonical OpenAI Gym
+ * `MountainCar-v0` reset, which always starts the car at rest but
+ * varies its position. A controller cannot solve every perturbed
+ * launch by exploiting the perfectly symmetric `(-0.5, 0)` start.
+ *
+ * @param random Deterministic PRNG returning values in `[0, 1)`.
+ * @param magnitude Half-width of the position-sampling window. The
+ *                  default `0.05` keeps every start inside the valley
+ *                  bowl so the swing-up problem stays well posed.
+ */
+export function perturbedInitialState(
+  random: () => number,
+  magnitude: number = 0.05,
+  params: MountainCarParams = DEFAULT_PARAMS,
+): MountainCarState {
+  const offset = (random() * 2 - 1) * magnitude;
+  const x = Math.min(
+    Math.max(DEFAULT_START_X + offset, params.minPosition),
+    params.maxPosition,
+  );
+  return { x, v: DEFAULT_START_V };
+}
+
 /** Clamp a value to the closed interval `[lo, hi]`. */
 function clamp(value: number, lo: number, hi: number): number {
   if (value < lo) return lo;

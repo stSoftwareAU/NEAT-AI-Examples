@@ -18,8 +18,10 @@ import {
   isSuccess,
   MAX_EPISODE_STEPS,
   type MountainCarState,
+  perturbedInitialState,
   step,
 } from "./physics.ts";
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
 
 Deno.test("initialState places the car at rest at the valley centre", () => {
   const s = initialState();
@@ -151,6 +153,29 @@ Deno.test("MAX_EPISODE_STEPS matches the canonical MountainCar-v0 limit", () => 
   // Sanity-check the published 200-step horizon so an accidental edit
   // can be caught quickly in review.
   assertEquals(MAX_EPISODE_STEPS, 200);
+});
+
+Deno.test("perturbedInitialState samples x in [-magnitude, +magnitude] around the valley centre", () => {
+  const random = createDeterministicRandom(7);
+  const magnitude = 0.05;
+  for (let i = 0; i < 50; i++) {
+    const s = perturbedInitialState(random, magnitude);
+    assertEquals(s.v, DEFAULT_START_V, "starting velocity should remain zero");
+    assert(
+      s.x >= DEFAULT_START_X - magnitude - 1e-12,
+      `expected x >= ${DEFAULT_START_X - magnitude}, got ${s.x}`,
+    );
+    assert(
+      s.x <= DEFAULT_START_X + magnitude + 1e-12,
+      `expected x <= ${DEFAULT_START_X + magnitude}, got ${s.x}`,
+    );
+  }
+});
+
+Deno.test("perturbedInitialState is deterministic for the same PRNG seed", () => {
+  const a = perturbedInitialState(createDeterministicRandom(42), 0.05);
+  const b = perturbedInitialState(createDeterministicRandom(42), 0.05);
+  assertEquals(a, b);
 });
 
 Deno.test("a hand-crafted swing policy reaches the goal within the step limit", () => {
