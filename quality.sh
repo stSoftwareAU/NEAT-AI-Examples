@@ -106,7 +106,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .neuron-pruning .discovery .discovery-at-scale
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .neuron-pruning .adaptive-mutation .discovery .discovery-at-scale
 echo ""
 
 # Run the Intelligent Design example
@@ -159,6 +159,9 @@ run_example "Synthetic Synapse Training Demo" "./synthetic_synapse/run.sh"
 
 # Run the Neuron Pruning demo
 run_example "Neuron Pruning Demo" "./neuron_pruning/run.sh"
+
+# Run the Adaptive Mutation Rate demo
+run_example "Adaptive Mutation Rate Demo" "./adaptive_mutation/run.sh"
 
 # Run the Suggest Improvements example
 run_example "Suggest Improvements" "./suggest_improvements/run.sh"
