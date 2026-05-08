@@ -71,14 +71,15 @@ programs. See [README.md](README.md#-quality-check) for full details.
 The `common/` directory holds helpers that every example may reuse. Reach for these before
 reinventing equivalent logic in a new example.
 
-| Module                           | Purpose                                                       |
-| -------------------------------- | ------------------------------------------------------------- |
-| `common/deterministic_random.ts` | Seeded PRNG for reproducible data generation.                 |
-| `common/synthetic_data.ts`       | Synthetic dataset generation and scoring.                     |
-| `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.        |
-| `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache. |
-| `common/evolution_chart.ts`      | Dual-axis SVG renderer for NEAT evolution histories.          |
-| `common/evolution_snapshot.ts`   | Capture creature state at checkpoint generations.             |
+| Module                             | Purpose                                                       |
+| ---------------------------------- | ------------------------------------------------------------- |
+| `common/deterministic_random.ts`   | Seeded PRNG for reproducible data generation.                 |
+| `common/synthetic_data.ts`         | Synthetic dataset generation and scoring.                     |
+| `common/working_dirs.ts`           | Standard hidden working-directory layout for examples.        |
+| `common/data_cache.ts`             | Download datasets into hidden directories with on-disk cache. |
+| `common/evolution_chart.ts`        | Dual-axis SVG renderer for NEAT evolution histories.          |
+| `common/evolution_snapshot.ts`     | Capture creature state at checkpoint generations.             |
+| `common/evolution_progress_svg.ts` | Multi-panel animated SVG strip rendered from snapshots.       |
 
 ### `common/data_cache.ts`
 
@@ -130,6 +131,32 @@ for (let gen = 1; gen <= 10000; gen++) {
 }
 ```
 
+### `common/evolution_progress_svg.ts`
+
+`renderEvolutionProgressSvg(snapshots, opts?)` consumes the snapshots loaded via
+`loadSnapshots(...)` and returns a single multi-panel animated SVG string showing how the network
+and its score evolved across the captured generations. Each panel displays a small topology diagram,
+the generation label (e.g. "Gen 1", "Gen 10000"), and the score formatted to a configurable
+precision (default three decimals). A score-progression polyline links the panels, and SMIL
+`<animate>` elements pulse each panel's background colour in sequence so the eye is led from the
+first generation through to the last. Output is byte-deterministic for identical inputs — no
+external dependencies are added.
+
+```ts
+import { loadSnapshots } from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+
+const snaps = loadSnapshots(".synthetic-xor/snapshots");
+const svg = renderEvolutionProgressSvg(snaps, {
+  caption: {
+    finalScore: snaps[snaps.length - 1].score,
+    totalGenerations: 10000,
+    wallClockMs: 65_000,
+  },
+});
+await Deno.writeTextFile(".synthetic-xor/evolution_progress.svg", svg);
+```
+
 ## 📂 Project Structure
 
 ```
@@ -146,6 +173,8 @@ common/
   evolution_chart_test.ts          — Unit tests for the evolution chart renderer
   evolution_snapshot.ts            — Capture creature state at checkpoint generations
   evolution_snapshot_test.ts       — Unit tests for the evolution snapshot helper
+  evolution_progress_svg.ts        — Multi-panel animated SVG strip rendered from snapshots
+  evolution_progress_svg_test.ts   — Unit tests for the evolution-progress renderer
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
