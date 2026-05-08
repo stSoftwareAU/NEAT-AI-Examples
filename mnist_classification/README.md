@@ -1,21 +1,40 @@
 # 🔢 MNIST — Handwritten Digit Classification
 
-> 🌱 **Generation 1 starts from random noise** — the captured milestones show the classifier
-> evolving from there into a working digit recogniser.
+> 🌱 **Generation 1 starts from random noise** — every creature in the initial population has the
+> 196 inputs, 10 LOGISTIC outputs prescribed by the digit-classification problem and **direct input
+> → output** connections with uniformly random weights and biases. No hidden topology is
+> hand-specified; hidden neurons emerge purely from the add-node structural mutation operator. The
+> captured milestones show the network climbing from ~10 % chance accuracy to a competent digit
+> recogniser.
 
-`mnist_classification.ts` evolves a small NEAT-AI network to classify handwritten digits from the
-full canonical MNIST dataset (60 000-image training file + 10 000-image test file). The IDX gzip
-files are downloaded once into `.synthetic-mnist/data/` (with SHA-256 digests pinned so runs are
-byte-stable), down-sampled from 28 × 28 to 14 × 14, and the gradient-descent training loop runs
-entirely in pure TypeScript with no external math libraries.
+`mnist_classification.ts` ships **two** classifiers, both operating over the canonical MNIST dataset
+(60 000-image training file + 10 000-image test file) downloaded once into `.synthetic-mnist/data/`
+(with SHA-256 digests pinned so runs are byte-stable), down-sampled from 28 × 28 to 14 × 14:
 
-The runner crosses the **95 % accuracy** target requested by issue #138 in roughly **a dozen
-generations / under a minute** of wall-clock — see the evolution chart below for the full
-per-generation curve.
+1. **NEAT evolution from random noise** (`evolveClassifier`) — the headline demo. Generation 1 is
+   uniform-random and barely beats the 10 % random-guess baseline on a ten-class problem; weight
+   mutation and add-node structural mutation grow the network toward the **95 %** accuracy target,
+   capped at **50 000** generations.
+2. **MLP/SGD baseline** (`evolveMLPClassifier`) — a separate `196 → 64 → 10` LOGISTIC multi-layer
+   perceptron trained by mini-batch SGD with momentum. Crosses 95 % in under a minute and is what
+   `quality.sh` runs by default so CI stays fast. This baseline is **not** the NEAT demo — it does
+   not start from random noise and does not grow topology.
+
+To run the long-form NEAT screenshot evolution (the one that produces the chart, progression strip,
+and prediction grid in `docs/screenshots/`), set `MNIST_NEAT_EVOLUTION=1`:
+
+```bash
+MNIST_NEAT_EVOLUTION=1 ./mnist_classification/run.sh
+```
+
+This is **one-off developer work** — convergence from uniform-random noise is unbounded and may take
+hours of wall-clock. The evolution stops as soon as the champion crosses 95 % validation accuracy or
+the 50 000-generation hard cap is reached, whichever comes first. The default `quality.sh`
+invocation runs the SGD baseline instead so CI completes promptly.
 
 ![Animated grid of MNIST champion predictions, with green ticks for correct classifications and red crosses for misclassifications](../docs/screenshots/mnist_classification.svg)
 
-![Per-generation evolution chart — best validation accuracy climbing from ~93% to >96.5% over a dozen generations](../docs/screenshots/mnist_evolution.svg)
+![Dual-axis evolution chart — best validation accuracy versus generation, with neuron and synapse counts on the right axis](../docs/screenshots/mnist_classification_evolution_chart.svg)
 
 ## 🔧 How It Works
 
@@ -24,26 +43,29 @@ flowchart LR
     DL["📥 fetchDataset()<br/>MNIST IDX (pinned)<br/>train + test"]
     DOWN["🔽 Down-sample<br/>28×28 → 14×14"]
     SPLIT["✂️ canonical 50k / 10k / 10k<br/>train · val · test"]
-    INIT["🌱 Xavier-init MLP<br/>196 → 64 → 10 LOGISTIC"]
-    SGD["🧬 Mini-batch SGD<br/>+ momentum"]
+    NOISE["🌱 Uniform-random NEAT<br/>196 inputs · 10 LOGISTIC outputs<br/>direct input→output, random weights"]
+    MUT["🧬 Mutation<br/>weight ± noise · add-node split"]
     SCORE["📏 Validation accuracy<br/>(per generation)"]
-    SNAPSHOT["📈 Evolution chart<br/>mnist_evolution.svg"]
+    CHART["📈 Evolution chart<br/>mnist_classification_evolution_chart.svg"]
+    STRIP["🎞️ Evolution-progression<br/>mnist_classification_evolution.svg"]
     CHAMP["💾 champion.json<br/>(best val acc)"]
     CONF["🧮 confusion.json"]
     GRID["🖼️ Animated 5×4 grid SVG<br/>green ✓ / red ✗"]
 
-    DL --> DOWN --> SPLIT --> INIT --> SGD --> SCORE
-    SCORE -- below threshold --> SGD
-    SCORE -- ≥ 95% --> CHAMP --> CONF --> GRID
-    SCORE --> SNAPSHOT
+    DL --> DOWN --> SPLIT --> NOISE --> MUT --> SCORE
+    SCORE -- below threshold & gen < cap --> MUT
+    SCORE -- ≥ 95% or cap reached --> CHAMP --> CONF --> GRID
+    SCORE --> CHART
+    SCORE --> STRIP
 
     style DL fill:#4a90d9,stroke:#333,color:#fff
     style DOWN fill:#f5a623,stroke:#333,color:#fff
     style SPLIT fill:#f39c12,stroke:#333,color:#fff
-    style INIT fill:#1abc9c,stroke:#333,color:#fff
-    style SGD fill:#e74c3c,stroke:#333,color:#fff
+    style NOISE fill:#1abc9c,stroke:#333,color:#fff
+    style MUT fill:#e74c3c,stroke:#333,color:#fff
     style SCORE fill:#9b59b6,stroke:#333,color:#fff
-    style SNAPSHOT fill:#1f77b4,stroke:#333,color:#fff
+    style CHART fill:#1f77b4,stroke:#333,color:#fff
+    style STRIP fill:#1f77b4,stroke:#333,color:#fff
     style CHAMP fill:#7ed321,stroke:#333,color:#fff
     style CONF fill:#bd10e0,stroke:#333,color:#fff
     style GRID fill:#2ecc71,stroke:#333,color:#fff
@@ -76,9 +98,11 @@ flowchart LR
 | Output 0..9  | LOGISTIC         | Per-class score; the predicted digit is the argmax over the 10 outputs |
 
 The fitness signal during evolution is **classification accuracy on the validation slice** (the
-held-out tail of the MNIST training file). The runner reports the run as having reached the issue
-target once the champion's held-out accuracy crosses 95 %, and stops training once it crosses the
-slightly-stiffer early-stop threshold (`accuracyThreshold`, default `0.965`).
+held-out tail of the MNIST training file). For both classifiers the headline accuracy bar is **95
+%** (`ACCURACY_TARGET`); the NEAT search additionally enforces a **hard generation cap** of **50
+000** generations (`MAX_GENERATIONS`), and milestones are captured at generations
+`[1, 10, 100, 1000, 10000, 50000]` so the progression strip fits a normal screen even for very deep
+runs from uniform-random noise.
 
 ## 🚦 Train / Validation / Test Split
 
@@ -93,12 +117,32 @@ same input bytes produce byte-identical folds.
 
 ## 🧠 Architecture & Training
 
-The classifier is a single-hidden-layer MLP — `196 → 64 → 10` — with a LOGISTIC squash on every
-neuron. The network is built once (Xavier-initialised, zero biases) and then refined by **mini-batch
-stochastic gradient descent with momentum** using per-output binary cross-entropy (its `(y − t)`
-derivative pairs cleanly with sigmoid outputs). Each SGD epoch over the 50 000-image training slice
-is treated as one _generation_ in the evolution chart, capturing how validation accuracy climbs from
-a Xavier-initialised baseline to over 96 %.
+### NEAT evolution from uniform-random noise
+
+Each gen-1 creature has the problem-prescribed input/output topology —
+`196 inputs → 10 LOGISTIC
+outputs` — wired by direct input → output connections. Weights and the
+output bias are uniform-random; the LOGISTIC output squash is the only constraint set by the example
+because argmax over LOGISTIC outputs is the natural way to interpret a digit-class prediction.
+**Hidden neurons are not hand-specified.** They emerge purely from the add-node structural mutation
+operator as evolution progresses, so the captured progression strip honestly tells the noise →
+competent story.
+
+| Hyper-parameter     | Default                    | Why                                                                                |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
+| `populationSize`    | 64                         | Enough diversity to keep evolution moving without slowing each generation too much |
+| `mutationRate`      | 0.2                        | Per-gene perturbation probability                                                  |
+| `mutationStrength`  | 0.4                        | Half-width of the uniform `[-m, +m]` weight/bias noise                             |
+| `addNeuronRate`     | 0.02                       | Per-creature probability of an add-node structural mutation each generation        |
+| `accuracyThreshold` | `ACCURACY_TARGET` (0.95)   | Hard accuracy target the champion must reach to stop early                         |
+| `maxGenerations`    | `MAX_GENERATIONS` (50 000) | Hard generation cap — second stop guarantee                                        |
+
+### MLP / SGD baseline (`evolveMLPClassifier`)
+
+A separate `196 → 64 → 10` LOGISTIC multi-layer perceptron, Xavier-initialised and refined by
+**mini-batch stochastic gradient descent with momentum** using per-output binary cross-entropy. Each
+SGD epoch over the 50 000-image training slice is treated as one _generation_. The baseline exists
+to keep `quality.sh` fast; it does **not** start from random noise and does **not** grow topology.
 
 | Hyper-parameter     | Default | Why                                                                       |
 | ------------------- | ------- | ------------------------------------------------------------------------- |
@@ -108,12 +152,6 @@ a Xavier-initialised baseline to over 96 %.
 | `learningRateDecay` | 0.95    | Per-epoch schedule that anneals as the loss surface flattens              |
 | `momentum`          | 0.9     | Carries SGD through narrow valleys typical of cross-entropy on sigmoids   |
 | `accuracyThreshold` | 0.965   | Early-stop target — well above the issue's 95 % bar so the chart is rich  |
-
-Why a hidden layer? The previous revision evolved a _linear_ `196 → 10` classifier and capped at ~70
-% accuracy because (a) a linear classifier on 14 × 14 mean-pooled MNIST mathematically tops out near
-88 %, and (b) pure mutation cannot refine ~2 000 weights with any precision inside a few seconds.
-Adding a 64-neuron hidden layer makes the classifier non-linear, and switching from mutation-only
-evolution to mini-batch SGD is what closes the gap from 70 % to over 96 %.
 
 ## 🚀 Running the Example
 
@@ -129,8 +167,13 @@ Artefacts:
 - `.synthetic-mnist/data/t10k-labels-idx1-ubyte.gz` — cached gzipped test labels
 - `.synthetic-mnist/creatures/champion.json` — fittest classifier from the run
 - `.synthetic-mnist/output/confusion.json` — 10 × 10 confusion matrix on the held-out test set
+- `.synthetic-mnist/snapshots/` — per-checkpoint snapshots of the running NEAT champion (NEAT run
+  only)
 - `docs/screenshots/mnist_classification.svg` — animated 5 × 4 grid of test predictions
-- `docs/screenshots/mnist_evolution.svg` — per-generation chart of best validation accuracy
+- `docs/screenshots/mnist_classification_evolution_chart.svg` — dual-axis per-generation chart (best
+  validation accuracy + neuron / synapse counts)
+- `docs/screenshots/mnist_classification_evolution.svg` — multi-panel evolution-progression strip
+  (NEAT run only)
 
 ## 🖼️ Reading the Grid
 
@@ -155,10 +198,13 @@ A few things that are not obvious from the code alone:
 - **Down-sample, do not interpolate.** 2 × 2 mean-pooling keeps the operation deterministic and cuts
   the per-layer weight count by 4× without meaningfully hurting accuracy on a model this size.
 - **A hidden layer is non-negotiable for ≥ 95 %.** A linear `196 → 10` classifier mathematically
-  caps below 90 % on 14 × 14 mean-pooled MNIST. The single 64-neuron hidden layer is the smallest
-  change that breaks past that ceiling.
-- **SGD beats mutation by orders of magnitude.** Refining ~13 000 MLP weights via mutation alone
-  would take days. Backprop + mini-batch SGD with momentum hits 95 % in roughly a dozen epochs.
+  caps below 90 % on 14 × 14 mean-pooled MNIST. The NEAT search reaches 95 % by **growing** hidden
+  neurons via add-node structural mutation; the SGD baseline reaches it via a hand-prescribed
+  64-neuron hidden layer.
+- **SGD beats NEAT by orders of magnitude in wall-clock.** Refining ~13 000 MLP weights via mutation
+  alone is unbounded — the NEAT screenshot run is intentionally a one-off developer task, not part
+  of CI. Backprop + mini-batch SGD with momentum hits 95 % in roughly a dozen epochs and is what
+  `quality.sh` runs to keep CI fast.
 - **Validation comes from the training file.** The 10 000-image MNIST test file is held entirely in
   reserve for the test confusion matrix, while the validation slice (the tail of the 60 000-image
   training file) drives the fitness signal. This avoids leaking test-distribution structure into the

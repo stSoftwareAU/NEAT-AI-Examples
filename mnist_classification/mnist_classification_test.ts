@@ -14,6 +14,7 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertLess,
   assertRejects,
   assertThrows,
 } from "@std/assert";
@@ -37,20 +38,18 @@ import {
 import {
   buildGridCells,
   buildGridCellsFromGenes,
-  buildInitialCreatureJSON,
   buildMLPCreatureJSON,
+  buildRandomPopulation,
   classificationAccuracy,
-  classMeanFeatures,
   confusionMatrix,
   confusionMatrixGenes,
+  DEFAULT_EVOLVE_OPTIONS,
   evolveClassifier,
   evolveMLPClassifier,
-  genesFromCreatureJSON,
-  mutateCreatureJSON,
+  mutateCreatureExport,
   pickGridSamples,
   predict,
   predictWithGenes,
-  templateCreatureJSON,
 } from "./mnist_classification.ts";
 import { initMLPGenes } from "./gradient.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -192,96 +191,147 @@ Deno.test("splitDataset rejects splits that exceed available samples", () => {
   );
 });
 
-Deno.test("buildInitialCreatureJSON has expected counts and validates", () => {
-  const W = Array.from({ length: 3 }, () => new Array(4).fill(0));
-  const b = [0, 0, 0];
-  const json = buildInitialCreatureJSON(W, b);
-  assertEquals(json.input, 4);
-  assertEquals(json.output, 3);
-  assertEquals(json.synapses.length, 3 * 4);
-  const creature = Creature.fromJSON(asCreatureExport(json));
-  creature.validate();
-  const out = creature.activate(Float32Array.from([0, 0, 0, 0]));
-  assertEquals(out.length, 3);
-});
-
-Deno.test("buildInitialCreatureJSON rejects mismatched bias count", () => {
-  const W = [[0.1, 0.2]];
-  assertThrows(() => buildInitialCreatureJSON(W, [0, 0]), Error, "biases length");
-});
-
-Deno.test("genesFromCreatureJSON round-trips weights and biases", () => {
-  const W = [[0.1, 0.2, -0.3], [-0.4, 0.5, 0.6]];
-  const b = [0.7, -0.8];
-  const json = buildInitialCreatureJSON(W, b);
-  const genes = genesFromCreatureJSON(json);
-  assertEquals(genes.weights, W);
-  assertEquals(genes.biases, b);
-});
-
-Deno.test("mutateCreatureJSON preserves shape and still validates", () => {
-  const W = Array.from({ length: 5 }, () => new Array(6).fill(0));
-  const json = buildInitialCreatureJSON(W, new Array(5).fill(0));
-  const random = createDeterministicRandom(7);
-  const child = mutateCreatureJSON(json, random, 1.0, 0.2);
-  assertEquals(child.input, 6);
-  assertEquals(child.output, 5);
-  Creature.fromJSON(asCreatureExport(child)).validate();
-  // With mutationRate=1.0 the genes should change.
-  const childGenes = genesFromCreatureJSON(child);
-  let anyChanged = false;
-  for (let c = 0; c < 5; c++) {
-    for (let i = 0; i < 6; i++) {
-      if (childGenes.weights[c][i] !== 0) anyChanged = true;
+Deno.test("buildRandomPopulation produces uniform-random NEAT genomes", () => {
+  // Topology must NOT be hand-specified — the library decides shape.
+  // We assert only that the population has the requested size and that
+  // every member is a valid Creature with the right input/output counts
+  // and LOGISTIC outputs.
+  const pop = buildRandomPopulation(42, 5, FEATURE_COUNT, CLASS_COUNT);
+  assertEquals(pop.length, 5);
+  for (const json of pop) {
+    assertEquals(json.input, FEATURE_COUNT);
+    assertEquals(json.output, CLASS_COUNT);
+    const creature = Creature.fromJSON(json);
+    creature.validate();
+    creature.clearState();
+    const out = creature.activate(Float32Array.from(new Array(FEATURE_COUNT).fill(0.5)));
+    assertEquals(out.length, CLASS_COUNT);
+    for (const v of out) {
+      assert(Number.isFinite(v), `expected finite output, got ${v}`);
     }
-  }
-  assert(anyChanged, "mutation with rate=1.0 must perturb at least one gene");
-});
-
-Deno.test("classMeanFeatures averages per-class feature vectors", () => {
-  const samples: DigitSample[] = [
-    { index: 0, label: 0, features: [1, 0], pixels: [] },
-    { index: 1, label: 0, features: [3, 0], pixels: [] },
-    { index: 2, label: 1, features: [0, 2], pixels: [] },
-  ];
-  const means = classMeanFeatures(samples, 2, 2);
-  assertEquals(means[0], [2, 0]);
-  assertEquals(means[1], [0, 2]);
-});
-
-Deno.test("templateCreatureJSON produces a usable creature seeded from class means", () => {
-  const samples: DigitSample[] = [
-    { index: 0, label: 0, features: [1, 0, 0], pixels: [] },
-    { index: 1, label: 1, features: [0, 1, 0], pixels: [] },
-    { index: 2, label: 2, features: [0, 0, 1], pixels: [] },
-  ];
-  const random = createDeterministicRandom(11);
-  const json = templateCreatureJSON(random, samples, 3, 3, 0);
-  const creature = Creature.fromJSON(asCreatureExport(json));
-  creature.validate();
-  // With noise=0 the prediction for sample[i] should be class i — the
-  // template aligns each output's weights with that class's features.
-  for (const s of samples) {
-    assertEquals(predict(creature, s.features), s.label);
+    // Every output neuron must be LOGISTIC — the only topology
+    // constraint set by the example. Hidden neurons must NOT be
+    // hand-specified at gen 1.
+    const outputNeurons = json.neurons.filter((n) => n.type === "output");
+    assertEquals(outputNeurons.length, CLASS_COUNT);
+    for (const n of outputNeurons) {
+      assertEquals(n.squash, "LOGISTIC");
+    }
+    const hiddenNeurons = json.neurons.filter((n) => n.type === "hidden");
+    assertEquals(
+      hiddenNeurons.length,
+      0,
+      "no hidden neurons should be hand-specified in the initial population",
+    );
   }
 });
 
-Deno.test("templateCreatureJSON throws on empty samples", () => {
-  const random = createDeterministicRandom(1);
-  assertThrows(() => templateCreatureJSON(random, [], 4, 4, 0), Error, "must not be empty");
+Deno.test("buildRandomPopulation is deterministic for the same seed", () => {
+  const a = buildRandomPopulation(99, 4, FEATURE_COUNT, CLASS_COUNT);
+  const b = buildRandomPopulation(99, 4, FEATURE_COUNT, CLASS_COUNT);
+  assertEquals(a.length, b.length);
+  for (let i = 0; i < a.length; i++) {
+    assertEquals(JSON.stringify(a[i]), JSON.stringify(b[i]));
+  }
+});
+
+Deno.test("mutateCreatureExport yields a valid creature", () => {
+  const random = createDeterministicRandom(7);
+  const pop = buildRandomPopulation(1, 1, FEATURE_COUNT, CLASS_COUNT);
+  const child = mutateCreatureExport(pop[0], random, 1.0, 0.3);
+  Creature.fromJSON(child).validate();
+});
+
+Deno.test("mutateCreatureExport with addNeuronRate=1 grows topology", () => {
+  // Forcing addNeuronRate=1 must split exactly one synapse, adding
+  // one hidden neuron and replacing one synapse with two.
+  const pop = buildRandomPopulation(3, 1, FEATURE_COUNT, CLASS_COUNT);
+  const parent = pop[0];
+  const random = createDeterministicRandom(13);
+  const child = mutateCreatureExport(parent, random, 0, 0, {
+    addNeuronRate: 1,
+    hiddenCounter: { value: 0 },
+  });
+  const parentHidden = parent.neurons.filter((n) => n.type === "hidden").length;
+  const childHidden = child.neurons.filter((n) => n.type === "hidden").length;
+  assertEquals(childHidden - parentHidden, 1, "expected exactly one new hidden neuron");
+  assertEquals(
+    child.synapses.length - parent.synapses.length,
+    1,
+    "splitting one synapse adds one net synapse (-1 + 2)",
+  );
+  Creature.fromJSON(child).validate();
 });
 
 Deno.test("predict returns the argmax index", () => {
-  // Force argmax to class 2 via a strongly biased single-input network.
-  const W = [[-5], [-5], [5]];
-  const json = buildInitialCreatureJSON(W, [0, 0, 0]);
+  // Hand-build a tiny LOGISTIC creature whose third output dominates.
+  const json = {
+    neurons: [
+      { type: "input" as const, squash: "LOGISTIC", index: 0, uuid: "input-0" },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 1,
+        bias: 0,
+        uuid: "output-0",
+      },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 2,
+        bias: 0,
+        uuid: "output-1",
+      },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 3,
+        bias: 0,
+        uuid: "output-2",
+      },
+    ],
+    synapses: [
+      { from: 0, to: 1, weight: -5 },
+      { from: 0, to: 2, weight: -5 },
+      { from: 0, to: 3, weight: 5 },
+    ],
+    input: 1,
+    output: 3,
+  };
   const creature = Creature.fromJSON(asCreatureExport(json));
   assertEquals(predict(creature, [1]), 2);
 });
 
 Deno.test("classificationAccuracy returns the correct fraction", () => {
-  const W = [[10, 0], [0, 10]];
-  const json = buildInitialCreatureJSON(W, [0, 0]);
+  // Two-output diagonal classifier: output 0 fires on x=1, output 1 on y=1.
+  const json = {
+    neurons: [
+      { type: "input" as const, squash: "LOGISTIC", index: 0, uuid: "input-0" },
+      { type: "input" as const, squash: "LOGISTIC", index: 1, uuid: "input-1" },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 2,
+        bias: 0,
+        uuid: "output-0",
+      },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 3,
+        bias: 0,
+        uuid: "output-1",
+      },
+    ],
+    synapses: [
+      { from: 0, to: 2, weight: 10 },
+      { from: 1, to: 2, weight: 0 },
+      { from: 0, to: 3, weight: 0 },
+      { from: 1, to: 3, weight: 10 },
+    ],
+    input: 2,
+    output: 2,
+  };
   const creature = Creature.fromJSON(asCreatureExport(json));
   const samples: DigitSample[] = [
     { index: 0, label: 0, features: [1, 0], pixels: [] },
@@ -292,14 +342,40 @@ Deno.test("classificationAccuracy returns the correct fraction", () => {
 });
 
 Deno.test("classificationAccuracy returns 0 on an empty list", () => {
-  const json = buildInitialCreatureJSON([[0, 0]], [0]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(1, 1, FEATURE_COUNT, CLASS_COUNT);
+  const creature = Creature.fromJSON(pop[0]);
   assertEquals(classificationAccuracy(creature, []), 0);
 });
 
 Deno.test("confusionMatrix is square and counts true vs predicted", () => {
-  const W = [[10, 0], [0, 10]];
-  const json = buildInitialCreatureJSON(W, [0, 0]);
+  const json = {
+    neurons: [
+      { type: "input" as const, squash: "LOGISTIC", index: 0, uuid: "input-0" },
+      { type: "input" as const, squash: "LOGISTIC", index: 1, uuid: "input-1" },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 2,
+        bias: 0,
+        uuid: "output-0",
+      },
+      {
+        type: "output" as const,
+        squash: "LOGISTIC",
+        index: 3,
+        bias: 0,
+        uuid: "output-1",
+      },
+    ],
+    synapses: [
+      { from: 0, to: 2, weight: 10 },
+      { from: 1, to: 2, weight: 0 },
+      { from: 0, to: 3, weight: 0 },
+      { from: 1, to: 3, weight: 10 },
+    ],
+    input: 2,
+    output: 2,
+  };
   const creature = Creature.fromJSON(asCreatureExport(json));
   const samples: DigitSample[] = [
     { index: 0, label: 0, features: [1, 0], pixels: [] },
@@ -314,34 +390,144 @@ Deno.test("confusionMatrix is square and counts true vs predicted", () => {
 });
 
 Deno.test(
-  "evolveClassifier — happy path: champion accuracy beats a documented floor on a synthetic fold",
+  "evolveClassifier — happy path: champion accuracy crosses a reduced threshold on a tiny fold",
   () => {
-    const { images, labels } = buildSyntheticIdx(7, 4);
-    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
-    const split = splitDataset(all, { trainCount: 20, validationCount: 10, testCount: 10 });
+    // In-CI variant: a small `inputCount × classCount` problem with a
+    // strong per-class signal so mutation-from-noise evolution can
+    // converge inside a few hundred milliseconds. The headline
+    // 95 %-on-real-MNIST run is the developer screenshot one-off and
+    // is intentionally NOT exercised here.
+    const inputCount = 8;
+    const classCount = 3;
+    const samplesPerClass = 12;
+    const samples: DigitSample[] = [];
+    let idx = 0;
+    for (let pass = 0; pass < samplesPerClass; pass++) {
+      for (let label = 0; label < classCount; label++) {
+        const features = new Array<number>(inputCount).fill(0);
+        // One-hot-ish signal: feature `label` and `label + classCount`
+        // both fire for class `label`; the other features are zeros.
+        features[label] = 1;
+        features[label + classCount] = 1;
+        samples.push({
+          index: idx++,
+          label,
+          features,
+          pixels: new Array(IMAGE_SIZE * IMAGE_SIZE).fill(0),
+        });
+      }
+    }
+    const trainCount = 24;
+    const valCount = 6;
+    const split = {
+      train: samples.slice(0, trainCount),
+      validation: samples.slice(trainCount, trainCount + valCount),
+      test: samples.slice(trainCount + valCount),
+    };
+    const REDUCED_THRESHOLD = 0.6;
     const result = evolveClassifier(split, {
       seed: 12345,
-      populationSize: 8,
-      maxGenerations: 5,
-      mutationStrength: 0.05,
-      mutationRate: 0.05,
+      populationSize: 16,
+      maxGenerations: 50,
+      mutationStrength: 0.6,
+      mutationRate: 0.3,
+      addNeuronRate: 0,
+      inputCount,
+      classCount,
+      accuracyThreshold: REDUCED_THRESHOLD,
+    });
+    assertGreaterOrEqual(
+      result.validationAccuracy,
+      REDUCED_THRESHOLD,
+      `validation accuracy should reach the reduced ${
+        (REDUCED_THRESHOLD * 100).toFixed(0)
+      }% in-CI threshold, got ${result.validationAccuracy}`,
+    );
+    assertEquals(result.solved, true);
+    Creature.fromJSON(result.champion.exportJSON()).validate();
+  },
+);
+
+Deno.test(
+  "evolveClassifier — gen-1 population is noise (mean accuracy near chance)",
+  () => {
+    // Generation 1 must be uniform-random noise: the population's mean
+    // accuracy must sit near 1/CLASS_COUNT (10%), confirming no
+    // warm-start is being applied. We use the canonical synthetic
+    // signal-bearing dataset to keep the test fast.
+    const { images, labels } = buildSyntheticIdx(13, 5);
+    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
+    const split = splitDataset(all, { trainCount: 30, validationCount: 10, testCount: 10 });
+    let firstGenMean = -Infinity;
+    let firstGenBest = -Infinity;
+    evolveClassifier(split, {
+      seed: 24681,
+      populationSize: 32,
+      maxGenerations: 1,
+      mutationStrength: 0.1,
+      mutationRate: 0.1,
+      addNeuronRate: 0,
       inputCount: FEATURE_COUNT,
       classCount: CLASS_COUNT,
-      accuracyThreshold: 1.0, // disable early-stop
-      initNoise: 0.005,
+      accuracyThreshold: 1.0,
+      onGeneration: (info) => {
+        if (info.generation === 0) {
+          firstGenMean = info.meanAccuracy;
+          firstGenBest = info.bestAccuracy;
+        }
+      },
     });
-    // Floor: comfortably beats 10% random baseline. The synthetic dataset
-    // has a strong per-class signal, so the template warm-start alone
-    // typically reaches 100% — anything above 0.5 demonstrates the
-    // pipeline is wired up correctly.
-    assertGreater(
-      result.validationAccuracy,
-      0.5,
-      `validation accuracy should beat 0.5 floor, got ${result.validationAccuracy}`,
+    // The mean across a 32-strong uniform-random NEAT population must
+    // sit far below half-way between chance and a competent classifier.
+    // A warm-started population would post a mean well above this bar.
+    const chance = 1 / CLASS_COUNT;
+    assertLess(
+      firstGenMean,
+      chance + 0.25,
+      `expected gen-1 mean accuracy near chance (${chance}), got ${firstGenMean}`,
     );
-    // Champion serialises and re-loads cleanly.
-    const exportJson = result.champion.exportJSON();
-    Creature.fromJSON(exportJson).validate();
+    // Sanity: the best of a random population can occasionally beat
+    // chance by luck, but it should be well below "solved" — we check
+    // it is not absurdly high (≥ 80 %), proving no warm-start.
+    assertLess(
+      firstGenBest,
+      0.8,
+      `gen-1 best should not look pre-trained, got ${firstGenBest}`,
+    );
+  },
+);
+
+Deno.test(
+  "evolveClassifier — honours the hard generation cap",
+  () => {
+    // With a vanishing mutation strength + zero structural mutation the
+    // search cannot solve the task within the cap. The result must
+    // therefore stop at the cap and report `solved=false`.
+    const { images, labels } = buildSyntheticIdx(17, 3);
+    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
+    const split = splitDataset(all, { trainCount: 18, validationCount: 6, testCount: 6 });
+    const cap = 3;
+    const result = evolveClassifier(split, {
+      seed: 555,
+      populationSize: 4,
+      maxGenerations: cap,
+      mutationStrength: 0.0001,
+      mutationRate: 0.0001,
+      addNeuronRate: 0,
+      inputCount: FEATURE_COUNT,
+      classCount: CLASS_COUNT,
+      accuracyThreshold: 0.999,
+    });
+    assertEquals(
+      result.generations,
+      cap,
+      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
+    );
+    assertEquals(
+      result.solved,
+      false,
+      "with vanishing mutation the search must not cross the threshold within the cap",
+    );
   },
 );
 
@@ -354,15 +540,9 @@ Deno.test("evolveClassifier — empty validation slice raises a clear error", ()
       evolveClassifier(
         { train: samples, validation: [], test: [] },
         {
-          seed: 1,
+          ...DEFAULT_EVOLVE_OPTIONS,
           populationSize: 2,
           maxGenerations: 1,
-          mutationStrength: 0.1,
-          mutationRate: 0.1,
-          inputCount: FEATURE_COUNT,
-          classCount: CLASS_COUNT,
-          accuracyThreshold: 0.5,
-          initNoise: 0.01,
         },
       ),
     Error,
@@ -379,15 +559,9 @@ Deno.test("evolveClassifier — empty training slice raises a clear error", () =
       evolveClassifier(
         { train: [], validation: samples, test: [] },
         {
-          seed: 1,
+          ...DEFAULT_EVOLVE_OPTIONS,
           populationSize: 2,
           maxGenerations: 1,
-          mutationStrength: 0.1,
-          mutationRate: 0.1,
-          inputCount: FEATURE_COUNT,
-          classCount: CLASS_COUNT,
-          accuracyThreshold: 0.5,
-          initNoise: 0.01,
         },
       ),
     Error,
@@ -404,12 +578,12 @@ Deno.test(
       seed: 9999,
       populationSize: 6,
       maxGenerations: 4,
-      mutationStrength: 0.05,
-      mutationRate: 0.05,
+      mutationStrength: 0.2,
+      mutationRate: 0.2,
+      addNeuronRate: 0,
       inputCount: FEATURE_COUNT,
       classCount: CLASS_COUNT,
       accuracyThreshold: 1.0,
-      initNoise: 0.01,
     };
     const split1 = splitDataset(all, { trainCount: 20, validationCount: 10, testCount: 10 });
     const split2 = splitDataset(all, { trainCount: 20, validationCount: 10, testCount: 10 });
@@ -447,9 +621,8 @@ Deno.test("buildGridCells emits at most GRID_ROWS*GRID_COLS cells with frames", 
       pixels: new Array(IMAGE_SIZE * IMAGE_SIZE).fill(0),
     });
   }
-  const W = Array.from({ length: CLASS_COUNT }, () => new Array(FEATURE_COUNT).fill(0));
-  const json = buildInitialCreatureJSON(W, new Array(CLASS_COUNT).fill(0));
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(101, 1, FEATURE_COUNT, CLASS_COUNT);
+  const creature = Creature.fromJSON(pop[0]);
   const cells = buildGridCells(creature, samples, 2);
   assertGreaterOrEqual(cells.length, 1);
   assert(cells.length <= GRID_ROWS * GRID_COLS);

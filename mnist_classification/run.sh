@@ -3,10 +3,18 @@ set -euo pipefail
 
 # MNIST Handwritten-Digit Classification Example Runner
 #
-# Evolves a NEAT-AI 196 → 10 LOGISTIC linear classifier on a 1000/200/200
-# slice of the canonical MNIST test set, saves the champion creature
-# and confusion matrix, and renders an animated 5×4 grid SVG snapshot
-# of the held-out test predictions to docs/screenshots/mnist_classification.svg.
+# Default mode (used by quality.sh): trains the SGD/MLP baseline
+# (`evolveMLPClassifier`) on the canonical MNIST 50k / 10k / 10k split,
+# saves the champion creature, the confusion matrix, the prediction
+# grid SVG (docs/screenshots/mnist_classification.svg) and the
+# dual-axis per-epoch evolution chart
+# (docs/screenshots/mnist_classification_evolution_chart.svg).
+#
+# Set MNIST_NEAT_EVOLUTION=1 to instead run the long-form NEAT
+# evolution from uniform-random noise (`evolveClassifier`). This is a
+# one-off developer screenshot run that may take hours and additionally
+# emits the multi-panel evolution-progression strip
+# (docs/screenshots/mnist_classification_evolution.svg).
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
