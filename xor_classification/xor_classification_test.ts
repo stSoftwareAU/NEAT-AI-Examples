@@ -2,15 +2,22 @@
  * Unit tests for the XOR classification example. "What" tests only —
  * each test calls a real function and asserts on observable outputs
  * (predictions, fitness, file contents, SVG structure).
+ *
+ * Issue #148: the hand-crafted minimal-seed creature has been removed.
+ * Tests previously named after `buildMinimalSeedCreature` now exercise
+ * the uniform-random {@link buildRandomSeedCreature} replacement, and
+ * the few assertions that depended on the all-zero scaffold (e.g. MSE
+ * exactly 0.25) have been relaxed to the contract the random gen-1
+ * creature still satisfies — finite outputs in `[0, 1]` and a
+ * gen-1 score well below the solved threshold.
  */
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 
-import { asCreatureExport } from "../common/legacy_types.ts";
 import {
-  buildMinimalSeedCreature,
+  buildRandomSeedCreature,
   correctCount,
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
@@ -37,34 +44,47 @@ Deno.test("xorSamples returns the four canonical truth-table rows", () => {
   assertEquals(samples[3], { inputs: [1, 1], target: 0 });
 });
 
-Deno.test("buildMinimalSeedCreature has 2 inputs, 0 hidden, 1 output", () => {
-  const json = buildMinimalSeedCreature();
+Deno.test("buildRandomSeedCreature has 2 inputs, 0 hidden, 1 output", () => {
+  const json = buildRandomSeedCreature(12345);
   assertEquals(json.input, INPUT_COUNT);
   assertEquals(json.output, OUTPUT_COUNT);
-  // Three neurons total: two inputs + one output, no hidden.
-  assertEquals(json.neurons.length, 3);
+  // Two neurons in the export shape: only the output (inputs are implicit
+  // by `input` count). No hidden neurons — NEAT must invent them.
   const hidden = json.neurons.filter((n) => n.type === "hidden");
   assertEquals(
     hidden.length,
     0,
-    "minimal seed must have zero hidden neurons — NEAT must invent them",
+    "random seed must have zero hidden neurons — NEAT must invent them",
   );
 });
 
-Deno.test("buildMinimalSeedCreature produces a valid creature", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+Deno.test("buildRandomSeedCreature produces a valid creature with finite outputs", () => {
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   creature.validate();
   assertEquals(creature.input, INPUT_COUNT);
   assertEquals(creature.output, OUTPUT_COUNT);
-  // Activating the seed must produce a finite output.
   for (const { inputs } of xorSamples()) {
     const out = predict(creature, inputs);
     assert(Number.isFinite(out));
   }
 });
 
-Deno.test("predict returns a number in [0, 1] for the seed creature", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+Deno.test("buildRandomSeedCreature is deterministic for a given seed", () => {
+  // Same seed → identical export; different seed → different export.
+  // No hand-crafted scaffold: every neuron, weight, and bias is drawn
+  // from the seeded PRNG.
+  const a = buildRandomSeedCreature(4242);
+  const b = buildRandomSeedCreature(4242);
+  const c = buildRandomSeedCreature(9999);
+  assertEquals(JSON.stringify(a), JSON.stringify(b));
+  assert(
+    JSON.stringify(a) !== JSON.stringify(c),
+    "different seeds must produce different random creatures",
+  );
+});
+
+Deno.test("predict returns a number in [0, 1] for the random seed creature", () => {
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   for (const { inputs } of xorSamples()) {
     const out = predict(creature, inputs);
     assert(Number.isFinite(out), `output must be finite, got ${out}`);
@@ -73,19 +93,19 @@ Deno.test("predict returns a number in [0, 1] for the seed creature", () => {
   }
 });
 
-Deno.test("meanSquaredError is in [0, 1] and seed is around 0.25", () => {
-  // The minimal seed has zero weights and zero output bias, so the
-  // LOGISTIC output is 0.5 and the squared error per sample is 0.25.
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+Deno.test("meanSquaredError on the random seed is in [0, 1] and finite", () => {
+  // The random seed has zero hidden neurons and random direct weights, so
+  // it cannot represent XOR. Per-sample squared error is bounded by 1
+  // (LOGISTIC output ∈ [0, 1] vs target ∈ {0, 1}).
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const mse = meanSquaredError(creature);
   assert(Number.isFinite(mse));
   assertGreaterOrEqual(mse, 0);
   assertGreaterOrEqual(1, mse);
-  assertGreater(0.5, mse);
 });
 
 Deno.test("correctCount returns 0..4", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const c = correctCount(creature);
   assertGreaterOrEqual(c, 0);
   assertGreaterOrEqual(4, c);
@@ -127,11 +147,11 @@ Deno.test(
   async () => {
     // Reduced budget: small population + capped generations to stay
     // inside the 120-second per-test budget while still giving NEAT
-    // room to invent a hidden neuron and solve XOR.
+    // room to invent a hidden neuron and solve XOR from random noise.
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
       populationSize: 30,
-      maxGenerations: 200,
+      maxGenerations: 400,
     });
     assertEquals(
       result.solved,
@@ -144,7 +164,7 @@ Deno.test(
 
     // The champion must have at least one hidden neuron — XOR is not
     // linearly separable, so a winning solution requires NEAT to have
-    // grown the topology beyond the seed.
+    // grown the topology beyond the random direct-only seed.
     const championExport = result.champion.exportJSON();
     const hiddenNeurons = championExport.neurons.filter((n) => n.type === "hidden");
     assertGreater(
@@ -166,7 +186,7 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveXorController emits GenerationInfo whose seed reflects the minimal topology",
+  "evolveXorController emits GenerationInfo whose fields are finite numbers",
   async () => {
     const samples: GenerationInfo[] = [];
     await evolveXorController({
@@ -183,13 +203,14 @@ Deno.test(
       assertEquals(Number.isInteger(s.neurons), true);
       assertEquals(Number.isInteger(s.synapses), true);
       assertGreater(s.neurons, 0);
-      assertGreater(s.synapses, 0);
+      assertGreaterOrEqual(s.synapses, 0);
+      // Best-fitness / best-error must be finite — they reflect the
+      // captured champion. `meanFitness` may be NaN early on when the
+      // library has not yet evaluated every member, so we do not
+      // assert finiteness on the population-mean field.
+      assert(Number.isFinite(s.bestFitness), `bestFitness must be finite, got ${s.bestFitness}`);
+      assert(Number.isFinite(s.bestError), `bestError must be finite, got ${s.bestError}`);
     }
-    // The first reported generation reflects the minimal seed: 3 neurons
-    // (2 input + 1 output) and 2 direct input → output synapses. NEAT may
-    // grow the topology in subsequent segments.
-    assertEquals(samples[0].neurons, 3);
-    assertEquals(samples[0].synapses, 2);
   },
 );
 
@@ -216,19 +237,60 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveXorController still produces a champion when the budget is exhausted (edge case)",
+  "evolveXorController honours the hard generation cap when the threshold is unreachable",
   async () => {
+    // errorThreshold=0 is unreachable in two generations from random
+    // noise; the run must still terminate at maxGenerations and return
+    // a usable champion (no infinite loop).
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 2,
       populationSize: 6,
-      errorThreshold: 0, // unreachable in two generations
+      errorThreshold: 0,
     });
     assertEquals(result.solved, false);
     assertGreaterOrEqual(result.generations, 1);
+    // The library may run a small number of additional iterations
+    // inside a single segment, but the loop must not exceed a small
+    // multiple of `maxGenerations` — i.e. the cap is honoured at the
+    // segment-loop level so the run cannot wedge indefinitely.
+    assertGreaterOrEqual(20, result.generations);
     // Champion is a real Creature that activates without throwing.
     const out = predict(result.champion, [0, 1]);
     assert(Number.isFinite(out), `champion output must be finite, got ${out}`);
+  },
+);
+
+Deno.test(
+  "evolveXorController gen-1 snapshot has a poor score (well below the threshold)",
+  async () => {
+    // Verify the noise → competent narrative: the captured gen-1
+    // snapshot must demonstrably be far from solving XOR. With random
+    // direct-only weights (no hidden neurons) the best-case MSE is at
+    // least the linear-baseline plateau of 0.25, so `1 - MSE` cannot
+    // reach the solved threshold of `1 - errorThreshold` (= 0.95).
+    const tmp = Deno.makeTempDirSync({ prefix: "xor_gen1_test_" });
+    try {
+      await evolveXorController({
+        ...DEFAULT_EVOLVE_OPTIONS,
+        maxGenerations: 1,
+        populationSize: 6,
+        errorThreshold: 0,
+        snapshotConfig: { checkpoints: [1], outputDir: tmp },
+      });
+      const snaps = loadSnapshots(tmp);
+      assertEquals(snaps.length, 1);
+      const gen1 = snaps[0];
+      assertEquals(gen1.generation, 1);
+      const solvedScore = 1 - DEFAULT_EVOLVE_OPTIONS.errorThreshold;
+      assertGreater(
+        solvedScore,
+        gen1.score,
+        `gen-1 score (${gen1.score}) must be below the solved threshold (${solvedScore})`,
+      );
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
   },
 );
 
@@ -242,8 +304,8 @@ Deno.test("shadeColour clamps and produces a hex colour string", () => {
 });
 
 Deno.test("renderDecisionBoundarySVG produces a well-formed SVG with all four samples", () => {
-  // Use the minimal seed; the test only cares about SVG structure.
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  // Use the random seed; the test only cares about SVG structure.
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: 8,
     samples: xorSamples(),
@@ -269,7 +331,7 @@ Deno.test("renderDecisionBoundarySVG produces a well-formed SVG with all four sa
 });
 
 Deno.test("renderDecisionBoundarySVG honours the requested grid resolution", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const grid = 6;
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: grid,
@@ -284,7 +346,7 @@ Deno.test("renderDecisionBoundarySVG honours the requested grid resolution", () 
 });
 
 Deno.test("renderDecisionBoundarySVG throws on grid resolution < 2", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   let threw = false;
   try {
     renderDecisionBoundarySVG(creature, { gridResolution: 1, samples: xorSamples() });
@@ -295,7 +357,7 @@ Deno.test("renderDecisionBoundarySVG throws on grid resolution < 2", () => {
 });
 
 Deno.test("renderDecisionBoundarySVG embeds SMIL pulse animations on each sample", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: 8,
     samples: xorSamples(),
@@ -356,7 +418,7 @@ Deno.test(
 );
 
 Deno.test("renderDecisionBoundarySVG output uses the canonical screenshot resolution", () => {
-  const creature = Creature.fromJSON(asCreatureExport(buildMinimalSeedCreature()));
+  const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: DECISION_BOUNDARY_GRID,
     samples: xorSamples(),

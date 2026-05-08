@@ -4,10 +4,15 @@
 > from there to a working XOR classifier.
 
 `xor_classification.ts` evolves a tiny NEAT-AI network that learns the XOR truth table — the
-canonical "Hello World" of neuroevolution. Evolution starts from a **minimal seed** (two inputs,
-zero hidden neurons, one output) and delegates structural mutation — add-neuron, add-synapse and
-weight tuning — to `creature.evolveDir(...)`. XOR is not linearly separable, so the seed cannot
-solve the task; NEAT must invent at least one hidden neuron during evolution (issue #131).
+canonical "Hello World" of neuroevolution. The initial creature is built by the NEAT-AI library's
+uniform-random `new Creature(2, 1)` constructor — direct input → output synapses with random weights
+and a random output bias drawn from the seeded global PRNG. **No topology, weights, or biases are
+hand-specified by this example.** The single output neuron's activation is pinned to `LOGISTIC` so
+the `>= 0.5` classification threshold and the squared-error contribution against `{0, 1}` targets
+are well-defined; everything else (hidden topology, weights, biases) is invented by NEAT. Structural
+mutation — add-neuron, add-synapse and weight tuning — is delegated to `creature.evolveDir(...)`.
+XOR is not linearly separable, so the random direct-only gen-1 seed cannot solve the task; NEAT must
+invent at least one hidden neuron during evolution (issues #131, #148).
 
 ![XOR decision boundary](../docs/screenshots/xor_decision_boundary.svg)
 
@@ -18,10 +23,11 @@ solve the task; NEAT must invent at least one hidden neuron during evolution (is
 ```mermaid
 flowchart LR
     DATA["📊 XOR Samples<br/>4 truth-table rows<br/>(written as Float32 binary)"]
-    SEED["🌱 Minimal Seed<br/>2 inputs, 0 hidden, 1 output<br/>direct input→output synapses"]
+    SEED["🎲 Uniform-Random NEAT<br/>new Creature(2, 1)<br/>random weights and bias<br/>(no hand-crafted topology)"]
     EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE, ADD_CONN, MOD_WEIGHT, …"]
-    SNAP["📸 Snapshots at<br/>[1, 10, 100, 1000, 10000]"]
-    SOLVED{"MSE ≤ errorThreshold?"}
+    SNAP["📸 Snapshots at<br/>[1, 10, 100, 1000]"]
+    SOLVED{"MSE ≤ errorThreshold<br/>AND all 4 rows correct?"}
+    CAP{"Hit maxGenerations?"}
     CHAMP["💾 Save champion.json"]
     RENDER["🖼️ Render SVG<br/>Decision Boundary"]
     STRIP["🧬 Evolution-Progression Strip<br/>shows topology growth"]
@@ -31,7 +37,9 @@ flowchart LR
     EVOLVE --> SNAP
     EVOLVE --> SOLVED
     SOLVED -- yes --> CHAMP
-    SOLVED -- no, more generations --> EVOLVE
+    SOLVED -- no --> CAP
+    CAP -- no, more generations --> EVOLVE
+    CAP -- yes, give up --> CHAMP
     CHAMP --> RENDER
     SNAP --> STRIP
 
@@ -62,7 +70,11 @@ The XOR truth table:
 | 1   | 1   | 0      |
 
 Fitness is `1 - MSE` across the four samples; the task is "solved" when the mean squared error drops
-below the configured `errorThreshold` (default 0.05) and all four samples are classified correctly.
+below the configured `errorThreshold` (default `0.05`, equivalent to `>= 95%` per-sample fitness)
+AND all four truth-table rows are classified correctly. A hard generation cap (`maxGenerations`,
+default `2000`) bounds the run so the developer's screenshot run cannot wedge indefinitely if the
+threshold is never reached — the loop stops, the run is reported as "did not solve", and the SVG
+artefacts are still written.
 
 ## 🚀 Running the Example
 
@@ -90,18 +102,27 @@ Artefacts:
 
 The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
 generations `[1, 10, 100, 1000, 10000]` (those that fall inside the configured `maxGenerations`).
-Because the seed has zero hidden neurons but the champion typically grows several, the resulting
-strip is a literal picture of NEAT topology discovery — the first panel shows a flat 2 → 1 network,
-later panels show progressively richer topologies. Each panel displays the champion's topology, the
-generation label, and the score (`1 - MSE`) at that checkpoint.
+Because the gen-1 creature is **random noise** — direct input → output synapses with random weights
+and a random output bias, no hidden neurons — but the champion typically grows several hidden
+neurons during evolution, the resulting strip is a literal picture of NEAT topology discovery: the
+first panel shows a flat 2 → 1 network at noise-level fitness, the middle panels show the network
+growing structure as add-neuron mutations land, and the final panel shows the champion that solves
+XOR. Each panel displays the champion's topology, the generation label, and the score (`1 - MSE`) at
+that checkpoint.
 
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
 
 - **At least one hidden neuron is required.** A purely linear `w·s + b` cannot represent XOR — the
-  classes are not linearly separable. The minimal seed (zero hidden neurons) starts at MSE = 0.25;
-  NEAT must invent at least one hidden neuron via `ADD_NODE` to break out of that plateau.
+  classes are not linearly separable. The random direct-only gen-1 seed plateaus near MSE ≈ 0.25 (no
+  combination of input weights and output bias can do better); NEAT must invent at least one hidden
+  neuron via `ADD_NODE` to break out of that plateau.
+- **Solved-vs-cap.** The runner stops as soon as MSE drops below `errorThreshold` _and_ all four
+  rows are classified correctly. If neither happens within `maxGenerations`, the run is reported as
+  "did not solve" — but the captured snapshots and SVGs are still written so a debugger can see what
+  topology emerged. The hard cap exists specifically to keep the screenshot regeneration pipeline
+  from wedging indefinitely.
 - **Mutation rate matters.** The library defaults (`mutationRate = 0.3`, `mutationAmount = 1`) are
   too conservative for a problem this small; the runner sets them to `0.6` and `3` so structural
   mutations fire often enough to bootstrap a hidden neuron in the early generations.
