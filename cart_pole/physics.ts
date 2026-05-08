@@ -43,11 +43,28 @@ export interface CartPoleParams {
   forceMagnitude: number;
   /** Simulation time step (seconds). */
   timeStep: number;
+  /**
+   * Magnitude of the optional in-episode wobble disturbance force
+   * (newtons) applied to the cart in addition to the controller's action
+   * force. Defaults to `0`, which disables the disturbance entirely so the
+   * simulator behaves exactly as the textbook CartPole-v1 reference.
+   */
+  disturbanceMagnitude: number;
+  /**
+   * Per-step probability (in `[0, 1]`) that a wobble disturbance is
+   * applied. Only consulted when `disturbanceMagnitude > 0` and a PRNG is
+   * supplied to {@link step}. Defaults to `0`, which disables the
+   * disturbance entirely.
+   */
+  disturbanceProbability: number;
 }
 
 /**
  * Default physical parameters. These match the canonical CartPole-v1
- * benchmark used in the neuroevolution literature.
+ * benchmark used in the neuroevolution literature. The optional wobble
+ * disturbance is disabled by default (`disturbanceMagnitude` and
+ * `disturbanceProbability` both `0`) so behaviour is byte-identical to
+ * the textbook reference unless an example explicitly opts in.
  */
 export const DEFAULT_PARAMS: CartPoleParams = {
   gravity: 9.8,
@@ -56,6 +73,8 @@ export const DEFAULT_PARAMS: CartPoleParams = {
   poleHalfLength: 0.5,
   forceMagnitude: 10.0,
   timeStep: 0.02,
+  disturbanceMagnitude: 0,
+  disturbanceProbability: 0,
 };
 
 /** Threshold beyond which the cart-pole episode is considered failed. */
@@ -99,18 +118,36 @@ export function perturbedInitialState(
  * Advance the cart-pole simulation by one time step using semi-implicit
  * Euler integration.
  *
+ * When `params.disturbanceMagnitude > 0` and a deterministic PRNG is
+ * supplied via `random`, the simulator may apply an additional
+ * `±params.disturbanceMagnitude` force to the cart in addition to the
+ * controller's action force. The disturbance is gated by a single PRNG
+ * roll against `params.disturbanceProbability`; when it fires, a second
+ * PRNG roll picks the sign. With `disturbanceMagnitude === 0` (or no
+ * PRNG supplied) the PRNG is not consulted at all and the integrator
+ * behaves byte-identically to the textbook CartPole-v1 reference.
+ *
  * @param state Current state of the system.
  * @param action Direction of the applied force: -1 pushes left, +1 pushes
  *               right. Any non-zero numeric value is normalised by sign.
  * @param params Physical parameters (defaults to {@link DEFAULT_PARAMS}).
+ * @param random Optional deterministic PRNG returning values in `[0, 1)`.
+ *               Required for the disturbance path; ignored otherwise.
  * @returns The state after one time step. The input state is not mutated.
  */
 export function step(
   state: CartPoleState,
   action: number,
   params: CartPoleParams = DEFAULT_PARAMS,
+  random?: () => number,
 ): CartPoleState {
-  const force = (action >= 0 ? 1 : -1) * params.forceMagnitude;
+  let force = (action >= 0 ? 1 : -1) * params.forceMagnitude;
+  if (random !== undefined && params.disturbanceMagnitude > 0) {
+    if (random() < params.disturbanceProbability) {
+      const sign = random() < 0.5 ? -1 : 1;
+      force += sign * params.disturbanceMagnitude;
+    }
+  }
   const totalMass = params.cartMass + params.poleMass;
   const polemassLength = params.poleMass * params.poleHalfLength;
 
