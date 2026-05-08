@@ -761,6 +761,91 @@ Deno.test(
   },
 );
 
+Deno.test(
+  "renderRunSVG keeps the lander body above the ground at touchdown (issue #181)",
+  () => {
+    // Issue #181: when the lander touches down (state.y = groundY) the
+    // SVG must draw the lander resting ON the ground silhouette, not
+    // half-buried in it. Both the static resting pose and the animated
+    // lander icon's final position must place the lander's lowest point
+    // at or above the projected ground line.
+    const trace = [
+      {
+        state: {
+          x: 0,
+          y: 80,
+          vx: 0,
+          vy: 0,
+          angle: 0,
+          angularV: 0,
+          fuel: 100,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+      {
+        state: {
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: -0.5,
+          angle: 0,
+          angularV: 0,
+          fuel: 50,
+        } as LanderState,
+        action: { main: false, left: false, right: false },
+      },
+    ];
+    const svg = renderRunSVG(trace);
+
+    // Top edge of the terrain silhouette rect — anything drawn at a
+    // larger SVG y is below the ground line.
+    const terrainMatch = svg.match(
+      /<rect x="0" y="([\d.]+)" width="800" height="[\d.]+" fill="#3a2a1a"\/>/,
+    );
+    assert(terrainMatch, "expected a terrain silhouette rect");
+    const groundSvg = parseFloat(terrainMatch[1]);
+
+    // Every static-pose lander body line must sit at or above the ground.
+    const bodyLineRegex =
+      /<line class="body" x1="[\d.-]+" y1="([\d.-]+)" x2="[\d.-]+" y2="([\d.-]+)"/g;
+    const bodyMatches = [...svg.matchAll(bodyLineRegex)];
+    assert(
+      bodyMatches.length > 0,
+      "expected at least one resting-pose body line",
+    );
+    for (const m of bodyMatches) {
+      const y1 = parseFloat(m[1]);
+      const y2 = parseFloat(m[2]);
+      const lowest = Math.max(y1, y2);
+      assertGreaterOrEqual(
+        groundSvg + 0.01,
+        lowest,
+        `static pose body extends below ground (lowest=${lowest}, ground=${groundSvg})`,
+      );
+    }
+
+    // The animated lander's translate keyframes follow the trajectory.
+    // The final keyframe must place the lander icon such that its
+    // lowest body extent is at or above the ground.
+    const animateMatch = svg.match(
+      /<animateTransform attributeName="transform" type="translate" values="([^"]+)"/,
+    );
+    assert(animateMatch, "expected the animated-lander translate values");
+    const lastFrame = animateMatch[1].split(";").pop()!;
+    const [, lastY] = lastFrame.split(",").map(parseFloat);
+    // Local body geometry extends from `-LANDER_HALF_LENGTH` to
+    // `+LANDER_HALF_LENGTH` around the translate point. The lowest
+    // visible y is therefore `lastY + LANDER_HALF_LENGTH`.
+    const animLowest = lastY + 12; // LANDER_HALF_LENGTH
+    assertGreaterOrEqual(
+      groundSvg + 0.01,
+      animLowest,
+      `animated lander final position extends below ground ` +
+        `(lowest=${animLowest}, ground=${groundSvg})`,
+    );
+  },
+);
+
 Deno.test("renderRunSVG marks the landing pad with a TARGET indicator", () => {
   // Issue #72: the lander must aim for a specific location — make the
   // pad's role as the destination unmistakable with an arrow + label.
