@@ -3,92 +3,194 @@
  * only — each test calls a real function, runs the simulator or
  * evolver, and asserts on the observable outputs.
  */
-import { assert, assertEquals, assertGreaterOrEqual, assertNotEquals } from "@std/assert";
+import { assert, assertEquals, assertGreaterOrEqual } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
-import { asCreatureExport } from "../common/legacy_types.ts";
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import {
-  buildInitialCreatureJSON,
+  buildRandomPopulation,
   DEFAULT_EVOLVE_OPTIONS,
   evolveMazeController,
-  genesFromCreatureJSON,
-  mutateCreatureJSON,
-  randomCreatureJSON,
+  type GenerationInfo,
+  mutateCreatureExport,
   replayController,
   scoreController,
+  SOLVED_THRESHOLD,
 } from "./maze_navigation.ts";
 import { renderRunSVG } from "./svg.ts";
 import { INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
+import { loadSnapshots } from "../common/evolution_snapshot.ts";
+import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 
-Deno.test("buildInitialCreatureJSON has 5 inputs and 4 outputs", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const json = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  assertEquals(json.input, INPUT_COUNT);
-  assertEquals(json.output, OUTPUT_COUNT);
-  assertEquals(json.synapses.length, INPUT_COUNT * OUTPUT_COUNT);
+Deno.test("buildRandomPopulation produces uniform-random NEAT genomes", () => {
+  // Topology must NOT be hand-specified — the library decides shape.
+  // We assert only that the population has the requested size and that
+  // every member is a valid Creature with the right input/output counts.
+  const pop = buildRandomPopulation(42, 5);
+  assertEquals(pop.length, 5);
+  for (const json of pop) {
+    assertEquals(json.input, INPUT_COUNT);
+    assertEquals(json.output, OUTPUT_COUNT);
+    const creature = Creature.fromJSON(json);
+    creature.validate();
+    creature.clearState();
+    const out = creature.activate(new Float32Array(INPUT_COUNT));
+    assertEquals(out.length, OUTPUT_COUNT);
+    for (let i = 0; i < out.length; i++) {
+      assert(Number.isFinite(out[i]), `expected finite output, got ${out[i]}`);
+    }
+  }
 });
 
-Deno.test("buildInitialCreatureJSON produces a valid creature", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0.1);
-  const json = buildInitialCreatureJSON(weights, [0.1, 0.2, 0.3, 0.4]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+Deno.test("buildRandomPopulation is deterministic for the same seed", () => {
+  const a = buildRandomPopulation(99, 4);
+  const b = buildRandomPopulation(99, 4);
+  assertEquals(a.length, b.length);
+  for (let i = 0; i < a.length; i++) {
+    // Compare via JSON to ignore property ordering.
+    assertEquals(JSON.stringify(a[i]), JSON.stringify(b[i]));
+  }
+});
+
+Deno.test("buildRandomPopulation does not hand-specify hidden topology", () => {
+  // Generation-1 noise: the library's minimal seed has zero hidden
+  // neurons and direct input → output connections. Hidden structure
+  // must emerge from mutation, not be supplied by the example.
+  const pop = buildRandomPopulation(7, 3);
+  for (const json of pop) {
+    const hiddenNeurons = json.neurons.filter((n) => n.type === "hidden");
+    assertEquals(
+      hiddenNeurons.length,
+      0,
+      "no hidden neurons should be hand-specified in the initial population",
+    );
+  }
+});
+
+Deno.test("mutateCreatureExport yields a valid creature", () => {
+  const random = createDeterministicRandom(7);
+  const pop = buildRandomPopulation(1, 1);
+  const child = mutateCreatureExport(pop[0], random, 1.0, 0.3);
+  const creature = Creature.fromJSON(child);
   creature.validate();
 });
 
-Deno.test("buildInitialCreatureJSON rejects wrong-sized weight vectors", () => {
-  let threw = false;
-  try {
-    buildInitialCreatureJSON([1, 2, 3], [0, 0, 0, 0]);
-  } catch {
-    threw = true;
-  }
-  assertEquals(threw, true);
-});
-
-Deno.test("genesFromCreatureJSON round-trips weights and biases", () => {
-  const weights: number[] = [];
-  for (let i = 0; i < INPUT_COUNT * OUTPUT_COUNT; i++) weights.push(i * 0.01);
-  const biases: [number, number, number, number] = [0.1, -0.2, 0.3, -0.4];
-  const json = buildInitialCreatureJSON(weights, biases);
-  const genes = genesFromCreatureJSON(json);
-  assertEquals(genes.weights, weights);
-  assertEquals(genes.biases, biases);
-});
-
-Deno.test("randomCreatureJSON is deterministic for the same seed", () => {
-  const a = randomCreatureJSON(createDeterministicRandom(99));
-  const b = randomCreatureJSON(createDeterministicRandom(99));
+Deno.test("mutateCreatureExport is deterministic for the same random stream", () => {
+  const pop = buildRandomPopulation(5, 1);
+  const a = mutateCreatureExport(pop[0], createDeterministicRandom(11), 0.8, 0.2);
+  const b = mutateCreatureExport(pop[0], createDeterministicRandom(11), 0.8, 0.2);
   assertEquals(JSON.stringify(a), JSON.stringify(b));
 });
 
-Deno.test("mutateCreatureJSON yields a valid creature", () => {
-  const random = createDeterministicRandom(7);
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const parent = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  const child = mutateCreatureJSON(parent, random, 1.0, 0.3);
-  const creature = Creature.fromJSON(asCreatureExport(child));
-  creature.validate();
+Deno.test("mutateCreatureExport with addNeuronRate=1 grows topology", () => {
+  // Forcing addNeuronRate=1 must split exactly one synapse, adding
+  // one hidden neuron and replacing one synapse with two.
+  const pop = buildRandomPopulation(3, 1);
+  const parent = pop[0];
+  const random = createDeterministicRandom(13);
+  const child = mutateCreatureExport(parent, random, 0, 0, {
+    addNeuronRate: 1,
+    hiddenCounter: { value: 0 },
+  });
+  const parentHidden = parent.neurons.filter((n) => n.type === "hidden").length;
+  const childHidden = child.neurons.filter((n) => n.type === "hidden").length;
+  assertEquals(childHidden - parentHidden, 1, "expected exactly one new hidden neuron");
+  assertEquals(
+    child.synapses.length - parent.synapses.length,
+    1,
+    "splitting one synapse adds one net synapse (-1 + 2)",
+  );
+  // Resulting creature must still validate.
+  Creature.fromJSON(child).validate();
 });
 
 Deno.test("scoreController returns a finite score for an arbitrary creature", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const json = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(2, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const result = scoreController(creature, 50);
   assert(Number.isFinite(result.score), `expected finite score, got ${result.score}`);
   assertGreaterOrEqual(result.steps, 1);
 });
 
-Deno.test("evolveMazeController champion reaches the goal within the step cap", async () => {
+Deno.test(
+  "evolveMazeController generation-1 population is noise on average",
+  () => {
+    // Gen 1 must be noise. The maze L-corridor cannot be solved by a
+    // uniform-random linear policy on the very first try — the
+    // **population mean** sits well below SOLVED_THRESHOLD, confirming
+    // the population as a whole has not been warm-started.
+    let firstGenMean = -Infinity;
+    let firstGenBestReached = true;
+    evolveMazeController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 1,
+      onGeneration: (info) => {
+        if (info.generation === 0 && firstGenMean === -Infinity) {
+          firstGenMean = info.meanScore;
+          firstGenBestReached = info.bestReached;
+        }
+      },
+    });
+    assert(
+      firstGenMean < SOLVED_THRESHOLD,
+      `expected gen-1 population mean to be well below the SOLVED_THRESHOLD ` +
+        `(${SOLVED_THRESHOLD}), got ${firstGenMean}`,
+    );
+    // The default seed must not produce a gen-1 population whose best
+    // member already reaches the goal — that would mean we got lucky
+    // and the evolution narrative has nothing to show.
+    assertEquals(
+      firstGenBestReached,
+      false,
+      "gen-1 best member must not already reach the goal under the default seed",
+    );
+  },
+);
+
+Deno.test(
+  "evolveMazeController honours the hard generation cap",
+  () => {
+    // With a tiny strength + tiny rate, the evolver cannot solve the
+    // task within the cap. The result must therefore stop at the cap
+    // and report `solved=false`.
+    const cap = 3;
+    const result = evolveMazeController({
+      seed: 999,
+      populationSize: 4,
+      maxGenerations: cap,
+      mutationStrength: 0.01,
+      mutationRate: 0.01,
+      addNeuronRate: 0,
+    });
+    assertEquals(
+      result.generations,
+      cap,
+      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
+    );
+    assertEquals(
+      result.solved,
+      false,
+      "with vanishing mutation the search must not solve the maze within the cap",
+    );
+  },
+);
+
+Deno.test("evolveMazeController champion reaches the goal under the default seed", async () => {
   const result = evolveMazeController(DEFAULT_EVOLVE_OPTIONS);
+  assertEquals(
+    result.solved,
+    true,
+    `expected the champion's score to reach SOLVED_THRESHOLD=${SOLVED_THRESHOLD}, ` +
+      `got ${result.bestScore} after ${result.generations} generations`,
+  );
   assertEquals(
     result.championReached,
     true,
     `expected the champion to reach the goal, got finalDistance=${result.championFinalDistance}`,
   );
+  assertGreaterOrEqual(result.bestScore, SOLVED_THRESHOLD);
   // Champion must serialise cleanly for downstream consumption.
   const tmp = await Deno.makeTempDir({ prefix: "maze_test_" });
   try {
@@ -110,18 +212,9 @@ Deno.test("evolveMazeController is reproducible — fixed seed produces byte-ide
   assertEquals(a.championReached, b.championReached);
 });
 
-Deno.test("evolveMazeController with different seeds produces different champions", () => {
-  const a = evolveMazeController({ ...DEFAULT_EVOLVE_OPTIONS, seed: 1, maxGenerations: 5 });
-  const b = evolveMazeController({ ...DEFAULT_EVOLVE_OPTIONS, seed: 2, maxGenerations: 5 });
-  const aJson = JSON.stringify(a.champion.exportJSON());
-  const bJson = JSON.stringify(b.champion.exportJSON());
-  assertNotEquals(aJson, bJson);
-});
-
 Deno.test("replayController returns a non-empty trace starting at the start cell", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const json = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(4, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 50);
   assert(trace.length > 0);
   assertEquals(trace[0].steps, 0);
@@ -129,9 +222,8 @@ Deno.test("replayController returns a non-empty trace starting at the start cell
 });
 
 Deno.test("renderRunSVG emits an <svg> root with SMIL animation elements", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const json = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(6, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 30);
   const svg = renderRunSVG(trace);
   assert(svg.startsWith("<svg"), "must start with <svg>");
@@ -142,18 +234,16 @@ Deno.test("renderRunSVG emits an <svg> root with SMIL animation elements", () =>
 });
 
 Deno.test("renderRunSVG repeats the animation indefinitely", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const json = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(7, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 30);
   const svg = renderRunSVG(trace);
   assert(svg.includes('repeatCount="indefinite"'));
 });
 
 Deno.test("renderRunSVG draws the agent circle, footprint polyline, and goal pulse", () => {
-  const weights = new Array(INPUT_COUNT * OUTPUT_COUNT).fill(0);
-  const json = buildInitialCreatureJSON(weights, [0, 0, 0, 0]);
-  const creature = Creature.fromJSON(asCreatureExport(json));
+  const pop = buildRandomPopulation(8, 1);
+  const creature = Creature.fromJSON(pop[0]);
   const trace = replayController(creature, 30);
   const svg = renderRunSVG(trace);
   assert(svg.includes('class="agent"'), "expected the agent circle");
@@ -170,4 +260,85 @@ Deno.test("renderRunSVG rejects an empty trace", () => {
     threw = true;
   }
   assertEquals(threw, true);
+});
+
+Deno.test(
+  "evolveMazeController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
+  () => {
+    const tmp = Deno.makeTempDirSync({ prefix: "maze_snapshots_test_" });
+    try {
+      // Tiny population, weak mutation, low cap so the evolver does
+      // not accidentally hit SOLVED_THRESHOLD before all configured
+      // checkpoints fire.
+      const checkpoints = [1, 2, 3];
+      evolveMazeController({
+        seed: 1,
+        populationSize: 3,
+        maxGenerations: 4,
+        mutationStrength: 0.05,
+        mutationRate: 0.05,
+        addNeuronRate: 0,
+        snapshotConfig: { checkpoints, outputDir: tmp },
+      });
+
+      for (const gen of checkpoints) {
+        assertEquals(
+          existsSync(join(tmp, `snapshot-gen-${gen}.json`)),
+          true,
+          `expected snapshot-gen-${gen}.json to exist`,
+        );
+      }
+
+      const snapshots = loadSnapshots(tmp);
+      assertEquals(snapshots.length, checkpoints.length);
+
+      const svg = renderEvolutionProgressSvg(snapshots, {
+        title: "Maze Navigation — Evolution Progress",
+      });
+      assert(svg.startsWith("<svg"), "must start with <svg>");
+      assert(svg.length > 0, "SVG must be non-empty");
+      const panels = svg.match(/<g class="panel"/g) ?? [];
+      assertEquals(panels.length, checkpoints.length);
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "evolveMazeController emits GenerationInfo with sensible neuron and synapse counts",
+  () => {
+    const samples: GenerationInfo[] = [];
+    evolveMazeController({
+      seed: 1,
+      populationSize: 3,
+      maxGenerations: 3,
+      mutationStrength: 0.05,
+      mutationRate: 0.05,
+      addNeuronRate: 0,
+      onGeneration: (info) => samples.push(info),
+    });
+    assert(samples.length > 0, "expected at least one onGeneration call");
+    for (const info of samples) {
+      // Without structural mutation the topology stays at the library's
+      // minimal seed: INPUT_COUNT inputs + OUTPUT_COUNT outputs and
+      // INPUT_COUNT * OUTPUT_COUNT direct synapses.
+      assertEquals(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertEquals(info.synapses, INPUT_COUNT * OUTPUT_COUNT);
+      assert(Number.isFinite(info.bestScore));
+      assert(Number.isFinite(info.meanScore));
+    }
+  },
+);
+
+Deno.test("buildRandomPopulation members all serialise as CreatureExport", () => {
+  const pop = buildRandomPopulation(2024, 3);
+  for (const json of pop) {
+    const exported: CreatureExport = json;
+    // Round-trip via Creature must preserve the input/output count.
+    const c = Creature.fromJSON(exported);
+    const round = c.exportJSON();
+    assertEquals(round.input, exported.input);
+    assertEquals(round.output, exported.output);
+  }
 });
