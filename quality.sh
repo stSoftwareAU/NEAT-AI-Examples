@@ -106,7 +106,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .discovery
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .discovery
 echo ""
 
 # Run the Intelligent Design example
@@ -117,6 +117,9 @@ run_example "Discovery Example" "./discovery/run.sh"
 
 # Run the Crossover (Breeding) example
 run_example "Crossover (Breeding) Example" "./crossover/run.sh"
+
+# Run the CRISPR Gene Injection example
+run_example "CRISPR Gene Injection Example" "./crispr_injection/run.sh"
 
 # Run the Cart-Pole Balancing example
 run_example "Cart-Pole Balancing Example" "./cart_pole/run.sh"
