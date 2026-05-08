@@ -9,8 +9,10 @@
  * so the same trace produces byte-identical output across platforms.
  */
 import {
+  classifyOutcome,
   DEFAULT_TERRAIN,
   type LanderAction,
+  type LanderOutcome,
   type LanderState,
   type LanderTerrain,
 } from "./physics.ts";
@@ -72,14 +74,24 @@ function projectY(y: number, ceiling: number): number {
  * @param trace The trace frames from start to terminal state. Must be
  *   non-empty.
  * @param terrain Terrain layout (defaults to {@link DEFAULT_TERRAIN}).
+ * @param outcome Final classification of the run. When the controller
+ *   `crashed` or drifted `out_of_bounds`, the renderer draws a starburst
+ *   explosion at the final state and replaces the resting-pose lander
+ *   with debris so the failure is visually unmistakable (issue #177).
+ *   Defaults to classifying the last frame's state.
  */
 export function renderRunSVG(
   trace: TraceFrame[],
   terrain: LanderTerrain = DEFAULT_TERRAIN,
+  outcome?: LanderOutcome,
 ): string {
   if (trace.length === 0) {
     throw new Error("trace must contain at least one frame");
   }
+
+  const finalState = trace[trace.length - 1].state;
+  const resolvedOutcome: LanderOutcome = outcome ?? classifyOutcome(finalState, terrain);
+  const exploded = resolvedOutcome === "crashed" || resolvedOutcome === "out_of_bounds";
 
   // Determine the world-y ceiling for projection: include the highest
   // point reached plus some headroom so the trajectory always fits.
@@ -97,13 +109,23 @@ export function renderRunSVG(
     .join(" ");
 
   // Pose indices: start, midpoint, last (deduplicated for very short traces).
+  // When the run ended in an explosion, suppress the resting-pose lander at
+  // the touchdown point — the debris/starburst takes its place so the wreck
+  // is unmistakable (issue #177).
   const lastIdx = trace.length - 1;
   const midIdx = Math.floor(lastIdx / 2);
-  const poseIndices = Array.from(new Set([0, midIdx, lastIdx]));
+  const baseIndices = [0, midIdx, lastIdx];
+  const poseIndices = Array.from(
+    new Set(exploded ? baseIndices.filter((i) => i !== lastIdx) : baseIndices),
+  );
 
   const poseGroups = poseIndices
     .map((idx) => renderPose(trace[idx], idx, terrain, ceiling))
     .join("\n");
+
+  const finalCx = projectX(finalState.x, terrain);
+  const finalCy = projectY(finalState.y, ceiling);
+  const explosionGroup = exploded ? renderExplosion(finalCx, finalCy, resolvedOutcome) : "";
 
   // Build SMIL keyframes for an animated lander icon that follows the
   // entire trajectory. Sample at most 80 points so the value lists stay
@@ -194,6 +216,11 @@ export function renderRunSVG(
     `  <polyline class="trajectory" points="${trajectoryPoints}" ` +
     `fill="none" stroke="#9ad9ff" stroke-width="2" stroke-dasharray="4 3"/>`,
     poseGroups,
+    // Static debris + starburst when the run ended in a crash or
+    // out-of-bounds drift (issue #177). Drawn before the animated lander
+    // so the SMIL animation overlays during the descent and the debris
+    // is what remains when the loop ends.
+    explosionGroup,
     // Animated lander: a translate-then-rotate group lets us draw the
     // lander geometry (body, hull, three thruster flames) once in a
     // local frame at (0,0) and animate the whole package through the
@@ -262,6 +289,10 @@ export function renderRunSVG(
     `  <text x="${SVG_WIDTH - 12}" y="${SVG_HEIGHT - 12}" text-anchor="end" ` +
     `font-family="sans-serif" font-size="11" fill="#9ad9ff">animated · loops every ` +
     `${ANIMATION_DURATION_SECONDS}s</text>`,
+    // Outcome badge — top-right of the canvas. Colour-coded so a viewer
+    // can tell at a glance whether the run landed, crashed, drifted out
+    // of bounds, or timed out (issue #177).
+    renderOutcomeBadge(resolvedOutcome),
     `</svg>`,
     "",
   ].join("\n");
@@ -381,4 +412,127 @@ function renderStars(): string {
     stars.push(`  <circle cx="${x}" cy="${y}" r="1" fill="#ffffff" opacity="0.7"/>`);
   }
   return stars.join("\n");
+}
+
+/** Number of starburst rays drawn around an explosion. */
+const EXPLOSION_RAY_COUNT = 12;
+
+/** Outer radius (px) of the explosion starburst rays. */
+const EXPLOSION_OUTER_RADIUS = 38;
+
+/** Inner radius (px) of the explosion starburst rays. */
+const EXPLOSION_INNER_RADIUS = 14;
+
+/** Number of jagged debris fragments scattered around the impact point. */
+const EXPLOSION_DEBRIS_COUNT = 6;
+
+/**
+ * Render the wreck of a crashed lander as a `<g class="explosion">` group.
+ *
+ * The graphic combines four layers so the outcome reads at a glance:
+ *
+ *   1. A pulsing fireball circle.
+ *   2. A radial starburst (zig-zag polygon) in bright orange.
+ *   3. Several short "debris" line fragments scattered around the centre.
+ *   4. An "EXPLODED" or "OUT OF BOUNDS" caption above the wreck.
+ *
+ * All geometry is deterministic — no PRNG calls — so the same impact
+ * point produces byte-identical SVG output across runs.
+ */
+function renderExplosion(
+  cx: number,
+  cy: number,
+  outcome: LanderOutcome,
+): string {
+  const points: string[] = [];
+  for (let i = 0; i < EXPLOSION_RAY_COUNT * 2; i++) {
+    const angle = (i / (EXPLOSION_RAY_COUNT * 2)) * Math.PI * 2;
+    const r = i % 2 === 0 ? EXPLOSION_OUTER_RADIUS : EXPLOSION_INNER_RADIUS;
+    const px = cx + Math.cos(angle) * r;
+    const py = cy + Math.sin(angle) * r;
+    points.push(`${px.toFixed(2)},${py.toFixed(2)}`);
+  }
+  const burstPoints = points.join(" ");
+
+  // Debris fragments — short white-grey segments fanning outward at
+  // evenly-spaced angles with deterministic length variation so the
+  // output stays stable across runs.
+  const debrisLines: string[] = [];
+  for (let i = 0; i < EXPLOSION_DEBRIS_COUNT; i++) {
+    const angle = (i / EXPLOSION_DEBRIS_COUNT) * Math.PI * 2 + Math.PI / 7;
+    // Deterministic per-shard length jitter — alternating short/long.
+    const len = i % 2 === 0 ? 22 : 14;
+    const x1 = cx + Math.cos(angle) * 6;
+    const y1 = cy + Math.sin(angle) * 6;
+    const x2 = cx + Math.cos(angle) * (6 + len);
+    const y2 = cy + Math.sin(angle) * (6 + len);
+    debrisLines.push(
+      `    <line class="debris" x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" ` +
+        `x2="${x2.toFixed(2)}" y2="${
+          y2.toFixed(2)
+        }" stroke="#cccccc" stroke-width="2" stroke-linecap="round"/>`,
+    );
+  }
+
+  const caption = outcome === "out_of_bounds" ? "OUT OF BOUNDS" : "EXPLODED";
+
+  return [
+    `  <g class="explosion" data-outcome="${outcome}">`,
+    // Outer fireball — pulsing radius drives the eye to the wreck.
+    `    <circle class="fireball" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" ` +
+    `r="${EXPLOSION_OUTER_RADIUS}" fill="#ff8c1a" opacity="0.55">`,
+    `      <animate attributeName="r" values="${EXPLOSION_OUTER_RADIUS};${
+      (EXPLOSION_OUTER_RADIUS * 1.15).toFixed(2)
+    };${EXPLOSION_OUTER_RADIUS}" dur="1.2s" repeatCount="indefinite"/>`,
+    `      <animate attributeName="opacity" values="0.55;0.85;0.55" ` +
+    `dur="1.2s" repeatCount="indefinite"/>`,
+    `    </circle>`,
+    // Starburst — jagged star polygon in bright orange/yellow.
+    `    <polygon class="starburst" points="${burstPoints}" ` +
+    `fill="#ffd166" stroke="#ff5722" stroke-width="2" opacity="0.92"/>`,
+    // Inner core — bright yellow centre.
+    `    <circle class="core" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="6" ` +
+    `fill="#fff7d6"/>`,
+    ...debrisLines,
+    // Caption above the wreck — anchored centre so it sits over the impact.
+    `    <text class="explosion-label" x="${cx.toFixed(2)}" y="${
+      (cy - EXPLOSION_OUTER_RADIUS - 8).toFixed(2)
+    }" text-anchor="middle" font-family="monospace" font-size="13" ` +
+    `font-weight="bold" fill="#ff5722" stroke="#0b0b1a" stroke-width="0.5">${caption}</text>`,
+    `  </g>`,
+  ].join("\n");
+}
+
+/**
+ * Render an outcome badge in the top-right corner of the canvas. Each
+ * outcome gets a colour and a short label so a viewer can tell at a
+ * glance whether the run landed, crashed, drifted out of bounds, or
+ * timed out (issue #177).
+ */
+function renderOutcomeBadge(outcome: LanderOutcome): string {
+  const styles: Record<LanderOutcome, { label: string; fill: string }> = {
+    landed: { label: "✓ LANDED", fill: "#7ed321" },
+    crashed: { label: "✗ CRASHED", fill: "#ff5722" },
+    out_of_bounds: { label: "✗ OUT OF BOUNDS", fill: "#ff5722" },
+    flying: { label: "… TIMED OUT", fill: "#cccccc" },
+  };
+  const style = styles[outcome];
+  const padX = 10;
+  const padY = 6;
+  // Estimate text width from the label length so the badge sizes nicely.
+  const charWidth = 7.2;
+  const textWidth = style.label.length * charWidth;
+  const w = textWidth + padX * 2;
+  const h = 22;
+  const x = SVG_WIDTH - w - 12;
+  const y = 12;
+  return [
+    `  <g class="outcome-badge" data-outcome="${outcome}">`,
+    `    <rect x="${x.toFixed(2)}" y="${y}" width="${w.toFixed(2)}" height="${h}" rx="4" ` +
+    `fill="${style.fill}" opacity="0.92"/>`,
+    `    <text x="${(x + w / 2).toFixed(2)}" y="${(y + h - padY).toFixed(2)}" ` +
+    `text-anchor="middle" font-family="monospace" font-size="12" font-weight="bold" ` +
+    `fill="#0b0b1a">${style.label}</text>`,
+    `  </g>`,
+  ].join("\n");
 }
