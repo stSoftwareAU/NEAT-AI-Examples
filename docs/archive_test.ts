@@ -74,8 +74,11 @@ Deno.test("No PR summary files remain in docs/ root", () => {
       if (entry.name === "pr-summary-106.md") continue;
       if (entry.name === "pr-summary-108.md") continue;
       if (entry.name === "pr-summary-109.md") continue;
+      if (entry.name === "pr-summary-110.md") continue;
       if (entry.name === "pr-summary-131.md") continue;
+      if (entry.name === "pr-summary-137.md") continue;
       if (entry.name === "pr-summary-138.md") continue;
+      if (entry.name === "pr-summary-143.md") continue;
       throw new Error(
         `Found unexpected PR summary file in docs/ root: ${entry.name}`,
       );

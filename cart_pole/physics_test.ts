@@ -6,6 +6,7 @@
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 
+import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import {
   type CartPoleState,
   DEFAULT_LIMITS,
@@ -13,6 +14,7 @@ import {
   encodeState,
   initialState,
   isFailed,
+  perturbedInitialState,
   step,
 } from "./physics.ts";
 
@@ -101,6 +103,36 @@ Deno.test("isFailed flags a cart that has run off the track", () => {
 
 Deno.test("isFailed returns false near the centre with a vertical pole", () => {
   assertEquals(isFailed(initialState()), false);
+});
+
+Deno.test("perturbedInitialState samples each component within ±magnitude", () => {
+  const random = createDeterministicRandom(1234);
+  const magnitude = 0.05;
+  for (let i = 0; i < 100; i++) {
+    const s = perturbedInitialState(random, magnitude);
+    assert(Math.abs(s.x) <= magnitude, `|x|=${s.x} should be <= ${magnitude}`);
+    assert(Math.abs(s.v) <= magnitude, `|v|=${s.v} should be <= ${magnitude}`);
+    assert(Math.abs(s.theta) <= magnitude, `|theta|=${s.theta} should be <= ${magnitude}`);
+    assert(Math.abs(s.omega) <= magnitude, `|omega|=${s.omega} should be <= ${magnitude}`);
+  }
+});
+
+Deno.test("perturbedInitialState is deterministic for the same seed", () => {
+  const r1 = createDeterministicRandom(42);
+  const r2 = createDeterministicRandom(42);
+  assertEquals(perturbedInitialState(r1, 0.05), perturbedInitialState(r2, 0.05));
+});
+
+Deno.test("perturbedInitialState produces a non-zero starting state with a non-zero magnitude", () => {
+  // The whole point of the helper is to break the perfect symmetry of
+  // initialState(); a single sample with non-trivial magnitude must
+  // differ from the zero state somewhere.
+  const random = createDeterministicRandom(7);
+  const s = perturbedInitialState(random, 0.05);
+  assert(
+    s.x !== 0 || s.v !== 0 || s.theta !== 0 || s.omega !== 0,
+    "expected at least one component to be perturbed",
+  );
 });
 
 Deno.test("encodeState produces a 4-element Float32Array of [x, v, theta, omega]", () => {

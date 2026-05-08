@@ -26,7 +26,14 @@ import {
   type SnapshotConfig,
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
-import { type CartPoleState, encodeState, initialState, isFailed, step } from "./physics.ts";
+import {
+  type CartPoleState,
+  encodeState,
+  initialState,
+  isFailed,
+  perturbedInitialState,
+  step,
+} from "./physics.ts";
 import { renderRunSVG } from "./svg.ts";
 
 /** Maximum number of timesteps a single episode is allowed to run. */
@@ -44,6 +51,24 @@ export interface EvolveOptions {
   mutationStrength: number;
   /** Probability that any given gene is perturbed each generation. */
   mutationRate: number;
+  /**
+   * Number of independent perturbed-start trials each candidate is
+   * scored on (mean across trials). Defaults to `1` (legacy single
+   * symmetric launch). See {@link ScoreOptions}.
+   */
+  trials?: number;
+  /**
+   * Half-width of the uniform `[-m, +m]` perturbation applied to each
+   * component of the initial state. Defaults to `0`, i.e. every trial
+   * starts from the perfectly symmetric `(0, 0, 0, 0)` state.
+   */
+  initialPerturbation?: number;
+  /**
+   * Seed for sampling the per-evaluation initial-state perturbations.
+   * Held constant for the whole run so candidates within a generation
+   * — and across generations — are scored on the same set of starts.
+   */
+  trialSeed?: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
@@ -52,6 +77,23 @@ export interface EvolveOptions {
    * and written to `snapshotConfig.outputDir`.
    */
   snapshotConfig?: SnapshotConfig;
+}
+
+/** Options controlling multi-trial perturbed scoring of a single creature. */
+export interface ScoreOptions {
+  /** Number of trials to run; the returned score is the mean. Default 1. */
+  trials?: number;
+  /**
+   * Seed for sampling per-trial initial-state perturbations. Identical
+   * inputs always produce identical scores.
+   */
+  trialSeed?: number;
+  /**
+   * Half-width of the uniform `[-m, +m]` perturbation applied to each
+   * component of every trial's initial state. Default 0 (no
+   * perturbation — every trial starts from the symmetric zero state).
+   */
+  initialPerturbation?: number;
 }
 
 /** Statistics emitted after each generation. */
@@ -77,9 +119,18 @@ export interface EvolveResult {
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 30,
-  maxGenerations: 60,
+  maxGenerations: 200,
   mutationStrength: 0.4,
   mutationRate: 0.5,
+  // Issue #143 — score every candidate against ten different perturbed
+  // starts (the same ten for every member, every generation) so the
+  // search cannot "win" by getting lucky on a single symmetric launch.
+  // The 0.1 half-width gives initial pole tilts up to ~5.7°, well below
+  // the 12° failure threshold yet enough that a random linear policy
+  // rarely balances every trial in the very first generation.
+  trials: 10,
+  initialPerturbation: 0.1,
+  trialSeed: 24680,
 };
 
 /**
@@ -179,15 +230,16 @@ export function mutateCreatureJSON(
 }
 
 /**
- * Score a creature by running the cart-pole simulator. The episode ends
- * when the pole or cart leaves the failure thresholds, or after
- * {@link MAX_STEPS} timesteps. Score equals the number of steps survived.
+ * Run a single cart-pole episode and return the number of steps the
+ * pole survived (capped at `maxSteps`). The episode ends as soon as
+ * the failure thresholds are crossed.
  */
-export function scoreController(
+function runEpisode(
   creature: Creature,
-  maxSteps: number = MAX_STEPS,
+  start: CartPoleState,
+  maxSteps: number,
 ): number {
-  let state: CartPoleState = initialState();
+  let state: CartPoleState = start;
   for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
     creature.clearState();
     const out = creature.activate(encodeState(state));
@@ -198,6 +250,41 @@ export function scoreController(
     }
   }
   return maxSteps;
+}
+
+/**
+ * Score a creature by running the cart-pole simulator. By default the
+ * controller is evaluated once from the symmetric `(0, 0, 0, 0)` start
+ * (legacy behaviour). Pass `options.trials > 1` together with
+ * `options.initialPerturbation > 0` to evaluate the controller across
+ * several perturbed initial states and return the **mean** survival
+ * count — this is the honest variant used by the evolver.
+ *
+ * Because the mean of trials capped at `maxSteps` equals `maxSteps`
+ * only when every trial reached the cap, a multi-trial score of
+ * `MAX_STEPS` proves the controller solved the task on every initial
+ * state in the batch — not just one lucky symmetric launch (issue
+ * #143).
+ */
+export function scoreController(
+  creature: Creature,
+  maxSteps: number = MAX_STEPS,
+  options?: ScoreOptions,
+): number {
+  const trials = options?.trials ?? 1;
+  const perturbation = options?.initialPerturbation ?? 0;
+
+  if (trials <= 1 && perturbation === 0) {
+    return runEpisode(creature, initialState(), maxSteps);
+  }
+
+  const random = createDeterministicRandom(options?.trialSeed ?? 0);
+  let total = 0;
+  for (let t = 0; t < trials; t++) {
+    const start = perturbation > 0 ? perturbedInitialState(random, perturbation) : initialState();
+    total += runEpisode(creature, start, maxSteps);
+  }
+  return total / trials;
 }
 
 /**
@@ -249,14 +336,19 @@ export function evolveCartPoleController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
 ): EvolveResult {
   const random = createDeterministicRandom(options.seed);
+  const scoreOptions: ScoreOptions = {
+    trials: options.trials,
+    trialSeed: options.trialSeed,
+    initialPerturbation: options.initialPerturbation,
+  };
+  const score = (creature: Creature) => scoreController(creature, MAX_STEPS, scoreOptions);
 
   // Initial population: random linear policies.
   let population: { json: LegacyCreatureJSON; score: number }[] = [];
   for (let i = 0; i < options.populationSize; i++) {
     const json = randomCreatureJSON(random);
     const creature = Creature.fromJSON(asCreatureExport(json));
-    const score = scoreController(creature);
-    population.push({ json, score });
+    population.push({ json, score: score(creature) });
   }
 
   let bestJSON = population[0].json;
@@ -321,8 +413,7 @@ export function evolveCartPoleController(
         options.mutationStrength,
       );
       const childCreature = Creature.fromJSON(asCreatureExport(childJSON));
-      const childScore = scoreController(childCreature);
-      nextPopulation.push({ json: childJSON, score: childScore });
+      nextPopulation.push({ json: childJSON, score: score(childCreature) });
     }
 
     population = nextPopulation;

@@ -52,8 +52,10 @@ flowchart LR
 | Input 3  | observable | `omega` | Pole angular velocity (rad/s)            |
 | Output 0 | action     | —       | `>= 0.5` push right, otherwise push left |
 
-The score is the number of timesteps the pole stays within ±12° and the cart stays within ±2.4 m,
-capped at 500 steps. The task is "solved" when the champion reaches the cap.
+The score is the **mean** number of timesteps the pole stays within ±12° and the cart stays within
+±2.4 m across **ten perturbed-start trials**, capped at 500 steps per trial. The task is "solved"
+when the champion's mean reaches the cap — i.e. when it survives the full 500 steps from every one
+of the ten different starting states.
 
 ## 🚀 Running the Example
 
@@ -75,11 +77,15 @@ Artefacts:
 ![Cart-Pole evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/cart_pole_evolution.svg)
 
 The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
-generations `[1, 10, 100, 500]` (those that fall inside the configured `maxGenerations`). Cart-pole
-is solvable by a linear policy, so a lucky member of the random initial population typically reaches
-`MAX_STEPS` on the first generation. When `snapshotConfig` is supplied the runner does not break
-early, so the strip captures the gen 1 champion plus the next checkpoint (gen 10) — linked by a
-score-progression polyline so growth (or its absence) over those generations is visible at a glance.
+generations `[1, 10, 100, 500]` (those that fall inside the configured `maxGenerations`).
+
+Every candidate is scored on **ten different perturbed starting states** — each component of the
+initial `(x, v, theta, omega)` vector is sampled uniformly from `[-0.1, +0.1]`, mirroring the OpenAI
+Gym `CartPole-v1` reset behaviour. The score reported is the mean number of steps the pole stays
+upright across all ten trials, so a controller can only reach `MAX_STEPS` by surviving the full 500
+steps from every one of the ten launches. This stops a "lucky" linear policy from claiming victory
+on the perfectly symmetric `(0, 0, 0, 0)` start (issue #143) — the chart now shows real
+generation-by-generation improvement as the search grinds out a controller that generalises.
 
 ## 🧠 Tacit Knowledge
 
