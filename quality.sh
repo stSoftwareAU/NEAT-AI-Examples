@@ -106,7 +106,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-xor .synthetic-stock .synthetic-mnist .discovery
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .discovery
 echo ""
 
 # Run the Intelligent Design example
@@ -129,6 +129,9 @@ run_example "Mountain Car Control Example" "./mountain_car/run.sh"
 
 # Run the Snake Game example
 run_example "Snake Game Example" "./snake_game/run.sh"
+
+# Run the Maze Navigation example
+run_example "Maze Navigation Example" "./maze_navigation/run.sh"
 
 # Run the XOR Classification example
 run_example "XOR Classification Example" "./xor_classification/run.sh"

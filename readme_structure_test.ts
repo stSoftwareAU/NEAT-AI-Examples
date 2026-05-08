@@ -17,6 +17,7 @@ const EXAMPLE_DIRS = [
   "discovery",
   "intelligent_design",
   "lunar_lander",
+  "maze_navigation",
   "mnist_classification",
   "mountain_car",
   "snake_game",
@@ -31,6 +32,7 @@ const SCREENSHOT_PATHS = [
   "docs/screenshots/lunar_lander.svg",
   "docs/screenshots/mountain_car.svg",
   "docs/screenshots/snake_game.svg",
+  "docs/screenshots/maze_navigation.svg",
   "docs/screenshots/stock_market.svg",
   "docs/screenshots/mnist_classification.svg",
 ] as const;
@@ -106,6 +108,7 @@ Deno.test("README.md introduces every example by name", () => {
     "Lunar Lander",
     "Mountain Car",
     "Snake",
+    "Maze Navigation",
     "Stock Market",
     "MNIST",
   ];
