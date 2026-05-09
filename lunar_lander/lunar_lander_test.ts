@@ -30,12 +30,17 @@ import {
   MAX_STEPS,
   mutateCreatureExport,
   OUTPUT_COUNT,
+  pickValidationSvgIndex,
   replayController,
   scoreController,
   scoreFinalState,
+  validateChampion,
+  VALIDATION_BASE_SEED,
+  type ValidationScenarioResult,
 } from "./lunar_lander.ts";
 import { renderRunSVG } from "./svg.ts";
-import { DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
+import { DEFAULT_START_X, DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
+import { generateScenarioPools } from "./scenarios.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { loadSnapshots } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
@@ -1021,5 +1026,163 @@ Deno.test(
   () => {
     const csv = formatEvolutionCsv([]);
     assertEquals(csv, EVOLUTION_CSV_HEADER + "\n");
+  },
+);
+
+Deno.test(
+  "validateChampion produces one entry per validation scenario (issue #198)",
+  () => {
+    const result = evolveLanderController(TEST_EVOLVE_OPTIONS);
+    const pools = generateScenarioPools(VALIDATION_BASE_SEED, 0, 12);
+    const report = validateChampion(result.champion, pools.validation);
+    assertEquals(report.scenarios.length, pools.validation.length);
+    for (const r of report.scenarios) {
+      assert(
+        ["flying", "landed", "crashed", "out_of_bounds"].includes(r.outcome),
+        `unexpected outcome ${r.outcome}`,
+      );
+      assert(Number.isFinite(r.score), `expected finite score, got ${r.score}`);
+    }
+    // Aggregate counts must add up to the number of scenarios.
+    const total = report.outcomeCounts.flying + report.outcomeCounts.landed +
+      report.outcomeCounts.crashed + report.outcomeCounts.out_of_bounds;
+    assertEquals(total, pools.validation.length);
+    assertGreaterOrEqual(report.landedRate, 0);
+    assertGreaterOrEqual(1, report.landedRate);
+    assert(Number.isFinite(report.meanFitness));
+  },
+);
+
+Deno.test(
+  "validateChampion is deterministic for a fixed champion and scenarios (issue #198)",
+  () => {
+    const result = evolveLanderController(TEST_EVOLVE_OPTIONS);
+    const pools = generateScenarioPools(VALIDATION_BASE_SEED, 0, 8);
+    const a = validateChampion(result.champion, pools.validation);
+    const b = validateChampion(result.champion, pools.validation);
+    // Per-scenario scores and outcomes match exactly.
+    for (let i = 0; i < a.scenarios.length; i++) {
+      assertEquals(a.scenarios[i].score, b.scenarios[i].score);
+      assertEquals(a.scenarios[i].outcome, b.scenarios[i].outcome);
+      assertEquals(a.scenarios[i].seed, b.scenarios[i].seed);
+    }
+    assertEquals(a.landedRate, b.landedRate);
+    assertEquals(a.meanFitness, b.meanFitness);
+    assertEquals(a.selectedIndex, b.selectedIndex);
+  },
+);
+
+Deno.test(
+  "validateChampion writes a JSON-serialisable report (issue #198)",
+  async () => {
+    const result = evolveLanderController(TEST_EVOLVE_OPTIONS);
+    const pools = generateScenarioPools(VALIDATION_BASE_SEED, 0, 6);
+    const report = validateChampion(result.champion, pools.validation);
+    const tmp = await Deno.makeTempDir({ prefix: "lunar_lander_validation_test_" });
+    try {
+      const path = join(tmp, "results.json");
+      await Deno.writeTextFile(path, JSON.stringify(report));
+      const written = JSON.parse(await Deno.readTextFile(path));
+      // The serialised JSON must have one scenario entry per validation scenario.
+      assertEquals(written.scenarios.length, pools.validation.length);
+      for (let i = 0; i < written.scenarios.length; i++) {
+        const r = written.scenarios[i];
+        assertEquals(r.seed, pools.validation[i].seed);
+        assertEquals(r.index, i);
+      }
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "pickValidationSvgIndex returns 0 when every scenario landed (issue #198)",
+  () => {
+    const allLanded: ValidationScenarioResult[] = Array.from({ length: 5 }, (_, i) => ({
+      seed: i,
+      index: i,
+      outcome: "landed",
+      score: 100 + i,
+      finalState: initialState(),
+    }));
+    assertEquals(pickValidationSvgIndex(allLanded), 0);
+  },
+);
+
+Deno.test(
+  "pickValidationSvgIndex picks the lower-median scenario by score (issue #198)",
+  () => {
+    // Mixed outcomes: scores 10, 20, 30, 40, 50 → median=30 at index 2.
+    const mixed: ValidationScenarioResult[] = [
+      { seed: 0, index: 0, outcome: "crashed", score: 30, finalState: initialState() },
+      { seed: 1, index: 1, outcome: "crashed", score: 50, finalState: initialState() },
+      { seed: 2, index: 2, outcome: "crashed", score: 10, finalState: initialState() },
+      { seed: 3, index: 3, outcome: "crashed", score: 40, finalState: initialState() },
+      { seed: 4, index: 4, outcome: "landed", score: 20, finalState: initialState() },
+    ];
+    // Sorted scores: 10 (i=2), 20 (i=4), 30 (i=0), 40 (i=3), 50 (i=1).
+    // Lower median (index 2 of sorted, since (5-1)/2 = 2) → original index 0.
+    assertEquals(pickValidationSvgIndex(mixed), 0);
+  },
+);
+
+Deno.test(
+  "pickValidationSvgIndex returns -1 for an empty result set (issue #198)",
+  () => {
+    assertEquals(pickValidationSvgIndex([]), -1);
+  },
+);
+
+Deno.test(
+  "validateChampion's selected SVG-source scenario is non-canonical (issue #198)",
+  () => {
+    // The selected scenario must differ from `initialState()` — the
+    // SVG should demonstrate generalisation, so its starting x and/or
+    // pad position must not match the canonical training launch.
+    const result = evolveLanderController(TEST_EVOLVE_OPTIONS);
+    const pools = generateScenarioPools(VALIDATION_BASE_SEED, 0, 16);
+    const report = validateChampion(result.champion, pools.validation);
+    const selected = pools.validation[report.selectedIndex];
+    const matchesCanonicalX = Math.abs(selected.state.x - DEFAULT_START_X) < 1e-9;
+    const matchesCanonicalPad = Math.abs(selected.terrain.padX) < 1e-9;
+    assert(
+      !(matchesCanonicalX && matchesCanonicalPad),
+      `selected scenario matches canonical state (x=${selected.state.x}, ` +
+        `padX=${selected.terrain.padX}) — SVG would not prove generalisation`,
+    );
+  },
+);
+
+Deno.test(
+  "replayController honours scenario terrain for the SVG source (issue #198)",
+  () => {
+    // Build a scenario with a shifted pad and a non-canonical start;
+    // the replay's first frame must reflect the scenario state, and
+    // the trace must classify against the scenario terrain.
+    const result = evolveLanderController(TEST_EVOLVE_OPTIONS);
+    const pools = generateScenarioPools(VALIDATION_BASE_SEED, 0, 4);
+    const report = validateChampion(result.champion, pools.validation);
+    const selected = pools.validation[report.selectedIndex];
+    const trace = replayController(
+      result.champion,
+      MAX_STEPS,
+      selected.state,
+      selected.terrain,
+    );
+    // The first-frame x must match the validation scenario's start, not
+    // the canonical default — the assertable signal that the SVG is
+    // sourced from a held-out scenario.
+    assert(trace.length > 0, "trace must not be empty");
+    assertEquals(trace[0].state.x, selected.state.x);
+    assertEquals(trace[0].state.fuel, selected.state.fuel);
+    // The trace should diverge from the canonical initialState's x —
+    // the validation pool's draws are uniformly distributed away from -20.
+    const startedAtCanonical = Math.abs(trace[0].state.x - DEFAULT_START_X) < 1e-9;
+    const padShifted = Math.abs(selected.terrain.padX) > 1e-9;
+    assert(
+      !startedAtCanonical || padShifted,
+      "validation-sourced replay must differ from the canonical launch",
+    );
   },
 );
