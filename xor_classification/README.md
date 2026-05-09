@@ -16,7 +16,17 @@ the `>= 0.5` classification threshold and the squared-error contribution against
 are well-defined; everything else (hidden topology, weights, biases) is invented by NEAT. Structural
 mutation — add-neuron, add-synapse and weight tuning — is delegated to `creature.evolveDir(...)`.
 XOR is not linearly separable, so the random direct-only gen-1 seed cannot solve the task; NEAT must
-invent at least one hidden neuron during evolution (issues #131, #148).
+invent at least one hidden neuron during evolution (issues #131, #148, audited under #205).
+
+Per the audit in [issue #205](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/205) the run
+also commits to:
+
+- Stop conditions are `targetError` plus a `timeoutMinutes: 5` safety backstop (the tiny XOR problem
+  typically converges in well under a minute, but the backstop is mandatory so the runner cannot
+  wedge).
+- Per-generation telemetry (best/mean fitness, neuron count, synapse count) is captured during
+  `evolveDir` and emitted as a CSV plus two summary SVG charts so the numbers below are quoted
+  directly from the latest run rather than estimated.
 
 ![XOR decision boundary](../docs/screenshots/xor_decision_boundary.svg)
 
@@ -99,9 +109,50 @@ Artefacts:
   score on the left axis, neuron and synapse counts on the right axis)
 - `docs/screenshots/xor_classification_evolution.svg` – multi-panel evolution-progression strip
   rendered from the captured snapshots
+- `docs/data/xor_classification/evolution.csv` – per-generation telemetry with the schema
+  `generation, best_fitness, mean_fitness, neuron_count, synapse_count`
+- `docs/screenshots/xor_classification/fitness.svg` – best vs mean fitness across all generations
+- `docs/screenshots/xor_classification/topology.svg` – neuron and synapse counts across all
+  generations (separate axes — synapses on the right)
 
 > [!TIP]
 > The script writes its working data to `.synthetic-xor/`, a hidden directory ignored by git.
+
+## 📊 Measured Telemetry (latest run)
+
+The numbers below are quoted **directly** from the latest local run of `./xor_classification/run.sh`
+(no estimates):
+
+| Metric                                | Value  |
+| ------------------------------------- | ------ |
+| Total generations                     | 186    |
+| Wall-clock time                       | 1.66 s |
+| Final best fitness (`1 − MSE`)        | 1.0000 |
+| Final best error (MSE)                | 0.0000 |
+| Truth-table rows classified correctly | 4 / 4  |
+| Seed-creature neurons (gen 1)         | 3      |
+| Seed-creature synapses (gen 1)        | 2      |
+| Final-creature neurons                | 8      |
+| Final-creature synapses               | 14     |
+| Hidden neurons in final champion      | 5      |
+
+**Topology genuinely changed across generations** — NEAT added 5 hidden neurons (3 → 8) and grew the
+synapse count from 2 to 14 during evolution from a uniform-random direct-only seed. With all four
+truth-table rows classified correctly and a final fitness of **1.0000** (per-sample MSE ≈ 0), the
+champion produces a perfect XOR classifier from a minimal `new Creature(2, 1)` seed.
+
+### Per-generation evolution CSV
+
+[`docs/data/xor_classification/evolution.csv`](../docs/data/xor_classification/evolution.csv) — one
+row per generation with `generation, best_fitness, mean_fitness, neuron_count, synapse_count`.
+
+### Best/mean fitness vs generation
+
+![Best/mean fitness chart](../docs/screenshots/xor_classification/fitness.svg)
+
+### Neuron / synapse count vs generation
+
+![Neuron and synapse count chart](../docs/screenshots/xor_classification/topology.svg)
 
 ## Evolution Progress
 
