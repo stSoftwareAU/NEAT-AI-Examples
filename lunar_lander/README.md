@@ -25,7 +25,7 @@ flowchart LR
     SCORE["📏 Multi-Trial Score<br/>landed / crashed / oob / flying"]
     SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
     MUTATE["🧬 Weight + Bias + Add-Neuron"]
-    SOLVED{"landed-rate ≥ 60%?"}
+    SOLVED{"landed-rate ≥ 1−targetError?"}
     CHAMP["💾 Save champion.json"]
     RUN["▶️ Replay Champion<br/>record trajectory"]
     SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg"]
@@ -36,8 +36,8 @@ flowchart LR
     SELECT --> MUTATE
     MUTATE --> SCORE
     SCORE --> SOLVED
-    SOLVED -- "no, gens < cap" --> SELECT
-    SOLVED -- "yes, or cap reached" --> CHAMP
+    SOLVED -- "no, time remaining" --> SELECT
+    SOLVED -- "yes, or timeout reached" --> CHAMP
     CHAMP --> RUN
     RUN --> SVG
 
@@ -52,16 +52,25 @@ flowchart LR
     style SVG fill:#50e3c2,stroke:#333,color:#fff
 ```
 
-## 🎯 Soft-Landing Threshold and Hard Generation Cap
+## 🎯 NEAT-AI Standard Stop Conditions
 
-Two stop conditions bound the search:
+Two stop conditions bound the search — the same two fields used across NEAT-AI's `NeatOptions`:
 
-- **Soft-landing threshold** — the champion must achieve a **landed-on-pad rate ≥ 60%**
-  (`SOLVED_LANDED_RATE = 0.6`) across a fixed deterministic batch of perturbed-start trials. Each
-  landed trial obeys the safe-landing limits (≤ 11.5° tilt, ≤ 2 m/s vertical and ≤ 2 m/s horizontal
-  speed at touchdown), so the threshold checks both pad accuracy _and_ gentleness, not just one.
-- **Hard generation cap** — `DEFAULT_EVOLVE_OPTIONS.maxGenerations = 1000`. The evolver always stops
-  at the cap even when the threshold is not reached, so the example terminates predictably.
+- **`targetError`** (default `0.01`) — the champion must achieve a **landed-on-pad rate ≥
+  `1 − targetError`** across a fixed deterministic batch of perturbed-start trials. The default
+  threshold is `landed-rate ≥ 99%`. Each landed trial obeys the safe-landing limits (≤ 11.5° tilt, ≤
+  2 m/s vertical and ≤ 2 m/s horizontal speed at touchdown), so the threshold checks both pad
+  accuracy _and_ gentleness, not just one.
+- **`timeoutMinutes`** (default `2`) — the evolver stops once `timeoutMinutes` minutes have elapsed
+  since the loop began, even when the target is not reached, so the example terminates predictably.
+
+Whichever condition fires first wins. The runner reports `result.stopReason` (`"target"` or
+`"timeout"`) and `result.wallclockMs` so callers can distinguish the two outcomes. The CLI runner
+accepts overrides:
+
+```bash
+./lunar_lander/run.sh --target-error=0.05 --timeout-minutes=5
+```
 
 Multi-trial scoring (`trials = 10`, `initialPerturbation = 1.0`) means a controller cannot win by
 getting lucky on a single canonical launch — it has to land robustly across a varied batch of
@@ -131,7 +140,7 @@ Artefacts:
 ![Lunar-Lander evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/lunar_lander/evolution.svg)
 
 The runner captures a snapshot of the **running champion** at the canonical checkpoint generations
-`[1, 10, 100, 500, 1000]` (those that fall inside the configured `maxGenerations`). The cadence is
+`[1, 10, 100, 500, 1000]` (those reached before the `timeoutMinutes` budget elapses). The cadence is
 wider than the previous fixed-topology demo because variable-topology evolution from uniform-random
 noise typically needs more generations to find structure.
 

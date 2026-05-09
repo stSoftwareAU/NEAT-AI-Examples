@@ -29,7 +29,6 @@ import {
   replayController,
   scoreController,
   scoreFinalState,
-  SOLVED_LANDED_RATE,
 } from "./lunar_lander.ts";
 import { renderRunSVG } from "./svg.ts";
 import { DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
@@ -39,14 +38,20 @@ import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts"
 
 /**
  * A fast, deterministic configuration suitable for unit tests. The
- * mutation pressure is low and the budget tight so the loop never
- * accidentally solves the task; test cases that expect "solved"
- * results override these values.
+ * `targetError` is set generously so the loop trips the `target` stop
+ * condition immediately at gen 0 — both runs of the same options end
+ * after a single generation so reproducibility checks compare the
+ * same number of generations regardless of host speed. Tests that
+ * exercise multi-generation behaviour override these values.
  */
 const TEST_EVOLVE_OPTIONS = {
   seed: 42,
   populationSize: 12,
-  maxGenerations: 8,
+  // targetError = 1 means the threshold is `landed-rate ≥ 0`, which
+  // is satisfied at gen 0 — the loop terminates deterministically.
+  targetError: 1,
+  // Generous timeout so target always wins the race.
+  timeoutMinutes: 1,
   mutationStrength: 0.5,
   mutationRate: 0.4,
   addNeuronRate: 0,
@@ -222,7 +227,9 @@ Deno.test(
     let firstGenLanded = 1;
     evolveLanderController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: 1,
+      // Stop after the first generation: targetError=1 trips at gen 0.
+      targetError: 1,
+      timeoutMinutes: 1,
       populationSize: 30,
       onGeneration: (info) => {
         if (info.generation === 0 && firstGenMean === Infinity) {
@@ -235,24 +242,29 @@ Deno.test(
       firstGenMean < 0,
       `expected gen-1 population mean to be negative (mostly crashes), got ${firstGenMean}`,
     );
+    // The default targetError of 0.01 implies a "solved" threshold of
+    // landed-rate ≥ 0.99, so gen-1 noise should be far below it.
     assert(
-      firstGenLanded < SOLVED_LANDED_RATE,
-      `expected gen-1 best landed rate below the solved threshold (${SOLVED_LANDED_RATE}), got ${firstGenLanded}`,
+      firstGenLanded < 1 - DEFAULT_EVOLVE_OPTIONS.targetError,
+      `expected gen-1 best landed rate below the solved threshold ` +
+        `(${1 - DEFAULT_EVOLVE_OPTIONS.targetError}), got ${firstGenLanded}`,
     );
   },
 );
 
 Deno.test(
-  "evolveLanderController honours the hard generation cap",
+  "evolveLanderController stops on timeout when targetError is unreachable",
   () => {
-    // With vanishing mutation, the evolver cannot solve the task within
-    // the cap. The result must therefore stop at the cap and report
-    // `solved=false`.
-    const cap = 3;
+    // targetError=-1 means the threshold is `landed-rate ≥ 2`, which
+    // can never be met — the only way out is the wall-clock timeout.
+    const start = Date.now();
     const result = evolveLanderController({
       seed: 999,
       populationSize: 4,
-      maxGenerations: cap,
+      // Never satisfied: landed-rate is bounded by 1.
+      targetError: -1,
+      // ~300 ms of wall clock — short enough for a fast unit test.
+      timeoutMinutes: 0.005,
       mutationStrength: 0.001,
       mutationRate: 0.001,
       addNeuronRate: 0,
@@ -260,15 +272,48 @@ Deno.test(
       trialSeed: 1,
       initialPerturbation: 1.0,
     });
-    assertEquals(
-      result.generations,
-      cap,
-      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
+    const elapsed = Date.now() - start;
+    assertEquals(result.stopReason, "timeout");
+    assertEquals(result.solved, false);
+    assert(
+      Number.isFinite(result.wallclockMs),
+      `expected finite wallclockMs, got ${result.wallclockMs}`,
     );
-    assertEquals(
-      result.solved,
-      false,
-      "with vanishing mutation the search must not solve lunar-lander within the cap",
+    assert(
+      Number.isFinite(result.generations),
+      `expected finite generations, got ${result.generations}`,
+    );
+    assertGreater(result.generations, 0);
+    // The reported wall-clock duration must be consistent with the
+    // observed elapsed time (allowing slop for setup outside the loop).
+    assertGreaterOrEqual(elapsed + 50, result.wallclockMs);
+  },
+);
+
+Deno.test(
+  "evolveLanderController stops on target when targetError is generous",
+  () => {
+    // targetError=1 means the threshold is `landed-rate ≥ 0` — every
+    // population member meets that on gen 0, so target wins the race.
+    const result = evolveLanderController({
+      seed: 7,
+      populationSize: 6,
+      targetError: 1,
+      // Generous timeout so target trips first.
+      timeoutMinutes: 1,
+      mutationStrength: 0.001,
+      mutationRate: 0.001,
+      addNeuronRate: 0,
+      trials: 2,
+      trialSeed: 1,
+      initialPerturbation: 1.0,
+    });
+    assertEquals(result.stopReason, "target");
+    assertEquals(result.solved, true);
+    assertGreater(result.generations, 0);
+    assert(
+      Number.isFinite(result.wallclockMs),
+      `expected finite wallclockMs, got ${result.wallclockMs}`,
     );
   },
 );
@@ -285,23 +330,30 @@ Deno.test("evolveLanderController champion improves over generations", () => {
   // The champion's score must monotonically increase across the run
   // (truncation selection + elitism guarantees this) and the final
   // best must strictly exceed the gen-1 best, proving the search is
-  // making progress on the noisy start.
+  // making progress on the noisy start. The snapshotConfig is used as
+  // a `keep-running-after-target` mechanism so the loop runs across
+  // multiple generations after target trips at gen 0.
+  const tmp = Deno.makeTempDirSync({ prefix: "lunar_lander_improves_test_" });
   const events: GenerationInfo[] = [];
-  const result = evolveLanderController({
-    ...TEST_EVOLVE_OPTIONS,
-    populationSize: 30,
-    maxGenerations: 12,
-    onGeneration: (info) => events.push(info),
-  });
-  assert(events.length > 0, "expected at least one generation event");
-  // Champion score must be finite across the whole run.
-  for (const info of events) {
-    assert(Number.isFinite(info.bestScore), `expected finite best, got ${info.bestScore}`);
-    assert(Number.isFinite(info.meanScore), `expected finite mean, got ${info.meanScore}`);
+  try {
+    const result = evolveLanderController({
+      ...TEST_EVOLVE_OPTIONS,
+      populationSize: 30,
+      snapshotConfig: { checkpoints: [1, 5, 12], outputDir: tmp },
+      onGeneration: (info) => events.push(info),
+    });
+    assert(events.length > 0, "expected at least one generation event");
+    // Champion score must be finite across the whole run.
+    for (const info of events) {
+      assert(Number.isFinite(info.bestScore), `expected finite best, got ${info.bestScore}`);
+      assert(Number.isFinite(info.meanScore), `expected finite mean, got ${info.meanScore}`);
+    }
+    // Final best ≥ first best (elitism). The strict inequality is checked
+    // through `result.bestScore` aggregating the best across the run.
+    assertGreaterOrEqual(result.bestScore, events[0].bestScore);
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
   }
-  // Final best ≥ first best (elitism). The strict inequality is checked
-  // through `result.bestScore` aggregating the best across the run.
-  assertGreaterOrEqual(result.bestScore, events[0].bestScore);
 });
 
 Deno.test("champion JSON exports cleanly to disk", async () => {
@@ -521,12 +573,13 @@ Deno.test(
       const checkpoints = [1, 2, 3];
       evolveLanderController({
         ...TEST_EVOLVE_OPTIONS,
-        // Keep mutation pressure low so the loop does not solve early
-        // and break out before all configured snapshot checkpoints fire.
         mutationStrength: 0.01,
         mutationRate: 0.01,
-        maxGenerations: 4,
         populationSize: 6,
+        // The snapshot-capture branch keeps the loop running past the
+        // first not-yet-fired checkpoint even after target trips at
+        // gen 0, so all three checkpoints are captured before the
+        // loop stops.
         snapshotConfig: { checkpoints, outputDir: tmp },
       });
 
@@ -561,27 +614,35 @@ Deno.test(
     // synapse counts so the runner can plot them on the evolution
     // chart. With addNeuronRate=0 the topology stays at the library's
     // minimal seed throughout the run.
+    //
+    // The snapshot-checkpoint trick deterministically pins the run to
+    // exactly three generations: target trips at gen 0 (targetError=1),
+    // but the snapshot branch keeps the loop running until the last
+    // checkpoint at gen 3 has been captured.
+    const tmp = Deno.makeTempDirSync({ prefix: "lunar_lander_neurons_test_" });
     const events: GenerationInfo[] = [];
-    evolveLanderController({
-      ...TEST_EVOLVE_OPTIONS,
-      // Vanishing mutation keeps the search well away from the solved
-      // threshold so the early-stop branch cannot fire and skip events.
-      mutationStrength: 0.001,
-      mutationRate: 0.001,
-      maxGenerations: 3,
-      populationSize: 6,
-      onGeneration: (info) => events.push(info),
-    });
-    assertEquals(events.length, 3);
-    for (const info of events) {
-      assertEquals(typeof info.neurons, "number");
-      assertEquals(typeof info.synapses, "number");
-      assertGreater(info.neurons, 0);
-      assertGreater(info.synapses, 0);
-      // No structural mutation in this test, so the topology stays
-      // constant across generations.
-      assertEquals(info.neurons, events[0].neurons);
-      assertEquals(info.synapses, events[0].synapses);
+    try {
+      evolveLanderController({
+        ...TEST_EVOLVE_OPTIONS,
+        mutationStrength: 0.001,
+        mutationRate: 0.001,
+        populationSize: 6,
+        snapshotConfig: { checkpoints: [1, 2, 3], outputDir: tmp },
+        onGeneration: (info) => events.push(info),
+      });
+      assertEquals(events.length, 3);
+      for (const info of events) {
+        assertEquals(typeof info.neurons, "number");
+        assertEquals(typeof info.synapses, "number");
+        assertGreater(info.neurons, 0);
+        assertGreater(info.synapses, 0);
+        // No structural mutation in this test, so the topology stays
+        // constant across generations.
+        assertEquals(info.neurons, events[0].neurons);
+        assertEquals(info.synapses, events[0].synapses);
+      }
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
     }
   },
 );
