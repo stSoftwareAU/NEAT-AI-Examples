@@ -173,6 +173,94 @@ Deno.test("workflow runs unit tests", () => {
   assertEquals(runsTests, true, "Workflow should run deno test");
 });
 
+Deno.test("workflow runs deno test with coverage", () => {
+  // Issue #51: tests must produce a coverage profile.
+  // Issue #231: this assertion was migrated from the now-removed
+  // deno-quality.yml workflow when the duplicate was consolidated.
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+
+  let runsTestCoverage = false;
+  let generatesLcov = false;
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const run = step["run"] as string | undefined;
+      if (!run) continue;
+      if (run.includes("deno test") && run.includes("--coverage=")) {
+        runsTestCoverage = true;
+      }
+      if (run.includes("deno coverage") && run.includes("--lcov")) {
+        generatesLcov = true;
+      }
+    }
+  }
+  assertEquals(
+    runsTestCoverage,
+    true,
+    "Workflow should run deno test with --coverage to produce a profile",
+  );
+  assertEquals(
+    generatesLcov,
+    true,
+    "Workflow should generate an lcov coverage report via deno coverage --lcov",
+  );
+});
+
+Deno.test("workflow uploads coverage to Codecov", () => {
+  // Issue #51, migrated to quality.yml under issue #231.
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+
+  let usesCodecov = false;
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const uses = step["uses"] as string | undefined;
+      if (uses && uses.startsWith("codecov/codecov-action@")) {
+        usesCodecov = true;
+        break;
+      }
+    }
+  }
+  assertEquals(
+    usesCodecov,
+    true,
+    "Workflow should upload coverage via the codecov/codecov-action",
+  );
+});
+
+Deno.test("workflow pins actions to commit SHAs", () => {
+  // Issue #231: when consolidating the duplicate deno-quality.yml the
+  // SHA-pinning guarantee from that workflow is preserved here.
+  const workflow = loadWorkflow();
+  const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;
+  const sha40 = /^[0-9a-f]{40}$/;
+
+  for (const name of Object.keys(jobs)) {
+    const steps = jobs[name]["steps"] as Array<Record<string, unknown>>;
+    if (!steps) continue;
+    for (const step of steps) {
+      const uses = step["uses"] as string | undefined;
+      if (!uses) continue;
+      const atIdx = uses.lastIndexOf("@");
+      assertEquals(
+        atIdx > 0,
+        true,
+        `Step '${uses}' should pin a version with '@'`,
+      );
+      const ref = uses.slice(atIdx + 1);
+      assertEquals(
+        sha40.test(ref),
+        true,
+        `Step '${uses}' should be pinned to a 40-character commit SHA, not '${ref}'`,
+      );
+    }
+  }
+});
+
 Deno.test("workflow runs example programs", () => {
   const workflow = loadWorkflow();
   const jobs = workflow["jobs"] as Record<string, Record<string, unknown>>;

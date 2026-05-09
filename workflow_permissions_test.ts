@@ -15,9 +15,8 @@
 import { assert, assertStringIncludes } from "@std/assert";
 
 const WORKFLOWS: { path: string; testStep: string }[] = [
-  { path: ".github/workflows/quality.yml", testStep: "Run unit tests" },
   {
-    path: ".github/workflows/deno-quality.yml",
+    path: ".github/workflows/quality.yml",
     testStep: "Run unit tests with coverage",
   },
 ];
