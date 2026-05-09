@@ -1,21 +1,21 @@
 /**
- * Tests for the science-driven structural mutation framing on the
- * Discovery-at-Scale README (issue #189).
+ * Tests for the science-driven structural mutation framing on Discovery
+ * READMEs (issue #189).
  *
  * `discovery/README.md` previously sat under the same framing, but the
  * audit (issue #207) repurposed that example to evolve from a minimal
  * NEAT seed via `Creature.evolveDir(...)` — i.e. random mutation —
- * rather than `discoveryDir(...)`. Holding it to the science-driven
- * framing rules would now contradict the audit, so the discovery
- * README is excluded from this loop. `discovery_at_scale` still uses
- * `discoveryDir(...)` and remains in scope.
+ * rather than `discoveryDir(...)`.
  *
- * The Discovery-at-Scale page must:
- *  - Open with a paragraph stating Discovery is error-driven structural
- *    mutation, not random search.
- *  - Link to upstream COMPARISON.md features 2 and 8.
- *  - Contain a Mermaid block contrasting random NEAT mutation with
- *    Discovery-driven mutation.
+ * `discovery_at_scale/README.md` was reframed in the same way by the
+ * audit (issue #208), so it too is excluded from the science-driven
+ * framing rules below. Holding either README to the science-driven
+ * framing would now contradict the audit.
+ *
+ * No README in this repository currently uses the science-driven
+ * framing, so the structural assertions below run over an empty set —
+ * but the test scaffolding is retained so future Discovery-flow
+ * examples can opt back in by adding their path to {@link README_PATHS}.
  *
  * These are "what" tests — they read the README files and check the
  * required structural elements without inspecting implementation.
@@ -24,7 +24,8 @@
 import { assert, assertStringIncludes } from "@std/assert";
 
 const README_PATHS: Record<string, string> = {
-  discoveryAtScale: "discovery_at_scale/README.md",
+  // No examples currently use the science-driven framing — see audits
+  // #207 (discovery) and #208 (discovery_at_scale).
 };
 
 const COMPARISON_URL = "https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md";
@@ -133,33 +134,3 @@ for (const [name, path] of Object.entries(README_PATHS)) {
     );
   });
 }
-
-/* ------------------------------------------------------------------ */
-/*  discovery_at_scale: defect table annotates structural intervention */
-/* ------------------------------------------------------------------ */
-
-Deno.test("discovery_at_scale README defect table annotates structural interventions", () => {
-  const content = loadReadme(README_PATHS.discoveryAtScale);
-  // Locate the Defect Categories section (before the next H2).
-  const start = content.search(/^##\s+.*Defect Categories.*$/im);
-  assert(start >= 0, "Defect Categories section must exist");
-  const after = content.slice(start + 1);
-  const nextH2 = after.search(/^##\s+/m);
-  const section = nextH2 < 0 ? content.slice(start) : content.slice(start, start + 1 + nextH2);
-  // Each defect category row must mention its structural intervention.
-  // We assert the interventions Discovery proposes are named in the section.
-  const lower = section.toLowerCase();
-  for (
-    const intervention of [
-      "rewire", // for saturated / bottleneck
-      "replace", // for dead neurons
-      "prune", // for dormant
-    ]
-  ) {
-    assertStringIncludes(
-      lower,
-      intervention,
-      `Defect Categories section should describe the "${intervention}" structural intervention`,
-    );
-  }
-});
