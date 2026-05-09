@@ -1,114 +1,128 @@
 /**
- * Tests for the MNIST README's honesty about which run produced the
- * embedded `evolution.svg` screenshot (issue #191).
+ * Tests for the MNIST README's honesty about the latest measured run
+ * (issue #210 — supersedes #191).
  *
- * The reporter pointed out that the README narrates a long-form NEAT
- * evolution from uniform-random noise (hours of wall-clock, up to
- * `MAX_GENERATIONS` = 50 000 generations) but the embedded chart shows
- * the MLP/SGD baseline crossing 95 % in ~10 epochs with constant
- * neuron and synapse counts. That is misleading — the chart is from
- * the **MLP baseline** run that `quality.sh` executes by default, not
- * from the NEAT evolution.
+ * The pre-audit README (#191 era) embedded the MLP-baseline chart while
+ * narrating a long-form NEAT evolution; the audit (#210) reframes the
+ * example so the published evolution genuinely runs `Creature.evolveDir`
+ * over a binary `.bin` training subset from a minimal seed
+ * `new Creature(196, 10)`. The README must therefore:
+ *
+ *   1. Embed the audit's two telemetry SVGs (`fitness.svg`,
+ *      `topology.svg`) — not the legacy `evolution.svg`.
+ *   2. Link the per-generation CSV at the audit-mandated path.
+ *   3. Quote measured numbers (final best fitness, total generations,
+ *      wall-clock) consistent with the committed CSV.
+ *   4. Show non-trivial neuron / synapse change between the gen-1 row
+ *      and the final row of the committed CSV.
  *
  * These are "what" tests — they read the README markdown and the
- * actual SVG title and assert the README's caption and surrounding
- * prose match the chart that is actually embedded.
+ * committed CSV and assert on the observable contents.
  */
 
-import { assert, assertStringIncludes } from "@std/assert";
+import { assert, assertGreater, assertStringIncludes } from "@std/assert";
 
 const README_PATH = "mnist_classification/README.md";
-const EVOLUTION_SVG_PATH = "docs/screenshots/mnist_classification/evolution.svg";
+const FITNESS_SVG_PATH = "docs/screenshots/mnist_classification/fitness.svg";
+const TOPOLOGY_SVG_PATH = "docs/screenshots/mnist_classification/topology.svg";
+const CSV_PATH = "docs/data/mnist_classification/evolution.csv";
 
 function loadReadme(): string {
   return Deno.readTextFileSync(README_PATH);
 }
 
-/** Pull the markdown image line that references the evolution chart. */
-function findEvolutionChartImageLine(readme: string): string {
-  const lines = readme.split("\n");
-  const match = lines.find((line) =>
-    line.includes("![") && line.includes("mnist_classification/evolution.svg")
-  );
-  assert(
-    match !== undefined,
-    `README must embed the evolution chart at ${EVOLUTION_SVG_PATH}`,
-  );
-  return match!;
+function loadCsvRows(): { header: string; rows: string[][] } {
+  const text = Deno.readTextFileSync(CSV_PATH);
+  const lines = text.trim().split("\n");
+  const header = lines[0];
+  const rows = lines.slice(1).map((l) => l.split(","));
+  return { header, rows };
 }
 
-/** Pull the `<title>…</title>` from the SVG. */
-function loadSvgTitle(): string {
-  const svg = Deno.readTextFileSync(EVOLUTION_SVG_PATH);
-  const m = svg.match(/<title>([^<]+)<\/title>/);
-  assert(m !== null, `${EVOLUTION_SVG_PATH} must have a <title> element`);
-  return m![1];
-}
-
-Deno.test("MNIST README chart caption identifies the MLP baseline run", () => {
-  // The chart embedded in the README is produced by the MLP baseline
-  // (the default `quality.sh` mode); its <title> says so. The README
-  // caption must agree — saying "MLP baseline" — so a reader does not
-  // mistake a 10-epoch fixed-topology MLP curve for a 50 000-generation
-  // NEAT-from-noise evolution.
-  const line = findEvolutionChartImageLine(loadReadme()).toLowerCase();
+Deno.test("MNIST README embeds the audit fitness SVG", () => {
+  const readme = loadReadme();
   assertStringIncludes(
-    line,
-    "mlp baseline",
-    "evolution chart caption must identify the screenshot as the MLP baseline run",
+    readme,
+    "mnist_classification/fitness.svg",
+    `README must embed the audit best-vs-mean fitness chart at ${FITNESS_SVG_PATH}`,
   );
+  // The file must actually exist on disk so the link is not broken.
+  const stat = Deno.statSync(FITNESS_SVG_PATH);
+  assertGreater(stat.size, 0, `${FITNESS_SVG_PATH} must be a non-empty SVG`);
 });
 
-Deno.test("MNIST README chart caption matches the actual SVG <title>", () => {
-  // The reporter's worry is that the chart's narrative (10 generations,
-  // constant neuron/synapse count) does not match the README's narrative
-  // (hours, 50 000 generations, growing topology). The simplest defence
-  // is to require the caption to repeat the SVG's own title verbatim.
-  const svgTitle = loadSvgTitle().toLowerCase();
-  const line = findEvolutionChartImageLine(loadReadme()).toLowerCase();
+Deno.test("MNIST README embeds the audit topology SVG", () => {
+  const readme = loadReadme();
   assertStringIncludes(
-    line,
-    svgTitle,
-    `evolution chart caption must include the SVG's own <title> ("${svgTitle}")`,
+    readme,
+    "mnist_classification/topology.svg",
+    `README must embed the audit neuron/synapse chart at ${TOPOLOGY_SVG_PATH}`,
+  );
+  const stat = Deno.statSync(TOPOLOGY_SVG_PATH);
+  assertGreater(stat.size, 0, `${TOPOLOGY_SVG_PATH} must be a non-empty SVG`);
+});
+
+Deno.test("MNIST README links the per-generation CSV at the audit path", () => {
+  const readme = loadReadme();
+  assertStringIncludes(
+    readme,
+    "docs/data/mnist_classification/evolution.csv",
+    "README must link the per-generation CSV at the audit-mandated path",
+  );
+  const stat = Deno.statSync(CSV_PATH);
+  assertGreater(stat.size, 0, `${CSV_PATH} must be a non-empty CSV`);
+});
+
+Deno.test("MNIST audit CSV header matches the schema mandated by issue #210", () => {
+  const { header } = loadCsvRows();
+  assert(
+    header === "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+    `CSV header must be the audit schema, got "${header}"`,
   );
 });
 
-Deno.test("MNIST README explains the embedded chart is NOT from the NEAT run", () => {
-  // Somewhere in the README the reader needs an explicit statement that
-  // the embedded screenshot comes from the MLP baseline, not from the
-  // NEAT-from-noise evolution. Phrase it any way you like, but the two
-  // ideas must appear together in a single paragraph so the disclaimer
-  // is unmissable.
-  const readme = loadReadme().toLowerCase();
-  const paragraphs = readme.split(/\n\s*\n/);
-  const disclaimer = paragraphs.find((p) =>
-    p.includes("evolution.svg") &&
-    p.includes("mlp baseline") &&
-    (p.includes("not") && (p.includes("neat run") || p.includes("neat evolution") ||
-      p.includes("neat-from-noise")))
-  );
-  assert(
-    disclaimer !== undefined,
-    "README must contain a paragraph that names evolution.svg, identifies it as the MLP baseline, and states it is NOT the NEAT evolution",
+Deno.test(
+  "MNIST audit CSV shows non-trivial neuron/synapse change between gen-1 and final",
+  () => {
+    const { rows } = loadCsvRows();
+    assertGreater(rows.length, 1, "CSV must have at least 2 rows");
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    const firstNeurons = Number(first[3]);
+    const firstSynapses = Number(first[4]);
+    const lastNeurons = Number(last[3]);
+    const lastSynapses = Number(last[4]);
+    // Audit acceptance criterion: "Neuron and synapse counts genuinely
+    // change between generation 0 and the final generation." Either the
+    // neuron count or the synapse count must differ — flatlining means
+    // the seed memorised the topology hint.
+    const changed = firstNeurons !== lastNeurons || firstSynapses !== lastSynapses;
+    assert(
+      changed,
+      `Topology must genuinely change across the run; got start=${firstNeurons}/${firstSynapses}` +
+        ` final=${lastNeurons}/${lastSynapses}`,
+    );
+  },
+);
+
+Deno.test("MNIST README quotes the measured generation count from the CSV", () => {
+  const { rows } = loadCsvRows();
+  const finalGen = rows[rows.length - 1][0];
+  const readme = loadReadme();
+  // The README must mention the actual final generation number; the
+  // exact phrasing is up to the author but the integer must appear.
+  assertStringIncludes(
+    readme,
+    finalGen,
+    `README must quote the final generation count from the CSV (${finalGen})`,
   );
 });
 
-Deno.test("MNIST README explains why MLP neuron/synapse counts are constant", () => {
-  // The reporter saw a flat neuron/synapse line on the chart and read
-  // it as "you cheated — you guessed the right number". That is true
-  // for the MLP baseline (it is a hand-prescribed 196 → 64 → 10 MLP),
-  // but the README must say so explicitly so no reader is misled. The
-  // word "constant" or "fixed" must appear near the words "neuron" and
-  // "synapse" in the same paragraph that mentions the MLP baseline.
-  const readme = loadReadme().toLowerCase();
-  const paragraphs = readme.split(/\n\s*\n/);
-  const para = paragraphs.find((p) =>
-    p.includes("mlp baseline") &&
-    (p.includes("constant") || p.includes("fixed") || p.includes("hand-prescribed")) &&
-    p.includes("neuron") && p.includes("synapse")
-  );
-  assert(
-    para !== undefined,
-    "README must explain that the MLP baseline's neuron/synapse counts are constant by design (fixed topology), not a NEAT cheat",
+Deno.test("MNIST README mentions the issue #210 audit by number", () => {
+  const readme = loadReadme();
+  assertStringIncludes(
+    readme,
+    "#210",
+    "README must reference issue #210 so the audit context is discoverable",
   );
 });

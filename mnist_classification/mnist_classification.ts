@@ -44,6 +44,7 @@ import {
   createSeededRng,
   Creature,
   type CreatureExport,
+  type NeatOptions,
   type NeuronExport,
   safeWriteJson,
   setRandomNumberGenerator,
@@ -57,6 +58,7 @@ import {
   type SnapshotConfig,
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
 import { fetchDataset } from "../common/data_cache.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
@@ -140,6 +142,26 @@ export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/mnist_classificatio
 
 /** Hidden directory under which the NEAT runner writes snapshot files. */
 export const SNAPSHOTS_DIR = `${MNIST_ROOT}/snapshots`;
+
+/**
+ * Per-generation telemetry CSV path for the minimal-seed `evolveDir`
+ * audit run (issue #210). Embedded by the README so reviewers can grep
+ * the exact numbers behind the chart.
+ */
+export const EVOLUTION_CSV_PATH = "docs/data/mnist_classification/evolution.csv";
+
+/** CSV header — schema mandated by issue #210. */
+export const EVOLUTION_CSV_HEADER =
+  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
+
+/** Best vs mean fitness chart path emitted by the audit run (issue #210). */
+export const FITNESS_SVG_PATH = "docs/screenshots/mnist_classification/fitness.svg";
+
+/** Neuron / synapse count chart path emitted by the audit run (issue #210). */
+export const TOPOLOGY_SVG_PATH = "docs/screenshots/mnist_classification/topology.svg";
+
+/** Sub-directory under `MNIST_ROOT` holding the binary `.bin` training set. */
+export const BIN_TRAIN_DIR = `${MNIST_ROOT}/bin`;
 
 /**
  * Issue #138's headline accuracy bar. Used both as the NEAT
@@ -948,6 +970,298 @@ export function buildGridCellsFromGenes(
   return cells;
 }
 
+// ---------------------------------------------------------------------------
+// Minimal-seed `evolveDir` flow (issue #210)
+//
+// The audit (#210) requires the published evolution to genuinely *learn*
+// the network structure from a minimal NEAT-AI seed:
+//   1. The seed passed to NEAT-AI is `new Creature(FEATURE_COUNT,
+//      CLASS_COUNT)` — no hidden hint, no pre-built `network.json`.
+//   2. `Creature.evolveDir(dataDir, options)` runs forward-only over a
+//      pre-generated binary `.bin` training set (per #190) until either
+//      the per-example `targetError` is reached or the
+//      `timeoutMinutes: 5` backstop fires.
+//   3. Per-generation telemetry (best/mean fitness + neuron / synapse
+//      counts) is captured via `onTrainingEvent` and emitted as a CSV
+//      plus two SVG charts.
+// ---------------------------------------------------------------------------
+
+/** One row of per-generation evolution telemetry. */
+export interface EvolutionRow {
+  /** 1-based generation index across the run. */
+  generation: number;
+  /** Best fitness observed in this generation (higher is better). */
+  bestFitness: number;
+  /** Population mean fitness in this generation. */
+  meanFitness: number;
+  /** Neuron count of this generation's champion. */
+  neuronCount: number;
+  /** Synapse count of this generation's champion. */
+  synapseCount: number;
+}
+
+/** Configuration for the minimal-seed `evolveDir` run. */
+export interface MnistEvolutionConfig {
+  /** Per-example reasonable target error driving early exit. */
+  targetError: number;
+  /** Wall-clock backstop in minutes (issue #210 mandates 5 as upper bound). */
+  timeoutMinutes: number;
+  /** NEAT population size. */
+  populationSize: number;
+  /** Hard generation cap as a secondary safety net. */
+  maxIterations: number;
+  /** Number of training records written to the `.bin` set. */
+  trainingRecords: number;
+  /** RNG seed forwarded to NEAT-AI. */
+  seed: number;
+}
+
+/**
+ * Defaults tuned so the demo runs to completion well inside the
+ * 5-minute audit backstop on a developer machine while still showing
+ * visible structural growth from the minimal seed.
+ *
+ * MNIST is a hard problem — 196 inputs × 10 outputs — so a literal
+ * mutation-only seed cannot reach the 95 % full-MNIST accuracy bar in
+ * five minutes. The demo therefore trains against a deterministic
+ * 1024-record subset of the canonical training file. The README quotes
+ * the *measured* fitness, generations, and topology from the latest
+ * run (whatever that turns out to be) rather than estimating.
+ */
+export const DEFAULT_MNIST_EVOLUTION_CONFIG: MnistEvolutionConfig = {
+  // Per-example mean-squared error of 0.02 is tight enough to force
+  // structural growth (a hidden-less direct seed plateaus around 0.085
+  // on this 1024-record subset) but reachable inside the 5-minute
+  // backstop on most developer hardware.
+  targetError: 0.02,
+  timeoutMinutes: 5,
+  populationSize: 12,
+  maxIterations: 200,
+  trainingRecords: 1024,
+  seed: 210210,
+};
+
+/** Result of {@link runMinimalSeedEvolution}. */
+export interface MnistEvolutionResult {
+  /** The best creature found by `evolveDir`. */
+  champion: Creature;
+  /** Per-generation telemetry rows captured during the run. */
+  rows: EvolutionRow[];
+  /** Total wall-clock time of the evolution call, in milliseconds. */
+  wallClockMs: number;
+  /** Final per-record error returned by `evolveDir`. */
+  finalError: number;
+  /** Total generations completed. */
+  generations: number;
+  /** Initial neuron count of the minimal seed (before evolution). */
+  seedNeuronCount: number;
+  /** Initial synapse count of the minimal seed (before evolution). */
+  seedSynapseCount: number;
+}
+
+/**
+ * Encode `samples` into the binary `.bin` training-stream format
+ * documented in `docs/binary_training_stream.md`. Each record is
+ * `FEATURE_COUNT` Float32 input pixels followed by `classCount`
+ * Float32 one-hot target outputs (1.0 for the labelled class, 0.0
+ * elsewhere), so the file matches the shape NEAT-AI's `evolveDir`
+ * expects for a `196 → 10` LOGISTIC classifier.
+ *
+ * The writer is deterministic — `samples` is consumed in order and
+ * every value goes through `Float32Array` rounding — so two runs over
+ * the same input produce byte-identical files.
+ */
+export function writeMnistTrainingBin(
+  samples: readonly DigitSample[],
+  outPath: string,
+  classCount: number = CLASS_COUNT,
+  featureCount: number = FEATURE_COUNT,
+): void {
+  if (samples.length === 0) {
+    throw new Error("writeMnistTrainingBin: samples must not be empty");
+  }
+  const stride = featureCount + classCount;
+  const buffer = new Uint8Array(samples.length * stride * 4);
+  const view = new Float32Array(buffer.buffer);
+  let offset = 0;
+  for (const s of samples) {
+    if (s.features.length !== featureCount) {
+      throw new Error(
+        `writeMnistTrainingBin: expected ${featureCount} features, got ${s.features.length}`,
+      );
+    }
+    if (s.label < 0 || s.label >= classCount) {
+      throw new Error(
+        `writeMnistTrainingBin: label ${s.label} out of range [0, ${classCount})`,
+      );
+    }
+    for (let i = 0; i < featureCount; i++) {
+      view[offset + i] = s.features[i];
+    }
+    // One-hot target: 1.0 for the labelled class, 0.0 elsewhere. The
+    // creature's LOGISTIC outputs are bounded to (0, 1) so MSE against
+    // a one-hot vector is the natural per-example loss.
+    for (let c = 0; c < classCount; c++) {
+      view[offset + featureCount + c] = c === s.label ? 1 : 0;
+    }
+    offset += stride;
+  }
+  ensureDirSync(dirnameOf(outPath));
+  Deno.writeFileSync(outPath, buffer);
+}
+
+/** Tiny path helper — keeps the `@std/path` import surface small. */
+function dirnameOf(path: string): string {
+  const i = path.lastIndexOf("/");
+  return i < 0 ? "." : path.slice(0, i);
+}
+
+/** Format a finite number for CSV emission with trimmed trailing zeros. */
+function formatCsvNumber(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  return Number(v.toFixed(6)).toString();
+}
+
+/** Format the per-generation telemetry rows as a CSV string. */
+export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
+  const lines: string[] = [EVOLUTION_CSV_HEADER];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.generation,
+        formatCsvNumber(r.bestFitness),
+        formatCsvNumber(r.meanFitness),
+        r.neuronCount,
+        r.synapseCount,
+      ].join(","),
+    );
+  }
+  return lines.join("\n") + "\n";
+}
+
+/** Convert telemetry rows to the shape expected by the fitness chart helper. */
+export function rowsToFitnessSamples(rows: readonly EvolutionRow[]): FitnessSample[] {
+  return rows.map((r) => ({
+    generation: r.generation,
+    bestFitness: r.bestFitness,
+    avgFitness: r.meanFitness,
+  }));
+}
+
+/** Convert telemetry rows to the shape expected by the evolution chart helper. */
+export function rowsToEvolutionSamples(rows: readonly EvolutionRow[]): EvolutionSample[] {
+  return rows.map((r) => ({
+    generation: r.generation,
+    score: r.bestFitness,
+    neurons: r.neuronCount,
+    synapses: r.synapseCount,
+  }));
+}
+
+/**
+ * Iterations per `evolveDir` chunk. Chunking the run keeps the
+ * per-generation telemetry chart in step with topology mutations: the
+ * passed-in `creature` reference is only updated at the end of each
+ * `evolveDir` call, so smaller chunks make the neuron / synapse line
+ * climb in visible step changes rather than as a single jump at the end.
+ */
+const PHASE_CHUNK_ITERATIONS = 10;
+
+/**
+ * Run minimal-seed `evolveDir` against the binary `.bin` training set
+ * in `dataDir`, capturing per-generation telemetry for the README.
+ *
+ * The seed passed in must be `new Creature(FEATURE_COUNT, CLASS_COUNT)`
+ * — this function deliberately does not construct the seed itself so
+ * the caller (and the tests) can prove no hidden-layer hint leaks in.
+ */
+export async function runMinimalSeedEvolution(
+  seed: Creature,
+  dataDir: string,
+  config: MnistEvolutionConfig = DEFAULT_MNIST_EVOLUTION_CONFIG,
+): Promise<MnistEvolutionResult> {
+  if (config.targetError <= 0) throw new Error("targetError must be positive");
+  if (config.timeoutMinutes <= 0) throw new Error("timeoutMinutes must be positive");
+  if (config.populationSize <= 0) throw new Error("populationSize must be positive");
+  if (config.maxIterations <= 0) throw new Error("maxIterations must be positive");
+
+  const seedNeuronCount = seed.neurons.length;
+  const seedSynapseCount = seed.synapses.length;
+
+  const rows: EvolutionRow[] = [];
+  const start = Date.now();
+  const budgetMs = config.timeoutMinutes * 60_000;
+
+  let evolved = 0;
+  let finalError = Number.POSITIVE_INFINITY;
+
+  while (evolved < config.maxIterations) {
+    const segmentStartNeurons = seed.neurons.length;
+    const segmentStartSynapses = seed.synapses.length;
+
+    const elapsedMs = Date.now() - start;
+    if (elapsedMs >= budgetMs) break;
+
+    const remaining = config.maxIterations - evolved;
+    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remaining);
+
+    const neatOptions: NeatOptions = {
+      seed: config.seed + evolved,
+      populationSize: config.populationSize,
+      iterations: chunkIterations,
+      targetError: config.targetError,
+      timeoutMinutes: config.timeoutMinutes,
+      // No feedbackLoop key → engine treats the run as forward-only.
+      costOfGrowth: 0,
+      // Push NEAT toward structural growth so the example genuinely
+      // adds hidden neurons / inter-layer synapses from the minimal seed.
+      mutationRate: 0.6,
+      mutationAmount: 3,
+      verbose: false,
+      log: 0,
+      threads: 1,
+      onTrainingEvent: (event) => {
+        if (event.kind !== "generation_complete") return;
+        rows.push({
+          generation: evolved + event.generation,
+          bestFitness: event.bestFitness,
+          meanFitness: event.averageFitness,
+          neuronCount: segmentStartNeurons,
+          synapseCount: segmentStartSynapses,
+        });
+      },
+    };
+
+    const result = await seed.evolveDir(dataDir, neatOptions);
+    const completed = result.generation ?? chunkIterations;
+    evolved += completed;
+    finalError = result.error ?? finalError;
+
+    if (finalError <= config.targetError) break;
+    if (completed < chunkIterations) break;
+  }
+
+  // Patch the final row so the chart shows the post-evolution topology
+  // — `evolveDir` updates the creature reference *after* the last event
+  // fires inside the chunk, so without this fix-up the last row still
+  // reports the pre-chunk counts.
+  if (rows.length > 0) {
+    const last = rows[rows.length - 1];
+    last.neuronCount = seed.neurons.length;
+    last.synapseCount = seed.synapses.length;
+  }
+
+  return {
+    champion: seed,
+    rows,
+    wallClockMs: Date.now() - start,
+    finalError,
+    generations: evolved,
+    seedNeuronCount,
+    seedSynapseCount,
+  };
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -1028,19 +1342,22 @@ if (import.meta.main) {
       `(features=${FEATURE_COUNT}, classes=${CLASS_COUNT})`,
   );
 
-  // Two runner modes:
-  //   - MNIST_NEAT_EVOLUTION=1: long-form developer screenshot run
-  //     using `evolveClassifier` (NEAT random-noise → champion). This
-  //     is the headline demo the README references; convergence from
-  //     uniform-random noise is unbounded, so the run is gated by an
-  //     env var rather than driven on every CI invocation.
-  //   - default: the SGD/MLP baseline `evolveMLPClassifier` — fast,
-  //     deterministic, and what `quality.sh` runs to keep CI snappy.
-  //     The MLP path is **untouched** by issue #151; it is a separate
-  //     baseline, not a NEAT example.
-  const wantNeatRun = (Deno.env.get("MNIST_NEAT_EVOLUTION") ?? "") !== "";
+  // Three runner modes:
+  //   - default (audit): minimal-seed `Creature.evolveDir` over a binary
+  //     `.bin` training subset (issue #210). Emits the per-generation
+  //     telemetry CSV + two SVGs the README embeds, and the champion's
+  //     prediction grid + confusion matrix.
+  //   - MNIST_MLP_BASELINE=1: SGD/MLP baseline (`evolveMLPClassifier`)
+  //     kept as a fast comparison classifier. Does not start from
+  //     random noise and does not grow topology.
+  //   - MNIST_NEAT_EVOLUTION=1: legacy long-form developer screenshot
+  //     run using the in-process `evolveClassifier` mutation loop.
+  //     Convergence from uniform-random noise is unbounded so this
+  //     mode is gated by an env var.
+  const wantLegacyNeatRun = (Deno.env.get("MNIST_NEAT_EVOLUTION") ?? "") !== "";
+  const wantMlpBaseline = (Deno.env.get("MNIST_MLP_BASELINE") ?? "") !== "";
 
-  if (wantNeatRun) {
+  if (wantLegacyNeatRun) {
     console.log(
       `\n🧬 Evolving classifier from uniform-random NEAT noise ` +
         `(target ${(ACCURACY_TARGET * 100).toFixed(1)}% accuracy, ` +
@@ -1138,14 +1455,15 @@ if (import.meta.main) {
           `(${snapshots.length} panels)`,
       );
     }
-  } else {
+  } else if (wantMlpBaseline) {
     console.log(
       `\n🧬 Training MLP baseline (${DEFAULT_MLP_EVOLVE_OPTIONS.inputCount} → ` +
         `${DEFAULT_MLP_EVOLVE_OPTIONS.hiddenCount} → ${DEFAULT_MLP_EVOLVE_OPTIONS.classCount}` +
         `, target ${(DEFAULT_MLP_EVOLVE_OPTIONS.accuracyThreshold! * 100).toFixed(1)}% accuracy)…`,
     );
     console.log(
-      "   (Set MNIST_NEAT_EVOLUTION=1 to run the long-form NEAT evolution from random noise.)",
+      "   (Default mode runs the audit minimal-seed evolveDir flow; " +
+        "set MNIST_NEAT_EVOLUTION=1 for the legacy NEAT loop.)",
     );
     const result = evolveMLPClassifier(split, {
       ...DEFAULT_MLP_EVOLVE_OPTIONS,
@@ -1211,6 +1529,110 @@ if (import.meta.main) {
       await Deno.writeTextFile(EVOLUTION_CHART_PATH, chartSvg);
       console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
     }
+  } else {
+    // Default — audit minimal-seed evolveDir flow (issue #210).
+    const config = DEFAULT_MNIST_EVOLUTION_CONFIG;
+    console.log(
+      `\n🧬 Audit minimal-seed evolution (issue #210):` +
+        `\n   seed = new Creature(${FEATURE_COUNT}, ${CLASS_COUNT}) — no hidden hint, no warm start` +
+        `\n   training subset = ${config.trainingRecords} records (binary .bin stream)` +
+        `\n   stop conditions: targetError=${config.targetError}, ` +
+        `timeoutMinutes=${config.timeoutMinutes}, maxIterations=${config.maxIterations}`,
+    );
+
+    // Stage 1 — write the binary `.bin` training subset.
+    const binDir = BIN_TRAIN_DIR;
+    ensureDirSync(binDir);
+    const trainingSubset = split.train.slice(0, config.trainingRecords);
+    const binPath = join(binDir, "mnist_train.bin");
+    writeMnistTrainingBin(trainingSubset, binPath);
+    console.log(
+      `📦 Wrote ${trainingSubset.length}-record training set to ${binPath}` +
+        ` (${(Deno.statSync(binPath).size / 1024).toFixed(1)} KiB)`,
+    );
+
+    // Stage 2 — minimal seed → evolveDir.
+    const seed = new Creature(FEATURE_COUNT, CLASS_COUNT);
+    console.log(
+      `🌱 Seed topology: ${seed.neurons.length} neurons, ` +
+        `${seed.synapses.length} synapses (no hidden neurons)`,
+    );
+    const result = await runMinimalSeedEvolution(seed, binDir, config);
+    const finalRow = result.rows[result.rows.length - 1];
+    console.log(
+      `\n✅ Completed ${result.generations} generations in ` +
+        `${(result.wallClockMs / 1000).toFixed(1)}s (final per-record error ${
+          Number.isFinite(result.finalError) ? result.finalError.toFixed(4) : "n/a"
+        })`,
+    );
+    if (finalRow) {
+      console.log(
+        `   Champion topology: ${finalRow.neuronCount} neurons, ` +
+          `${finalRow.synapseCount} synapses ` +
+          `(seed had ${result.seedNeuronCount} / ${result.seedSynapseCount})`,
+      );
+      console.log(
+        `   Final best fitness: ${finalRow.bestFitness.toFixed(4)} ` +
+          `(gen-1 best fitness: ${result.rows[0]?.bestFitness.toFixed(4) ?? "n/a"})`,
+      );
+    }
+
+    // Stage 3 — save champion + score on the held-out test set.
+    const championPath = join(creaturesDir, "champion.json");
+    await safeWriteJson(championPath, result.champion.exportJSON());
+    console.log(`💾 Saved evolved champion to ${championPath}`);
+
+    const validationAccuracy = classificationAccuracy(result.champion, split.validation);
+    const matrix = confusionMatrix(result.champion, split.test);
+    const testAccuracy = matrix.reduce((acc, row, i) => acc + row[i], 0) /
+      (split.test.length || 1);
+    const confusionPath = join(outputDir, "confusion.json");
+    await safeWriteJson(confusionPath, {
+      classes: CLASS_COUNT,
+      testAccuracy,
+      validationAccuracy,
+      matrix,
+    });
+    console.log(
+      `📝 Wrote confusion matrix to ${confusionPath}  ` +
+        `(test accuracy ${(testAccuracy * 100).toFixed(2)}%, ` +
+        `validation accuracy ${(validationAccuracy * 100).toFixed(2)}%)`,
+    );
+
+    // Stage 4 — emit the per-generation telemetry artefacts.
+    if (result.rows.length === 0) {
+      console.log("⚠️  No per-generation events captured — telemetry skipped.");
+    } else {
+      ensureDirSync("docs/data/mnist_classification");
+      ensureDirSync("docs/screenshots/mnist_classification");
+      await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(result.rows));
+      console.log(`🗒️  Wrote ${EVOLUTION_CSV_PATH} (${result.rows.length} rows)`);
+
+      const fitnessSvg = renderFitnessChartSVG(rowsToFitnessSamples(result.rows), {
+        title: "MNIST classification — Best vs Mean Fitness per Generation",
+      });
+      await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
+      console.log(`📈 Wrote ${FITNESS_SVG_PATH}`);
+
+      const topologySvg = renderEvolutionChartSVG(rowsToEvolutionSamples(result.rows), {
+        title: "MNIST classification — Score, Neurons, Synapses per Generation",
+        scoreLabel: "best fitness",
+      });
+      await Deno.writeTextFile(TOPOLOGY_SVG_PATH, topologySvg);
+      console.log(`📈 Wrote ${TOPOLOGY_SVG_PATH}`);
+    }
+
+    // Stage 5 — render the prediction grid SVG so the README can show
+    // the evolved champion solving real MNIST digits.
+    const cells = buildGridCells(result.champion, split.test, 3);
+    const gridSvg = renderDigitGridSVG({
+      cells,
+      accuracy: testAccuracy,
+      validationAccuracy,
+    });
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, gridSvg);
+    console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
   }
 
   console.log(

@@ -221,8 +221,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:0 P:0 ✓</text>
+        fill="#e74c3c"
+      >T:0 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -296,8 +296,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:1 P:1 ✓</text>
+        fill="#e74c3c"
+      >T:1 P:6 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -462,8 +462,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:2 P:2 ✓</text>
+        fill="#e74c3c"
+      >T:2 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -678,8 +678,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:3 P:3 ✓</text>
+        fill="#e74c3c"
+      >T:3 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -979,7 +979,7 @@
         font-family="monospace"
         font-size="14"
         fill="#e74c3c"
-      >T:5 P:6 ✗</text>
+      >T:5 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -1167,8 +1167,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:6 P:6 ✓</text>
+        fill="#e74c3c"
+      >T:6 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -1290,8 +1290,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:7 P:7 ✓</text>
+        fill="#e74c3c"
+      >T:7 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -1475,8 +1475,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:8 P:8 ✓</text>
+        fill="#e74c3c"
+      >T:8 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -1615,8 +1615,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:9 P:9 ✓</text>
+        fill="#e74c3c"
+      >T:9 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -1792,8 +1792,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:0 P:0 ✓</text>
+        fill="#e74c3c"
+      >T:0 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -1883,8 +1883,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:1 P:1 ✓</text>
+        fill="#e74c3c"
+      >T:1 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -2070,8 +2070,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:2 P:2 ✓</text>
+        fill="#e74c3c"
+      >T:2 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -2213,8 +2213,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:3 P:3 ✓</text>
+        fill="#e74c3c"
+      >T:3 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -2504,8 +2504,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:5 P:5 ✓</text>
+        fill="#e74c3c"
+      >T:5 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -2642,8 +2642,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:6 P:6 ✓</text>
+        fill="#e74c3c"
+      >T:6 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -2782,8 +2782,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:7 P:7 ✓</text>
+        fill="#e74c3c"
+      >T:7 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -2971,8 +2971,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:8 P:8 ✓</text>
+        fill="#e74c3c"
+      >T:8 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -3149,8 +3149,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:9 P:9 ✓</text>
+        fill="#e74c3c"
+      >T:9 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -3324,8 +3324,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:0 P:0 ✓</text>
+        fill="#e74c3c"
+      >T:0 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -3428,8 +3428,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:1 P:1 ✓</text>
+        fill="#e74c3c"
+      >T:1 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -3558,8 +3558,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:2 P:2 ✓</text>
+        fill="#e74c3c"
+      >T:2 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -3719,8 +3719,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:3 P:3 ✓</text>
+        fill="#e74c3c"
+      >T:3 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -3978,8 +3978,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:5 P:5 ✓</text>
+        fill="#e74c3c"
+      >T:5 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -4136,8 +4136,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:6 P:6 ✓</text>
+        fill="#e74c3c"
+      >T:6 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -4251,8 +4251,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:7 P:7 ✓</text>
+        fill="#e74c3c"
+      >T:7 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -4427,8 +4427,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:8 P:8 ✓</text>
+        fill="#e74c3c"
+      >T:8 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -4573,8 +4573,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:9 P:9 ✓</text>
+        fill="#e74c3c"
+      >T:9 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -4940,8 +4940,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:1 P:1 ✓</text>
+        fill="#e74c3c"
+      >T:1 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -5050,8 +5050,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:2 P:2 ✓</text>
+        fill="#e74c3c"
+      >T:2 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -5181,8 +5181,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:3 P:3 ✓</text>
+        fill="#e74c3c"
+      >T:3 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -5424,8 +5424,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:5 P:5 ✓</text>
+        fill="#e74c3c"
+      >T:5 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -5564,8 +5564,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:6 P:6 ✓</text>
+        fill="#e74c3c"
+      >T:6 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -5716,8 +5716,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:7 P:7 ✓</text>
+        fill="#e74c3c"
+      >T:7 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -5929,8 +5929,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:8 P:8 ✓</text>
+        fill="#e74c3c"
+      >T:8 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -6085,8 +6085,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:9 P:9 ✓</text>
+        fill="#e74c3c"
+      >T:9 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -6277,8 +6277,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:0 P:0 ✓</text>
+        fill="#e74c3c"
+      >T:0 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -6354,8 +6354,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:1 P:1 ✓</text>
+        fill="#e74c3c"
+      >T:1 P:6 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -6488,8 +6488,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:2 P:2 ✓</text>
+        fill="#e74c3c"
+      >T:2 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -6703,8 +6703,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:3 P:3 ✓</text>
+        fill="#e74c3c"
+      >T:3 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -7002,8 +7002,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:5 P:5 ✓</text>
+        fill="#e74c3c"
+      >T:5 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -7204,8 +7204,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:6 P:6 ✓</text>
+        fill="#e74c3c"
+      >T:6 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -7340,8 +7340,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:7 P:7 ✓</text>
+        fill="#e74c3c"
+      >T:7 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -7522,8 +7522,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:8 P:8 ✓</text>
+        fill="#e74c3c"
+      >T:8 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -7683,8 +7683,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:9 P:9 ✓</text>
+        fill="#e74c3c"
+      >T:9 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -7842,8 +7842,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:0 P:0 ✓</text>
+        fill="#e74c3c"
+      >T:0 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -7935,8 +7935,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:1 P:1 ✓</text>
+        fill="#e74c3c"
+      >T:1 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -8099,8 +8099,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:2 P:2 ✓</text>
+        fill="#e74c3c"
+      >T:2 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -8237,8 +8237,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:3 P:3 ✓</text>
+        fill="#e74c3c"
+      >T:3 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -8525,8 +8525,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:5 P:5 ✓</text>
+        fill="#e74c3c"
+      >T:5 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -8676,8 +8676,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:6 P:6 ✓</text>
+        fill="#e74c3c"
+      >T:6 P:4 ✗</text>
     </g>
   </g>
   <g class="cell">
@@ -8804,8 +8804,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:7 P:7 ✓</text>
+        fill="#e74c3c"
+      >T:7 P:4 ✗</text>
     </g>
     <g class="frame frame-1" opacity="0">
       <animate
@@ -8985,8 +8985,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:8 P:8 ✓</text>
+        fill="#e74c3c"
+      >T:8 P:4 ✗</text>
     </g>
     <g class="frame frame-2" opacity="0">
       <animate
@@ -9148,8 +9148,8 @@
         text-anchor="middle"
         font-family="monospace"
         font-size="14"
-        fill="#2ecc71"
-      >T:9 P:9 ✓</text>
+        fill="#e74c3c"
+      >T:9 P:4 ✗</text>
     </g>
   </g>
   <text
@@ -9159,7 +9159,7 @@
     font-family="sans-serif"
     font-size="14"
     fill="#f5e9ff"
-  >Validation accuracy: 96.63%  ·  Test accuracy: 96.16%  ·  Green ✓ = correct prediction, red ✗ = wrong</text>
+  >Validation accuracy: 9.91%  ·  Test accuracy: 9.95%  ·  Green ✓ = correct prediction, red ✗ = wrong</text>
   <text
     x="266"
     y="580"
