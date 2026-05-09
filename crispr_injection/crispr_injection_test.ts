@@ -1,5 +1,5 @@
 /**
- * Unit tests for the CRISPR gene-injection demo (issue #88).
+ * Unit tests for the CRISPR gene-injection demo (issues #88 + #209).
  *
  * "What" tests only — each test calls a real function and asserts on
  * observable outputs (creature structure, fitness records, SVG markup).
@@ -12,6 +12,7 @@ import {
   assertGreaterOrEqual,
   assertNotEquals,
 } from "@std/assert";
+import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
 
@@ -20,10 +21,19 @@ import {
   createGene,
   createTargetCreature,
   DEFAULT_CRISPR_CONFIG,
+  DEFAULT_CRISPR_EVOLUTION_CONFIG,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
+  formatEvolutionCsv,
   GENE_NEURON_UUIDS,
   injectGene,
+  INPUT_COUNT,
   mutateMember,
+  OUTPUT_COUNT,
+  rowsToEvolutionSamples,
+  rowsToFitnessSamples,
   runCrisprExperiment,
+  runMinimalSeedEvolution,
   SYNTHETIC_CONFIG,
 } from "./crispr_injection.ts";
 import { generateSyntheticData } from "../common/synthetic_data.ts";
@@ -266,3 +276,220 @@ Deno.test("createGene returns the canonical pair of TANH neurons", () => {
     assertNotEquals(n.uuid, undefined);
   }
 });
+
+/* ------------------------------------------------------------------ */
+/*  Audit (issue #209) — minimal-seed evolveDir + measured telemetry   */
+/* ------------------------------------------------------------------ */
+
+Deno.test("DEFAULT_CRISPR_EVOLUTION_CONFIG honours the audit's stop-condition rule", () => {
+  // Issue #209 mandates a positive targetError plus timeoutMinutes <= 5
+  // (or higher with a documented justification — the default sticks to 5).
+  assertGreater(
+    DEFAULT_CRISPR_EVOLUTION_CONFIG.targetError,
+    0,
+    "targetError must be positive",
+  );
+  assertEquals(
+    DEFAULT_CRISPR_EVOLUTION_CONFIG.timeoutMinutes,
+    5,
+    "timeoutMinutes must default to the issue #209 backstop",
+  );
+  assertGreater(
+    DEFAULT_CRISPR_EVOLUTION_CONFIG.populationSize,
+    0,
+    "populationSize must be positive",
+  );
+  assertGreater(
+    DEFAULT_CRISPR_EVOLUTION_CONFIG.maxIterations,
+    0,
+    "maxIterations must be positive",
+  );
+});
+
+Deno.test("formatEvolutionCsv emits the schema mandated by issue #209", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: -0.5, meanFitness: -0.7, neuronCount: 3, synapseCount: 2 },
+    { generation: 2, bestFitness: -0.3, meanFitness: -0.6, neuronCount: 4, synapseCount: 5 },
+  ];
+  const csv = formatEvolutionCsv(rows);
+  const lines = csv.trim().split("\n");
+  assertEquals(lines[0], EVOLUTION_CSV_HEADER, "header must match the audit schema");
+  assertEquals(lines.length, 3, "header + 2 data rows");
+  assertEquals(lines[1], "1,-0.5,-0.7,3,2");
+  assertEquals(lines[2], "2,-0.3,-0.6,4,5");
+});
+
+Deno.test("formatEvolutionCsv survives non-finite fitness without throwing", () => {
+  const rows: EvolutionRow[] = [
+    {
+      generation: 1,
+      bestFitness: Number.POSITIVE_INFINITY,
+      meanFitness: Number.NEGATIVE_INFINITY,
+      neuronCount: 3,
+      synapseCount: 2,
+    },
+  ];
+  const csv = formatEvolutionCsv(rows);
+  assertEquals(csv.trim().split("\n")[1], "1,0,0,3,2");
+});
+
+Deno.test("rowsToFitnessSamples renames meanFitness to avgFitness", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 3, bestFitness: -0.1, meanFitness: -0.4, neuronCount: 7, synapseCount: 9 },
+  ];
+  const samples = rowsToFitnessSamples(rows);
+  assertEquals(samples.length, 1);
+  assertEquals(samples[0].generation, 3);
+  assertEquals(samples[0].bestFitness, -0.1);
+  assertEquals(samples[0].avgFitness, -0.4);
+});
+
+Deno.test("rowsToEvolutionSamples maps neuron and synapse counts onto chart fields", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 7, bestFitness: 0.2, meanFitness: 0.1, neuronCount: 8, synapseCount: 14 },
+  ];
+  const samples = rowsToEvolutionSamples(rows);
+  assertEquals(samples.length, 1);
+  assertEquals(samples[0].generation, 7);
+  assertEquals(samples[0].score, 0.2);
+  assertEquals(samples[0].neurons, 8);
+  assertEquals(samples[0].synapses, 14);
+});
+
+Deno.test("runMinimalSeedEvolution rejects non-positive config values", async () => {
+  const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const dataDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
+  try {
+    let threw = false;
+    try {
+      await runMinimalSeedEvolution(seed, dataDir, {
+        targetError: 0,
+        timeoutMinutes: 1,
+        populationSize: 4,
+        maxIterations: 1,
+        seed: 1,
+      });
+    } catch (err) {
+      threw = true;
+      assertEquals(err instanceof Error, true);
+    }
+    assertEquals(threw, true, "zero targetError must throw");
+  } finally {
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("runMinimalSeedEvolution captures per-generation telemetry from a minimal seed", async () => {
+  // Exercises the audit's telemetry contract: starting from
+  // `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, the runner must capture
+  // per-generation rows whose schema matches the audit (generation,
+  // best/mean fitness, neuron and synapse counts) and must record the
+  // seed topology. The actual *growth* assertion lives in the next
+  // test, which reads the committed CSV produced by the production run.
+  const tmpDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+
+  try {
+    const target = createTargetCreature();
+    target.validate();
+    generateSyntheticData(target, dataDir, {
+      totalRecords: 64,
+      recordsPerFile: 64,
+      seed: 42,
+    });
+
+    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const seedNeurons = seed.neurons.length;
+    const seedSynapses = seed.synapses.length;
+
+    const result = await runMinimalSeedEvolution(seed, dataDir, {
+      targetError: 0.001,
+      timeoutMinutes: 1,
+      populationSize: 8,
+      maxIterations: 30,
+      seed: 209,
+    });
+
+    assertEquals(result.seedNeuronCount, seedNeurons, "seed neuron count must be recorded");
+    assertEquals(result.seedSynapseCount, seedSynapses, "seed synapse count must be recorded");
+    assertGreater(
+      result.rows.length,
+      0,
+      "at least one generation_complete event must be captured",
+    );
+
+    const finalRow = result.rows[result.rows.length - 1];
+    assertGreater(finalRow.generation, 0, "generation must be 1-based");
+    assertGreater(finalRow.neuronCount, 0, "neuron count must be positive");
+    assertGreater(finalRow.synapseCount, 0, "synapse count must be positive");
+    assertEquals(
+      Number.isFinite(finalRow.bestFitness),
+      true,
+      "bestFitness must be finite once evolution has progressed",
+    );
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("runMinimalSeedEvolution leaves the passed-in creature as the champion", async () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+
+  try {
+    const target = createTargetCreature();
+    generateSyntheticData(target, dataDir, {
+      totalRecords: 32,
+      recordsPerFile: 32,
+      seed: 99,
+    });
+
+    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const result = await runMinimalSeedEvolution(seed, dataDir, {
+      targetError: 0.001,
+      timeoutMinutes: 1,
+      populationSize: 4,
+      maxIterations: 4,
+      seed: 11,
+    });
+    // The champion must be the same JS object the caller passed in —
+    // evolveDir mutates the creature in place. This guards against a
+    // future refactor accidentally breaking that contract.
+    assertEquals(result.champion === seed, true, "champion must be the in-place creature");
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test(
+  "committed evolution.csv shows the topology genuinely changing across generations",
+  () => {
+    // Issue #209 acceptance criterion — the committed CSV produced by
+    // `./crispr_injection/run.sh` must show neuron *or* synapse count
+    // changing between generation 1 and the final generation. Identical
+    // start/end counts means the seed memorised the task; the audit
+    // explicitly calls for the run to be redone until this holds.
+    const csv = Deno.readTextFileSync("docs/data/crispr_injection/evolution.csv");
+    const lines = csv.trim().split("\n");
+    assertEquals(lines[0], EVOLUTION_CSV_HEADER, "header must match the audit schema");
+    assertGreater(lines.length, 2, "CSV must have multiple generations recorded");
+
+    const first = lines[1].split(",");
+    const last = lines[lines.length - 1].split(",");
+    const firstNeurons = Number(first[3]);
+    const firstSynapses = Number(first[4]);
+    const lastNeurons = Number(last[3]);
+    const lastSynapses = Number(last[4]);
+
+    const changed = firstNeurons !== lastNeurons || firstSynapses !== lastSynapses;
+    assertEquals(
+      changed,
+      true,
+      `committed CSV shows topology unchanged from gen 1 (${firstNeurons}/${firstSynapses}) ` +
+        `to final gen (${lastNeurons}/${lastSynapses}) — re-run ./crispr_injection/run.sh ` +
+        `and commit a new evolution.csv per issue #209.`,
+    );
+  },
+);
