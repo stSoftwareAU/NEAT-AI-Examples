@@ -65,24 +65,6 @@ export const OUTPUT_COUNT = 3;
 /** Maximum number of timesteps a single episode is allowed to run. */
 export const MAX_STEPS = 400;
 
-/**
- * Landed-on-pad rate at or above which the controller is declared
- * "solved": at least 60% of the perturbed-start trial batch must end
- * with a `landed` outcome (touching down inside the pad, near-upright,
- * with vertical and horizontal speeds inside the safe-landing bounds).
- * The threshold is checked across a fixed deterministic batch of
- * perturbed initial states so a lucky single launch cannot pass it.
- *
- * Lunar-lander is a substantially harder control problem than
- * cart-pole — the controller has to coordinate three discrete
- * thrusters against gravity, drift, fuel limits, and a pad-relative
- * landing test — so a 60% bar within 1000 generations of evolution
- * from uniform-random noise is a practical demonstration of the
- * "noise → competent" story this example tells. (The `e.g. ≥ 80%`
- * suggestion in issue #153 was an example, not a hard requirement.)
- */
-export const SOLVED_LANDED_RATE = 0.6;
-
 /** Scoring constants — tuned so a fuel-rich, pad-centred landing scores >> 0
  *  while free fall crashes far below it. The "flying" timeout penalises
  *  altitude so an indefinite hover does not dominate the reward. */
@@ -108,8 +90,19 @@ export interface EvolveOptions {
   seed: number;
   /** Population size for each generation. */
   populationSize: number;
-  /** Hard cap on the number of generations before giving up. */
-  maxGenerations: number;
+  /**
+   * NEAT-AI standard target-error stop condition. Evolution halts as
+   * soon as the champion's landed rate on the training trial batch
+   * reaches `1 - targetError` (default `0.01`, i.e. landed-rate ≥ 99%).
+   */
+  targetError: number;
+  /**
+   * NEAT-AI standard wall-clock stop condition. Evolution halts when
+   * the elapsed time since the loop began exceeds `timeoutMinutes`
+   * minutes (default `2`). Whichever of `targetError` and
+   * `timeoutMinutes` fires first wins.
+   */
+  timeoutMinutes: number;
   /** Standard deviation of the weight/bias perturbation noise. */
   mutationStrength: number;
   /** Probability that any given gene is perturbed each generation. */
@@ -211,7 +204,10 @@ export interface EvolveResult {
   bestScore: number;
   /** Number of generations actually run before stopping. */
   generations: number;
-  /** True when the champion reached {@link SOLVED_LANDED_RATE}. */
+  /**
+   * True when the champion reached the configured target landed rate
+   * (`>= 1 - targetError`) at any point during the run.
+   */
   solved: boolean;
   /** Champion's measured landed rate across the perturbed-start batch. */
   landedRate: number;
@@ -219,16 +215,26 @@ export interface EvolveResult {
   championOutcome: LanderOutcome;
   /** Final-generation mean score (for sanity checks against baselines). */
   finalMeanScore: number;
+  /** Wall-clock duration of the evolution loop in milliseconds. */
+  wallclockMs: number;
+  /**
+   * Why the evolution loop terminated:
+   * - `"target"` — the champion reached `1 - targetError` landed rate.
+   * - `"timeout"` — `timeoutMinutes` elapsed before the target fired.
+   */
+  stopReason: "target" | "timeout";
 }
 
 /** Sensible defaults for the demonstration runner. */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 80,
-  // Hard generation cap. Variable-topology evolution from uniform-
-  // random noise needs more generations to converge than the previous
-  // fixed-topology search did, so the budget is bigger than the old 60.
-  maxGenerations: 1000,
+  // NEAT-AI standard stop conditions: evolution halts as soon as the
+  // champion's landed-rate on the training trial batch reaches
+  // `1 - targetError` (default 99%) OR `timeoutMinutes` minutes have
+  // elapsed since the loop began — whichever fires first.
+  targetError: 0.01,
+  timeoutMinutes: 2,
   mutationStrength: 0.7,
   mutationRate: 0.5,
   addNeuronRate: 0.05,
@@ -551,10 +557,11 @@ function topologyCounts(json: CreatureExport): { neurons: number; synapses: numb
 /**
  * Run a generational evolutionary algorithm. Truncation selection keeps
  * the top half as parents; the elite carries over so the best score is
- * monotonically non-decreasing. Stops as soon as the champion's
- * landed rate reaches {@link SOLVED_LANDED_RATE} **or**
- * `maxGenerations` is exhausted (whichever comes first) — the **hard
- * generation cap** is the second guarantee.
+ * monotonically non-decreasing. Stops as soon as the champion's landed
+ * rate on the training trial batch reaches `1 - targetError` **or**
+ * `timeoutMinutes` minutes of wall-clock have elapsed — whichever
+ * fires first. The two stop conditions match the standard NEAT-AI
+ * `NeatOptions.targetError` / `NeatOptions.timeoutMinutes` fields.
  */
 export function evolveLanderController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -597,7 +604,13 @@ export function evolveLanderController(
   let lastMeanScore = 0;
   let solvedAt = -1;
 
-  for (let generation = 0; generation < options.maxGenerations; generation++) {
+  const targetLandedRate = 1 - options.targetError;
+  const timeoutMs = options.timeoutMinutes * 60_000;
+  const loopStart = Date.now();
+  let stopReason: "target" | "timeout" = "timeout";
+  let generation = 0;
+
+  while (true) {
     population.sort((a, b) => b.score - a.score);
     const generationBest = population[0];
     if (generationBest.score > bestScore) {
@@ -628,22 +641,29 @@ export function evolveLanderController(
       }
     }
 
-    if (bestLandedRate >= SOLVED_LANDED_RATE) {
-      if (solvedAt < 0) solvedAt = generation;
+    const targetMet = bestLandedRate >= targetLandedRate;
+    if (targetMet && solvedAt < 0) solvedAt = generation;
+
+    const elapsedMs = Date.now() - loopStart;
+    const timedOut = elapsedMs >= timeoutMs;
+
+    if (targetMet) {
       // When capturing snapshots, keep running until the next
-      // not-yet-fired checkpoint within maxGenerations is captured —
-      // otherwise the progression strip would be a single panel.
-      if (options.snapshotConfig) {
-        const nextCheckpoint = options.snapshotConfig.checkpoints
-          .filter((c) => c > generation + 1 && c <= options.maxGenerations)
-          .sort((a, b) => a - b)[0];
-        if (nextCheckpoint === undefined) break;
-      } else {
+      // not-yet-fired checkpoint is captured — otherwise the
+      // progression strip would be a single panel.
+      const nextCheckpoint = options.snapshotConfig?.checkpoints
+        .filter((c) => c > generation + 1)
+        .sort((a, b) => a - b)[0];
+      if (nextCheckpoint === undefined) {
+        stopReason = "target";
         break;
       }
     }
 
-    if (generation === options.maxGenerations - 1) break;
+    if (timedOut) {
+      stopReason = solvedAt >= 0 ? "target" : "timeout";
+      break;
+    }
 
     const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
     const parents = population.slice(0, parentCount);
@@ -672,17 +692,20 @@ export function evolveLanderController(
       });
     }
     population = next;
+    generation++;
   }
 
   const champion = Creature.fromJSON(bestJSON);
   return {
     champion,
     bestScore,
-    generations: solvedAt >= 0 ? solvedAt + 1 : options.maxGenerations,
-    solved: bestLandedRate >= SOLVED_LANDED_RATE,
+    generations: generation + 1,
+    solved: solvedAt >= 0,
     landedRate: bestLandedRate,
     championOutcome: bestOutcome,
     finalMeanScore: lastMeanScore,
+    wallclockMs: Date.now() - loopStart,
+    stopReason,
   };
 }
 
@@ -707,6 +730,21 @@ export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/lunar_lander_evolut
 /** Path to the per-generation evolution-chart SVG the runner emits. */
 export const EVOLUTION_CHART_PATH = "docs/screenshots/lunar_lander/evolution.svg";
 
+/**
+ * Trivial `--name=value` CLI flag parser. Returns `undefined` when the
+ * flag is absent or its value is not a finite number.
+ */
+function parseNumericFlag(args: string[], name: string): number | undefined {
+  const prefix = `${name}=`;
+  for (const arg of args) {
+    if (arg.startsWith(prefix)) {
+      const v = parseFloat(arg.slice(prefix.length));
+      if (Number.isFinite(v)) return v;
+    }
+  }
+  return undefined;
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -718,7 +756,18 @@ if (import.meta.main) {
   const baseline = freeFallBaselineScore();
   console.log(`🪂 Free-fall baseline score: ${baseline.toFixed(1)}`);
 
+  // CLI overrides for the NEAT-AI standard stop conditions.
+  const targetError = parseNumericFlag(Deno.args, "--target-error") ??
+    DEFAULT_EVOLVE_OPTIONS.targetError;
+  const timeoutMinutes = parseNumericFlag(Deno.args, "--timeout-minutes") ??
+    DEFAULT_EVOLVE_OPTIONS.timeoutMinutes;
+
   console.log("\n🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log(
+    `   Stop conditions: targetError=${targetError} ` +
+      `(landed-rate ≥ ${((1 - targetError) * 100).toFixed(0)}%), ` +
+      `timeoutMinutes=${timeoutMinutes}`,
+  );
   ensureDirSync(SNAPSHOTS_DIR);
   for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
@@ -727,6 +776,8 @@ if (import.meta.main) {
   const evolutionStart = Date.now();
   const result = evolveLanderController({
     ...DEFAULT_EVOLVE_OPTIONS,
+    targetError,
+    timeoutMinutes,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
       outputDir: SNAPSHOTS_DIR,
@@ -751,7 +802,8 @@ if (import.meta.main) {
       `generations (best=${result.bestScore.toFixed(1)}, landed=${
         (result.landedRate * 100).toFixed(0)
       }%, ` +
-      `threshold=${(SOLVED_LANDED_RATE * 100).toFixed(0)}%, baseline=${baseline.toFixed(1)}).`,
+      `threshold=${((1 - targetError) * 100).toFixed(0)}%, baseline=${baseline.toFixed(1)}, ` +
+      `stop=${result.stopReason}, wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
   const championPath = join(creaturesDir, "champion.json");
