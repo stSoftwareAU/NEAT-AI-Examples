@@ -1,188 +1,546 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="Discovery — Score, Neurons, Synapses per Generation dual-axis chart">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 800 400"
+  width="800"
+  height="400"
+  role="img"
+  aria-label="Discovery — Score, Neurons, Synapses per Generation dual-axis chart"
+>
   <title>Discovery — Score, Neurons, Synapses per Generation</title>
-  <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">Discovery — Score, Neurons, Synapses per Generation</text>
-  <rect x="70" y="40" width="660" height="300" fill="#ffffff" stroke="#333333" stroke-width="1"/>
+  <rect width="800" height="400" fill="#fafafa" />
+  <text
+    x="400"
+    y="24"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="16"
+    font-weight="bold"
+    fill="#222"
+  >Discovery — Score, Neurons, Synapses per Generation</text>
+  <rect x="70" y="40" width="660" height="300" fill="#ffffff" stroke="#333333" stroke-width="1" />
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
-    <line x1="126.57" y1="340" x2="126.57" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="126.57" y="358" text-anchor="middle">4</text>
-    <line x1="202" y1="340" x2="202" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="202" y="358" text-anchor="middle">8</text>
-    <line x1="277.43" y1="340" x2="277.43" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="277.43" y="358" text-anchor="middle">12</text>
-    <line x1="352.86" y1="340" x2="352.86" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="352.86" y="358" text-anchor="middle">16</text>
-    <line x1="428.29" y1="340" x2="428.29" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="428.29" y="358" text-anchor="middle">20</text>
-    <line x1="503.71" y1="340" x2="503.71" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="503.71" y="358" text-anchor="middle">24</text>
-    <line x1="579.14" y1="340" x2="579.14" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="579.14" y="358" text-anchor="middle">28</text>
-    <line x1="654.57" y1="340" x2="654.57" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="654.57" y="358" text-anchor="middle">32</text>
-    <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="730" y="358" text-anchor="middle">36</text>
+    <line x1="148.81" y1="340" x2="148.81" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="148.81" y="358" text-anchor="middle">17</text>
+    <line x1="232.54" y1="340" x2="232.54" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="232.54" y="358" text-anchor="middle">34</text>
+    <line x1="316.27" y1="340" x2="316.27" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="316.27" y="358" text-anchor="middle">51</text>
+    <line x1="400" y1="340" x2="400" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="400" y="358" text-anchor="middle">68</text>
+    <line x1="483.73" y1="340" x2="483.73" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="483.73" y="358" text-anchor="middle">85</text>
+    <line x1="567.46" y1="340" x2="567.46" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="567.46" y="358" text-anchor="middle">102</text>
+    <line x1="651.19" y1="340" x2="651.19" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="651.19" y="358" text-anchor="middle">119</text>
+    <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="730" y="358" text-anchor="middle">135</text>
     <text x="400" y="376" text-anchor="middle" font-weight="bold">generation</text>
   </g>
   <g class="left-axis" font-family="sans-serif" font-size="11" fill="#1f77b4">
-    <line x1="66" y1="340" x2="70" y2="340" stroke="#1f77b4" stroke-width="1"/>
-    <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0.146</text>
-    <line x1="66" y1="269.74" x2="70" y2="269.74" stroke="#1f77b4" stroke-width="1"/>
-    <text x="62" y="269.74" text-anchor="end" dominant-baseline="middle">0.346</text>
-    <line x1="66" y1="199.48" x2="70" y2="199.48" stroke="#1f77b4" stroke-width="1"/>
-    <text x="62" y="199.48" text-anchor="end" dominant-baseline="middle">0.546</text>
-    <line x1="66" y1="129.21" x2="70" y2="129.21" stroke="#1f77b4" stroke-width="1"/>
-    <text x="62" y="129.21" text-anchor="end" dominant-baseline="middle">0.746</text>
-    <line x1="66" y1="58.95" x2="70" y2="58.95" stroke="#1f77b4" stroke-width="1"/>
-    <text x="62" y="58.95" text-anchor="end" dominant-baseline="middle">0.946</text>
-    <line x1="66" y1="40" x2="70" y2="40" stroke="#1f77b4" stroke-width="1"/>
+    <line x1="66" y1="340" x2="70" y2="340" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0.186</text>
+    <line x1="66" y1="266.29" x2="70" y2="266.29" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="266.29" text-anchor="end" dominant-baseline="middle">0.386</text>
+    <line x1="66" y1="192.58" x2="70" y2="192.58" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="192.58" text-anchor="end" dominant-baseline="middle">0.586</text>
+    <line x1="66" y1="118.87" x2="70" y2="118.87" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="118.87" text-anchor="end" dominant-baseline="middle">0.786</text>
+    <line x1="66" y1="45.15" x2="70" y2="45.15" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="45.15" text-anchor="end" dominant-baseline="middle">0.986</text>
+    <line x1="66" y1="40" x2="70" y2="40" stroke="#1f77b4" stroke-width="1" />
     <text x="62" y="40" text-anchor="end" dominant-baseline="middle">1</text>
-    <text x="22" y="190" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 190)">score</text>
+    <text
+      x="22"
+      y="190"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-weight="bold"
+      transform="rotate(-90 22 190)"
+    >score</text>
   </g>
   <g class="right-axis" font-family="sans-serif" font-size="11" fill="#333333">
-    <line x1="730" y1="340" x2="734" y2="340" stroke="#333333" stroke-width="1"/>
+    <line x1="730" y1="340" x2="734" y2="340" stroke="#333333" stroke-width="1" />
     <text x="738" y="340" text-anchor="start" dominant-baseline="middle">0</text>
-    <line x1="730" y1="280" x2="734" y2="280" stroke="#333333" stroke-width="1"/>
-    <text x="738" y="280" text-anchor="start" dominant-baseline="middle">1</text>
-    <line x1="730" y1="220" x2="734" y2="220" stroke="#333333" stroke-width="1"/>
-    <text x="738" y="220" text-anchor="start" dominant-baseline="middle">2</text>
-    <line x1="730" y1="160" x2="734" y2="160" stroke="#333333" stroke-width="1"/>
-    <text x="738" y="160" text-anchor="start" dominant-baseline="middle">3</text>
-    <line x1="730" y1="100" x2="734" y2="100" stroke="#333333" stroke-width="1"/>
-    <text x="738" y="100" text-anchor="start" dominant-baseline="middle">4</text>
-    <line x1="730" y1="40" x2="734" y2="40" stroke="#333333" stroke-width="1"/>
-    <text x="738" y="40" text-anchor="start" dominant-baseline="middle">5</text>
-    <text x="778" y="190" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(90 778 190)">neurons / synapses</text>
+    <line x1="730" y1="283.75" x2="734" y2="283.75" stroke="#333333" stroke-width="1" />
+    <text x="738" y="283.75" text-anchor="start" dominant-baseline="middle">3</text>
+    <line x1="730" y1="227.5" x2="734" y2="227.5" stroke="#333333" stroke-width="1" />
+    <text x="738" y="227.5" text-anchor="start" dominant-baseline="middle">6</text>
+    <line x1="730" y1="171.25" x2="734" y2="171.25" stroke="#333333" stroke-width="1" />
+    <text x="738" y="171.25" text-anchor="start" dominant-baseline="middle">9</text>
+    <line x1="730" y1="115" x2="734" y2="115" stroke="#333333" stroke-width="1" />
+    <text x="738" y="115" text-anchor="start" dominant-baseline="middle">12</text>
+    <line x1="730" y1="58.75" x2="734" y2="58.75" stroke="#333333" stroke-width="1" />
+    <text x="738" y="58.75" text-anchor="start" dominant-baseline="middle">15</text>
+    <line x1="730" y1="40" x2="734" y2="40" stroke="#333333" stroke-width="1" />
+    <text x="738" y="40" text-anchor="start" dominant-baseline="middle">16</text>
+    <text
+      x="778"
+      y="190"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-weight="bold"
+      transform="rotate(90 778 190)"
+    >neurons / synapses</text>
   </g>
   <g class="score-line">
-    <polyline fill="none" stroke="#1f77b4" stroke-width="1.5" points="70,340 88.86,340 107.71,266.89 126.57,253.28 145.43,249.14 164.29,242.6 183.14,220.83 202,206.02 220.86,206.02 239.71,162.76 258.57,95.84 277.43,49.56 296.29,48.67 315.14,48.15 334,46.1 352.86,43.34 371.71,42.4 390.57,42.4 409.43,42.39 428.29,42.38 447.14,42.37 466,42.36 484.86,42.35 503.71,42.34 522.57,42.33 541.43,42.3 560.29,42.25 579.14,42.16 598,40.87 616.86,40.11 635.71,40.11 654.57,40.07 673.43,40.03 692.29,40 711.14,40 730,40"/>
-    <circle class="score-point" cx="70" cy="340" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="88.86" cy="340" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="107.71" cy="266.89" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="126.57" cy="253.28" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="145.43" cy="249.14" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="164.29" cy="242.6" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="183.14" cy="220.83" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="202" cy="206.02" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="220.86" cy="206.02" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="239.71" cy="162.76" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="258.57" cy="95.84" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="277.43" cy="49.56" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="296.29" cy="48.67" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="315.14" cy="48.15" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="334" cy="46.1" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="352.86" cy="43.34" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="371.71" cy="42.4" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="390.57" cy="42.4" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="409.43" cy="42.39" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="428.29" cy="42.38" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="447.14" cy="42.37" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="466" cy="42.36" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="484.86" cy="42.35" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="503.71" cy="42.34" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="522.57" cy="42.33" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="541.43" cy="42.3" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="560.29" cy="42.25" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="579.14" cy="42.16" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="598" cy="40.87" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="616.86" cy="40.11" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="635.71" cy="40.11" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="654.57" cy="40.07" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="673.43" cy="40.03" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="692.29" cy="40" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="711.14" cy="40" r="1.8" fill="#1f77b4"/>
-    <circle class="score-point" cx="730" cy="40" r="1.8" fill="#1f77b4"/>
+    <polyline
+      fill="none"
+      stroke="#1f77b4"
+      stroke-width="1.5"
+      points="70,340 74.93,319.21 79.85,315.57 84.78,315.57 89.7,315.54 94.63,309.39 99.55,309.39 104.48,306.5 109.4,306.5 114.33,306.32 119.25,301.89 124.18,301.56 129.1,301.56 134.03,301.52 138.96,301.5 143.88,301.33 148.81,301.19 153.73,301.05 158.66,294.74 163.58,284.38 168.51,282.11 173.43,282.11 178.36,282.07 183.28,281.99 188.21,281.85 193.13,281.63 198.06,281.3 202.99,280.69 207.91,112.55 212.84,111.03 217.76,109.92 222.69,109.02 227.61,106.6 232.54,106.33 237.46,103.46 242.39,99.55 247.31,92.16 252.24,75.37 257.16,75.37 262.09,71.63 267.01,71.63 271.94,71.61 276.87,71.56 281.79,71.49 286.72,71.4 291.64,71.22 296.57,70.97 301.49,70.78 306.42,70.73 311.34,70.65 316.27,70.54 321.19,70.32 326.12,69.92 331.04,69.24 335.97,68.25 340.9,67.61 345.82,67.58 350.75,67.58 355.67,67.55 360.6,67.49 365.52,67.44 370.45,67.43 375.37,67.42 380.3,67.4 385.22,67.38 390.15,67.35 395.07,67.26 400,67.12 404.93,66.84 409.85,66.66 414.78,66.66 419.7,66.64 424.63,66.61 429.55,66.57 434.48,66.4 439.4,66.4 444.33,66.38 449.25,66.36 454.18,66.31 459.1,66.31 464.03,66.3 468.96,66.3 473.88,66.28 478.81,66.24 483.73,65.8 488.66,65.8 493.58,65.79 498.51,65.77 503.43,65.77 508.36,65.77 513.28,65.77 518.21,65.76 523.13,57.54 528.06,57.54 532.99,57.23 537.91,55.89 542.84,54.55 547.76,47.76 552.69,42.23 557.61,42.03 562.54,41.8 567.46,41.8 572.39,41.78 577.31,41.76 582.24,41.3 587.16,40.7 592.09,40.7 597.01,40.7 601.94,40.7 606.87,40.59 611.79,40.51 616.72,40.42 621.64,40.42 626.57,40.42 631.49,40.41 636.42,40.41 641.34,40.38 646.27,40.2 651.19,40.2 656.12,40.2 661.04,40.19 665.97,40.17 670.9,40.12 675.82,40.12 680.75,40.12 685.67,40.09 690.6,40.09 695.52,40.09 700.45,40.09 705.37,40.06 710.3,40.04 715.22,40.02 720.15,40.02 725.07,40.02 730,40"
+    />
+    <circle class="score-point" cx="70" cy="340" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="74.93" cy="319.21" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="79.85" cy="315.57" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="84.78" cy="315.57" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="89.7" cy="315.54" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="94.63" cy="309.39" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="99.55" cy="309.39" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="104.48" cy="306.5" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="109.4" cy="306.5" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="114.33" cy="306.32" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="119.25" cy="301.89" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="124.18" cy="301.56" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="129.1" cy="301.56" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="134.03" cy="301.52" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="138.96" cy="301.5" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="143.88" cy="301.33" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="148.81" cy="301.19" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="153.73" cy="301.05" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="158.66" cy="294.74" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="163.58" cy="284.38" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="168.51" cy="282.11" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="173.43" cy="282.11" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="178.36" cy="282.07" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="183.28" cy="281.99" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="188.21" cy="281.85" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="193.13" cy="281.63" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="198.06" cy="281.3" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="202.99" cy="280.69" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="207.91" cy="112.55" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="212.84" cy="111.03" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="217.76" cy="109.92" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="222.69" cy="109.02" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="227.61" cy="106.6" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="232.54" cy="106.33" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="237.46" cy="103.46" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="242.39" cy="99.55" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="247.31" cy="92.16" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="252.24" cy="75.37" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="257.16" cy="75.37" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="262.09" cy="71.63" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="267.01" cy="71.63" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="271.94" cy="71.61" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="276.87" cy="71.56" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="281.79" cy="71.49" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="286.72" cy="71.4" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="291.64" cy="71.22" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="296.57" cy="70.97" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="301.49" cy="70.78" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="306.42" cy="70.73" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="311.34" cy="70.65" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="316.27" cy="70.54" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="321.19" cy="70.32" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="326.12" cy="69.92" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="331.04" cy="69.24" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="335.97" cy="68.25" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="340.9" cy="67.61" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="345.82" cy="67.58" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="350.75" cy="67.58" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="355.67" cy="67.55" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="360.6" cy="67.49" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="365.52" cy="67.44" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="370.45" cy="67.43" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="375.37" cy="67.42" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="380.3" cy="67.4" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="385.22" cy="67.38" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="390.15" cy="67.35" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="395.07" cy="67.26" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="400" cy="67.12" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="404.93" cy="66.84" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="409.85" cy="66.66" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="414.78" cy="66.66" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="419.7" cy="66.64" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="424.63" cy="66.61" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="429.55" cy="66.57" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="434.48" cy="66.4" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="439.4" cy="66.4" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="444.33" cy="66.38" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="449.25" cy="66.36" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="454.18" cy="66.31" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="459.1" cy="66.31" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="464.03" cy="66.3" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="468.96" cy="66.3" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="473.88" cy="66.28" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="478.81" cy="66.24" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="483.73" cy="65.8" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="488.66" cy="65.8" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="493.58" cy="65.79" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="498.51" cy="65.77" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="503.43" cy="65.77" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="508.36" cy="65.77" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="513.28" cy="65.77" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="518.21" cy="65.76" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="523.13" cy="57.54" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="528.06" cy="57.54" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="532.99" cy="57.23" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="537.91" cy="55.89" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="542.84" cy="54.55" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="547.76" cy="47.76" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="552.69" cy="42.23" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="557.61" cy="42.03" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="562.54" cy="41.8" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="567.46" cy="41.8" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="572.39" cy="41.78" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="577.31" cy="41.76" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="582.24" cy="41.3" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="587.16" cy="40.7" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="592.09" cy="40.7" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="597.01" cy="40.7" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="601.94" cy="40.7" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="606.87" cy="40.59" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="611.79" cy="40.51" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="616.72" cy="40.42" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="621.64" cy="40.42" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="626.57" cy="40.42" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="631.49" cy="40.41" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="636.42" cy="40.41" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="641.34" cy="40.38" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="646.27" cy="40.2" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="651.19" cy="40.2" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="656.12" cy="40.2" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="661.04" cy="40.19" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="665.97" cy="40.17" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="670.9" cy="40.12" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="675.82" cy="40.12" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="680.75" cy="40.12" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="685.67" cy="40.09" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="690.6" cy="40.09" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="695.52" cy="40.09" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="700.45" cy="40.09" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="705.37" cy="40.06" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="710.3" cy="40.04" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="715.22" cy="40.02" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="720.15" cy="40.02" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="725.07" cy="40.02" r="1.8" fill="#1f77b4" />
+    <circle class="score-point" cx="730" cy="40" r="1.8" fill="#1f77b4" />
   </g>
   <g class="neurons-line">
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="70,40 88.86,40 107.71,40 126.57,40 145.43,40 164.29,40 183.14,40 202,40 220.86,40 239.71,40 258.57,40 277.43,40 296.29,40 315.14,40 334,40 352.86,40 371.71,40 390.57,40 409.43,40 428.29,40 447.14,40 466,40 484.86,40 503.71,40 522.57,40 541.43,40 560.29,40 579.14,40 598,40 616.86,40 635.71,40 654.57,40 673.43,40 692.29,40 711.14,40 730,40"/>
-    <circle class="neurons-point" cx="70" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="88.86" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="107.71" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="126.57" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="145.43" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="164.29" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="183.14" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="202" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="220.86" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="239.71" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="258.57" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="277.43" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="296.29" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="315.14" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="334" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="352.86" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="371.71" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="390.57" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="409.43" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="428.29" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="447.14" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="466" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="484.86" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="503.71" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="522.57" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="541.43" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="560.29" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="579.14" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="598" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="616.86" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="635.71" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="654.57" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="673.43" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="692.29" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="711.14" cy="40" r="1.8" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="730" cy="40" r="1.8" fill="#2ca02c"/>
+    <polyline
+      fill="none"
+      stroke="#2ca02c"
+      stroke-width="1.5"
+      points="70,246.25 74.93,246.25 79.85,246.25 84.78,246.25 89.7,246.25 94.63,246.25 99.55,246.25 104.48,246.25 109.4,246.25 114.33,246.25 119.25,246.25 124.18,246.25 129.1,246.25 134.03,246.25 138.96,246.25 143.88,246.25 148.81,246.25 153.73,246.25 158.66,246.25 163.58,246.25 168.51,246.25 173.43,246.25 178.36,246.25 183.28,246.25 188.21,246.25 193.13,246.25 198.06,246.25 202.99,246.25 207.91,246.25 212.84,246.25 217.76,246.25 222.69,246.25 227.61,246.25 232.54,246.25 237.46,246.25 242.39,246.25 247.31,246.25 252.24,246.25 257.16,246.25 262.09,246.25 267.01,246.25 271.94,246.25 276.87,246.25 281.79,246.25 286.72,246.25 291.64,246.25 296.57,246.25 301.49,246.25 306.42,246.25 311.34,246.25 316.27,246.25 321.19,246.25 326.12,246.25 331.04,246.25 335.97,246.25 340.9,246.25 345.82,246.25 350.75,246.25 355.67,246.25 360.6,246.25 365.52,246.25 370.45,246.25 375.37,246.25 380.3,246.25 385.22,246.25 390.15,246.25 395.07,246.25 400,246.25 404.93,246.25 409.85,246.25 414.78,246.25 419.7,246.25 424.63,246.25 429.55,246.25 434.48,246.25 439.4,246.25 444.33,246.25 449.25,246.25 454.18,246.25 459.1,246.25 464.03,246.25 468.96,246.25 473.88,246.25 478.81,246.25 483.73,246.25 488.66,246.25 493.58,246.25 498.51,246.25 503.43,246.25 508.36,246.25 513.28,246.25 518.21,246.25 523.13,246.25 528.06,246.25 532.99,246.25 537.91,246.25 542.84,246.25 547.76,246.25 552.69,246.25 557.61,246.25 562.54,246.25 567.46,246.25 572.39,246.25 577.31,246.25 582.24,246.25 587.16,246.25 592.09,246.25 597.01,246.25 601.94,246.25 606.87,246.25 611.79,246.25 616.72,246.25 621.64,190 626.57,190 631.49,190 636.42,190 641.34,190 646.27,190 651.19,190 656.12,190 661.04,190 665.97,190 670.9,190 675.82,190 680.75,190 685.67,190 690.6,190 695.52,190 700.45,190 705.37,190 710.3,190 715.22,190 720.15,190 725.07,190 730,190"
+    />
+    <circle class="neurons-point" cx="70" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="74.93" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="79.85" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="84.78" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="89.7" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="94.63" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="99.55" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="104.48" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="109.4" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="114.33" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="119.25" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="124.18" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="129.1" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="134.03" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="138.96" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="143.88" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="148.81" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="153.73" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="158.66" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="163.58" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="168.51" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="173.43" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="178.36" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="183.28" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="188.21" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="193.13" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="198.06" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="202.99" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="207.91" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="212.84" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="217.76" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="222.69" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="227.61" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="232.54" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="237.46" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="242.39" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="247.31" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="252.24" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="257.16" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="262.09" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="267.01" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="271.94" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="276.87" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="281.79" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="286.72" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="291.64" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="296.57" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="301.49" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="306.42" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="311.34" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="316.27" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="321.19" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="326.12" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="331.04" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="335.97" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="340.9" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="345.82" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="350.75" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="355.67" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="360.6" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="365.52" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="370.45" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="375.37" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="380.3" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="385.22" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="390.15" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="395.07" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="400" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="404.93" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="409.85" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="414.78" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="419.7" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="424.63" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="429.55" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="434.48" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="439.4" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="444.33" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="449.25" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="454.18" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="459.1" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="464.03" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="468.96" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="473.88" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="478.81" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="483.73" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="488.66" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="493.58" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="498.51" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="503.43" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="508.36" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="513.28" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="518.21" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="523.13" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="528.06" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="532.99" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="537.91" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="542.84" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="547.76" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="552.69" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="557.61" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="562.54" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="567.46" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="572.39" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="577.31" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="582.24" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="587.16" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="592.09" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="597.01" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="601.94" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="606.87" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="611.79" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="616.72" cy="246.25" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="621.64" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="626.57" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="631.49" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="636.42" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="641.34" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="646.27" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="651.19" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="656.12" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="661.04" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="665.97" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="670.9" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="675.82" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="680.75" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="685.67" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="690.6" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="695.52" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="700.45" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="705.37" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="710.3" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="715.22" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="720.15" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="725.07" cy="190" r="1.8" fill="#2ca02c" />
+    <circle class="neurons-point" cx="730" cy="190" r="1.8" fill="#2ca02c" />
   </g>
   <g class="synapses-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,100 88.86,100 107.71,100 126.57,100 145.43,100 164.29,100 183.14,100 202,100 220.86,100 239.71,100 258.57,100 277.43,100 296.29,100 315.14,100 334,100 352.86,100 371.71,100 390.57,100 409.43,100 428.29,100 447.14,100 466,100 484.86,100 503.71,100 522.57,100 541.43,100 560.29,100 579.14,100 598,100 616.86,100 635.71,100 654.57,100 673.43,100 692.29,100 711.14,100 730,100"/>
-    <circle class="synapses-point" cx="70" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="88.86" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="107.71" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="126.57" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="145.43" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="164.29" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="183.14" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="202" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="220.86" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="239.71" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="258.57" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="277.43" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="296.29" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="315.14" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="334" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="352.86" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="371.71" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="390.57" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="409.43" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="428.29" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="447.14" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="466" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="484.86" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="503.71" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="522.57" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="541.43" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="560.29" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="579.14" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="598" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="616.86" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="635.71" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="654.57" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="673.43" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="692.29" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="711.14" cy="100" r="1.8" fill="#d62728"/>
-    <circle class="synapses-point" cx="730" cy="100" r="1.8" fill="#d62728"/>
+    <polyline
+      fill="none"
+      stroke="#d62728"
+      stroke-width="1.5"
+      points="70,265 74.93,265 79.85,265 84.78,265 89.7,265 94.63,265 99.55,265 104.48,265 109.4,265 114.33,265 119.25,265 124.18,265 129.1,265 134.03,265 138.96,265 143.88,265 148.81,265 153.73,265 158.66,265 163.58,265 168.51,265 173.43,265 178.36,265 183.28,265 188.21,265 193.13,265 198.06,265 202.99,265 207.91,265 212.84,265 217.76,265 222.69,265 227.61,265 232.54,265 237.46,265 242.39,265 247.31,265 252.24,265 257.16,265 262.09,265 267.01,265 271.94,265 276.87,265 281.79,265 286.72,265 291.64,265 296.57,265 301.49,265 306.42,265 311.34,265 316.27,265 321.19,265 326.12,265 331.04,265 335.97,265 340.9,265 345.82,265 350.75,265 355.67,265 360.6,265 365.52,265 370.45,265 375.37,265 380.3,265 385.22,265 390.15,265 395.07,265 400,265 404.93,265 409.85,265 414.78,265 419.7,265 424.63,265 429.55,265 434.48,265 439.4,265 444.33,265 449.25,265 454.18,265 459.1,265 464.03,265 468.96,265 473.88,265 478.81,265 483.73,265 488.66,265 493.58,265 498.51,265 503.43,265 508.36,265 513.28,265 518.21,265 523.13,265 528.06,265 532.99,265 537.91,265 542.84,265 547.76,265 552.69,265 557.61,265 562.54,265 567.46,265 572.39,265 577.31,265 582.24,265 587.16,265 592.09,265 597.01,265 601.94,265 606.87,265 611.79,265 616.72,265 621.64,58.75 626.57,58.75 631.49,58.75 636.42,58.75 641.34,58.75 646.27,58.75 651.19,58.75 656.12,58.75 661.04,58.75 665.97,58.75 670.9,58.75 675.82,58.75 680.75,58.75 685.67,58.75 690.6,58.75 695.52,58.75 700.45,58.75 705.37,58.75 710.3,58.75 715.22,58.75 720.15,58.75 725.07,58.75 730,40"
+    />
+    <circle class="synapses-point" cx="70" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="74.93" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="79.85" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="84.78" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="89.7" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="94.63" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="99.55" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="104.48" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="109.4" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="114.33" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="119.25" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="124.18" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="129.1" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="134.03" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="138.96" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="143.88" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="148.81" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="153.73" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="158.66" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="163.58" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="168.51" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="173.43" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="178.36" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="183.28" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="188.21" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="193.13" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="198.06" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="202.99" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="207.91" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="212.84" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="217.76" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="222.69" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="227.61" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="232.54" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="237.46" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="242.39" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="247.31" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="252.24" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="257.16" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="262.09" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="267.01" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="271.94" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="276.87" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="281.79" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="286.72" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="291.64" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="296.57" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="301.49" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="306.42" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="311.34" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="316.27" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="321.19" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="326.12" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="331.04" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="335.97" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="340.9" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="345.82" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="350.75" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="355.67" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="360.6" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="365.52" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="370.45" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="375.37" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="380.3" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="385.22" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="390.15" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="395.07" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="400" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="404.93" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="409.85" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="414.78" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="419.7" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="424.63" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="429.55" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="434.48" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="439.4" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="444.33" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="449.25" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="454.18" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="459.1" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="464.03" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="468.96" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="473.88" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="478.81" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="483.73" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="488.66" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="493.58" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="498.51" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="503.43" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="508.36" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="513.28" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="518.21" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="523.13" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="528.06" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="532.99" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="537.91" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="542.84" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="547.76" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="552.69" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="557.61" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="562.54" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="567.46" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="572.39" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="577.31" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="582.24" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="587.16" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="592.09" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="597.01" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="601.94" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="606.87" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="611.79" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="616.72" cy="265" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="621.64" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="626.57" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="631.49" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="636.42" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="641.34" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="646.27" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="651.19" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="656.12" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="661.04" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="665.97" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="670.9" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="675.82" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="680.75" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="685.67" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="690.6" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="695.52" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="700.45" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="705.37" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="710.3" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="715.22" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="720.15" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="725.07" cy="58.75" r="1.8" fill="#d62728" />
+    <circle class="synapses-point" cx="730" cy="40" r="1.8" fill="#d62728" />
   </g>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
-    <rect x="76" y="42" width="130" height="56" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="0.5"/>
-    <line x1="82" y1="52" x2="100" y2="52" stroke="#1f77b4" stroke-width="2"/>
+    <rect
+      x="76"
+      y="42"
+      width="130"
+      height="56"
+      fill="#ffffff"
+      fill-opacity="0.85"
+      stroke="#cccccc"
+      stroke-width="0.5"
+    />
+    <line x1="82" y1="52" x2="100" y2="52" stroke="#1f77b4" stroke-width="2" />
     <text x="106" y="56">score</text>
-    <line x1="82" y1="68" x2="100" y2="68" stroke="#2ca02c" stroke-width="2"/>
+    <line x1="82" y1="68" x2="100" y2="68" stroke="#2ca02c" stroke-width="2" />
     <text x="106" y="72">neurons</text>
-    <line x1="82" y1="84" x2="100" y2="84" stroke="#d62728" stroke-width="2"/>
+    <line x1="82" y1="84" x2="100" y2="84" stroke="#d62728" stroke-width="2" />
     <text x="106" y="88">synapses</text>
   </g>
   <g class="final-annotation" font-family="sans-serif" font-size="12" fill="#222222">
-    <line x1="730" y1="40" x2="718" y2="52" stroke="#666666" stroke-width="0.8" stroke-dasharray="2,2"/>
-    <circle cx="730" cy="40" r="3.5" fill="#222222"/>
-    <text x="718" y="52" text-anchor="end">gen 36: 1, 5 neurons, 4 synapses</text>
+    <line
+      x1="730"
+      y1="40"
+      x2="718"
+      y2="52"
+      stroke="#666666"
+      stroke-width="0.8"
+      stroke-dasharray="2,2"
+    />
+    <circle cx="730" cy="40" r="3.5" fill="#222222" />
+    <text x="718" y="52" text-anchor="end">gen 135: 1, 8 neurons, 16 synapses</text>
   </g>
 </svg>

@@ -73,7 +73,9 @@ entire point of the demo, so the no-warm-start policy does not apply:
 - `discovery` — labels a binary `.bin` training set from a hand-crafted reference creature (the
   reference is the demo's hand-crafted state); the NEAT seed itself is the minimal
   `new Creature(input, output)` per issue #207.
-- `discovery_at_scale` — recovers from injected defects in a large pre-built creature.
+- `discovery_at_scale` — labels a binary `.bin` training set from a hand-crafted reference creature
+  built via `buildLargeCreature(...)` (the reference is the demo's hand-crafted state); the NEAT
+  seed itself is the minimal `new Creature(input, output)` per issue #208.
 - `intelligent_design` — systematically optimises activation functions on an existing creature.
 - `crossover` — breeds two parent creatures into an offspring.
 - `memetic_evolution` — re-seeds the population from an archive of fittest creatures.
