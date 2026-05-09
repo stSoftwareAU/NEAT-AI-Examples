@@ -1,22 +1,22 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 1000 376"
-  width="1000"
+  viewBox="0 0 800 376"
+  width="800"
   height="376"
   role="img"
-  aria-label="Evolution Showcase — gen 1 → 10000 multi-panel strip"
+  aria-label="Evolution Showcase — minimal seed → evolved champion multi-panel strip"
 >
-  <title>Evolution Showcase — gen 1 → 10000</title>
-  <rect width="1000" height="376" fill="#fafafa" />
+  <title>Evolution Showcase — minimal seed → evolved champion</title>
+  <rect width="800" height="376" fill="#fafafa" />
   <text
-    x="500"
+    x="400"
     y="22"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="16"
     font-weight="bold"
     fill="#222"
-  >Evolution Showcase — gen 1 → 10000</text>
+  >Evolution Showcase — minimal seed → evolved champion</text>
   <g class="panel" data-generation="1" data-index="0">
     <rect
       x="6"
@@ -34,7 +34,7 @@
         begin="0.00s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="2.40s"
       />
     </rect>
     <text
@@ -53,47 +53,8 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score -4.789</text>
-    <line
-      x1="22"
-      y1="68"
-      x2="178"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="22"
-      y1="113.33"
-      x2="178"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="22"
-      y1="158.67"
-      x2="178"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="22"
-      y1="204"
-      x2="178"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <circle cx="22" cy="68" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="22" cy="113.33" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="22" cy="158.67" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="22" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    >score -1.711</text>
+    <circle cx="100" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="178" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
   <g class="panel" data-generation="10" data-index="1">
@@ -113,7 +74,7 @@
         begin="0.60s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="2.40s"
       />
     </rect>
     <text
@@ -132,65 +93,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score -1.401</text>
-    <line
-      x1="222"
-      y1="68"
-      x2="378"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="222"
-      y1="113.33"
-      x2="378"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="222"
-      y1="158.67"
-      x2="378"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="222"
-      y1="204"
-      x2="378"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="222"
-      y1="158.67"
-      x2="300"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="300"
-      y1="136"
-      x2="378"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <circle cx="222" cy="68" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="222" cy="113.33" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="222" cy="158.67" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="222" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    >score -1.711</text>
     <circle cx="300" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="378" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
@@ -211,7 +114,7 @@
         begin="1.20s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="2.40s"
       />
     </rect>
     <text
@@ -230,149 +133,9 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score -0.674</text>
-    <line
-      x1="422"
-      y1="68"
-      x2="578"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="113.33"
-      x2="578"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="158.67"
-      x2="578"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="204"
-      x2="578"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="158.67"
-      x2="500"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="500"
-      y1="68"
-      x2="578"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="204"
-      x2="500"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="500"
-      y1="68"
-      x2="500"
-      y2="113.33"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="500"
-      y1="113.33"
-      x2="578"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="500"
-      y1="113.33"
-      x2="500"
-      y2="158.67"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="500"
-      y1="158.67"
-      x2="500"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="113.33"
-      x2="500"
-      y2="113.33"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="204"
-      x2="500"
-      y2="158.67"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="422"
-      y1="204"
-      x2="500"
-      y2="204"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="500"
-      y1="204"
-      x2="500"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <circle cx="422" cy="68" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="422" cy="113.33" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="422" cy="158.67" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="422" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="113.33" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="158.67" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
+    >score -0.686</text>
+    <circle cx="500" cy="68" r="3" fill="#888888" stroke="#222" stroke-width="0.5" />
+    <circle cx="500" cy="136" r="3" fill="#888888" stroke="#222" stroke-width="0.5" />
     <circle cx="500" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="578" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
@@ -393,7 +156,7 @@
         begin="1.80s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="2.40s"
       />
     </rect>
     <text
@@ -412,672 +175,39 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score -0.626</text>
-    <line
-      x1="622"
-      y1="68"
-      x2="778"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="113.33"
-      x2="778"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="158.67"
-      x2="778"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="204"
-      x2="778"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="158.67"
-      x2="700"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="68"
-      x2="778"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="204"
-      x2="700"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="68"
-      x2="700"
-      y2="85"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="85"
-      x2="778"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="85"
-      x2="700"
-      y2="102"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="102"
-      x2="700"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="113.33"
-      x2="700"
-      y2="85"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="204"
-      x2="700"
-      y2="102"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="204"
-      x2="700"
-      y2="119"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="119"
-      x2="700"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="158.67"
-      x2="700"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="136"
-      x2="700"
-      y2="85"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="85"
-      x2="700"
-      y2="119"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="68"
-      x2="700"
-      y2="153"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="153"
-      x2="700"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="158.67"
-      x2="700"
-      y2="170"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="170"
-      x2="700"
-      y2="85"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="136"
-      x2="700"
-      y2="187"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="187"
-      x2="700"
-      y2="153"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="622"
-      y1="113.33"
-      x2="700"
-      y2="204"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="700"
-      y1="204"
-      x2="700"
-      y2="170"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <circle cx="622" cy="68" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="622" cy="113.33" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="622" cy="158.67" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="622" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
+    >score -0.586</text>
     <circle cx="700" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="85" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="700" cy="102" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="119" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="700" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="153" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="700" cy="170" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="187" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="700" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="778" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
-  <g class="panel" data-generation="10000" data-index="4">
-    <rect
-      x="806"
-      y="42"
-      width="188"
-      height="188"
-      fill="#ffffff"
-      stroke="#cccccc"
-      stroke-width="1"
-      rx="4"
-    >
-      <animate
-        attributeName="fill"
-        values="#ffffff;#fff7c2;#ffffff"
-        begin="2.40s"
-        dur="0.60s"
-        repeatCount="indefinite"
-        repeatDur="3.00s"
-      />
-    </rect>
-    <text
-      x="900"
-      y="58"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="12"
-      font-weight="bold"
-      fill="#222"
-    >Gen 10000</text>
-    <text
-      x="900"
-      y="222"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#555"
-    >score -0.601</text>
-    <line
-      x1="822"
-      y1="68"
-      x2="978"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="113.33"
-      x2="978"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="158.67"
-      x2="978"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="204"
-      x2="978"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="158.67"
-      x2="900"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="68"
-      x2="978"
-      y2="136"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="204"
-      x2="900"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="68"
-      x2="900"
-      y2="78.46"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="78.46"
-      x2="978"
-      y2="136"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="78.46"
-      x2="900"
-      y2="88.92"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="88.92"
-      x2="900"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="113.33"
-      x2="900"
-      y2="78.46"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="204"
-      x2="900"
-      y2="88.92"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="204"
-      x2="900"
-      y2="99.38"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="99.38"
-      x2="900"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="158.67"
-      x2="900"
-      y2="109.85"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="109.85"
-      x2="900"
-      y2="78.46"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="78.46"
-      x2="900"
-      y2="99.38"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="68"
-      x2="900"
-      y2="120.31"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="120.31"
-      x2="900"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="158.67"
-      x2="900"
-      y2="130.77"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="130.77"
-      x2="900"
-      y2="78.46"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="109.85"
-      x2="900"
-      y2="141.23"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="141.23"
-      x2="900"
-      y2="120.31"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="113.33"
-      x2="900"
-      y2="151.69"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="151.69"
-      x2="900"
-      y2="130.77"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="158.67"
-      x2="900"
-      y2="162.15"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="162.15"
-      x2="900"
-      y2="68"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="141.23"
-      x2="900"
-      y2="172.62"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="172.62"
-      x2="900"
-      y2="109.85"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="68"
-      x2="900"
-      y2="130.77"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="158.67"
-      x2="900"
-      y2="183.08"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="183.08"
-      x2="900"
-      y2="78.46"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="113.33"
-      x2="900"
-      y2="193.54"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="193.54"
-      x2="900"
-      y2="78.46"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="822"
-      y1="204"
-      x2="900"
-      y2="204"
-      stroke="#e74c3c"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="900"
-      y1="204"
-      x2="900"
-      y2="68"
-      stroke="#27ae60"
-      stroke-width="0.8"
-      stroke-opacity="0.7"
-    />
-    <circle cx="822" cy="68" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="822" cy="113.33" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="822" cy="158.67" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="822" cy="204" r="3" fill="#4a90d9" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="78.46" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="88.92" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="99.38" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="109.85" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="120.31" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="130.77" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="141.23" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="151.69" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="162.15" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="172.62" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="183.08" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="193.54" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="978" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-  </g>
-  <g class="progression" data-min="-4.789" data-max="-0.601">
-    <rect x="0" y="236" width="1000" height="100" fill="#f4f4f4" />
+  <g class="progression" data-min="-1.711" data-max="-0.586">
+    <rect x="0" y="236" width="800" height="100" fill="#f4f4f4" />
     <polyline
       class="score-progression"
       fill="none"
       stroke="#1f77b4"
       stroke-width="2"
-      points="100,322 300,263.75 500,251.24 700,250.42 900,250"
+      points="100,322 300,322 500,256.38 700,250"
     />
     <circle cx="100" cy="322" r="3" fill="#1f77b4" />
-    <circle cx="300" cy="263.75" r="3" fill="#1f77b4" />
-    <circle cx="500" cy="251.24" r="3" fill="#1f77b4" />
-    <circle cx="700" cy="250.42" r="3" fill="#1f77b4" />
-    <circle cx="900" cy="250" r="3" fill="#1f77b4" />
-    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max -0.601</text>
-    <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min -4.789</text>
+    <circle cx="300" cy="322" r="3" fill="#1f77b4" />
+    <circle cx="500" cy="256.38" r="3" fill="#1f77b4" />
+    <circle cx="700" cy="250" r="3" fill="#1f77b4" />
+    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max -0.586</text>
+    <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min -1.711</text>
   </g>
   <g class="caption">
-    <rect x="0" y="336" width="1000" height="40" fill="#222222" />
+    <rect x="0" y="336" width="800" height="40" fill="#222222" />
     <text
-      x="500"
+      x="400"
       y="360"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="12"
       fill="#ffffff"
-    >final score -0.601 • 10000 generations • 27.3s • long-running flagship</text>
+    >final score -0.533 • 3000 generations • 30.2s • minimal-seed evolveDir (issue #211)</text>
   </g>
 </svg>
