@@ -52,10 +52,16 @@ import {
   type LanderAction,
   type LanderOutcome,
   type LanderState,
+  type LanderTerrain,
   perturbedInitialState,
   step,
 } from "./physics.ts";
 import { renderRunSVG, type TraceFrame } from "./svg.ts";
+import {
+  DEFAULT_VALIDATION_COUNT,
+  generateScenarioPools,
+  type SeededScenario,
+} from "./scenarios.ts";
 
 /** Number of inputs the controller observes. */
 export const INPUT_COUNT = 7;
@@ -399,10 +405,15 @@ export function decodeAction(outputs: ArrayLike<number>): LanderAction {
   };
 }
 
-/** Score a final state plus its outcome. Larger is better. */
+/**
+ * Score a final state plus its outcome. Larger is better. Pad-distance
+ * costs are computed against `terrain.padX` so scenarios with a shifted
+ * landing pad are scored consistently with their own geometry.
+ */
 export function scoreFinalState(
   state: LanderState,
   outcome: LanderOutcome,
+  terrain: LanderTerrain = DEFAULT_TERRAIN,
 ): number {
   switch (outcome) {
     case "landed":
@@ -413,7 +424,7 @@ export function scoreFinalState(
         SCORE.landedHorizontalCost * Math.abs(state.vx);
     case "crashed":
       return SCORE.crashedFlat -
-        SCORE.crashedDistanceCost * Math.abs(state.x - DEFAULT_TERRAIN.padX) -
+        SCORE.crashedDistanceCost * Math.abs(state.x - terrain.padX) -
         SCORE.crashedSpeedCost * (state.vx * state.vx + state.vy * state.vy) -
         SCORE.crashedAngleCost * Math.abs(state.angle);
     case "out_of_bounds":
@@ -423,7 +434,7 @@ export function scoreFinalState(
       // the pad and penalise lingering altitude so a perpetual hover
       // does not out-score a near-landing.
       return SCORE.flyingFlat -
-        SCORE.flyingDistanceCost * Math.abs(state.x - DEFAULT_TERRAIN.padX) -
+        SCORE.flyingDistanceCost * Math.abs(state.x - terrain.padX) -
         SCORE.flyingAltitudeCost * Math.max(0, state.y);
   }
 }
@@ -433,6 +444,7 @@ function runEpisode(
   creature: Creature,
   start: LanderState,
   maxSteps: number,
+  terrain: LanderTerrain = DEFAULT_TERRAIN,
 ): TrialResult {
   let state: LanderState = start;
   for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
@@ -440,10 +452,10 @@ function runEpisode(
     const out = creature.activate(encodeState(state));
     const action = decodeAction(out);
     state = step(state, action);
-    if (isTerminal(state)) break;
+    if (isTerminal(state, terrain)) break;
   }
-  const outcome = classifyOutcome(state);
-  return { score: scoreFinalState(state, outcome), outcome, finalState: state };
+  const outcome = classifyOutcome(state, terrain);
+  return { score: scoreFinalState(state, outcome, terrain), outcome, finalState: state };
 }
 
 /**
@@ -499,11 +511,16 @@ export function scoreController(
   };
 }
 
-/** Run a full episode, recording each frame for replay/rendering. */
+/**
+ * Run a full episode, recording each frame for replay/rendering.
+ * Pass `terrain` to align terminal classification with a non-default
+ * scenario (e.g. a validation episode whose pad has shifted).
+ */
 export function replayController(
   creature: Creature,
   maxSteps: number = MAX_STEPS,
   start: LanderState = initialState(),
+  terrain: LanderTerrain = DEFAULT_TERRAIN,
 ): TraceFrame[] {
   const trace: TraceFrame[] = [];
   let state: LanderState = start;
@@ -513,7 +530,7 @@ export function replayController(
     const action = decodeAction(out);
     trace.push({ state, action });
     state = step(state, action);
-    if (isTerminal(state)) {
+    if (isTerminal(state, terrain)) {
       // Append the terminal frame with no thrusters so renderers can
       // show the resting pose.
       trace.push({ state, action: { main: false, left: false, right: false } });
@@ -525,6 +542,113 @@ export function replayController(
     trace.push({ state, action: { main: false, left: false, right: false } });
   }
   return trace;
+}
+
+/** Outcome of replaying the champion against a single validation scenario. */
+export interface ValidationScenarioResult {
+  /** Seed that produced this scenario (deterministic across runs). */
+  seed: number;
+  /** Index of the scenario within the validation pool (preserves pool order). */
+  index: number;
+  /** Final classification of the trial. */
+  outcome: LanderOutcome;
+  /** Trial fitness under {@link scoreFinalState}. */
+  score: number;
+  /** Lander state at the moment the trial terminated. */
+  finalState: LanderState;
+}
+
+/** Aggregated counts of validation outcomes by classification. */
+export interface ValidationOutcomeCounts {
+  flying: number;
+  landed: number;
+  crashed: number;
+  out_of_bounds: number;
+}
+
+/** Structured report produced by {@link validateChampion}. */
+export interface ValidationReport {
+  /** Per-scenario outcomes, in validation-pool order. */
+  scenarios: ValidationScenarioResult[];
+  /** Fraction of scenarios that ended in `landed`. */
+  landedRate: number;
+  /** Mean fitness across all scenarios. */
+  meanFitness: number;
+  /** Count of each outcome classification across the pool. */
+  outcomeCounts: ValidationOutcomeCounts;
+  /**
+   * Index (in `scenarios`) of the scenario chosen as the SVG source.
+   * See {@link pickValidationSvgIndex} for the rule.
+   */
+  selectedIndex: number;
+}
+
+/**
+ * Pick a representative validation scenario for the descent SVG.
+ *
+ * Default rule: the scenario whose final score is the median across all
+ * validation scenarios — sorted ascending and indexing the lower median
+ * (`Math.floor((n - 1) / 2)`) so the choice is stable for ties. If every
+ * scenario landed successfully, return index `0` instead — a deterministic
+ * fallback that side-steps tie-break sensitivity when scores cluster
+ * tightly around the landed-baseline.
+ */
+export function pickValidationSvgIndex(
+  results: readonly ValidationScenarioResult[],
+): number {
+  if (results.length === 0) return -1;
+  const allLanded = results.every((r) => r.outcome === "landed");
+  if (allLanded) return 0;
+  const order = results
+    .map((r, i) => ({ score: r.score, i }))
+    .sort((a, b) => a.score - b.score);
+  return order[Math.floor((order.length - 1) / 2)].i;
+}
+
+/**
+ * Replay the champion against every validation scenario and aggregate
+ * the per-scenario outcomes plus summary metrics. Each scenario's
+ * terrain is honoured during the trial so a shifted pad (`padX !== 0`)
+ * is classified against its own geometry, not the canonical default.
+ *
+ * Output is deterministic for a fixed champion and scenario list.
+ */
+export function validateChampion(
+  champion: Creature,
+  validationScenarios: readonly SeededScenario[],
+  maxSteps: number = MAX_STEPS,
+): ValidationReport {
+  const scenarios: ValidationScenarioResult[] = [];
+  const counts: ValidationOutcomeCounts = {
+    flying: 0,
+    landed: 0,
+    crashed: 0,
+    out_of_bounds: 0,
+  };
+  let totalScore = 0;
+  for (let i = 0; i < validationScenarios.length; i++) {
+    const sc = validationScenarios[i];
+    const trial = runEpisode(champion, sc.state, maxSteps, sc.terrain);
+    scenarios.push({
+      seed: sc.seed,
+      index: i,
+      outcome: trial.outcome,
+      score: trial.score,
+      finalState: trial.finalState,
+    });
+    counts[trial.outcome] += 1;
+    totalScore += trial.score;
+  }
+  const n = scenarios.length;
+  const landedRate = n === 0 ? 0 : counts.landed / n;
+  const meanFitness = n === 0 ? 0 : totalScore / n;
+  return {
+    scenarios,
+    landedRate,
+    meanFitness,
+    outcomeCounts: counts,
+    selectedIndex: pickValidationSvgIndex(scenarios),
+  };
 }
 
 /** Score the trivial "no-thrust" baseline policy — pure free fall. */
@@ -714,6 +838,20 @@ export function evolveLanderController(
 export const SCREENSHOT_PATH = "docs/screenshots/lunar_lander.svg";
 
 /**
+ * Path to the validation results JSON written by the runner. Downstream
+ * tooling (validation bar chart, README refresh) reads this file.
+ */
+export const VALIDATION_RESULTS_PATH = ".synthetic-lunar-lander/validation/results.json";
+
+/**
+ * Master seed driving the held-out validation pool. Held constant so
+ * every run validates against the same 200 scenarios — the controller
+ * cannot have seen any of them during training (training and validation
+ * pools are disjoint by construction; see `scenarios.ts`).
+ */
+export const VALIDATION_BASE_SEED = 13579;
+
+/**
  * Generations at which the runner captures evolution snapshots. The
  * cadence is extended past the previous `[1, 10, 100, 1000]` because
  * variable-topology evolution from uniform-random noise typically
@@ -878,14 +1016,43 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  const trace = replayController(result.champion);
-  // Renderer defaults to classifying the trace's own final state, so
-  // the explosion graphic + outcome badge match what the trace shows
-  // rather than the multi-trial worst-case outcome (issue #177).
-  const svg = renderRunSVG(trace);
+  // Validate the champion against the held-out validation pool: the SVG
+  // and the validation JSON are sourced from these unseen scenarios so
+  // the README's screenshot demonstrates generalisation, not memorisation.
+  const validationPools = generateScenarioPools(
+    VALIDATION_BASE_SEED,
+    0,
+    DEFAULT_VALIDATION_COUNT,
+  );
+  const validationReport = validateChampion(result.champion, validationPools.validation);
+  console.log(
+    `🧪 Validation: landed=${(validationReport.landedRate * 100).toFixed(0)}% ` +
+      `(${validationReport.outcomeCounts.landed}/${validationReport.scenarios.length}), ` +
+      `mean fitness=${validationReport.meanFitness.toFixed(1)}`,
+  );
+
+  ensureDirSync(".synthetic-lunar-lander/validation");
+  await safeWriteJson(VALIDATION_RESULTS_PATH, validationReport);
+  console.log(
+    `📝 Wrote validation results ${VALIDATION_RESULTS_PATH} ` +
+      `(${validationReport.scenarios.length} scenarios)`,
+  );
+
+  // Render the descent SVG from a representative validation scenario —
+  // not from the canonical training launch — so the screenshot shows
+  // the controller handling an unseen state. See `pickValidationSvgIndex`
+  // for the selection rule.
+  const selected = validationPools.validation[validationReport.selectedIndex];
+  const selectedResult = validationReport.scenarios[validationReport.selectedIndex];
+  const trace = replayController(result.champion, MAX_STEPS, selected.state, selected.terrain);
+  const svg = renderRunSVG(trace, selected.terrain, selectedResult.outcome);
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+  console.log(
+    `🖼️  Wrote screenshot ${SCREENSHOT_PATH} ` +
+      `(validation seed=${selected.seed}, outcome=${selectedResult.outcome}, ` +
+      `${trace.length} frames)`,
+  );
 
   // Render the per-generation evolution chart (score / neurons / synapses).
   if (evolutionSamples.length > 0) {

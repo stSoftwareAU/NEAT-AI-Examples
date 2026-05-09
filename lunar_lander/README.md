@@ -27,7 +27,10 @@ flowchart LR
     MUTATE["🧬 Weight + Bias + Add-Neuron"]
     SOLVED{"landed-rate ≥ 1−targetError?"}
     CHAMP["💾 Save champion.json"]
-    RUN["▶️ Replay Champion<br/>record trajectory"]
+    VALID["🧪 Validate vs 200 held-out scenarios"]
+    PICK["🎯 Pick representative validation scenario<br/>(median score; index 0 if all landed)"]
+    RUN["▶️ Replay champion from validation start"]
+    JSON["📝 .synthetic-lunar-lander/<br/>validation/results.json"]
     SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg"]
 
     INIT --> SCORE
@@ -38,7 +41,10 @@ flowchart LR
     SCORE --> SOLVED
     SOLVED -- "no, time remaining" --> SELECT
     SOLVED -- "yes, or timeout reached" --> CHAMP
-    CHAMP --> RUN
+    CHAMP --> VALID
+    VALID --> JSON
+    VALID --> PICK
+    PICK --> RUN
     RUN --> SVG
 
     style PHYS fill:#4a90d9,stroke:#333,color:#fff
@@ -48,9 +54,26 @@ flowchart LR
     style MUTATE fill:#e74c3c,stroke:#333,color:#fff
     style SOLVED fill:#9b59b6,stroke:#333,color:#fff
     style CHAMP fill:#7ed321,stroke:#333,color:#fff
+    style VALID fill:#2980b9,stroke:#333,color:#fff
+    style PICK fill:#16a085,stroke:#333,color:#fff
     style RUN fill:#bd10e0,stroke:#333,color:#fff
+    style JSON fill:#34495e,stroke:#333,color:#fff
     style SVG fill:#50e3c2,stroke:#333,color:#fff
 ```
+
+## 🧪 Validation Against Held-Out Scenarios
+
+After evolution stops the runner replays the champion against the **200 held-out validation
+scenarios** drawn from a disjoint seed pool (see `scenarios.ts`). The controller cannot have seen
+any of these starts during training, so its validation outcomes measure generalisation, not
+memorisation. Every per-scenario outcome (`landed` / `crashed` / `out_of_bounds` / `flying`) plus
+final state and trial fitness is written to `.synthetic-lunar-lander/validation/results.json`.
+
+The descent screenshot embedded above (`docs/screenshots/lunar_lander.svg`) is rendered from a
+**representative validation episode**, not the canonical training launch — so the SVG demonstrates
+the controller handling an unseen state. The default selection rule is the validation scenario whose
+final score is the **median** across all validation scenarios; if every scenario lands, the runner
+falls back to validation index 0 to keep the choice deterministic when scores cluster tightly.
 
 ## 🎯 NEAT-AI Standard Stop Conditions
 
@@ -118,6 +141,9 @@ Artefacts:
 - `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the run
 - `.synthetic-lunar-lander/snapshots/snapshot-gen-*.json` — running-champion snapshots captured at
   the configured checkpoints
+- `.synthetic-lunar-lander/validation/results.json` — per-scenario outcomes from replaying the
+  champion against every held-out validation scenario (one entry per scenario plus aggregate counts;
+  consumed by downstream charts)
 - `docs/screenshots/lunar_lander.svg` — animated descent diagram with terrain, the pad marked with a
   `TARGET` arrow, a polyline trace, the lander rendered at start, mid-descent, and touchdown, plus a
   moving lander icon that **tilts with the controller's angle** and lights its **main / left RCS /
