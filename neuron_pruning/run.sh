@@ -1,12 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-# Neuron Pruning Demo Runner (issue #87)
+# Neuron Pruning Demo Runner (issue #87, audited #217)
 #
-# Builds a sparse creature with deliberately constant-output neurons,
-# detects them on a held-out dataset, prunes them with bias-fold, prints
-# pre/post statistics and the per-neuron pruning report, and renders the
-# topology SVG to .neuron-pruning/output/neuron_pruning.svg.
+# Evolves a creature from a minimal NEAT-AI seed via Creature.evolveDir(...)
+# over a binary `.bin` training set, then injects deliberately constant-output
+# hidden neurons into the evolved champion, detects them on a held-out
+# dataset, prunes them with bias-fold, prints pre/post statistics and the
+# per-neuron pruning report, and renders the topology SVG plus per-generation
+# evolution CSV / fitness / topology charts.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -23,6 +25,9 @@ deno run \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
+  --allow-ffi \
+  --allow-run \
   neuron_pruning/neuron_pruning.ts \
   "$@"
 
@@ -34,4 +39,10 @@ if [[ -f "docs/screenshots/neuron_pruning.svg" ]]; then
 fi
 if [[ -f ".neuron-pruning/output/neuron_pruning.svg" ]]; then
   deno fmt .neuron-pruning/output/neuron_pruning.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/neuron_pruning/fitness.svg" ]]; then
+  deno fmt docs/screenshots/neuron_pruning/fitness.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/neuron_pruning/topology.svg" ]]; then
+  deno fmt docs/screenshots/neuron_pruning/topology.svg > /dev/null
 fi
