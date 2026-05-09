@@ -1,5 +1,53 @@
 # 🔬 Discovery at Scale — Multi-Defect Detection on Large Creatures
 
+**Science-driven structural mutation, not random search.** Textbook NEAT searches network structure
+with **random** add-node and add-connection mutations and evaluates the result blindly through
+fitness — at this scale (~200 hidden neurons, ~1 k synapses) the random walk is hopeless.
+NEAT-AI-Discovery is **error-driven**: it analyses each neuron's activation distribution across the
+dataset — flagging **saturated**, **dead**, **dormant**, **bimodal**, and **bottleneck** neurons —
+correlates those signals with the loss, and proposes targeted structural changes (rewire, replace,
+prune, split) backed by a GPU-accelerated Rust pipeline. See
+[`COMPARISON.md` Feature 2](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)
+(error-driven structural mutation) and
+[`COMPARISON.md` Feature 8](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)
+(discovery caching) for the upstream definitions. This demo deliberately injects defects into a
+creature too large for random mutation to repair, then lets Discovery's structural surgery walk it
+back — exactly the contrast textbook NEAT cannot make.
+
+```mermaid
+flowchart LR
+    subgraph TXT["📚 Textbook NEAT — random mutation"]
+        T1["🎲 Pick mutation<br/>(add-node / add-conn)"]
+        T2["🧬 Apply blindly"]
+        T3["🏋️ Evaluate fitness"]
+        T4{"Better?"}
+        T1 --> T2 --> T3 --> T4
+        T4 -- "no" --> T1
+        T4 -- "yes" --> TKEEP["✅ Keep"]
+    end
+    subgraph SCI["🔬 Discovery-driven mutation"]
+        S1["📊 Activations per neuron"]
+        S2["🔍 Classify<br/>saturated · dead · dormant · bimodal · bottleneck"]
+        S3["📉 Correlate with loss"]
+        S4["🛠 Propose targeted change<br/>rewire · replace · prune · split"]
+        S5["🏋️ Evaluate"]
+        S1 --> S2 --> S3 --> S4 --> S5 --> SKEEP["✅ Keep best"]
+    end
+    style TXT fill:#fff7e6,stroke:#e67e22,color:#333
+    style SCI fill:#eaf6ff,stroke:#2e86de,color:#333
+    style T1 fill:#f5a623,stroke:#333,color:#fff
+    style T2 fill:#f5a623,stroke:#333,color:#fff
+    style T3 fill:#f5a623,stroke:#333,color:#fff
+    style T4 fill:#e74c3c,stroke:#333,color:#fff
+    style TKEEP fill:#7ed321,stroke:#333,color:#fff
+    style S1 fill:#4a90d9,stroke:#333,color:#fff
+    style S2 fill:#9b59b6,stroke:#333,color:#fff
+    style S3 fill:#bd10e0,stroke:#333,color:#fff
+    style S4 fill:#16a085,stroke:#333,color:#fff
+    style S5 fill:#f5a623,stroke:#333,color:#fff
+    style SKEEP fill:#50e3c2,stroke:#333,color:#fff
+```
+
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _FFI_ = Foreign Function Interface
 (Deno's mechanism for calling native libraries from TypeScript).
 
@@ -47,15 +95,18 @@ flowchart TD
 
 ## 🎨 Defect Categories
 
-| Colour      | Category        | Detection rule                                                 |
-| ----------- | --------------- | -------------------------------------------------------------- |
-| 🟩 Green    | `healthy`       | All neurons that fall through the rules below.                 |
-| 🟥 Red      | `saturated`     | Variance below `1e-3` AND \|mean\| ≥ 0.9 across the dataset.   |
-| ⚫ Charcoal | `dead`          | Variance below `1e-3` AND \|mean\| ≤ 0.05 across the dataset.  |
-| ⚪ Grey     | `dormant`       | Variance below `1e-3` but neither saturated nor dead.          |
-| 🟪 Purple   | `bimodal`       | ≤ 3 distinct rounded activations across the dataset.           |
-| 🟧 Orange   | `bottleneck`    | Outgoing degree ≥ 6 (structural — many edges from one neuron). |
-| ⚪ Dashed   | dormant synapse | \|weight\| < 1e-4 — drawn as a dashed light-grey line.         |
+Each row lists the detection rule **and** the structural intervention Discovery would propose for
+that defect class — the targeted, error-driven response that random NEAT mutation cannot make.
+
+| Colour      | Category        | Detection rule                                                 | Discovery intervention                                                                      |
+| ----------- | --------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 🟩 Green    | `healthy`       | All neurons that fall through the rules below.                 | Leave alone — no structural change proposed.                                                |
+| 🟥 Red      | `saturated`     | Variance below `1e-3` AND \|mean\| ≥ 0.9 across the dataset.   | **Rewire** — adjust incoming weights / bias or swap squash to break saturation.             |
+| ⚫ Charcoal | `dead`          | Variance below `1e-3` AND \|mean\| ≤ 0.05 across the dataset.  | **Replace** — substitute neuron with a fresh activation/squash that responds to the inputs. |
+| ⚪ Grey     | `dormant`       | Variance below `1e-3` but neither saturated nor dead.          | **Prune** — remove the neuron and rewire its successors.                                    |
+| 🟪 Purple   | `bimodal`       | ≤ 3 distinct rounded activations across the dataset.           | **Split** — duplicate the neuron and specialise each copy to one mode.                      |
+| 🟧 Orange   | `bottleneck`    | Outgoing degree ≥ 6 (structural — many edges from one neuron). | **Rewire** — insert a relay neuron to break the fan-out and decompose the load.             |
+| ⚪ Dashed   | dormant synapse | \|weight\| < 1e-4 — drawn as a dashed light-grey line.         | **Prune** — remove the synapse so the discovery cache focuses on live edges.                |
 
 The detection rules are intentionally simple so the demo is self-contained and the SVG output is
 trivially explainable. The full taxonomy of 40+ scenarios lives in the
