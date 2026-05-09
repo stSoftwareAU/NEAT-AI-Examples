@@ -942,22 +942,75 @@ function parseNumericFlag(args: string[], name: string): number | undefined {
   return undefined;
 }
 
+/**
+ * CI/quality "quick mode" stop-condition overrides. When the runner is
+ * invoked via `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag), the
+ * standard 99% / 2-minute defaults are replaced with a deliberately
+ * unreachable target and a ~6-second wall-clock budget so the example
+ * always exits via `timeout` and the entire pipeline finishes within
+ * `quality.sh`'s tight section budget.
+ *
+ * - `targetError = -1` is unreachable — the threshold becomes
+ *   `landed-rate >= 1 - (-1) = 2`, but `landed-rate` is bounded by 1,
+ *   so the loop never trips the `target` stop condition and the
+ *   wall-clock timeout always drives exit.
+ * - `timeoutMinutes = 0.1` ≈ 6 seconds — comfortably under the
+ *   ~10-second per-section budget the user asked for in #201.
+ *
+ * Quick mode also suppresses canonical artefact writes (champion JSON,
+ * validation results JSON, descent SVG, evolution chart/strip, fitness
+ * chart, telemetry CSV) so a CI run never overwrites the docs artefacts
+ * checked into the repo. Snapshot files are written to a temp dir
+ * scoped to the run so the snapshot loader still has something to read,
+ * without disturbing `.synthetic-lunar-lander/snapshots/`.
+ */
+export const QUICK_TARGET_ERROR = -1;
+export const QUICK_TIMEOUT_MINUTES = 0.1;
+
+/**
+ * Resolve whether the CI/quality "quick mode" should fire. Either
+ * `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag) is enough; both are
+ * accepted so callers can pick whichever idiom is simpler in their
+ * environment.
+ */
+export function isQuickMode(args: readonly string[], envValue: string | undefined): boolean {
+  if (envValue === "1") return true;
+  for (const arg of args) {
+    if (arg === "--quick") return true;
+  }
+  return false;
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
   console.log("🚀 Lunar Lander Descent Example");
   console.log("");
 
+  // Quick mode (CI/quality budget): forces a tiny ~6-second wall-clock
+  // budget and skips canonical artefact writes so a CI invocation never
+  // overwrites the docs artefacts checked into the repo. See
+  // {@link isQuickMode} and {@link QUICK_TIMEOUT_MINUTES}.
+  const quick = isQuickMode(Deno.args, Deno.env.get("LUNAR_QUICK"));
+  if (quick) {
+    console.log("⚡ Quick mode (LUNAR_QUICK=1 or --quick): tiny budget, no canonical artefacts");
+    console.log("");
+  }
+
   const { creaturesDir } = setupWorkingDirs(".synthetic-lunar-lander");
 
   const baseline = freeFallBaselineScore();
   console.log(`🪂 Free-fall baseline score: ${baseline.toFixed(1)}`);
 
-  // CLI overrides for the NEAT-AI standard stop conditions.
-  const targetError = parseNumericFlag(Deno.args, "--target-error") ??
-    DEFAULT_EVOLVE_OPTIONS.targetError;
-  const timeoutMinutes = parseNumericFlag(Deno.args, "--timeout-minutes") ??
-    DEFAULT_EVOLVE_OPTIONS.timeoutMinutes;
+  // CLI overrides for the NEAT-AI standard stop conditions. Quick mode
+  // forces an impossible target plus a ~6-second timeout so the loop
+  // always exits via `timeout` well inside the CI section budget.
+  const targetError = quick ? QUICK_TARGET_ERROR : (parseNumericFlag(Deno.args, "--target-error") ??
+    DEFAULT_EVOLVE_OPTIONS.targetError);
+  const timeoutMinutes = quick
+    ? QUICK_TIMEOUT_MINUTES
+    : (parseNumericFlag(Deno.args, "--timeout-minutes") ??
+      DEFAULT_EVOLVE_OPTIONS.timeoutMinutes);
 
   console.log("\n🧬 Evolving controller from uniform-random NEAT noise...");
   console.log(
@@ -965,9 +1018,14 @@ if (import.meta.main) {
       `(landed-rate ≥ ${((1 - targetError) * 100).toFixed(0)}%), ` +
       `timeoutMinutes=${timeoutMinutes}`,
   );
-  ensureDirSync(SNAPSHOTS_DIR);
-  for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
-    if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
+  // In quick mode, route snapshot files into a per-run temp dir so the
+  // checked-in `.synthetic-lunar-lander/snapshots/` is left untouched.
+  const snapshotsDir = quick
+    ? Deno.makeTempDirSync({ prefix: "lunar_lander_quick_snapshots_" })
+    : SNAPSHOTS_DIR;
+  ensureDirSync(snapshotsDir);
+  for (const entry of Deno.readDirSync(snapshotsDir)) {
+    if (entry.isFile) Deno.removeSync(join(snapshotsDir, entry.name));
   }
   const evolutionSamples: EvolutionSample[] = [];
   const evolutionRows: EvolutionRow[] = [];
@@ -978,7 +1036,7 @@ if (import.meta.main) {
     timeoutMinutes,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
-      outputDir: SNAPSHOTS_DIR,
+      outputDir: snapshotsDir,
     },
     onGeneration: ({ generation, bestScore, meanScore, bestLandedRate, neurons, synapses }) => {
       evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
@@ -1011,10 +1069,18 @@ if (import.meta.main) {
       `stop=${result.stopReason}, wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
-  const championPath = join(creaturesDir, "champion.json");
+  // Always exercise the post-evolution pipeline (validation, replay,
+  // SVG rendering, chart construction) so quick mode still proves the
+  // full code path runs end-to-end. Only the disk writes that would
+  // overwrite canonical docs artefacts are gated on `!quick`.
   const championExport: CreatureExport = result.champion.exportJSON();
-  await safeWriteJson(championPath, championExport);
-  console.log(`💾 Saved champion to ${championPath}`);
+  if (!quick) {
+    const championPath = join(creaturesDir, "champion.json");
+    await safeWriteJson(championPath, championExport);
+    console.log(`💾 Saved champion to ${championPath}`);
+  } else {
+    console.log("⏭️  Quick mode: skipped writing champion JSON");
+  }
 
   // Validate the champion against the held-out validation pool: the SVG
   // and the validation JSON are sourced from these unseen scenarios so
@@ -1031,12 +1097,16 @@ if (import.meta.main) {
       `mean fitness=${validationReport.meanFitness.toFixed(1)}`,
   );
 
-  ensureDirSync(".synthetic-lunar-lander/validation");
-  await safeWriteJson(VALIDATION_RESULTS_PATH, validationReport);
-  console.log(
-    `📝 Wrote validation results ${VALIDATION_RESULTS_PATH} ` +
-      `(${validationReport.scenarios.length} scenarios)`,
-  );
+  if (!quick) {
+    ensureDirSync(".synthetic-lunar-lander/validation");
+    await safeWriteJson(VALIDATION_RESULTS_PATH, validationReport);
+    console.log(
+      `📝 Wrote validation results ${VALIDATION_RESULTS_PATH} ` +
+        `(${validationReport.scenarios.length} scenarios)`,
+    );
+  } else {
+    console.log("⏭️  Quick mode: skipped writing validation JSON");
+  }
 
   // Render the descent SVG from a representative validation scenario —
   // not from the canonical training launch — so the screenshot shows
@@ -1046,13 +1116,19 @@ if (import.meta.main) {
   const selectedResult = validationReport.scenarios[validationReport.selectedIndex];
   const trace = replayController(result.champion, MAX_STEPS, selected.state, selected.terrain);
   const svg = renderRunSVG(trace, selected.terrain, selectedResult.outcome);
-  ensureDirSync("docs/screenshots");
-  await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  console.log(
-    `🖼️  Wrote screenshot ${SCREENSHOT_PATH} ` +
-      `(validation seed=${selected.seed}, outcome=${selectedResult.outcome}, ` +
-      `${trace.length} frames)`,
-  );
+  if (!quick) {
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
+    console.log(
+      `🖼️  Wrote screenshot ${SCREENSHOT_PATH} ` +
+        `(validation seed=${selected.seed}, outcome=${selectedResult.outcome}, ` +
+        `${trace.length} frames)`,
+    );
+  } else {
+    console.log(
+      `⏭️  Quick mode: skipped writing descent SVG (rendered ${svg.length} bytes in-memory)`,
+    );
+  }
 
   // Render the per-generation evolution chart (score / neurons / synapses).
   if (evolutionSamples.length > 0) {
@@ -1060,9 +1136,11 @@ if (import.meta.main) {
       title: "Lunar Lander — Evolution",
       scoreLabel: "best score",
     });
-    ensureDirSync("docs/screenshots/lunar_lander");
-    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
-    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+    if (!quick) {
+      ensureDirSync("docs/screenshots/lunar_lander");
+      await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
+      console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+    }
   }
 
   // Per-generation evolution telemetry: CSV (source of truth) plus a
@@ -1070,10 +1148,7 @@ if (import.meta.main) {
   // emitted on every full run so downstream tools and the README can
   // reuse the same data.
   if (evolutionRows.length > 0) {
-    ensureDirSync("docs/data/lunar_lander");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
-    console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
-
+    const csvText = formatEvolutionCsv(evolutionRows);
     const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
       generation: r.generation,
       bestFitness: r.bestFitness,
@@ -1084,14 +1159,20 @@ if (import.meta.main) {
       bestLabel: "best fitness",
       avgLabel: "avg fitness",
     });
-    ensureDirSync("docs/screenshots/lunar_lander");
-    await Deno.writeTextFile(FITNESS_CHART_PATH, fitnessSvg);
-    console.log(`📈 Wrote fitness chart ${FITNESS_CHART_PATH}`);
+    if (!quick) {
+      ensureDirSync("docs/data/lunar_lander");
+      await Deno.writeTextFile(EVOLUTION_CSV_PATH, csvText);
+      console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
+
+      ensureDirSync("docs/screenshots/lunar_lander");
+      await Deno.writeTextFile(FITNESS_CHART_PATH, fitnessSvg);
+      console.log(`📈 Wrote fitness chart ${FITNESS_CHART_PATH}`);
+    }
   }
 
   // Render the multi-panel evolution-progression strip from the
   // checkpoint snapshots captured during the run.
-  const snapshots = loadSnapshots(SNAPSHOTS_DIR);
+  const snapshots = loadSnapshots(snapshotsDir);
   if (snapshots.length > 0) {
     const progressionSvg = renderEvolutionProgressSvg(snapshots, {
       title: "Lunar Lander — Evolution Progress",
@@ -1101,11 +1182,22 @@ if (import.meta.main) {
         wallClockMs: Date.now() - evolutionStart,
       },
     });
-    await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
-    console.log(
-      `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
-        `(${snapshots.length} panels)`,
-    );
+    if (!quick) {
+      await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
+      console.log(
+        `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
+          `(${snapshots.length} panels)`,
+      );
+    }
+  }
+
+  // Tidy the per-run snapshot temp dir if quick mode created one.
+  if (quick && snapshotsDir !== SNAPSHOTS_DIR) {
+    try {
+      Deno.removeSync(snapshotsDir, { recursive: true });
+    } catch (_err) {
+      // Non-fatal — quick mode runs are best-effort about cleanup.
+    }
   }
 
   console.log(

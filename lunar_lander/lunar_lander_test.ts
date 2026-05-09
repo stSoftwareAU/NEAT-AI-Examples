@@ -27,10 +27,13 @@ import {
   freeFallBaselineScore,
   type GenerationInfo,
   INPUT_COUNT,
+  isQuickMode,
   MAX_STEPS,
   mutateCreatureExport,
   OUTPUT_COUNT,
   pickValidationSvgIndex,
+  QUICK_TARGET_ERROR,
+  QUICK_TIMEOUT_MINUTES,
   replayController,
   scoreController,
   scoreFinalState,
@@ -1183,6 +1186,95 @@ Deno.test(
     assert(
       !startedAtCanonical || padShifted,
       "validation-sourced replay must differ from the canonical launch",
+    );
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Quick-mode (CI/quality budget) regression tests — issue #201.
+// ---------------------------------------------------------------------------
+
+Deno.test("isQuickMode trips on LUNAR_QUICK=1 env var (issue #201)", () => {
+  assertEquals(isQuickMode([], "1"), true);
+  assertEquals(isQuickMode([], "0"), false);
+  assertEquals(isQuickMode([], undefined), false);
+  // Stray values are treated as off — only the literal "1" counts.
+  assertEquals(isQuickMode([], "true"), false);
+  assertEquals(isQuickMode([], ""), false);
+});
+
+Deno.test("isQuickMode trips on --quick CLI flag (issue #201)", () => {
+  assertEquals(isQuickMode(["--quick"], undefined), true);
+  assertEquals(isQuickMode(["--target-error=0.05", "--quick"], undefined), true);
+  assertEquals(isQuickMode(["--target-error=0.05"], undefined), false);
+  // Either signal alone is enough; both together still resolve to true.
+  assertEquals(isQuickMode(["--quick"], "1"), true);
+});
+
+Deno.test("quick-mode overrides force a tiny budget and an unreachable target (issue #201)", () => {
+  // The quick-mode constants drive the runner's CI fast path. The
+  // target-error must be unreachable so the timeout always drives
+  // exit: `landed-rate` is bounded by 1, so a threshold > 1 (i.e.
+  // `1 - QUICK_TARGET_ERROR > 1`, equivalently `QUICK_TARGET_ERROR < 0`)
+  // can never be met. The timeout must also be small enough to fit
+  // the per-section budget the user asked for in #201.
+  assert(
+    QUICK_TARGET_ERROR < 0,
+    `QUICK_TARGET_ERROR must be < 0 to make the landed-rate threshold > 1, ` +
+      `got ${QUICK_TARGET_ERROR}`,
+  );
+  assert(
+    QUICK_TIMEOUT_MINUTES <= 0.2,
+    `QUICK_TIMEOUT_MINUTES must be <= 12 seconds, got ${QUICK_TIMEOUT_MINUTES} minutes`,
+  );
+  assertGreater(QUICK_TIMEOUT_MINUTES, 0);
+});
+
+Deno.test(
+  "quick-mode budget: evolveLanderController with the quick overrides ends fast (issue #201)",
+  () => {
+    // Drive the evolver directly with the quick-mode overrides and
+    // assert the run finishes well inside the 30-second regression
+    // budget the issue asks for. This is the closest we can get to a
+    // wall-clock assertion without spawning a subprocess.
+    const start = Date.now();
+    const result = evolveLanderController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      populationSize: 12,
+      targetError: QUICK_TARGET_ERROR,
+      timeoutMinutes: QUICK_TIMEOUT_MINUTES,
+    });
+    const elapsedMs = Date.now() - start;
+    // The runner stops on timeout because targetError > 1 is unreachable.
+    assertEquals(result.stopReason, "timeout");
+    // Wall-clock must be well under the 30-second regression budget.
+    assert(
+      elapsedMs < 30_000,
+      `quick-mode evolveLanderController took ${elapsedMs}ms, expected < 30000ms`,
+    );
+    // The reported wall-clock figure must also be bounded by the
+    // ceiling implied by QUICK_TIMEOUT_MINUTES with a small slack for
+    // the "finish current generation" cost.
+    assert(
+      Number.isFinite(result.wallclockMs),
+      `expected finite wallclockMs, got ${result.wallclockMs}`,
+    );
+  },
+);
+
+Deno.test(
+  "quality.sh invokes lunar-lander in quick mode (issue #201)",
+  async () => {
+    // Structural guard: the CI section budget hinges on quality.sh
+    // passing LUNAR_QUICK=1 to the lunar-lander runner. If a future
+    // refactor drops the env override, the section will silently slip
+    // back to the 2-minute default — this test catches that.
+    const text = await Deno.readTextFile(new URL("../quality.sh", import.meta.url));
+    assert(
+      /LUNAR_QUICK=1[^\n]*lunar_lander\/run\.sh|lunar_lander\/run\.sh[^\n]*LUNAR_QUICK=1/.test(
+        text,
+      ),
+      "quality.sh must invoke ./lunar_lander/run.sh with LUNAR_QUICK=1",
     );
   },
 );

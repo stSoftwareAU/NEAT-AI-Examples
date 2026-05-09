@@ -39,6 +39,30 @@ run_example() {
   fi
 }
 
+# Like run_example but invokes the runner with environment overrides,
+# used for the lunar-lander "quick" CI budget so the section finishes
+# in seconds without overwriting the canonical docs artefacts.
+run_example_with_env() {
+  local name="$1"
+  local script="$2"
+  local env_assignment="$3"
+
+  echo "----------------------------------------"
+  echo "Running: ${name} (${env_assignment})"
+  echo "----------------------------------------"
+
+  if env "${env_assignment}" "${script}"; then
+    echo ""
+    echo "SUCCESS: ${name}"
+    echo ""
+  else
+    echo ""
+    echo "FAILED: ${name}"
+    echo ""
+    FAILED=1
+  fi
+}
+
 # --- Linting ---
 echo "----------------------------------------"
 echo "Running: Deno Lint"
@@ -127,8 +151,11 @@ run_example "CRISPR Gene Injection Example" "./crispr_injection/run.sh"
 # Run the Cart-Pole Balancing example
 run_example "Cart-Pole Balancing Example" "./cart_pole/run.sh"
 
-# Run the Lunar Lander Descent example
-run_example "Lunar Lander Descent Example" "./lunar_lander/run.sh"
+# Run the Lunar Lander Descent example in quick mode (issue #201): the
+# CI/quality budget caps the section at ~6 seconds, exits via timeout,
+# and skips writing the canonical docs artefacts. Direct invocations of
+# `./lunar_lander/run.sh` still use the realistic 2-minute defaults.
+run_example_with_env "Lunar Lander Descent Example" "./lunar_lander/run.sh" "LUNAR_QUICK=1"
 
 # Run the Mountain Car Control example
 run_example "Mountain Car Control Example" "./mountain_car/run.sh"

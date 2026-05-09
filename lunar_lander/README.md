@@ -136,6 +136,24 @@ A run terminates as soon as one of these conditions holds:
 ./lunar_lander/run.sh
 ```
 
+### CI/quality fast path
+
+`quality.sh` invokes the runner with `LUNAR_QUICK=1` so the lunar-lander section finishes in
+seconds, not minutes. Quick mode forces a tiny ~6-second wall-clock budget (`timeoutMinutes = 0.1`)
+and an unreachable target error (`targetError = -1`, threshold `landed-rate ≥ 200%`) so the loop
+always exits via `timeout`. The full pipeline still runs end-to-end (population scoring, validation,
+replay, SVG/CSV/chart construction) — only the **disk writes** that would overwrite the canonical
+docs artefacts are gated off, so a CI run never disturbs the SVGs and CSVs checked into the repo.
+Either entry point works:
+
+```bash
+LUNAR_QUICK=1 ./lunar_lander/run.sh   # env var
+./lunar_lander/run.sh --quick         # CLI flag (equivalent)
+```
+
+Without quick mode, the runner uses the realistic `targetError = 0.01`, `timeoutMinutes = 2`
+defaults — that is the path users invoke directly when they want a champion + canonical artefacts.
+
 Artefacts:
 
 - `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the run
