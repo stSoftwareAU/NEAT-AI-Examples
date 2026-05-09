@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="Discovery — Best vs Mean Fitness dual-axis chart">
+  <title>Discovery — Best vs Mean Fitness</title>
+  <rect width="800" height="400" fill="#fafafa"/>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">Discovery — Best vs Mean Fitness</text>
+  <rect x="70" y="40" width="660" height="300" fill="#ffffff" stroke="#333333" stroke-width="1"/>
+  <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
+    <line x1="126.57" y1="340" x2="126.57" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="126.57" y="358" text-anchor="middle">4</text>
+    <line x1="202" y1="340" x2="202" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="202" y="358" text-anchor="middle">8</text>
+    <line x1="277.43" y1="340" x2="277.43" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="277.43" y="358" text-anchor="middle">12</text>
+    <line x1="352.86" y1="340" x2="352.86" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="352.86" y="358" text-anchor="middle">16</text>
+    <line x1="428.29" y1="340" x2="428.29" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="428.29" y="358" text-anchor="middle">20</text>
+    <line x1="503.71" y1="340" x2="503.71" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="503.71" y="358" text-anchor="middle">24</text>
+    <line x1="579.14" y1="340" x2="579.14" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="579.14" y="358" text-anchor="middle">28</text>
+    <line x1="654.57" y1="340" x2="654.57" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="654.57" y="358" text-anchor="middle">32</text>
+    <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="730" y="358" text-anchor="middle">36</text>
+    <text x="400" y="376" text-anchor="middle" font-weight="bold">generation</text>
+  </g>
+  <g class="left-axis" font-family="sans-serif" font-size="11" fill="#1f77b4">
+    <line x1="66" y1="340" x2="70" y2="340" stroke="#1f77b4" stroke-width="1"/>
+    <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0.146</text>
+    <line x1="66" y1="269.74" x2="70" y2="269.74" stroke="#1f77b4" stroke-width="1"/>
+    <text x="62" y="269.74" text-anchor="end" dominant-baseline="middle">0.346</text>
+    <line x1="66" y1="199.48" x2="70" y2="199.48" stroke="#1f77b4" stroke-width="1"/>
+    <text x="62" y="199.48" text-anchor="end" dominant-baseline="middle">0.546</text>
+    <line x1="66" y1="129.21" x2="70" y2="129.21" stroke="#1f77b4" stroke-width="1"/>
+    <text x="62" y="129.21" text-anchor="end" dominant-baseline="middle">0.746</text>
+    <line x1="66" y1="58.95" x2="70" y2="58.95" stroke="#1f77b4" stroke-width="1"/>
+    <text x="62" y="58.95" text-anchor="end" dominant-baseline="middle">0.946</text>
+    <line x1="66" y1="40" x2="70" y2="40" stroke="#1f77b4" stroke-width="1"/>
+    <text x="62" y="40" text-anchor="end" dominant-baseline="middle">1</text>
+    <text x="22" y="190" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 190)">best fitness</text>
+  </g>
+  <g class="right-axis" font-family="sans-serif" font-size="11" fill="#ff7f0e">
+    <line x1="730" y1="0" x2="734" y2="0" stroke="#ff7f0e" stroke-width="1"/>
+    <text x="738" y="0" text-anchor="start" dominant-baseline="middle">0</text>
+    <line x1="730" y1="0" x2="734" y2="0" stroke="#ff7f0e" stroke-width="1"/>
+    <text x="738" y="0" text-anchor="start" dominant-baseline="middle">0</text>
+    <text x="778" y="0" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(90 778 0)">avg fitness</text>
+  </g>
+  <g class="best-line">
+    <polyline fill="none" stroke="#1f77b4" stroke-width="1.5" points="70,340 88.86,340 107.71,266.89 126.57,253.28 145.43,249.14 164.29,242.6 183.14,220.83 202,206.02 220.86,206.02 239.71,162.76 258.57,95.84 277.43,49.56 296.29,48.67 315.14,48.15 334,46.1 352.86,43.34 371.71,42.4 390.57,42.4 409.43,42.39 428.29,42.38 447.14,42.37 466,42.36 484.86,42.35 503.71,42.34 522.57,42.33 541.43,42.3 560.29,42.25 579.14,42.16 598,40.87 616.86,40.11 635.71,40.11 654.57,40.07 673.43,40.03 692.29,40 711.14,40 730,40"/>
+    <circle class="best-point" cx="70" cy="340" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="88.86" cy="340" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="107.71" cy="266.89" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="126.57" cy="253.28" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="145.43" cy="249.14" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="164.29" cy="242.6" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="183.14" cy="220.83" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="202" cy="206.02" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="220.86" cy="206.02" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="239.71" cy="162.76" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="258.57" cy="95.84" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="277.43" cy="49.56" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="296.29" cy="48.67" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="315.14" cy="48.15" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="334" cy="46.1" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="352.86" cy="43.34" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="371.71" cy="42.4" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="390.57" cy="42.4" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="409.43" cy="42.39" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="428.29" cy="42.38" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="447.14" cy="42.37" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="466" cy="42.36" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="484.86" cy="42.35" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="503.71" cy="42.34" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="522.57" cy="42.33" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="541.43" cy="42.3" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="560.29" cy="42.25" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="579.14" cy="42.16" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="598" cy="40.87" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="616.86" cy="40.11" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="635.71" cy="40.11" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="654.57" cy="40.07" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="673.43" cy="40.03" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="692.29" cy="40" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="711.14" cy="40" r="1.8" fill="#1f77b4"/>
+    <circle class="best-point" cx="730" cy="40" r="1.8" fill="#1f77b4"/>
+  </g>
+  <g class="avg-line">
+    <polyline fill="none" stroke="#ff7f0e" stroke-width="1.5" points="70,0 88.86,0 107.71,0 126.57,0 145.43,0 164.29,0 183.14,0 202,0 220.86,0 239.71,0 258.57,0 277.43,0 296.29,0 315.14,0 334,0 352.86,0 371.71,0 390.57,0 409.43,0 428.29,0 447.14,0 466,0 484.86,0 503.71,0 522.57,0 541.43,0 560.29,0 579.14,0 598,0 616.86,0 635.71,0 654.57,0 673.43,0 692.29,0 711.14,0 730,0"/>
+    <circle class="avg-point" cx="70" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="88.86" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="107.71" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="126.57" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="145.43" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="164.29" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="183.14" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="202" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="220.86" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="239.71" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="258.57" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="277.43" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="296.29" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="315.14" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="334" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="352.86" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="371.71" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="390.57" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="409.43" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="428.29" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="447.14" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="466" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="484.86" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="503.71" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="522.57" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="541.43" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="560.29" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="579.14" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="598" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="616.86" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="635.71" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="654.57" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="673.43" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="692.29" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="711.14" cy="0" r="1.8" fill="#ff7f0e"/>
+    <circle class="avg-point" cx="730" cy="0" r="1.8" fill="#ff7f0e"/>
+  </g>
+  <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
+    <rect x="76" y="42" width="140" height="40" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="0.5"/>
+    <line x1="82" y1="52" x2="100" y2="52" stroke="#1f77b4" stroke-width="2"/>
+    <text x="106" y="56">best fitness</text>
+    <line x1="82" y1="68" x2="100" y2="68" stroke="#ff7f0e" stroke-width="2"/>
+    <text x="106" y="72">avg fitness</text>
+  </g>
+  <g class="final-annotation" font-family="sans-serif" font-size="12" fill="#222222">
+    <line x1="730" y1="40" x2="718" y2="52" stroke="#666666" stroke-width="0.8" stroke-dasharray="2,2"/>
+    <circle cx="730" cy="40" r="3.5" fill="#222222"/>
+    <text x="718" y="52" text-anchor="end">gen 36: best=1, avg=0</text>
+  </g>
+</svg>

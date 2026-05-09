@@ -1,8 +1,16 @@
 /**
  * Tests for the science-driven structural mutation framing on the
- * Discovery and Discovery-at-Scale READMEs (issue #189).
+ * Discovery-at-Scale README (issue #189).
  *
- * Both pages must:
+ * `discovery/README.md` previously sat under the same framing, but the
+ * audit (issue #207) repurposed that example to evolve from a minimal
+ * NEAT seed via `Creature.evolveDir(...)` — i.e. random mutation —
+ * rather than `discoveryDir(...)`. Holding it to the science-driven
+ * framing rules would now contradict the audit, so the discovery
+ * README is excluded from this loop. `discovery_at_scale` still uses
+ * `discoveryDir(...)` and remains in scope.
+ *
+ * The Discovery-at-Scale page must:
  *  - Open with a paragraph stating Discovery is error-driven structural
  *    mutation, not random search.
  *  - Link to upstream COMPARISON.md features 2 and 8.
@@ -16,7 +24,6 @@
 import { assert, assertStringIncludes } from "@std/assert";
 
 const README_PATHS: Record<string, string> = {
-  discovery: "discovery/README.md",
   discoveryAtScale: "discovery_at_scale/README.md",
 };
 
