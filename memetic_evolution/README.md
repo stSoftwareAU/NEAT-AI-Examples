@@ -6,7 +6,42 @@ evolutions on the same synthetic weight-tuning task — one with memetic seeding
 — and renders both fitness curves overlaid so the advantage of seeding from a curated archive is
 visible at a glance.
 
+Per the audit in [issue #216](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/216), the
+runner now follows the conceptual memetic-vs-control comparison with a second stage that genuinely
+exercises NEAT-AI: it seeds `new Creature(2, 1)` (no hidden hint, no `network.json`, no hand-tuned
+shape) and runs `Creature.evolveDir(...)` over a binary `.bin` training set, capturing
+per-generation telemetry the README quotes verbatim from the latest local run.
+
 ![Memetic vs control fitness comparison](../docs/screenshots/memetic_evolution.svg)
+
+## 📈 Latest Measured Run (Minimal-Seed `evolveDir` Stage)
+
+The numbers below come directly from the latest local run of `./memetic_evolution/run.sh` — no
+estimates, no qualifiers.
+
+| Metric                    | Value                                |
+| ------------------------- | ------------------------------------ |
+| Generations               | 147 (solved — `targetError` reached) |
+| Wall-clock                | 2.1 s                                |
+| Final per-record error    | 0.0049                               |
+| Final best fitness        | 0.9951                               |
+| Held-out score (-MSE)     | -0.004863                            |
+| Seed neurons / synapses   | 3 / 2                                |
+| Final neurons / synapses  | 6 / 12                               |
+| `targetError`             | 0.005                                |
+| `timeoutMinutes` (safety) | 5                                    |
+
+Topology genuinely changed: NEAT added 3 hidden neurons (3 → 6) and grew the synapse count from 2 to
+12 across 147 generations starting from the minimal direct-only seed. The intermediate checkpoints
+visible in the CSV are `(3,2) → (4,5) → (5,8) → (6,11) → (6,12)`.
+
+- Per-generation telemetry CSV:
+  [`docs/data/memetic_evolution/evolution.csv`](../docs/data/memetic_evolution/evolution.csv)
+- Schema: `generation, best_fitness, mean_fitness, neuron_count, synapse_count`
+
+![Memetic Evolution — Best vs Mean Fitness](../docs/screenshots/memetic_evolution/fitness.svg)
+
+![Memetic Evolution — Topology Growth (neuron and synapse counts per generation)](../docs/screenshots/memetic_evolution/topology.svg)
 
 ## 🚀 How to Run
 
@@ -14,8 +49,30 @@ visible at a glance.
 ./memetic_evolution/run.sh
 ```
 
-The runner prints summary statistics and writes the dual-curve chart to
-`docs/screenshots/memetic_evolution.svg`.
+The runner:
+
+1. Runs the conceptual memetic-vs-control simulation on the synthetic weight-tuning task and writes
+   the dual-curve chart to `docs/screenshots/memetic_evolution.svg`.
+2. Writes the same synthetic dataset as a Float32 `.bin` file under
+   `.synthetic-memetic-evolution/data/` so NEAT-AI can consume it via `Creature.evolveDir(...)`.
+3. Seeds NEAT-AI with `new Creature(2, 1)` — minimal direct-only topology.
+4. Runs `Creature.evolveDir(dataDir, neatOptions)` with `targetError = 0.005` and
+   `timeoutMinutes = 5`. The evolution loop is split into 25-iteration chunks so per-generation
+   telemetry picks up structural growth at fine resolution.
+5. Writes the per-generation CSV, the fitness chart, the topology chart, and the champion creature
+   JSON. The whole run completes in seconds on a developer machine — well under the 5-minute
+   backstop.
+
+### Why `evolveDir` rather than per-step `activate()`?
+
+The training task is a pre-generated binary `(input, target)` set — the canonical "binary-data +
+`evolveDir`" categorisation from the parent audit ([issue #203]). `evolveDir` exercises NEAT-AI's
+full feature set (back-propagation, structure discovery, WASM/SIMD/GPU parallelism) and is orders of
+magnitude faster than per-call `activate()` for supervised regression. Per-step `activate()` is
+reserved for interactive simulations / RL agents where the next observation depends on the previous
+action.
+
+[issue #203]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/203
 
 ## 🧠 What is memetic seeding?
 
@@ -111,6 +168,14 @@ recorded and rendered as green dashed vertical lines on the fitness chart.
   - **Blue** memetic fitness curve.
   - **Grey** control fitness curve.
   - **Green dashed** vertical markers at the generations where memetic seeding was applied.
+- `docs/screenshots/memetic_evolution/fitness.svg` — best vs mean fitness per generation from the
+  minimal-seed `evolveDir` stage (audit #216).
+- `docs/screenshots/memetic_evolution/topology.svg` — neuron and synapse counts per generation from
+  the minimal-seed `evolveDir` stage.
+- `docs/data/memetic_evolution/evolution.csv` — per-generation telemetry CSV with the schema
+  `generation, best_fitness, mean_fitness, neuron_count, synapse_count`.
+- `.synthetic-memetic-evolution/creatures/champion.json` — final evolved creature for downstream
+  inspection.
 
 ## 🧪 Tests
 
@@ -127,10 +192,18 @@ recorded and rendered as green dashed vertical lines on the fitness chart.
   outperforms the control by a measurable margin (the SVG demonstrates the lift visually).
 - The rendered SVG is well-formed, embeds both curves as polylines, and includes the seeding-marker
   class so the markers are individually addressable for downstream styling.
+- (Audit #216) `INPUT_COUNT`/`OUTPUT_COUNT` match the simulation topology, `writeBinaryDataset`
+  emits a Float32 `.bin` of the expected byte count, `runMinimalSeedEvolution` rejects invalid
+  configs and emits per-generation telemetry rows from a minimal
+  `new Creature(INPUT_COUNT,
+  OUTPUT_COUNT)` seed, `formatEvolutionCsv` emits the canonical header,
+  and the new fitness / topology SVG renderers produce well-formed output.
 
 ## 🧰 NEAT-AI Features Used
 
-**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies.
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _MSE_ = mean squared error. _WASM_ =
+WebAssembly. _SIMD_ = single instruction, multiple data. _GPU_ = graphics processing unit. _RL_ =
+reinforcement learning.
 
 Memetic Evolution re-seeds the population from an archive of fittest creatures so successful weight
 patterns are remembered across generations.
