@@ -1,50 +1,62 @@
 /**
- * Stock Market Direction Prediction Example
+ * Stock Market Direction Prediction Example (audit #218).
  *
- * Evolves a NEAT-AI network from **uniform-random noise** to predict
- * next-period direction (up/down) from a window of recent simple
- * returns. The dataset is the public S&P 500 monthly-close mirror at
- * https://github.com/datasets/s-and-p-500 (pinned to a specific commit
- * for reproducibility), downloaded once into `.synthetic-stock/data/`.
+ * Evolves a NEAT-AI network from a **minimal seed** to predict
+ * next-period direction (up/down) on the public S&P 500 monthly-close
+ * dataset. The training labels are pre-generated into a binary `.bin`
+ * file and `Creature.evolveDir(dataDir, ...)` is delegated to the
+ * library — exercising back-propagation, structural mutation, and the
+ * library's full evolution pipeline.
+ *
+ * 🌱 **Generation 1 starts from random noise.** The seed is built by the
+ * NEAT-AI library's uniform-random `new Creature(WINDOW_SIZE, 1)`
+ * constructor — direct input → output connections, with random weights
+ * and a random output bias drawn from the seeded global PRNG. **No
+ * topology, weights, or biases are hand-specified by this example.**
+ * Hidden neurons are not pre-built — they emerge purely from NEAT-AI's
+ * own structural mutation operators while `evolveDir` runs.
+ *
+ * Categorisation (audit #203). The training task is a pre-generated
+ * binary `(window, target)` regression set, so the example uses the
+ * canonical "binary `.bin` + `evolveDir`" path with `feedbackLoop`
+ * unset (forward-only). Per-step `activate()` is reserved for
+ * interactive simulations and reinforcement-learning agents — neither
+ * applies here.
+ *
+ * Stop conditions (audit #218):
+ *   - `targetError`     — per-example reasonable mean-squared error
+ *                         floor (well below chance) so NEAT-AI is
+ *                         pressured to grow hidden structure to satisfy
+ *                         it. Markets are noisy; the run typically does
+ *                         not reach the floor and exits via the
+ *                         secondary safety backstop.
+ *   - `timeoutMinutes`  — 5-minute wall-clock backstop mandated by
+ *                         #218. The library requires a positive
+ *                         integer.
  *
  * ⚠️ Teaching example only — not investment advice.
- *
- * Inputs (per sample): the last `WINDOW_SIZE` simple returns.
- * Output: a single LOGISTIC neuron — `>= 0.5` predicts up, else down.
- * Score: directional accuracy on a chronological validation window.
- *
- * 🌱 **Generation 1 starts from random noise.** The initial population
- * is built by NEAT-AI's uniform-random `Creature(WINDOW_SIZE, 1)`
- * constructor — direct input → output connections with weights and the
- * output bias drawn by the library's seeded PRNG. **No hand-crafted
- * topology and no domain-tuned narrow weight init.** Structural
- * mutation (weight perturbation, bias perturbation, and add-neuron
- * splits) discovers the predictor from there.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
-  createSeededPopulation,
   createSeededRng,
   Creature,
   type CreatureExport,
-  type NeuronExport,
+  type NeatOptions,
   safeWriteJson,
   setRandomNumberGenerator,
-  type SynapseExport,
 } from "@stsoftware/neat-ai";
 
 import { fetchDataset } from "../common/data_cache.ts";
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import {
   captureSnapshot,
   loadSnapshots,
   type SnapshotConfig,
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import {
   buildSamples,
   type DataSplit,
@@ -57,6 +69,9 @@ import { renderChartSVG, type SignalGlyph } from "./svg.ts";
 
 /** Window of prior returns fed to the network. */
 export const WINDOW_SIZE = 10;
+
+/** Number of network inputs. */
+export const INPUT_COUNT = WINDOW_SIZE;
 
 /** Number of network outputs (a single direction probability). */
 export const OUTPUT_COUNT = 1;
@@ -86,29 +101,38 @@ export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/stock_market_evolut
 /** Path to the per-generation evolution-chart SVG the runner emits. */
 export const EVOLUTION_CHART_PATH = "docs/screenshots/stock_market/evolution.svg";
 
+/** Per-generation evolution-telemetry CSV path (audit #218). */
+export const EVOLUTION_CSV_PATH = "docs/data/stock_market/evolution.csv";
+
+/** CSV header — matches the schema mandated by issue #218. */
+export const EVOLUTION_CSV_HEADER =
+  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
+
+/** Best/mean fitness chart path (audit #218). */
+export const FITNESS_SVG_PATH = "docs/screenshots/stock_market/fitness.svg";
+
+/** Neuron / synapse count chart path (audit #218). */
+export const TOPOLOGY_SVG_PATH = "docs/screenshots/stock_market/topology.svg";
+
 /** Hidden directory under which snapshot files are written. */
 export const SNAPSHOTS_DIR = ".synthetic-stock/snapshots";
 
 /**
- * Validation balanced-directional-accuracy threshold at or above which
- * the predictor is declared "solved". 60% balanced accuracy on the
- * held-out validation window — comfortably above the 50% chance
- * baseline (a constant or coin-flip predictor scores 0.5 in balanced
- * accuracy regardless of how skewed the labels are) and high enough
- * that the best-of-population from a uniform-random NEAT seed cannot
- * reach it by luck alone, so the demo tells a real noise → competent
- * story.
+ * Generations at which the runner captures evolution snapshots. The
+ * cadence is the canonical NEAT-AI strip; checkpoints past the
+ * configured `maxGenerations` simply do not fire.
  */
-export const SOLVED_THRESHOLD = 0.60;
+export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 50, 100, 200];
 
 /**
- * Generations at which the runner captures evolution snapshots.
- * Variable-topology evolution from uniform-random noise typically needs
- * more generations to converge than the previous fixed-topology
- * bounded-random search did, so the cadence is extended past the old
- * default.
+ * Iterations per inner `evolveDir` chunk. Each chunk refreshes the
+ * passed-in creature in place, so chunking the run gives the CSV / SVG
+ * charts visible step changes in neuron / synapse counts as NEAT
+ * mutates the topology. The value matches the convention used by
+ * `xor_classification.ts` and `mcmc_acceptance.ts` so all audited
+ * examples keep telemetry resolution aligned.
  */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500, 1000];
+const TELEMETRY_CHUNK_ITERATIONS = 25;
 
 /** Configuration options for {@link evolveStockController}. */
 export interface EvolveOptions {
@@ -118,17 +142,36 @@ export interface EvolveOptions {
   populationSize: number;
   /** Hard cap on the number of generations before giving up. */
   maxGenerations: number;
-  /** Standard deviation of the weight/bias perturbation noise. */
-  mutationStrength: number;
-  /** Probability that any given gene is perturbed each generation. */
+  /**
+   * Mean-squared-error threshold below which the task counts as solved.
+   * For binary `{0, 1}` direction labels a constant predictor scores
+   * about 0.25 (chance) — `errorThreshold` is set well below chance so
+   * NEAT-AI is forced to grow structure to satisfy it.
+   */
+  errorThreshold: number;
+  /**
+   * Wall-clock backstop in minutes for the whole run, passed verbatim
+   * to NEAT-AI's `evolveDir(...)` per the audit policy in issue #218
+   * (5-minute upper bound). NEAT-AI requires a positive integer, so a
+   * minimum of 1 is enforced internally. Tests pass `0` to skip the
+   * backstop because the option loads NEAT-AI's GPU / discovery code
+   * path whose dynamic library is flagged by Deno's `--allow-ffi`
+   * sanitizer; the production runner still exercises that path.
+   */
+  timeoutMinutes: number;
+  /**
+   * Probability that any given creature is mutated each generation. The
+   * NEAT-AI default is 0.3 — bumped here so the seed adds hidden
+   * structure inside the limited generation budget the markets
+   * problem affords.
+   */
   mutationRate: number;
   /**
-   * Per-creature probability of receiving an add-neuron structural
-   * mutation each generation (split an existing connection by inserting
-   * a hidden neuron). Defaults to a small value so topology grows
-   * gradually rather than thrashing.
+   * Number of mutation operators applied per mutated creature each
+   * generation. Higher values bias the search toward structural growth
+   * (ADD_NODE, ADD_CONN). The NEAT-AI default is 1.
    */
-  addNeuronRate?: number;
+  mutationAmount: number;
   /** Number of inputs (window size). Default {@link WINDOW_SIZE}. */
   windowSize: number;
   /** Optional callback invoked once per generation with progress info. */
@@ -139,187 +182,305 @@ export interface EvolveOptions {
    * and written to `snapshotConfig.outputDir`.
    */
   snapshotConfig?: SnapshotConfig;
+  /**
+   * Existing data directory containing the binary training file. When
+   * omitted the caller is expected to populate the directory before
+   * calling — see {@link writeStockTrainingDataset}.
+   */
+  dataDir: string;
 }
 
 /** Statistics emitted after each generation. */
 export interface GenerationInfo {
   generation: number;
-  bestAccuracy: number;
-  meanAccuracy: number;
+  /** Best fitness in this generation (max across the population). */
+  bestFitness: number;
+  /** Best mean-squared error in this generation (≈ `1 - bestFitness`). */
+  bestError: number;
+  /** Population mean fitness in this generation. */
+  meanFitness: number;
   /** Neuron count of the champion creature for this generation. */
   neurons: number;
   /** Synapse count of the champion creature for this generation. */
   synapses: number;
 }
 
+/** One row of per-generation evolution telemetry (audit issue #218). */
+export interface EvolutionRow {
+  /** 1-based generation index. */
+  generation: number;
+  /** Best fitness in this generation (max across the population). */
+  bestFitness: number;
+  /** Population mean fitness in this generation. */
+  meanFitness: number;
+  /** Neuron count of this generation's champion. */
+  neuronCount: number;
+  /** Synapse count of this generation's champion. */
+  synapseCount: number;
+}
+
 /** Result of the evolutionary search. */
 export interface EvolveResult {
   champion: Creature;
-  /** Directional accuracy on the validation set (0–1). */
-  validationAccuracy: number;
-  /** Number of generations run before stopping. */
+  /** Best fitness reached by the champion (≈ `1 - bestError`). */
+  bestFitness: number;
+  /** Mean squared error of the champion on the training set. */
+  bestError: number;
+  /** Number of generations actually run. */
   generations: number;
-  /** True when the champion's accuracy reached {@link SOLVED_THRESHOLD}. */
+  /** True when the champion's training error fell below `errorThreshold`. */
   solved: boolean;
 }
 
-/** Sensible defaults for the demonstration runner. */
-export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
+/**
+ * Sensible defaults for the demonstration runner.
+ *
+ * - `errorThreshold = 0.18` is well below the chance MSE (~0.25) so
+ *   NEAT-AI is pressured to grow hidden structure to reach it. Markets
+ *   are intrinsically noisy, so the run typically exits via
+ *   `maxGenerations` or `timeoutMinutes` — the README quotes the
+ *   measured outcome.
+ * - `timeoutMinutes = 5` is the audit-mandated wall-clock backstop.
+ * - `maxGenerations = 200` keeps the example inside `quality.sh`'s
+ *   wall-clock budget while still showing meaningful topology growth
+ *   from the minimal seed.
+ */
+export const DEFAULT_EVOLVE_OPTIONS: Omit<EvolveOptions, "dataDir"> = {
   seed: 24601,
-  populationSize: 60,
-  maxGenerations: 1000,
-  mutationStrength: 0.5,
-  mutationRate: 0.5,
-  addNeuronRate: 0.03,
+  populationSize: 30,
+  maxGenerations: 200,
+  errorThreshold: 0.18,
+  timeoutMinutes: 5,
+  mutationRate: 0.6,
+  mutationAmount: 3,
   windowSize: WINDOW_SIZE,
 };
 
 /**
- * Build the initial population using the NEAT-AI library's uniform-random
- * creature constructor. `new Creature(windowSize, OUTPUT_COUNT)` produces
- * a minimal seed (direct input → output connections) with random weights
- * and a random output bias. The output neuron's squash is pinned to
- * LOGISTIC because the prediction interface (≥ 0.5 ⇒ "up") assumes the
- * output is bounded to `[0, 1]`. **No topology is hand-specified**;
- * structural mutation grows hidden neurons during evolution.
+ * Build a uniform-random NEAT seed creature. Seeds the library's global
+ * PRNG with {@link createSeededRng} and then defers to
+ * `new Creature(windowSize, OUTPUT_COUNT)` — the library's
+ * uniform-random constructor. **No topology, weight, or bias is
+ * hand-specified by this example.**
  *
- * `seed` controls the global library RNG so the same `seed` reproduces
- * the same initial population across runs.
+ * The single output neuron's activation is pinned to LOGISTIC because
+ * the prediction interface (`>= 0.5` ⇒ "up") assumes the output is
+ * bounded to `[0, 1]`. Hidden neurons added later by NEAT-AI's
+ * structural mutation operators are not constrained.
  */
-export function buildRandomPopulation(
+export function buildRandomSeedCreature(
   seed: number,
-  populationSize: number,
   windowSize: number = WINDOW_SIZE,
-): CreatureExport[] {
+): CreatureExport {
   setRandomNumberGenerator(createSeededRng(seed));
-  const population = createSeededPopulation({
-    inputCount: windowSize,
-    outputCount: OUTPUT_COUNT,
-    populationSize,
-    seeds: [],
-  });
-  // Pin the output activation to LOGISTIC — the prediction interface
-  // (>= 0.5 ⇒ "up") assumes the output is bounded to [0, 1]. Hidden
-  // neurons (added later by structural mutation) are not constrained.
-  for (const json of population) {
-    for (const neuron of json.neurons) {
-      if (neuron.type === "output") neuron.squash = "LOGISTIC";
-    }
+  const json = new Creature(windowSize, OUTPUT_COUNT).exportJSON();
+  for (const neuron of json.neurons) {
+    if (neuron.type === "output") neuron.squash = "LOGISTIC";
   }
-  return population;
-}
-
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
-}
-
-/** Deep-clone a creature export so callers can safely mutate it. */
-function cloneExport(creature: CreatureExport): CreatureExport {
-  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
+  return json;
 }
 
 /**
- * Insert a hidden neuron in the middle of an existing connection: the
- * NEAT "add-node" structural mutation. Picks a random synapse, replaces
- * it with a path through a fresh hidden neuron, and assigns reasonable
- * starting weights so the new path approximates the original signal
- * before further mutation tunes it.
+ * Write the training samples as a Float32 binary file the NEAT-AI
+ * library can consume via `creature.evolveDir(dir, ...)`. Each record
+ * is `windowSize + OUTPUT_COUNT` floats: the window of prior returns
+ * followed by the binary direction label (`0` or `1`).
+ *
+ * Returns the path to the written `.bin` file.
  */
-function addHiddenNeuron(
-  creature: CreatureExport,
-  random: () => number,
-  hiddenCounter: { value: number },
-): CreatureExport {
-  if (creature.synapses.length === 0) return creature;
+export function writeStockTrainingDataset(
+  samples: readonly Sample[],
+  dataDir: string,
+  windowSize: number = WINDOW_SIZE,
+): string {
+  if (samples.length === 0) {
+    throw new Error("writeStockTrainingDataset: samples must not be empty");
+  }
+  ensureDirSync(dataDir);
+  const stride = windowSize + OUTPUT_COUNT;
+  const buffer = new Float32Array(samples.length * stride);
+  for (let i = 0; i < samples.length; i++) {
+    const sample = samples[i];
+    if (sample.features.length !== windowSize) {
+      throw new Error(
+        `writeStockTrainingDataset: sample ${i} has ${sample.features.length} features, ` +
+          `expected ${windowSize}`,
+      );
+    }
+    for (let j = 0; j < windowSize; j++) {
+      buffer[i * stride + j] = sample.features[j];
+    }
+    buffer[i * stride + windowSize] = sample.label;
+  }
+  const path = join(dataDir, "stock_market.bin");
+  Deno.writeFileSync(path, new Uint8Array(buffer.buffer));
+  return path;
+}
 
-  const synapseIdx = Math.floor(random() * creature.synapses.length);
-  const original = creature.synapses[synapseIdx];
+/**
+ * Compute the schedule of segment endpoints. The list always ends at
+ * `maxGenerations`. Checkpoint values that fall within
+ * `[1, maxGenerations]` become extra segment boundaries so a snapshot
+ * can be captured at exactly that generation.
+ */
+export function planSegments(
+  checkpoints: readonly number[],
+  maxGenerations: number,
+): number[] {
+  const set = new Set<number>();
+  for (const c of checkpoints) {
+    if (c >= 1 && c <= maxGenerations) set.add(c);
+  }
+  set.add(maxGenerations);
+  return [...set].sort((a, b) => a - b);
+}
 
-  // Deterministic UUID so the export is reproducible across runs with
-  // the same seed.
-  const uuid = `hidden-${hiddenCounter.value++}`;
+/**
+ * Run NEAT structural evolution to learn next-period direction.
+ *
+ * The runner builds the **uniform-random seed creature** via
+ * {@link buildRandomSeedCreature} (no hidden neurons, random weights and
+ * output bias from the seeded PRNG) and delegates structural mutation
+ * to the library via `creature.evolveDir(dataDir, ...)`. Snapshots are
+ * captured at `options.snapshotConfig.checkpoints` by splitting the run
+ * into segments that end at each checkpoint, allowing the running
+ * champion (and its discovered topology) to be recorded as it grows.
+ *
+ * Determinism: the seed flows through `NeatOptions.seed` and is also
+ * used to construct the initial creature, so two runs with the same
+ * `seed` produce the same gen-1 seed creature and similar (but not
+ * always byte-identical, due to threading) champions.
+ */
+export async function evolveStockController(options: EvolveOptions): Promise<EvolveResult> {
+  if (!options.dataDir) {
+    throw new Error("evolveStockController: dataDir must be supplied");
+  }
 
-  const newNeuron: NeuronExport = {
-    type: "hidden",
-    uuid,
-    bias: uniformSigned(random, 0.5),
-    squash: "LOGISTIC",
-  };
+  const creature = Creature.fromJSON(buildRandomSeedCreature(options.seed, options.windowSize));
 
-  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
-  // input → hidden: keep the original weight so the path through the
-  // new neuron starts close to the original signal.
-  newSynapses.push({
-    weight: original.weight,
-    fromUUID: original.fromUUID,
-    toUUID: uuid,
+  const checkpoints = options.snapshotConfig ? [...options.snapshotConfig.checkpoints] : [];
+  const segmentEnds = planSegments(checkpoints, options.maxGenerations);
+
+  let priorGenerations = 0;
+  let lastError = Number.POSITIVE_INFINITY;
+  let lastScore = -Infinity;
+  let solved = false;
+
+  // Read the live `creature.neurons` / `creature.synapses` arrays
+  // rather than `exportJSON()` — the latter produces a compacted /
+  // canonicalised view that does not always reflect mid-run structural
+  // growth, while the live arrays do (matching the pattern used by
+  // `xor_classification.ts`, issue #205).
+  const countTopology = () => ({
+    neurons: creature.neurons.length,
+    synapses: creature.synapses.length,
   });
-  // hidden → output: weight 1 so the LOGISTIC pass-through is roughly
-  // identity at the operating point, again preserving original signal.
-  newSynapses.push({
-    weight: 1,
-    fromUUID: uuid,
-    toUUID: original.toUUID,
-  });
+  let topology = countTopology();
 
-  // Hidden neurons must precede output neurons to keep the topology
-  // forward-only. Insert the new hidden neuron before the first output.
-  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = firstOutputIdx === -1 ? creature.neurons.length : firstOutputIdx;
-  const newNeurons = [
-    ...creature.neurons.slice(0, insertAt),
-    newNeuron,
-    ...creature.neurons.slice(insertAt),
-  ];
+  for (const endGen of segmentEnds) {
+    const segmentIterations = endGen - priorGenerations;
+    if (segmentIterations <= 0) continue;
+
+    let segmentEvolved = 0;
+    while (segmentEvolved < segmentIterations) {
+      const remaining = segmentIterations - segmentEvolved;
+      const chunkIterations = Math.min(TELEMETRY_CHUNK_ITERATIONS, remaining);
+      topology = countTopology();
+
+      const chunkOffset = priorGenerations;
+      const neatOptions: NeatOptions = {
+        seed: options.seed + chunkOffset,
+        populationSize: options.populationSize,
+        iterations: chunkIterations,
+        targetError: Math.max(0, Math.min(1, options.errorThreshold)),
+        // Audit policy: 5-minute safety backstop. Tests pass 0 to skip
+        // because activating the option loads NEAT-AI's GPU / discovery
+        // dynamic library that Deno's --allow-ffi sanitizer flags.
+        ...(options.timeoutMinutes > 0
+          ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
+          : {}),
+        // No `feedbackLoop` key → engine runs forward-only, the
+        // canonical mode for binary `.bin` regression sets.
+        costOfGrowth: 0,
+        mutationRate: options.mutationRate,
+        mutationAmount: options.mutationAmount,
+        verbose: false,
+        log: 0,
+        threads: 1,
+        onTrainingEvent: (event) => {
+          if (event.kind !== "generation_complete") return;
+          const fitness = event.bestFitness;
+          // score = 1 - error - growthPenalty. With costOfGrowth=0 the
+          // growth penalty is 0, so error ≈ 1 - fitness within 1e-6.
+          const error = Math.max(0, 1 - fitness);
+          options.onGeneration?.({
+            generation: chunkOffset + event.generation,
+            bestFitness: fitness,
+            bestError: error,
+            meanFitness: event.averageFitness,
+            neurons: topology.neurons,
+            synapses: topology.synapses,
+          });
+        },
+      };
+
+      const result = await creature.evolveDir(options.dataDir, neatOptions);
+      const completed = result.generation ?? chunkIterations;
+      priorGenerations += completed;
+      segmentEvolved += completed;
+      lastError = result.error;
+      lastScore = result.score;
+
+      // Per-generation events fired during evolveDir capture the
+      // chunk's starting topology — NEAT-AI's structural mutations
+      // happen inside the call and the live `creature` arrays only
+      // reflect them once it returns. Emit one "post-chunk" event so
+      // the CSV / SVG charts pick up topology growth that landed
+      // during the chunk.
+      const postTopology = countTopology();
+      if (
+        postTopology.neurons !== topology.neurons ||
+        postTopology.synapses !== topology.synapses
+      ) {
+        options.onGeneration?.({
+          generation: priorGenerations,
+          bestFitness: lastScore,
+          bestError: Math.max(0, lastError),
+          meanFitness: Number.NaN,
+          neurons: postTopology.neurons,
+          synapses: postTopology.synapses,
+        });
+      }
+
+      if (lastError <= options.errorThreshold) {
+        solved = true;
+        break;
+      }
+      if (completed < chunkIterations) break;
+    }
+    topology = countTopology();
+
+    // Capture a snapshot whenever this segment ends on a configured
+    // checkpoint.
+    if (options.snapshotConfig && checkpoints.includes(endGen)) {
+      captureSnapshot(
+        options.snapshotConfig,
+        endGen,
+        creature.exportJSON() as unknown,
+        lastScore,
+      );
+    }
+
+    if (solved) break;
+  }
 
   return {
-    ...creature,
-    neurons: newNeurons,
-    synapses: newSynapses,
+    champion: creature,
+    bestFitness: lastScore,
+    bestError: lastError,
+    generations: priorGenerations,
+    solved,
   };
-}
-
-/**
- * Mutate a creature genome. Each existing weight and non-input bias is
- * perturbed independently with probability `mutationRate`; the noise is
- * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
- * probability `addNeuronRate` the genome additionally receives a NEAT
- * add-node structural mutation (split one synapse with a hidden neuron).
- *
- * The resulting export is suitable for `Creature.fromJSON(...)`. No
- * topology is hand-specified — every change here is a generic NEAT
- * mutation operator that works on whatever variable topology the
- * creature currently has.
- */
-export function mutateCreatureExport(
-  parent: CreatureExport,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
-): CreatureExport {
-  const child = cloneExport(parent);
-
-  for (const synapse of child.synapses) {
-    if (random() < mutationRate) {
-      synapse.weight += uniformSigned(random, mutationStrength);
-    }
-  }
-
-  for (const neuron of child.neurons) {
-    if (random() < mutationRate) {
-      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
-    }
-  }
-
-  const addNeuronRate = options?.addNeuronRate ?? 0;
-  const counter = options?.hiddenCounter ?? { value: 0 };
-  if (addNeuronRate > 0 && random() < addNeuronRate) {
-    return addHiddenNeuron(child, random, counter);
-  }
-
-  return child;
 }
 
 /**
@@ -358,8 +519,7 @@ export function directionalAccuracy(creature: Creature, samples: Sample[]): numb
  * nothing. Balanced accuracy is the honest metric that earns 50% for
  * **any** constant or coin-flip predictor and only rises above 50%
  * when the network's predictions actually correlate with the
- * direction. This is what makes the noise → competent narrative
- * meaningful: gen-1 random networks hover near 0.5 by construction.
+ * direction.
  *
  * If a sample window contains only one class, the missing class's
  * rate is taken as 0.5 (the chance baseline) rather than counted as
@@ -386,152 +546,6 @@ export function balancedDirectionalAccuracy(creature: Creature, samples: Sample[
   const tpr = posCount > 0 ? truePos / posCount : 0.5;
   const tnr = negCount > 0 ? trueNeg / negCount : 0.5;
   return (tpr + tnr) / 2;
-}
-
-interface ScoredMember {
-  json: CreatureExport;
-  accuracy: number;
-  neurons: number;
-  synapses: number;
-}
-
-function topologyCounts(json: CreatureExport, windowSize: number): {
-  neurons: number;
-  synapses: number;
-} {
-  // The export omits input neurons (they are implicit in `input`), so
-  // we add them back to report a comparable "total neurons" figure.
-  return {
-    neurons: json.neurons.length + (json.input ?? windowSize),
-    synapses: json.synapses.length,
-  };
-}
-
-/**
- * Run a generational evolutionary algorithm scoring on validation
- * directional accuracy. Truncation selection keeps the top half as
- * parents; the elite is always carried over so accuracy is monotonic.
- * Stops as soon as the champion's accuracy reaches
- * {@link SOLVED_THRESHOLD} or `maxGenerations` is exhausted (whichever
- * comes first) — the **hard generation cap** is the second guarantee.
- */
-export function evolveStockController(
-  split: DataSplit,
-  options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  if (split.train.length === 0 || split.validation.length === 0) {
-    throw new Error("evolveStockController: train and validation must be non-empty");
-  }
-  const random = createDeterministicRandom(options.seed);
-
-  const score = (json: CreatureExport): number => {
-    const creature = Creature.fromJSON(json);
-    // Score with balanced accuracy so a constant "always up" predictor
-    // (which would coincidentally score the base rate ~63% on the
-    // upward-biased S&P 500) is honestly rated at 0.5. Only networks
-    // whose predictions actually correlate with direction climb above
-    // chance.
-    return balancedDirectionalAccuracy(creature, split.validation);
-  };
-
-  // Counter for deterministic hidden-neuron UUIDs so exports are
-  // reproducible across runs with the same seed.
-  const hiddenCounter = { value: 0 };
-  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
-
-  // Initial population: uniform-random NEAT genomes from the library.
-  // No hand-crafted topology — `new Creature(input, output)` decides
-  // the initial structure, with random weights and a random output bias.
-  const initialExports = buildRandomPopulation(
-    options.seed,
-    options.populationSize,
-    options.windowSize,
-  );
-  let population: ScoredMember[] = initialExports.map((json) => {
-    const counts = topologyCounts(json, options.windowSize);
-    return { json, accuracy: score(json), neurons: counts.neurons, synapses: counts.synapses };
-  });
-
-  let bestJSON = population[0].json;
-  let bestAcc = -Infinity;
-  let solvedAt = -1;
-
-  for (let generation = 0; generation < options.maxGenerations; generation++) {
-    population.sort((a, b) => b.accuracy - a.accuracy);
-    const generationBest = population[0];
-    if (generationBest.accuracy > bestAcc) {
-      bestAcc = generationBest.accuracy;
-      bestJSON = generationBest.json;
-    }
-    const meanAccuracy = population.reduce((acc, p) => acc + p.accuracy, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestAccuracy: generationBest.accuracy,
-      meanAccuracy,
-      neurons: generationBest.neurons,
-      synapses: generationBest.synapses,
-    });
-
-    // Capture an evolution snapshot of the running champion at the
-    // configured checkpoints. The helper is a no-op for non-checkpoint
-    // generations.
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestAcc);
-      }
-    }
-
-    if (bestAcc >= SOLVED_THRESHOLD) {
-      if (solvedAt < 0) solvedAt = generation;
-      // When capturing snapshots, keep running until the next checkpoint
-      // within maxGenerations is captured — otherwise the progression
-      // strip would be a single panel.
-      if (options.snapshotConfig) {
-        const nextCheckpoint = options.snapshotConfig.checkpoints
-          .filter((c) => c > generation + 1 && c <= options.maxGenerations)
-          .sort((a, b) => a - b)[0];
-        if (nextCheckpoint === undefined) break;
-      } else {
-        break;
-      }
-    }
-
-    // Truncation selection: keep top 50% as parents (always at least 1).
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
-
-    // Build the next generation: keep elite, fill rest with mutated
-    // offspring from random parents.
-    const nextPopulation: ScoredMember[] = [parents[0]];
-    while (nextPopulation.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureExport(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-        mutationOpts,
-      );
-      const counts = topologyCounts(childJSON, options.windowSize);
-      nextPopulation.push({
-        json: childJSON,
-        accuracy: score(childJSON),
-        neurons: counts.neurons,
-        synapses: counts.synapses,
-      });
-    }
-    population = nextPopulation;
-  }
-
-  const champion = Creature.fromJSON(bestJSON);
-  return {
-    champion,
-    validationAccuracy: bestAcc,
-    generations: solvedAt >= 0 ? solvedAt + 1 : options.maxGenerations,
-    solved: bestAcc >= SOLVED_THRESHOLD,
-  };
 }
 
 /** Per-sample signal and its outcome for the test window. */
@@ -606,6 +620,231 @@ export async function loadPrices(path: string = DATASET_PATH): Promise<PricePoin
   return parsePriceCSV(text);
 }
 
+/**
+ * Format a finite number for CSV emission. Trailing zeros are trimmed
+ * so byte-deterministic identical inputs produce one canonical string.
+ */
+function formatCsvNumber(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  return Number(v.toFixed(6)).toString();
+}
+
+/** Format the per-generation telemetry as a CSV string. */
+export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
+  const lines: string[] = [EVOLUTION_CSV_HEADER];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.generation,
+        formatCsvNumber(r.bestFitness),
+        formatCsvNumber(r.meanFitness),
+        r.neuronCount,
+        r.synapseCount,
+      ].join(","),
+    );
+  }
+  return lines.join("\n") + "\n";
+}
+
+// ---- Telemetry SVG renderers -------------------------------------------
+// Two purpose-built charts requested by issue #218: best/mean fitness on
+// one chart, neuron/synapse count on another. Pure string emission to
+// match the convention used by xor_classification.ts and
+// mcmc_acceptance.ts.
+const TELEMETRY_SVG_WIDTH = 720;
+const TELEMETRY_SVG_HEIGHT = 320;
+const TELEMETRY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
+
+interface PolylinePoint {
+  x: number;
+  y: number;
+}
+
+function buildPolyline(points: readonly PolylinePoint[]): string {
+  return points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
+}
+
+/**
+ * Render a two-line chart: best fitness (blue) and mean fitness
+ * (orange) versus generation. Throws if `rows` is empty.
+ */
+export function renderFitnessChartSvg(rows: readonly EvolutionRow[]): string {
+  if (rows.length === 0) {
+    throw new Error("renderFitnessChartSvg requires at least one row");
+  }
+  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
+  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
+  const innerX = TELEMETRY_MARGIN.left;
+  const innerY = TELEMETRY_MARGIN.top;
+
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
+
+  const allFitness = rows.flatMap((r) => [r.bestFitness, r.meanFitness]).filter(
+    Number.isFinite,
+  );
+  const minF = allFitness.length > 0 ? Math.min(...allFitness) : 0;
+  const maxF = allFitness.length > 0 ? Math.max(...allFitness) : 1;
+  const fSpan = (maxF - minF) || 1;
+
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const yScale = (f: number) => innerY + innerH - ((f - minF) / fSpan) * innerH;
+  const safeY = (f: number): number => Number.isFinite(f) ? yScale(f) : (innerY + innerH);
+
+  const bestPts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: safeY(r.bestFitness),
+  }));
+  const meanPts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: safeY(r.meanFitness),
+  }));
+
+  const yTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const v = minF + t * fSpan;
+    const ty = innerY + innerH - t * innerH;
+    yTicks.push(
+      `    <line x1="${innerX.toFixed(2)}" y1="${ty.toFixed(2)}" ` +
+        `x2="${(innerX + innerW).toFixed(2)}" y2="${ty.toFixed(2)}" ` +
+        `stroke="#eeeeee" stroke-width="0.6"/>`,
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ty + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#444">` +
+        `${v.toFixed(3)}</text>`,
+    );
+  }
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
+    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
+    `aria-label="Stock-Market — best vs mean fitness per generation">`,
+    `  <title>Stock Market — Best vs Mean Fitness</title>`,
+    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
+    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
+    `Stock Market — Best vs Mean Fitness</text>`,
+    yTicks.join("\n"),
+    `  <polyline class="best-fitness" fill="none" stroke="#1f77b4" stroke-width="2" ` +
+    `points="${buildPolyline(bestPts)}"/>`,
+    `  <polyline class="mean-fitness" fill="none" stroke="#ff7f0e" stroke-width="1.4" ` +
+    `stroke-dasharray="4 3" points="${buildPolyline(meanPts)}"/>`,
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
+    `    <rect x="${(innerX + innerW - 178).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
+    `width="172" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
+    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
+    `stroke="#1f77b4" stroke-width="2"/>`,
+    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
+    `best fitness</text>`,
+    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
+    `stroke="#ff7f0e" stroke-width="1.4" stroke-dasharray="4 3"/>`,
+    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
+    `mean fitness</text>`,
+    `  </g>`,
+    `</svg>`,
+    "",
+  ].join("\n");
+}
+
+/**
+ * Render the neuron / synapse count chart for the README. Two lines
+ * share an X axis; the right Y axis shows synapse counts on a separate
+ * scale so the synapse line does not compress the neuron line into
+ * invisibility.
+ */
+export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
+  if (rows.length === 0) {
+    throw new Error("renderTopologyChartSvg requires at least one row");
+  }
+  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
+  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
+  const innerX = TELEMETRY_MARGIN.left;
+  const innerY = TELEMETRY_MARGIN.top;
+
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
+
+  const neurons = rows.map((r) => r.neuronCount);
+  const synapses = rows.map((r) => r.synapseCount);
+  const maxNeurons = Math.max(...neurons, 1);
+  const maxSynapses = Math.max(...synapses, 1);
+
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
+  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
+
+  const neuronPts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: neuronY(r.neuronCount),
+  }));
+  const synapsePts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: synapseY(r.synapseCount),
+  }));
+
+  const leftTicks: string[] = [];
+  const rightTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const ly = innerY + innerH - t * innerH;
+    leftTicks.push(
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
+        `${(t * maxNeurons).toFixed(0)}</text>`,
+    );
+    rightTicks.push(
+      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
+        `${(t * maxSynapses).toFixed(0)}</text>`,
+    );
+  }
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
+    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
+    `aria-label="Stock-Market — neuron and synapse counts per generation">`,
+    `  <title>Stock Market — Topology Growth</title>`,
+    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
+    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
+    `Stock Market — Topology Growth</text>`,
+    leftTicks.join("\n"),
+    rightTicks.join("\n"),
+    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
+    `points="${buildPolyline(neuronPts)}"/>`,
+    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
+    `stroke-dasharray="6 3" points="${buildPolyline(synapsePts)}"/>`,
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
+    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
+    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
+    `stroke="#2ca02c" stroke-width="2"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
+    `neurons (left axis)</text>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
+    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
+    `synapses (right axis)</text>`,
+    `  </g>`,
+    `</svg>`,
+    "",
+  ].join("\n");
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -613,7 +852,7 @@ if (import.meta.main) {
   console.log("⚠️  Teaching example — not investment advice.");
   console.log("");
 
-  const { creaturesDir, outputDir } = setupWorkingDirs(STOCK_ROOT);
+  const { creaturesDir, outputDir, dataDir } = setupWorkingDirs(STOCK_ROOT);
 
   console.log(`📥 Fetching dataset (cached in ${DATASET_PATH})…`);
   await fetchDataset({
@@ -629,7 +868,7 @@ if (import.meta.main) {
 
   console.log(`🪟 Building sliding-window samples (window=${WINDOW_SIZE})…`);
   const samples = buildSamples(prices, { windowSize: WINDOW_SIZE });
-  const split = splitChronologically(samples, {
+  const split: DataSplit = splitChronologically(samples, {
     trainFraction: 0.7,
     validationFraction: 0.15,
   });
@@ -637,41 +876,56 @@ if (import.meta.main) {
     `   Train=${split.train.length}  Val=${split.validation.length}  Test=${split.test.length}`,
   );
 
-  console.log("\n🧬 Evolving controller from uniform-random NEAT noise...");
+  // Pre-generate the binary `.bin` training set for `evolveDir`.
+  const trainBin = writeStockTrainingDataset(split.train, dataDir);
+  console.log(`📦 Wrote training set to ${trainBin}`);
+
+  console.log("\n🧬 Evolving controller from a minimal NEAT seed via evolveDir...");
   ensureDirSync(SNAPSHOTS_DIR);
   for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
   const evolutionSamples: EvolutionSample[] = [];
+  const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
-  const result = evolveStockController(split, {
+  const result = await evolveStockController({
     ...DEFAULT_EVOLVE_OPTIONS,
+    dataDir,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
       outputDir: SNAPSHOTS_DIR,
     },
-    onGeneration: ({ generation, bestAccuracy, meanAccuracy, neurons, synapses }) => {
-      evolutionSamples.push({ generation, score: bestAccuracy, neurons, synapses });
+    onGeneration: ({ generation, bestFitness, bestError, meanFitness, neurons, synapses }) => {
+      evolutionSamples.push({ generation, score: bestFitness, neurons, synapses });
+      evolutionRows.push({
+        generation,
+        bestFitness,
+        meanFitness,
+        neuronCount: neurons,
+        synapseCount: synapses,
+      });
       if (
         generation % 10 === 0 ||
-        bestAccuracy >= SOLVED_THRESHOLD ||
+        bestError <= DEFAULT_EVOLVE_OPTIONS.errorThreshold ||
         generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1
       ) {
         console.log(
           `   Gen ${generation.toString().padStart(4)}  ` +
-            `best=${(bestAccuracy * 100).toFixed(2)}%  ` +
-            `mean=${(meanAccuracy * 100).toFixed(2)}%  ` +
+            `bestFitness=${bestFitness.toFixed(4)}  ` +
+            `bestError=${bestError.toFixed(4)}  ` +
+            `meanFitness=${Number.isFinite(meanFitness) ? meanFitness.toFixed(4) : "n/a"}  ` +
             `neurons=${neurons}  synapses=${synapses}`,
         );
       }
     },
   });
 
+  const wallClockMs = Date.now() - evolutionStart;
   console.log(
-    `\n${result.solved ? "✅ Solved" : "⚠️  Did not solve"} ` +
+    `\n${result.solved ? "✅ Solved" : "⚠️  Did not solve (within budget)"} ` +
       `after ${result.generations} generations ` +
-      `(best=${(result.validationAccuracy * 100).toFixed(2)}%, ` +
-      `threshold=${(SOLVED_THRESHOLD * 100).toFixed(0)}%).`,
+      `(error=${result.bestError.toFixed(4)}, fitness=${result.bestFitness.toFixed(4)}, ` +
+      `wall-clock=${(wallClockMs / 1000).toFixed(1)}s).`,
   );
 
   // Save champion creature.
@@ -680,25 +934,35 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Replay champion on the test window.
+  // Replay champion on validation + test windows.
+  const valAccuracy = directionalAccuracy(result.champion, split.validation);
+  const valBalanced = balancedDirectionalAccuracy(result.champion, split.validation);
   const records = replayController(result.champion, split.test);
   const testAccuracy = records.length === 0
     ? 0
     : records.filter((r) => r.correct).length / records.length;
+  const testBalanced = balancedDirectionalAccuracy(result.champion, split.test);
   const cumulativeReturn = cumulativeStrategyReturn(records);
 
   // Save per-day signals.
   const signalsPath = join(outputDir, "signals.json");
   await safeWriteJson(signalsPath, {
     windowSize: WINDOW_SIZE,
-    validationAccuracy: result.validationAccuracy,
+    validationAccuracy: valAccuracy,
+    validationBalancedAccuracy: valBalanced,
     testAccuracy,
+    testBalancedAccuracy: testBalanced,
     cumulativeStrategyReturn: cumulativeReturn,
     records,
   });
   console.log(`📝 Wrote ${records.length} signal records to ${signalsPath}`);
   console.log(
-    `📈 Test accuracy: ${(testAccuracy * 100).toFixed(2)}%   ` +
+    `📈 Validation: raw=${(valAccuracy * 100).toFixed(2)}% balanced=${
+      (valBalanced * 100).toFixed(2)
+    }%   ` +
+      `Test: raw=${(testAccuracy * 100).toFixed(2)}% balanced=${
+        (testBalanced * 100).toFixed(2)
+      }%   ` +
       `cumulative strategy return: ${(cumulativeReturn * 100).toFixed(2)}%`,
   );
 
@@ -706,7 +970,7 @@ if (import.meta.main) {
   const svg = renderChartSVG({
     records,
     glyphFor: classifyGlyph,
-    validationAccuracy: result.validationAccuracy,
+    validationAccuracy: valBalanced,
     testAccuracy,
     cumulativeStrategyReturn: cumulativeReturn,
   });
@@ -714,15 +978,30 @@ if (import.meta.main) {
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
 
-  // Render the per-generation evolution chart (accuracy / neurons / synapses).
+  // Render the per-generation evolution chart (best score / neurons / synapses).
   if (evolutionSamples.length > 0) {
     const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
       title: "Stock-Market — Evolution",
-      scoreLabel: "best accuracy",
+      scoreLabel: "best fitness (1 - MSE)",
     });
     ensureDirSync("docs/screenshots/stock_market");
     await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
+
+  // Per-generation telemetry artefacts mandated by issue #218: CSV +
+  // best/mean fitness chart + neuron/synapse count chart.
+  if (evolutionRows.length > 0) {
+    ensureDirSync("docs/data/stock_market");
+    ensureDirSync("docs/screenshots/stock_market");
+    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
+    console.log(
+      `🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`,
+    );
+    await Deno.writeTextFile(FITNESS_SVG_PATH, renderFitnessChartSvg(evolutionRows));
+    console.log(`📈 Wrote best/mean fitness chart ${FITNESS_SVG_PATH}`);
+    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(evolutionRows));
+    console.log(`📈 Wrote neuron/synapse chart ${TOPOLOGY_SVG_PATH}`);
   }
 
   // Render the multi-panel evolution-progression strip from the
@@ -732,9 +1011,9 @@ if (import.meta.main) {
     const progressionSvg = renderEvolutionProgressSvg(snapshots, {
       title: "Stock-Market — Evolution Progress",
       caption: {
-        finalScore: result.validationAccuracy,
+        finalScore: result.bestFitness,
         totalGenerations: result.generations,
-        wallClockMs: Date.now() - evolutionStart,
+        wallClockMs,
       },
     });
     await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
@@ -744,7 +1023,19 @@ if (import.meta.main) {
     );
   }
 
+  // Final summary line so the README can quote real measured numbers.
+  const finalRow = evolutionRows[evolutionRows.length - 1];
+  if (finalRow) {
+    console.log(
+      `\n🏁 Final generation ${finalRow.generation}: ` +
+        `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
+        `meanFitness=${
+          Number.isFinite(finalRow.meanFitness) ? finalRow.meanFitness.toFixed(4) : "n/a"
+        }  ` +
+        `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
+    );
+  }
   console.log(
-    `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,
+    `🕒 Completed in ${format(Date.now() - start, { ignoreZero: true })}`,
   );
 }

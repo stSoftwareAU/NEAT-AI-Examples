@@ -1,17 +1,20 @@
 # 📈 Stock Market — Direction Prediction
 
-> 🌱 **Generation 1 starts from random noise** — the initial population is built by NEAT-AI's
-> uniform-random `Creature(WINDOW_SIZE, 1)` constructor, with **no hand-crafted topology and no
-> domain-tuned narrow weight init**. Structural mutation grows hidden neurons during evolution; the
-> captured milestones show the predictor climbing from population-mean chance toward a network that
-> beats the chance baseline on direction.
+> 🌱 **Generation 1 starts from random noise** — the seed is built by NEAT-AI's uniform-random
+> `new Creature(WINDOW_SIZE, 1)` constructor with **no hand-crafted topology, no `hiddenLayers`
+> hint, no pre-built `network.json`, and no domain-tuned narrow weight init**. Hidden neurons are
+> not hand-crafted — they emerge purely from NEAT-AI's own structural mutation operators while
+> `Creature.evolveDir(...)` runs.
 
-**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies.
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _MSE_ = Mean Squared Error. _CSV_ =
+Comma-Separated Values. _SVG_ = Scalable Vector Graphics. _S&P 500_ = Standard & Poor's 500-stock
+market index.
 
-`stock_market.ts` evolves a NEAT-AI network from uniform-random noise to predict next-period
-direction (up vs. down) on the public S&P 500 monthly-close dataset. The dataset is downloaded once
-into `.synthetic-stock/data/prices.csv` (with a SHA-256 digest pinned to a specific upstream commit
-so runs are deterministic) and the evolutionary loop runs entirely in pure TypeScript.
+`stock_market.ts` evolves a NEAT-AI network from a minimal seed to predict next-period direction (up
+vs. down) on the public S&P 500 monthly-close dataset. The dataset is downloaded once into
+`.synthetic-stock/data/prices.csv` (with a SHA-256 digest pinned to a specific upstream commit so
+runs are deterministic), the labelled training samples are written as a binary `.bin` file, and the
+evolutionary loop is delegated to `Creature.evolveDir(...)`.
 
 > ⚠️ **Teaching example only — not investment advice.**
 >
@@ -27,38 +30,42 @@ flowchart LR
     DL["📥 fetchDataset()<br/>S&P 500 CSV (pinned)"]
     SLIDE["🪟 Sliding window<br/>last N returns"]
     SPLIT["✂️ Train / val / test<br/>chronological split"]
-    INIT["🎲 Uniform-Random NEAT<br/>new Creature(10, 1)"]
-    SCORE["📏 Balanced accuracy<br/>(½·TPR + ½·TNR)"]
-    SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
-    MUTATE["🧬 Mutate: weights · biases · add-neuron"]
-    SOLVED{"Balanced accuracy ≥ 0.60?"}
-    CAP{"Generation cap reached?"}
+    BIN["📦 Binary .bin training set<br/>(window, target) records"]
+    SEED["🌱 new Creature(10, 1)<br/>minimal seed — no hidden hint"]
+    EVOLVE["🧪 Creature.evolveDir(dataDir, ...)<br/>forward-only, targetError=0.18,<br/>timeoutMinutes=5"]
     CHAMP["💾 champion.json"]
+    REPLAY["🔁 Replay on test window"]
     SIG["📝 signals.json"]
     CHART["🖼️ Animated chart<br/>sweep + ▲ ▼ markers"]
 
-    DL --> SLIDE --> SPLIT --> INIT --> SCORE
-    SCORE --> SELECT
-    SELECT --> MUTATE
-    MUTATE --> SCORE
-    SCORE --> SOLVED
-    SOLVED -- yes --> CHAMP
-    SOLVED -- no --> CAP
-    CAP -- no --> SELECT
-    CAP -- yes (give up) --> CHAMP
-    CHAMP --> SIG --> CHART
+    DL --> SLIDE --> SPLIT --> BIN --> EVOLVE
+    SEED --> EVOLVE
+    EVOLVE --> CHAMP
+    CHAMP --> REPLAY --> SIG
+    REPLAY --> CHART
 
     style DL fill:#4a90d9,stroke:#333,color:#fff
     style SLIDE fill:#f5a623,stroke:#333,color:#fff
     style SPLIT fill:#f39c12,stroke:#333,color:#fff
-    style INIT fill:#e67e22,stroke:#333,color:#fff
-    style SCORE fill:#9b59b6,stroke:#333,color:#fff
-    style SELECT fill:#e74c3c,stroke:#333,color:#fff
-    style MUTATE fill:#c0392b,stroke:#333,color:#fff
-    style CHAMP fill:#7ed321,stroke:#333,color:#fff
-    style SIG fill:#1abc9c,stroke:#333,color:#fff
+    style BIN fill:#7ed321,stroke:#333,color:#fff
+    style SEED fill:#bd10e0,stroke:#333,color:#fff
+    style EVOLVE fill:#e67e22,stroke:#333,color:#fff
+    style CHAMP fill:#1abc9c,stroke:#333,color:#fff
+    style REPLAY fill:#9b59b6,stroke:#333,color:#fff
+    style SIG fill:#16a085,stroke:#333,color:#fff
     style CHART fill:#bd10e0,stroke:#333,color:#fff
 ```
+
+### Why `evolveDir` rather than per-step `activate()`?
+
+Stock-market direction prediction is a supervised regression task — every input window has a
+pre-computed label. The audit categorisation in
+[#203](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/203) mandates the canonical "binary
+`.bin` + `evolveDir`" path for this shape: `evolveDir` exercises NEAT-AI's full feature set
+(back-propagation, structure discovery, WebAssembly (WASM) / single-instruction-multiple-data (SIMD)
+/ GPU parallelism) and is orders of magnitude faster than per-call `activate()` for supervised
+regression. Per-step `activate()` is reserved for interactive simulations and reinforcement-learning
+agents — neither applies here.
 
 ## 📊 Dataset
 
@@ -70,6 +77,7 @@ flowchart LR
 | Coverage      | 1871-01 → 2026-05 (1865 monthly closes)                                         |
 | Cache path    | `.synthetic-stock/data/prices.csv`                                              |
 | Integrity     | SHA-256 verified by `common/data_cache.ts`                                      |
+| Training set  | `.synthetic-stock/data/stock_market.bin` (binary Float32 records)               |
 
 The dataset is monthly, so the example predicts next-**month** direction. The same code works
 unchanged for daily data — swap `DATASET_URL` and `DATASET_SHA256` for a daily-close CSV and the
@@ -82,27 +90,34 @@ sliding-window logic is identical.
 | Input 0..N | feature   | The last `WINDOW_SIZE` (default 10) simple period returns |
 | Output 0   | direction | LOGISTIC, `>= 0.5` predicts up, otherwise predicts down   |
 
-The score during evolution is **balanced directional accuracy** on the validation window — the mean
-of the per-class hit rates (true-positive rate on "up" months, true-negative rate on "down" months).
-This is the honest metric for a skewed dataset like the S&P 500: any constant predictor (say,
-"always up") scores **0.5** in balanced accuracy regardless of how skewed the labels are, so the
-only way to climb above 0.5 is for the network's predictions to actually correlate with direction.
+The fitness used by `evolveDir` is `1 - MSE` against the binary `{0, 1}` direction labels — a
+constant `0.5` predictor scores `1 - 0.25 = 0.75`, so anything above `0.75` reflects the network
+correlating its output with realised direction.
 
-The "task is solved" threshold (`SOLVED_THRESHOLD`) is set to **0.60** — comfortably above the 0.50
-chance baseline yet above where the best-of-population from a uniform-random NEAT seed can reach by
-luck alone. The hard generation cap (`maxGenerations`) is **1000**: evolution stops as soon as the
-threshold is met or the cap is reached, whichever comes first.
+## 🛑 Stop conditions
+
+`evolveDir` terminates as soon as **any** of the following fires:
+
+| Condition        | Value                              | Why                                                                                     |
+| ---------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| `targetError`    | **0.18** (well below chance ~0.25) | Forces NEAT-AI to grow hidden structure to satisfy it — chance MSE alone is not enough. |
+| `timeoutMinutes` | **5** (audit-mandated backstop)    | Wall-clock safety net so a run never wedges. Audit #218 sets this as the upper bound.   |
+| `maxGenerations` | **200**                            | Hard cap on the number of generations so the example fits inside `quality.sh`'s budget. |
+
+Markets are intrinsically noisy — most runs do **not** reach `targetError = 0.18` and exit via the
+generation cap. The wall-clock backstop is a final safety net; it never fires on a developer machine
+because the cap is much smaller than what 5 minutes can fit. The README quotes the measured outcome.
 
 ## 🚦 Train / Validation / Test Split
 
 The samples are split **chronologically** (never shuffled) so no future information leaks back to
 earlier windows:
 
-| Slice      | Fraction | Used for                                |
-| ---------- | -------- | --------------------------------------- |
-| Train      | 70%      | (reserved — visible to evolution)       |
-| Validation | 15%      | Scoring each candidate during evolution |
-| Test       | 15%      | Replay & SVG (held out from training)   |
+| Slice      | Fraction | Used for                                                 |
+| ---------- | -------- | -------------------------------------------------------- |
+| Train      | 70%      | Written to `.bin` file fed into `evolveDir`              |
+| Validation | 15%      | Replay-based balanced-accuracy reporting (no look-ahead) |
+| Test       | 15%      | Replay & SVG (held out from training)                    |
 
 ## 🚀 Running the Example
 
@@ -113,17 +128,76 @@ earlier windows:
 Artefacts:
 
 - `.synthetic-stock/data/prices.csv` — cached dataset
+- `.synthetic-stock/data/stock_market.bin` — pre-generated binary training set fed to `evolveDir`
 - `.synthetic-stock/creatures/champion.json` — fittest controller from the run
-- `.synthetic-stock/snapshots/snapshot-gen-*.json` — running-champion snapshots captured at the
-  configured checkpoints
+- `.synthetic-stock/snapshots/snapshot-gen-*.json` — running-champion snapshots
 - `.synthetic-stock/output/signals.json` — per-day prediction vs. outcome on the test window
 - `docs/screenshots/stock_market.svg` — animated chart of the test window
-- `docs/screenshots/stock_market_evolution.svg` — multi-panel evolution-progression strip rendered
-  from the captured snapshots
-- `docs/screenshots/stock_market/evolution.svg` — dual-axis evolution chart plotting best balanced
-  accuracy on the left and champion neuron / synapse counts on the right
+- `docs/screenshots/stock_market_evolution.svg` — multi-panel evolution-progression strip
+- `docs/screenshots/stock_market/evolution.svg` — dual-axis evolution chart (best fitness + champion
+  neuron / synapse counts)
+- `docs/screenshots/stock_market/fitness.svg` — best vs mean fitness per generation
+- `docs/screenshots/stock_market/topology.svg` — neuron / synapse counts per generation
+- `docs/data/stock_market/evolution.csv` — per-generation telemetry CSV
 
-## 🖼️ Reading the Chart
+## 📈 Latest measured run (`./stock_market/run.sh`)
+
+> The numbers below come from the most recent local run committed alongside this README. They are
+> **measured, not estimated**, per the audit rule in #218.
+
+| Metric                       | Value                                 |
+| ---------------------------- | ------------------------------------- |
+| Total generations            | 201                                   |
+| Wall-clock                   | 4.5 s                                 |
+| Final best fitness           | 0.7702                                |
+| Final per-record MSE         | 0.2298                                |
+| Stop condition that fired    | `maxGenerations` (cap) — see below    |
+| `targetError` (configured)   | 0.18                                  |
+| `timeoutMinutes` (safety)    | 5                                     |
+| `maxGenerations` (hard cap)  | 200                                   |
+| Seed neurons / synapses      | 11 / 10                               |
+| Final neurons / synapses     | 17 / 28                               |
+| Validation balanced accuracy | 57.76 %                               |
+| Validation raw accuracy      | 62.59 %                               |
+| Test balanced accuracy       | 55.69 %                               |
+| Test raw accuracy            | 64.87 %                               |
+| Cumulative strategy return*  | 218.90 % over the 23-year test window |
+
+\* "Long when predicting up, flat when predicting down" — a sanity check of the directional signal,
+**not** a backtest. No costs, slippage, or compounding adjustments.
+
+Topology genuinely grew: NEAT-AI added **6 hidden neurons** and **18 synapses** on top of the
+minimal direct-only seed. The full per-generation evolution is in
+[`docs/data/stock_market/evolution.csv`](../docs/data/stock_market/evolution.csv).
+
+### Best vs mean fitness per generation
+
+![Best vs mean fitness](../docs/screenshots/stock_market/fitness.svg)
+
+### Neuron and synapse counts per generation
+
+![Neuron / synapse counts](../docs/screenshots/stock_market/topology.svg)
+
+### Evolution progression (snapshot strip)
+
+![Stock-Market evolution-progression strip](../docs/screenshots/stock_market_evolution.svg)
+
+The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
+generations `[1, 10, 50, 100, 200]` (those that fall inside the configured `maxGenerations`). The
+strip's first panel is the gen-1 uniform-random NEAT seed; later panels show the controller as
+NEAT-AI grows hidden structure and tunes weights toward the labelled training set.
+
+## 🧪 What "reasonable solution" means here
+
+Markets are intrinsically noisy. The audit rule (#218) does not require the example to actually beat
+the market — it asks for a **reasonable solution to the labelled task**. The measured run delivers
+that: balanced accuracy on the held-out test window is **55.7 %**, comfortably above the 50 % chance
+baseline that any constant or coin-flip predictor would score. The evolved creature has captured a
+small, real directional signal beyond pure base-rate guessing — exactly the noise → competent
+narrative the audit asks for. Real markets are nothing like this monthly-close benchmark; the result
+is meaningful only inside the toy task.
+
+## 🖼️ Reading the test-window chart
 
 Each marker plots the controller's prediction at one bar against the realised outcome:
 
@@ -136,73 +210,72 @@ Each marker plots the controller's prediction at one bar against the realised ou
 
 The dashed purple play-head sweeps left-to-right, letting viewers walk the test window in real time.
 
-## Evolution Progress
-
-![Stock-Market evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and balanced validation accuracy, linked by a score-progression polyline](../docs/screenshots/stock_market_evolution.svg)
-
-![Stock-Market evolution chart — best balanced accuracy on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/stock_market/evolution.svg)
-
-The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
-generations `[1, 10, 100, 500, 1000]` (those that fall inside the configured `maxGenerations`). The
-cadence is wider than the previous fixed-topology bounded-random search because variable-topology
-evolution from uniform-random noise typically needs more generations to converge.
-
-Generation 1 is the **uniform-random NEAT population** straight from `new Creature(WINDOW_SIZE, 1)`
-— direct input → output connections with weights and bias drawn by the library's RNG. The
-population-mean balanced accuracy at gen 1 sits in the chance band (~0.55, just above 0.50) — the
-honest "noise" check, since a constant predictor would also score 0.5 in balanced accuracy. The
-intermediate milestones at gens 10 / 100 / 500 show the controller shifting weights into a more
-predictive region of the search space, and the final captured snapshot meets the
-`SOLVED_THRESHOLD = 0.60`.
-
 ## 🧠 Tacit Knowledge
 
 A few things that are not obvious from the code alone:
 
-- **No hand-crafted topology, no narrow bounded weight init.** `stock_market.ts` never hand-codes
-  neurons, synapses, or domain-tuned starting weights. The initial population is built with
-  `createSeededPopulation({ inputCount, outputCount, ... })` which delegates to
-  `new Creature(input, output)` for every member — uniform-random NEAT genomes with direct input →
-  output connections. Hidden neurons appear only when the add-neuron mutation operator splits an
-  existing connection during evolution.
+- **Minimal seed only.** `stock_market.ts` passes only `input` and `output` integers to NEAT-AI's
+  `new Creature(input, output)` constructor. There are no `hiddenLayers`, no `nodes`, and no
+  pre-built `network.json` seed — the library random-initialises the rest, with hidden structure
+  emerging purely from `evolveDir`'s mutation operators.
 - **Balanced accuracy, not raw accuracy.** The S&P 500 has a strong upward bias (~63% of months
   close above the previous month). Raw directional accuracy would credit a network that always
   predicts "up" with the base rate (~63%) even though it has learnt nothing. Balanced accuracy (mean
   of per-class hit rates) honestly scores any constant or coin-flip predictor at 0.5 and only rises
-  above 0.5 when the network's predictions actually correlate with direction. This is what makes the
-  noise → competent narrative meaningful.
-- **Population-mean noise check.** As with cart-pole, the honest "gen 1 is noise" check is the
-  population **mean** balanced accuracy — the best-of-population can occasionally edge above 0.5 by
-  luck on a finite validation window, but the mean stays in the chance band. The unit test
-  `evolveStockController generation-1 mean accuracy is near coin-flip noise` enforces this.
-- **Hard generation cap.** Evolution stops at `maxGenerations` even if the threshold has not been
-  reached, so a stuck run never blocks the example forever. The cap is enforced in
-  `evolveStockController` and verified by the `honours the hard generation cap` test.
+  above 0.5 when the network's predictions actually correlate with direction.
+- **Stop conditions.** `targetError = 0.18` is the per-example reasonable floor;
+  `timeoutMinutes =
+  5` is the audit-mandated wall-clock backstop; `maxGenerations = 200` is a hard
+  generation cap so the example fits inside `quality.sh`'s budget. See the table above for which
+  stop fired in the latest run.
 - **Chronological split, no shuffling.** Shuffling samples would let a candidate "see" future
   patterns during validation — the unit tests verify the no-look-ahead property structurally.
-- **Reproducibility.** All randomness flows through `common/deterministic_random.ts` for mutation,
-  and the library's global RNG is reseeded at the start of each evolve call via
-  `setRandomNumberGenerator(createSeededRng(seed))`. With a fixed seed and the pinned dataset, the
-  same champion is produced on every run.
+- **Reproducibility.** The library's global RNG is reseeded via
+  `setRandomNumberGenerator(createSeededRng(seed))` before each run, and `evolveDir` is given the
+  same seed offset across chunks. With a fixed seed and the pinned dataset the run is reproducible
+  on a single machine; multi-thread variance can produce small numeric drift, so the README quotes
+  measurements rounded to four decimals.
 - **Cumulative strategy return** in the caption assumes "go long when predicting up, sit flat when
-  predicting down" — it's a sanity-check of the directional signal, **not** a backtest. There are no
+  predicting down" — a sanity-check of the directional signal, **not** a backtest. There are no
   costs, slippage, or compounding adjustments.
 - **Monthly cadence.** The teaching example uses monthly data because it is small, public, and
   digest-pinnable. A daily CSV would behave identically — the code is unaware of the cadence.
 
+## 🧪 Tests
+
+`stock_market_test.ts` verifies:
+
+- The minimal seed has zero hidden neurons and a LOGISTIC output, and is deterministic for a given
+  seed.
+- `writeStockTrainingDataset` emits the expected number of records with one float per feature plus
+  one float per label, and rejects malformed input.
+- `evolveStockController` emits per-generation telemetry with finite, integer neuron / synapse
+  counts and finite best-fitness / best-error fields.
+- The hard generation cap is honoured when `targetError` is unreachable.
+- Snapshot files exist at every configured checkpoint and the rendered evolution-progression SVG
+  embeds one panel per snapshot.
+- The committed `docs/data/stock_market/evolution.csv` shows the topology genuinely changing between
+  generation 1 and the final generation (acceptance criterion in #218).
+- The animated chart renderer emits all four glyph categories and an SMIL animation primitive.
+- `formatEvolutionCsv` matches the audit's schema and `renderFitnessChartSvg` /
+  `renderTopologyChartSvg` produce well-formed SVGs.
+
 ## 🧰 NEAT-AI Features Used
 
 Stock Market is a supervised noise → competent demo, so the demonstrated capability is NEAT-AI's
-evolutionary topology search against a price-prediction fitness signal.
+evolutionary topology search against a price-prediction fitness signal driven by `evolveDir`.
 
-> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
-> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
-> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
-> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
-> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
-> production-pipeline notes in
-> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
-> wider feature set.
+- **Minimal NEAT seed** — `new Creature(input, output)` with no hidden hint, no pre-built
+  `network.json` seed; NEAT-AI random-initialises the rest.
+- **`Creature.evolveDir`** over the binary `.bin` training stream (per
+  [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)) — orders of magnitude
+  faster than per-call `activate()`.
+- **Forward-only mutation** — `evolveDir` defaults to forward-only when `feedbackLoop` is not set,
+  matching the audit's stop-condition + topology contract.
+- **Structural mutation** — add-neuron / add-synapse operators, driven by NEAT-AI's Markov chain
+  Monte Carlo (MCMC) mutation acceptance under the hood, grow the topology from the minimal seed.
+- **`onTrainingEvent` callback** — feeds per-generation telemetry into the CSV and the two SVG
+  charts without slowing the run.
 
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
@@ -210,4 +283,4 @@ Features exercised (links go to upstream
 - **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
   — structural mutation co-evolved with weights and biases against the regression fitness signal.
 - **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
-  — weight and bias mutation paired with selection pressure on validation MSE.
+  — weight and bias mutation paired with selection pressure on training MSE.
