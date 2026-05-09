@@ -27,8 +27,9 @@ binary cross-entropy, the standard per-output loss for sigmoid (LOGISTIC) classi
    `quality.sh` runs by default so CI stays fast. This baseline is **not** the NEAT demo — it does
    not start from random noise and does not grow topology.
 
-To run the long-form NEAT screenshot evolution (the one that produces the chart, progression strip,
-and prediction grid in `docs/screenshots/`), set `MNIST_NEAT_EVOLUTION=1`:
+To run the long-form NEAT screenshot evolution (the run that emits the multi-panel
+evolution-progression strip at `docs/screenshots/mnist_classification_evolution.svg`), set
+`MNIST_NEAT_EVOLUTION=1`:
 
 ```bash
 MNIST_NEAT_EVOLUTION=1 ./mnist_classification/run.sh
@@ -37,11 +38,24 @@ MNIST_NEAT_EVOLUTION=1 ./mnist_classification/run.sh
 This is **one-off developer work** — convergence from uniform-random noise is unbounded and may take
 hours of wall-clock. The evolution stops as soon as the champion crosses 95 % validation accuracy or
 the 50 000-generation hard cap is reached, whichever comes first. The default `quality.sh`
-invocation runs the SGD baseline instead so CI completes promptly.
+invocation runs the MLP/SGD baseline instead so CI completes promptly, and that baseline is what
+produces the per-epoch chart and the prediction grid embedded immediately below.
 
-![MNIST classification evolution chart — best validation accuracy on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/mnist_classification/evolution.svg)
+> ⚠️ **The chart below is the MLP baseline, not the NEAT evolution.** Issue
+> [#191](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/191) called out that the previously
+> embedded `evolution.svg` reached 95 % in ~10 generations with **constant** neuron and synapse
+> counts — which looked like a NEAT-from-noise run that had cheated by guessing the right topology.
+> It is not a cheat: this chart comes from the MLP/SGD baseline (`evolveMLPClassifier`) that
+> `quality.sh` runs by default. The MLP has a hand-prescribed `196 → 64 → 10` topology, so its
+> neuron and synapse counts are **constant by design** — there is no structural search to plot. The
+> chart is **not** from the NEAT-from-noise evolution; the NEAT run is gated behind
+> `MNIST_NEAT_EVOLUTION=1` and is genuinely a multi-hour, up-to-50 000-generation search whose
+> neuron and synapse counts grow over time. See the heading directly above the chart for the SVG's
+> own `<title>`, which agrees with this caption.
 
-![Animated grid of MNIST champion predictions, with green ticks for correct classifications and red crosses for misclassifications](../docs/screenshots/mnist_classification.svg)
+![MNIST classification — MLP baseline (validation accuracy per epoch) — dual-axis chart with validation accuracy on the left axis and the MLP's constant 74-neuron / 12 544-synapse fixed `196 → 64 → 10` topology on the right axis (this is the MLP baseline, NOT the NEAT evolution from random noise)](../docs/screenshots/mnist_classification/evolution.svg)
+
+![Animated grid of MLP-baseline champion predictions, with green ticks for correct classifications and red crosses for misclassifications](../docs/screenshots/mnist_classification.svg)
 
 ## 🔧 How It Works
 
