@@ -1,0 +1,147 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 720 320"
+  width="720"
+  height="320"
+  role="img"
+  aria-label="Synthetic synapse — neuron and synapse counts per generation"
+>
+  <title>Synthetic Synapse — Topology Growth</title>
+  <rect width="720" height="320" fill="#fafafa" />
+  <text
+    x="360"
+    y="22"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="14"
+    font-weight="bold"
+    fill="#222"
+  >Synthetic Synapse — Topology Growth</text>
+  <text
+    x="54.00"
+    y="279.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#2ca02c"
+  >0</text>
+  <text
+    x="54.00"
+    y="219.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#2ca02c"
+  >4</text>
+  <text
+    x="54.00"
+    y="159.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#2ca02c"
+  >9</text>
+  <text
+    x="54.00"
+    y="99.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#2ca02c"
+  >13</text>
+  <text
+    x="54.00"
+    y="39.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#2ca02c"
+  >17</text>
+  <text
+    x="656.00"
+    y="279.50"
+    text-anchor="start"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#d62728"
+  >0</text>
+  <text
+    x="656.00"
+    y="219.50"
+    text-anchor="start"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#d62728"
+  >22</text>
+  <text
+    x="656.00"
+    y="159.50"
+    text-anchor="start"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#d62728"
+  >44</text>
+  <text
+    x="656.00"
+    y="99.50"
+    text-anchor="start"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#d62728"
+  >66</text>
+  <text
+    x="656.00"
+    y="39.50"
+    text-anchor="start"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#d62728"
+  >88</text>
+  <polyline
+    class="neuron-count"
+    fill="none"
+    stroke="#2ca02c"
+    stroke-width="2"
+    points="60.00,177.18 68.81,177.18 77.61,177.18 86.42,177.18 95.22,177.18 104.03,177.18 112.84,177.18 121.64,177.18 130.45,177.18 139.25,177.18 148.06,177.18 156.87,177.18 165.67,177.18 174.48,177.18 183.28,177.18 192.09,177.18 200.90,177.18 209.70,177.18 218.51,177.18 227.31,177.18 236.12,177.18 244.93,177.18 253.73,177.18 262.54,177.18 271.34,177.18 280.15,177.18 288.96,177.18 297.76,177.18 306.57,177.18 315.37,177.18 324.18,177.18 332.99,177.18 341.79,177.18 350.60,177.18 359.40,177.18 368.21,177.18 377.01,177.18 385.82,177.18 394.63,177.18 403.43,177.18 412.24,177.18 421.04,177.18 429.85,177.18 438.66,177.18 447.46,177.18 456.27,177.18 465.07,177.18 473.88,177.18 482.69,177.18 491.49,177.18 500.30,177.18 509.10,177.18 517.91,177.18 526.72,50.12 535.52,50.12 544.33,50.12 553.13,50.12 561.94,50.12 570.75,50.12 579.55,50.12 588.36,50.12 597.16,50.12 605.97,50.12 614.78,50.12 623.58,36.00 632.39,36.00 641.19,36.00 650.00,36.00"
+  />
+  <polyline
+    class="synapse-count"
+    fill="none"
+    stroke="#d62728"
+    stroke-width="2"
+    stroke-dasharray="6 3"
+    points="60.00,248.73 68.81,248.73 77.61,248.73 86.42,248.73 95.22,248.73 104.03,248.73 112.84,248.73 121.64,248.73 130.45,248.73 139.25,248.73 148.06,248.73 156.87,248.73 165.67,248.73 174.48,248.73 183.28,248.73 192.09,248.73 200.90,248.73 209.70,248.73 218.51,248.73 227.31,248.73 236.12,248.73 244.93,248.73 253.73,248.73 262.54,248.73 271.34,248.73 280.15,248.73 288.96,248.73 297.76,248.73 306.57,248.73 315.37,248.73 324.18,248.73 332.99,248.73 341.79,248.73 350.60,248.73 359.40,248.73 368.21,248.73 377.01,248.73 385.82,248.73 394.63,248.73 403.43,248.73 412.24,248.73 421.04,248.73 429.85,248.73 438.66,248.73 447.46,248.73 456.27,248.73 465.07,248.73 473.88,248.73 482.69,248.73 491.49,248.73 500.30,248.73 509.10,248.73 517.91,248.73 526.72,194.18 535.52,194.18 544.33,194.18 553.13,194.18 561.94,194.18 570.75,194.18 579.55,194.18 588.36,194.18 597.16,194.18 605.97,194.18 614.78,194.18 623.58,36.00 632.39,36.00 641.19,36.00 650.00,36.00"
+  />
+  <text x="60.00" y="304.00" font-family="sans-serif" font-size="11" fill="#333">gen 1</text>
+  <text
+    x="650.00"
+    y="304.00"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#333"
+  >gen 68</text>
+  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">
+    <rect
+      x="452.00"
+      y="42.00"
+      width="190"
+      height="44"
+      fill="#ffffff"
+      fill-opacity="0.9"
+      stroke="#cccccc"
+    />
+    <line x1="462.00" y1="54.00" x2="486.00" y2="54.00" stroke="#2ca02c" stroke-width="2" />
+    <text x="492.00" y="57.00">neurons (left axis)</text>
+    <line
+      x1="462.00"
+      y1="72.00"
+      x2="486.00"
+      y2="72.00"
+      stroke="#d62728"
+      stroke-width="2"
+      stroke-dasharray="6 3"
+    />
+    <text x="492.00" y="75.00">synapses (right axis)</text>
+  </g>
+</svg>

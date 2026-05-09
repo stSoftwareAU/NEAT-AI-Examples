@@ -1,90 +1,58 @@
 /**
- * Benchmarks for the synthetic-synapse training demo.
+ * Benchmarks for the synthetic-synapse training demo (audit #206).
  *
- * Measures the cost of each phase of the densify-then-prune workflow plus
- * the supporting building blocks (forward pass, dataset generation, full
- * end-to-end run). Run with:
+ * Measures the cost of the small reusable helpers (forward pass,
+ * dataset generation, densify, prune) plus a single end-to-end run of
+ * the new evolveDir-driven demo. The end-to-end bench is gated behind
+ * a tiny config so `deno bench` finishes in seconds rather than the
+ * 5-minute upper bound used by the runner.
+ *
+ * Run with:
  *
  *   deno bench --allow-read --allow-write --allow-env synthetic_synapse/
  */
+import { Creature } from "@stsoftware/neat-ai";
+
 import {
-  buildStudentNetwork,
   buildTargetNetwork,
-  DEFAULT_SYNTHETIC_SYNAPSE_CONFIG,
-  densify,
+  densifyCreature,
   forward,
   generateDataset,
-  prune,
+  INPUT_COUNT,
+  OUTPUT_COUNT,
+  pruneCreature,
   runSyntheticSynapseDemo,
   type SyntheticSynapseConfig,
-  trainNetwork,
 } from "./synthetic_synapse_example.ts";
-import { renderSyntheticSynapseSVG } from "./svg.ts";
 
 const BENCH_CONFIG: SyntheticSynapseConfig = {
-  inputs: 4,
-  hidden: 12,
-  outputs: 2,
-  sparseDensity: 0.18,
   seed: 850850850,
-  heldOutSize: 32,
-  trainingSize: 32,
-  sparseEpochs: 20,
-  densifiedEpochs: 20,
-  learningRate: 0.05,
+  trainingSize: 16,
+  heldOutSize: 16,
+  targetError: 0.0001,
+  timeoutMinutes: 0.05,
+  populationSize: 6,
+  maxIterationsPerPhase: 3,
   pruneThreshold: 0.04,
 };
 
 const target = buildTargetNetwork(BENCH_CONFIG);
-const trainingSet = generateDataset(target, BENCH_CONFIG.trainingSize, 1);
-const benchInput = new Float32Array(BENCH_CONFIG.inputs).fill(0.3);
+const benchInput = new Float32Array(INPUT_COUNT).fill(0.3);
 
-Deno.bench("synthetic_synapse: forward pass on student", () => {
-  const network = buildStudentNetwork(BENCH_CONFIG);
-  forward(network, benchInput);
+Deno.bench("synthetic_synapse: forward pass on target network", () => {
+  forward(target, benchInput);
 });
 
-Deno.bench("synthetic_synapse: generate held-out dataset (64 records)", () => {
-  generateDataset(target, 64, 7);
+Deno.bench("synthetic_synapse: generate dataset (32 records)", () => {
+  generateDataset(target, 32, 7);
 });
 
-Deno.bench("synthetic_synapse: train sparse phase only", () => {
-  const network = buildStudentNetwork(BENCH_CONFIG);
-  trainNetwork(network, trainingSet, BENCH_CONFIG.sparseEpochs, BENCH_CONFIG.learningRate);
+Deno.bench("synthetic_synapse: densify + prune on a fresh seed creature", () => {
+  const creature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const synthKeys = densifyCreature(creature);
+  pruneCreature(creature, synthKeys, 0.001);
 });
 
-Deno.bench("synthetic_synapse: densify only", () => {
-  const network = buildStudentNetwork(BENCH_CONFIG);
-  densify(network);
-});
-
-Deno.bench("synthetic_synapse: train densified phase", () => {
-  const network = buildStudentNetwork(BENCH_CONFIG);
-  trainNetwork(network, trainingSet, BENCH_CONFIG.sparseEpochs, BENCH_CONFIG.learningRate);
-  densify(network);
-  trainNetwork(network, trainingSet, BENCH_CONFIG.densifiedEpochs, BENCH_CONFIG.learningRate);
-});
-
-Deno.bench("synthetic_synapse: prune only", () => {
-  const network = buildStudentNetwork(BENCH_CONFIG);
-  densify(network);
-  prune(network, BENCH_CONFIG.pruneThreshold);
-});
-
-Deno.bench("synthetic_synapse: full demo run (small config)", () => {
-  runSyntheticSynapseDemo(BENCH_CONFIG);
-});
-
-Deno.bench("synthetic_synapse: full demo run (default config)", () => {
-  runSyntheticSynapseDemo(DEFAULT_SYNTHETIC_SYNAPSE_CONFIG);
-});
-
-const renderResult = runSyntheticSynapseDemo(BENCH_CONFIG);
-Deno.bench("synthetic_synapse: render SVG", () => {
-  renderSyntheticSynapseSVG({
-    phases: renderResult.phases,
-    controlScore: renderResult.controlScore,
-    controlSynapseCount: renderResult.controlSynapseCount,
-    topologies: renderResult.topologies,
-  });
+Deno.bench("synthetic_synapse: full demo run (small config)", async () => {
+  await runSyntheticSynapseDemo(BENCH_CONFIG);
 });
