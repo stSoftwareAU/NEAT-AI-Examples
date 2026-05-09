@@ -1,0 +1,112 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 720 320"
+  width="720"
+  height="320"
+  role="img"
+  aria-label="Synthetic synapse — best vs mean fitness per generation"
+>
+  <title>Synthetic Synapse — Best vs Mean Fitness</title>
+  <rect width="720" height="320" fill="#fafafa" />
+  <text
+    x="360"
+    y="22"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="14"
+    font-weight="bold"
+    fill="#222"
+  >Synthetic Synapse — Best vs Mean Fitness</text>
+  <line x1="60.00" y1="276.00" x2="650.00" y2="276.00" stroke="#eeeeee" stroke-width="0.6" />
+  <text
+    x="54.00"
+    y="279.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#444"
+  >-0.931</text>
+  <line x1="60.00" y1="216.00" x2="650.00" y2="216.00" stroke="#eeeeee" stroke-width="0.6" />
+  <text
+    x="54.00"
+    y="219.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#444"
+  >-0.450</text>
+  <line x1="60.00" y1="156.00" x2="650.00" y2="156.00" stroke="#eeeeee" stroke-width="0.6" />
+  <text
+    x="54.00"
+    y="159.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#444"
+  >0.032</text>
+  <line x1="60.00" y1="96.00" x2="650.00" y2="96.00" stroke="#eeeeee" stroke-width="0.6" />
+  <text
+    x="54.00"
+    y="99.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#444"
+  >0.514</text>
+  <line x1="60.00" y1="36.00" x2="650.00" y2="36.00" stroke="#eeeeee" stroke-width="0.6" />
+  <text
+    x="54.00"
+    y="39.50"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="10"
+    fill="#444"
+  >0.995</text>
+  <polyline
+    class="best-fitness"
+    fill="none"
+    stroke="#1f77b4"
+    stroke-width="2"
+    points="60.00,276.00 68.81,267.31 77.61,248.54 86.42,242.89 95.22,241.46 104.03,241.46 112.84,213.06 121.64,180.25 130.45,110.68 139.25,105.63 148.06,92.62 156.87,83.88 165.67,83.88 174.48,57.75 183.28,57.75 192.09,57.74 200.90,57.73 209.70,48.03 218.51,41.77 227.31,39.42 236.12,39.42 244.93,39.42 253.73,39.42 262.54,38.83 271.34,38.36 280.15,38.30 288.96,38.30 297.76,38.29 306.57,38.28 315.37,38.26 324.18,38.23 332.99,38.16 341.79,37.99 350.60,37.62 359.40,37.17 368.21,36.91 377.01,36.91 385.82,36.91 394.63,36.91 403.43,36.91 412.24,36.91 421.04,36.90 429.85,36.89 438.66,36.89 447.46,36.86 456.27,36.86 465.07,36.86 473.88,36.86 482.69,36.78 491.49,36.78 500.30,36.77 509.10,36.77 517.91,36.77 526.72,36.72 535.52,36.72 544.33,36.50 553.13,36.50 561.94,36.37 570.75,36.15 579.55,36.15 588.36,36.04 597.16,36.03 605.97,36.03 614.78,36.02 623.58,36.00 632.39,36.00 641.19,36.00 650.00,36.00"
+  />
+  <polyline
+    class="mean-fitness"
+    fill="none"
+    stroke="#ff7f0e"
+    stroke-width="1.4"
+    stroke-dasharray="4 3"
+    points="60.00,NaN 68.81,NaN 77.61,NaN 86.42,NaN 95.22,NaN 104.03,NaN 112.84,NaN 121.64,NaN 130.45,NaN 139.25,NaN 148.06,NaN 156.87,NaN 165.67,NaN 174.48,NaN 183.28,NaN 192.09,NaN 200.90,NaN 209.70,NaN 218.51,NaN 227.31,NaN 236.12,NaN 244.93,NaN 253.73,NaN 262.54,NaN 271.34,NaN 280.15,NaN 288.96,NaN 297.76,NaN 306.57,NaN 315.37,NaN 324.18,NaN 332.99,NaN 341.79,NaN 350.60,NaN 359.40,NaN 368.21,NaN 377.01,NaN 385.82,NaN 394.63,NaN 403.43,NaN 412.24,NaN 421.04,NaN 429.85,NaN 438.66,NaN 447.46,NaN 456.27,NaN 465.07,NaN 473.88,NaN 482.69,NaN 491.49,NaN 500.30,NaN 509.10,NaN 517.91,NaN 526.72,NaN 535.52,NaN 544.33,NaN 553.13,NaN 561.94,NaN 570.75,NaN 579.55,NaN 588.36,NaN 597.16,NaN 605.97,NaN 614.78,NaN 623.58,NaN 632.39,NaN 641.19,NaN 650.00,NaN"
+  />
+  <text x="60.00" y="304.00" font-family="sans-serif" font-size="11" fill="#333">gen 1</text>
+  <text
+    x="650.00"
+    y="304.00"
+    text-anchor="end"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#333"
+  >gen 68</text>
+  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">
+    <rect
+      x="472.00"
+      y="42.00"
+      width="172"
+      height="44"
+      fill="#ffffff"
+      fill-opacity="0.9"
+      stroke="#cccccc"
+    />
+    <line x1="482.00" y1="54.00" x2="506.00" y2="54.00" stroke="#1f77b4" stroke-width="2" />
+    <text x="512.00" y="57.00">best fitness</text>
+    <line
+      x1="482.00"
+      y1="72.00"
+      x2="506.00"
+      y2="72.00"
+      stroke="#ff7f0e"
+      stroke-width="1.4"
+      stroke-dasharray="4 3"
+    />
+    <text x="512.00" y="75.00">mean fitness</text>
+  </g>
+</svg>

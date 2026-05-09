@@ -22,6 +22,9 @@ deno run \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
+  --allow-ffi \
+  --allow-run \
   synthetic_synapse/synthetic_synapse_example.ts \
   "$@"
 
