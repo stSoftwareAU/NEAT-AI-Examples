@@ -3,18 +3,20 @@ set -euo pipefail
 
 # MNIST Handwritten-Digit Classification Example Runner
 #
-# Default mode (used by quality.sh): trains the SGD/MLP baseline
-# (`evolveMLPClassifier`) on the canonical MNIST 50k / 10k / 10k split,
-# saves the champion creature, the confusion matrix, the prediction
-# grid SVG (docs/screenshots/mnist_classification.svg) and the
-# dual-axis per-epoch evolution chart
-# (docs/screenshots/mnist_classification/evolution.svg).
+# Default mode (audit issue #210): writes a binary `.bin` training
+# subset, seeds NEAT-AI with `new Creature(196, 10)` (no hidden hint,
+# no warm start) and runs `Creature.evolveDir(...)` over the `.bin`
+# stream until either the per-example `targetError` is reached or the
+# `timeoutMinutes: 5` backstop fires. Emits per-generation telemetry
+# (CSV + best/mean fitness SVG + neuron / synapse SVG) plus the
+# prediction grid SVG and a confusion matrix.
 #
-# Set MNIST_NEAT_EVOLUTION=1 to instead run the long-form NEAT
-# evolution from uniform-random noise (`evolveClassifier`). This is a
-# one-off developer screenshot run that may take hours and additionally
-# emits the multi-panel evolution-progression strip
-# (docs/screenshots/mnist_classification_evolution.svg).
+# Optional modes:
+#   - MNIST_MLP_BASELINE=1: SGD/MLP baseline (`evolveMLPClassifier`)
+#     for fast comparison; does not start from random noise and does
+#     not grow topology.
+#   - MNIST_NEAT_EVOLUTION=1: legacy long-form developer screenshot
+#     run using the in-process `evolveClassifier` mutation loop.
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
@@ -47,6 +49,8 @@ deno run \
 for svg in \
   "docs/screenshots/mnist_classification.svg" \
   "docs/screenshots/mnist_classification/evolution.svg" \
+  "docs/screenshots/mnist_classification/fitness.svg" \
+  "docs/screenshots/mnist_classification/topology.svg" \
   "docs/screenshots/mnist_classification_evolution.svg"; do
   if [[ -f "${svg}" ]]; then
     deno fmt "${svg}" > /dev/null

@@ -19,6 +19,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { Creature } from "@stsoftware/neat-ai";
+import { join } from "@std/path";
 
 import { asCreatureExport } from "../common/legacy_types.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -44,12 +45,20 @@ import {
   confusionMatrix,
   confusionMatrixGenes,
   DEFAULT_EVOLVE_OPTIONS,
+  DEFAULT_MNIST_EVOLUTION_CONFIG,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveClassifier,
   evolveMLPClassifier,
+  formatEvolutionCsv,
   mutateCreatureExport,
   pickGridSamples,
   predict,
   predictWithGenes,
+  rowsToEvolutionSamples,
+  rowsToFitnessSamples,
+  runMinimalSeedEvolution,
+  writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { initMLPGenes } from "./gradient.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -952,6 +961,211 @@ Deno.test("README — flowchart MUT label flags 'demo only' and names the produc
     "MUT caption must name the production-pipeline operators (backprop, memetic, MCMC, discovery).",
   );
 });
+
+// ---------------------------------------------------------------------------
+// Audit minimal-seed `evolveDir` flow (issue #210)
+// ---------------------------------------------------------------------------
+
+Deno.test("DEFAULT_MNIST_EVOLUTION_CONFIG honours the issue #210 stop-condition rule", () => {
+  // The audit mandates per-example targetError + a 5-minute backstop.
+  assert(
+    DEFAULT_MNIST_EVOLUTION_CONFIG.targetError > 0,
+    "targetError must be a positive per-example MSE budget",
+  );
+  assertEquals(
+    DEFAULT_MNIST_EVOLUTION_CONFIG.timeoutMinutes,
+    5,
+    "timeoutMinutes must be the audit-mandated 5-minute backstop",
+  );
+  assertGreater(DEFAULT_MNIST_EVOLUTION_CONFIG.populationSize, 0);
+  assertGreater(DEFAULT_MNIST_EVOLUTION_CONFIG.maxIterations, 0);
+  assertGreater(DEFAULT_MNIST_EVOLUTION_CONFIG.trainingRecords, 0);
+});
+
+Deno.test("EVOLUTION_CSV_HEADER matches the schema mandated by issue #210", () => {
+  assertEquals(
+    EVOLUTION_CSV_HEADER,
+    "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+  );
+});
+
+Deno.test("formatEvolutionCsv emits the audit schema and one row per input", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: -1234.5, meanFitness: 0, neuronCount: 206, synapseCount: 1960 },
+    { generation: 2, bestFitness: -1.234, meanFitness: -2.5, neuronCount: 207, synapseCount: 1961 },
+  ];
+  const csv = formatEvolutionCsv(rows);
+  const lines = csv.trim().split("\n");
+  assertEquals(lines.length, 3, "header + 2 rows = 3 lines");
+  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+  assertEquals(lines[1], "1,-1234.5,0,206,1960");
+  assertEquals(lines[2], "2,-1.234,-2.5,207,1961");
+});
+
+Deno.test("formatEvolutionCsv replaces non-finite fitness with 0", () => {
+  const rows: EvolutionRow[] = [
+    {
+      generation: 1,
+      bestFitness: Number.NEGATIVE_INFINITY,
+      meanFitness: Number.NaN,
+      neuronCount: 1,
+      synapseCount: 1,
+    },
+  ];
+  const lines = formatEvolutionCsv(rows).trim().split("\n");
+  assertEquals(lines[1], "1,0,0,1,1");
+});
+
+Deno.test("rowsToFitnessSamples maps best/mean fitness to the chart helper shape", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.1, neuronCount: 1, synapseCount: 2 },
+  ];
+  const samples = rowsToFitnessSamples(rows);
+  assertEquals(samples, [{ generation: 1, bestFitness: 0.5, avgFitness: 0.1 }]);
+});
+
+Deno.test("rowsToEvolutionSamples maps the row shape to the evolution chart shape", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.1, neuronCount: 5, synapseCount: 7 },
+  ];
+  const samples = rowsToEvolutionSamples(rows);
+  assertEquals(samples, [{ generation: 1, score: 0.5, neurons: 5, synapses: 7 }]);
+});
+
+Deno.test("writeMnistTrainingBin writes the documented binary record stride", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-bin-" });
+  try {
+    const samples: DigitSample[] = [
+      {
+        index: 0,
+        label: 3,
+        features: new Array<number>(FEATURE_COUNT).fill(0).map((_, i) => (i % 5) / 10),
+        pixels: [],
+      },
+      {
+        index: 1,
+        label: 7,
+        features: new Array<number>(FEATURE_COUNT).fill(0).map((_, i) => 1 - (i % 4) / 5),
+        pixels: [],
+      },
+    ];
+    const path = join(tmp, "mnist_train.bin");
+    writeMnistTrainingBin(samples, path);
+    const bytes = Deno.readFileSync(path);
+    // 2 records × (196 features + 10 outputs) × 4 bytes = 1648 bytes.
+    assertEquals(bytes.byteLength, samples.length * (FEATURE_COUNT + CLASS_COUNT) * 4);
+
+    const view = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    // Record 0: features[0..195] then one-hot label-3 (output_3 = 1).
+    assertAlmostEquals(view[0], samples[0].features[0], 1e-6);
+    for (let c = 0; c < CLASS_COUNT; c++) {
+      assertAlmostEquals(view[FEATURE_COUNT + c], c === 3 ? 1 : 0, 1e-6);
+    }
+    // Record 1: features[0..195] then one-hot label-7 (output_7 = 1).
+    const stride = FEATURE_COUNT + CLASS_COUNT;
+    for (let c = 0; c < CLASS_COUNT; c++) {
+      assertAlmostEquals(view[stride + FEATURE_COUNT + c], c === 7 ? 1 : 0, 1e-6);
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("writeMnistTrainingBin rejects an empty sample list", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-bin-" });
+  try {
+    assertThrows(
+      () => writeMnistTrainingBin([], join(tmp, "out.bin")),
+      Error,
+      "must not be empty",
+    );
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("writeMnistTrainingBin rejects out-of-range labels", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-bin-" });
+  try {
+    const sample: DigitSample = {
+      index: 0,
+      label: 99,
+      features: new Array<number>(FEATURE_COUNT).fill(0),
+      pixels: [],
+    };
+    assertThrows(
+      () => writeMnistTrainingBin([sample], join(tmp, "out.bin")),
+      Error,
+      "out of range",
+    );
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("runMinimalSeedEvolution rejects non-positive config values", async () => {
+  const seed = new Creature(2, 1);
+  await assertRejects(
+    () =>
+      runMinimalSeedEvolution(seed, "/tmp", {
+        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
+        targetError: -1,
+      }),
+    Error,
+    "targetError must be positive",
+  );
+  await assertRejects(
+    () =>
+      runMinimalSeedEvolution(seed, "/tmp", {
+        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
+        timeoutMinutes: 0,
+      }),
+    Error,
+    "timeoutMinutes must be positive",
+  );
+  await assertRejects(
+    () =>
+      runMinimalSeedEvolution(seed, "/tmp", {
+        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
+        populationSize: 0,
+      }),
+    Error,
+    "populationSize must be positive",
+  );
+  await assertRejects(
+    () =>
+      runMinimalSeedEvolution(seed, "/tmp", {
+        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
+        maxIterations: 0,
+      }),
+    Error,
+    "maxIterations must be positive",
+  );
+});
+
+Deno.test(
+  "audit committed CSV: gen-1 and final neuron / synapse counts genuinely change",
+  () => {
+    // Issue #210 acceptance criterion: "Verify neuron and synapse counts
+    // genuinely change across generations. If start == end, the seed is
+    // still memorised; fix and re-run."
+    const text = Deno.readTextFileSync("docs/data/mnist_classification/evolution.csv");
+    const lines = text.trim().split("\n");
+    assertGreaterOrEqual(lines.length, 3, "expected header + at least two rows");
+    const first = lines[1].split(",");
+    const last = lines[lines.length - 1].split(",");
+    const firstNeurons = Number(first[3]);
+    const firstSynapses = Number(first[4]);
+    const lastNeurons = Number(last[3]);
+    const lastSynapses = Number(last[4]);
+    const changed = firstNeurons !== lastNeurons || firstSynapses !== lastSynapses;
+    assert(
+      changed,
+      `Topology must change between gen-1 and final; got start=${firstNeurons}/${firstSynapses}` +
+        ` final=${lastNeurons}/${lastSynapses}`,
+    );
+  },
+);
 
 Deno.test("readGzippedFile rejects a missing file", async () => {
   await assertRejects(() => readGzippedFile("/no/such/path/data.gz"), Error);
