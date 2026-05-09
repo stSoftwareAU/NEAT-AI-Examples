@@ -70,7 +70,9 @@ entire point of the demo, so the no-warm-start policy does not apply:
 
 - `crispr_injection` — splices a hand-crafted edit gene into a stalled population.
 - `neuron_pruning` — injects deliberately-constant neurons so pruning has something to remove.
-- `discovery` — recovers a removed neuron from a known-good creature.
+- `discovery` — labels a binary `.bin` training set from a hand-crafted reference creature (the
+  reference is the demo's hand-crafted state); the NEAT seed itself is the minimal
+  `new Creature(input, output)` per issue #207.
 - `discovery_at_scale` — recovers from injected defects in a large pre-built creature.
 - `intelligent_design` — systematically optimises activation functions on an existing creature.
 - `crossover` — breeds two parent creatures into an offspring.
