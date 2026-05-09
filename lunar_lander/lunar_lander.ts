@@ -42,6 +42,7 @@ import {
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { renderOutcomeBarChartSVG, type ScenarioOutcome } from "../common/outcome_bar_chart.ts";
 import {
   classifyOutcome,
   DEFAULT_PARAMS,
@@ -872,6 +873,13 @@ export const EVOLUTION_CHART_PATH = "docs/screenshots/lunar_lander/evolution.svg
 /** Path to the per-generation fitness-chart SVG the runner emits. */
 export const FITNESS_CHART_PATH = "docs/screenshots/lunar_lander/fitness.svg";
 
+/**
+ * Path to the per-validation-scenario outcome bar chart SVG the runner
+ * emits. Pairs with the descent screenshot and fitness chart to give
+ * readers a one-glance view of how robustly the controller generalises.
+ */
+export const VALIDATION_OUTCOME_SVG_PATH = "docs/screenshots/lunar_lander/validation.svg";
+
 /** Path to the per-generation evolution telemetry CSV the runner emits. */
 export const EVOLUTION_CSV_PATH = "docs/data/lunar_lander/evolution.csv";
 
@@ -1106,6 +1114,29 @@ if (import.meta.main) {
     );
   } else {
     console.log("⏭️  Quick mode: skipped writing validation JSON");
+  }
+
+  // Render the per-validation-scenario outcome bar chart from the same
+  // report. Lives next to the fitness chart so the README can show the
+  // controller's journey (fitness chart) alongside its end-state spread
+  // across all 200 unseen scenarios (this chart).
+  const outcomeSamples: ScenarioOutcome[] = validationReport.scenarios.map((s) => ({
+    scenarioIndex: s.index,
+    outcome: s.outcome,
+    score: s.score,
+  }));
+  if (outcomeSamples.length > 0) {
+    const outcomeSvg = renderOutcomeBarChartSVG(outcomeSamples, {
+      title: "Lunar Lander — Validation Outcomes",
+    });
+    if (!quick) {
+      ensureDirSync("docs/screenshots/lunar_lander");
+      await Deno.writeTextFile(VALIDATION_OUTCOME_SVG_PATH, outcomeSvg);
+      console.log(
+        `📊 Wrote validation outcome chart ${VALIDATION_OUTCOME_SVG_PATH} ` +
+          `(${outcomeSamples.length} scenarios)`,
+      );
+    }
   }
 
   // Render the descent SVG from a representative validation scenario —

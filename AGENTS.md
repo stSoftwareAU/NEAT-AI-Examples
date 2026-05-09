@@ -146,6 +146,7 @@ reinventing equivalent logic in a new example.
 | `common/evolution_progress_svg.ts` | Multi-panel animated SVG strip rendered from snapshots.       |
 | `common/large_creature.ts`         | Deterministic large creatures (~10k synapses) for size demos. |
 | `common/episode_runner.ts`         | Shared per-episode rollout loop for agent examples.           |
+| `common/outcome_bar_chart.ts`      | Per-scenario outcome bar chart (count panel + cell strip).    |
 
 ### `common/data_cache.ts`
 
@@ -245,6 +246,8 @@ common/
   large_creature_test.ts           — Unit tests for the large creature builder
   episode_runner.ts                — Shared per-episode rollout loop for agent examples
   episode_runner_test.ts           — Unit tests for the episode runner helper
+  outcome_bar_chart.ts             — Per-scenario outcome bar chart (count panel + cell strip)
+  outcome_bar_chart_test.ts        — Unit tests for the outcome bar chart renderer
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
