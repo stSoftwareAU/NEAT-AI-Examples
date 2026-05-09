@@ -39,7 +39,7 @@ Topology genuinely changes: NEAT-AI added **10 hidden neurons** and **39 synapse
 minimal seed, and best fitness improved roughly seven-fold from **-3.698 at gen 1** to **-0.533 at
 gen 3000**.
 
-**Committed artefacts**
+### Committed artefacts
 
 - `docs/data/evolution_showcase/evolution.csv` (3000 rows, schema
   `generation,best_fitness,mean_fitness,neuron_count,synapse_count`)

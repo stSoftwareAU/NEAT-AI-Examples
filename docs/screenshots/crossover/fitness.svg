@@ -1,0 +1,935 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 800 400"
+  width="800"
+  height="400"
+  role="img"
+  aria-label="Crossover — Best vs Mean Fitness dual-axis chart"
+>
+  <title>Crossover — Best vs Mean Fitness</title>
+  <rect width="800" height="400" fill="#fafafa" />
+  <text
+    x="400"
+    y="24"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="16"
+    font-weight="bold"
+    fill="#222"
+  >Crossover — Best vs Mean Fitness</text>
+  <rect x="70" y="40" width="660" height="300" fill="#ffffff" stroke="#333333" stroke-width="1" />
+  <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
+    <line x1="150.45" y1="340" x2="150.45" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="150.45" y="358" text-anchor="middle">50</text>
+    <line x1="232.54" y1="340" x2="232.54" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="232.54" y="358" text-anchor="middle">100</text>
+    <line x1="314.63" y1="340" x2="314.63" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="314.63" y="358" text-anchor="middle">150</text>
+    <line x1="396.72" y1="340" x2="396.72" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="396.72" y="358" text-anchor="middle">200</text>
+    <line x1="478.81" y1="340" x2="478.81" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="478.81" y="358" text-anchor="middle">250</text>
+    <line x1="560.9" y1="340" x2="560.9" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="560.9" y="358" text-anchor="middle">300</text>
+    <line x1="642.99" y1="340" x2="642.99" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="642.99" y="358" text-anchor="middle">350</text>
+    <line x1="725.07" y1="340" x2="725.07" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="725.07" y="358" text-anchor="middle">400</text>
+    <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="730" y="358" text-anchor="middle">403</text>
+    <text x="400" y="376" text-anchor="middle" font-weight="bold">generation</text>
+  </g>
+  <g class="left-axis" font-family="sans-serif" font-size="11" fill="#1f77b4">
+    <line x1="66" y1="340" x2="70" y2="340" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0.232</text>
+    <line x1="66" y1="299.92" x2="70" y2="299.92" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="299.92" text-anchor="end" dominant-baseline="middle">0.332</text>
+    <line x1="66" y1="259.84" x2="70" y2="259.84" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="259.84" text-anchor="end" dominant-baseline="middle">0.432</text>
+    <line x1="66" y1="219.76" x2="70" y2="219.76" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="219.76" text-anchor="end" dominant-baseline="middle">0.532</text>
+    <line x1="66" y1="179.68" x2="70" y2="179.68" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="179.68" text-anchor="end" dominant-baseline="middle">0.632</text>
+    <line x1="66" y1="139.6" x2="70" y2="139.6" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="139.6" text-anchor="end" dominant-baseline="middle">0.732</text>
+    <line x1="66" y1="99.52" x2="70" y2="99.52" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="99.52" text-anchor="end" dominant-baseline="middle">0.832</text>
+    <line x1="66" y1="59.44" x2="70" y2="59.44" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="59.44" text-anchor="end" dominant-baseline="middle">0.932</text>
+    <line x1="66" y1="40" x2="70" y2="40" stroke="#1f77b4" stroke-width="1" />
+    <text x="62" y="40" text-anchor="end" dominant-baseline="middle">0.98</text>
+    <text
+      x="22"
+      y="190"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-weight="bold"
+      transform="rotate(-90 22 190)"
+    >best fitness</text>
+  </g>
+  <g class="right-axis" font-family="sans-serif" font-size="11" fill="#ff7f0e">
+    <line x1="730" y1="0" x2="734" y2="0" stroke="#ff7f0e" stroke-width="1" />
+    <text x="738" y="0" text-anchor="start" dominant-baseline="middle">0</text>
+    <line x1="730" y1="0" x2="734" y2="0" stroke="#ff7f0e" stroke-width="1" />
+    <text x="738" y="0" text-anchor="start" dominant-baseline="middle">0</text>
+    <text
+      x="778"
+      y="0"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-weight="bold"
+      transform="rotate(90 778 0)"
+    >avg fitness</text>
+  </g>
+  <g class="best-line">
+    <polyline
+      fill="none"
+      stroke="#1f77b4"
+      stroke-width="1.5"
+      points="70,340 71.64,335.26 73.28,280.68 74.93,278.38 76.57,260.56 78.21,248.01 79.85,226.8 81.49,216.62 83.13,215.01 84.78,213.43 86.42,213.43 88.06,206.96 89.7,206.96 91.34,197.63 92.99,197.15 94.63,175.75 96.27,175.75 97.91,161.07 99.55,141.67 101.19,124.97 102.84,122.3 104.48,122.3 106.12,119.62 107.76,115.88 109.4,110.23 111.04,104.45 112.69,102.9 114.33,97.23 115.97,83.77 117.61,77.84 119.25,77.84 120.9,76.35 122.54,71.92 124.18,67.88 125.82,63.94 127.46,63.94 129.1,62.44 130.75,58.08 132.39,53.01 134.03,53.01 135.67,51.89 137.31,51.06 138.96,50.56 140.6,50.56 142.24,49.42 143.88,49.42 145.52,49.42 147.16,49.4 148.81,48.34 150.45,48 152.09,48 153.73,47.87 155.37,47.84 157.01,47.84 158.66,47.83 160.3,47.81 161.94,47.68 163.58,47.64 165.22,47.63 166.87,47.63 168.51,47.63 170.15,47.63 171.79,47.63 173.43,47.41 175.07,47.41 176.72,47.35 178.36,47.15 180,47.14 181.64,47.14 183.28,47.13 184.93,46.89 186.57,46.89 188.21,46.87 189.85,46.87 191.49,46.86 193.13,46.84 194.78,46.79 196.42,46.75 198.06,46.7 199.7,46.61 201.34,46.35 202.99,46.35 204.63,46.24 206.27,46.24 207.91,46.24 209.55,46.24 211.19,46.24 212.84,46.24 214.48,46.23 216.12,46.22 217.76,46.2 219.4,46.19 221.04,46.18 222.69,46.18 224.33,46.17 225.97,46.17 227.61,46.16 229.25,46.15 230.9,46.12 232.54,46.09 234.18,46.08 235.82,46.08 237.46,46.08 239.1,46.08 240.75,46.07 242.39,46.06 244.03,46.04 245.67,46.02 247.31,46.02 248.96,46.01 250.6,46.01 252.24,46.01 253.88,46.01 255.52,46 257.16,46 258.81,46 260.45,46 262.09,46 263.73,46 265.37,45.99 267.01,45.99 268.66,45.99 270.3,45.98 271.94,45.98 273.58,45.98 275.22,45.98 276.87,45.98 278.51,45.98 280.15,45.97 281.79,45.97 283.43,45.97 285.07,45.96 286.72,45.96 288.36,45.95 290,45.95 291.64,45.95 293.28,45.95 294.93,45.95 296.57,45.94 298.21,45.94 299.85,45.75 301.49,45.75 303.13,45.72 304.78,45.72 306.42,45.71 308.06,45.71 309.7,45.7 311.34,45.7 312.99,45.17 314.63,44.94 316.27,44.79 317.91,44.79 319.55,44.77 321.19,44.77 322.84,44.77 324.48,44.77 326.12,44.77 327.76,44.77 329.4,44.77 331.04,44.77 332.69,44.77 334.33,44.77 335.97,44.77 337.61,44.77 339.25,44.77 340.9,44.77 342.54,44.77 344.18,44.77 345.82,44.77 347.46,44.77 349.1,44.37 350.75,44.37 352.39,44.15 354.03,44.15 355.67,44.15 357.31,44.15 358.96,44.15 360.6,44.15 362.24,44.14 363.88,44.14 365.52,44.14 367.16,44.13 368.81,44.13 370.45,44.13 372.09,44.13 373.73,44.13 375.37,44.13 377.01,44.13 378.66,44.13 380.3,44.12 381.94,44.12 383.58,44.12 385.22,44.12 386.87,44.12 388.51,44.11 390.15,44.11 391.79,44.11 393.43,44.11 395.07,44.1 396.72,44.09 398.36,44.08 400,44.06 401.64,44.06 403.28,44.05 404.93,44.04 406.57,44.03 408.21,44 409.85,44 411.49,43.99 413.13,43.98 414.78,43.98 416.42,43.98 418.06,43.98 419.7,43.98 421.34,43.97 422.99,43.97 424.63,43.97 426.27,43.93 427.91,43.93 429.55,43.93 431.19,43.92 432.84,43.83 434.48,43.83 436.12,43.83 437.76,43.62 439.4,43.62 441.04,43.62 442.69,43.62 444.33,43.62 445.97,43.62 447.61,43.62 449.25,43.62 450.9,43.62 452.54,43.62 454.18,43.61 455.82,43.61 457.46,43.61 459.1,43.61 460.75,43.61 462.39,43.6 464.03,43.6 465.67,43.59 467.31,43.59 468.96,43.58 470.6,43.58 472.24,43.56 473.88,43.55 475.52,43.55 477.16,43.54 478.81,43.54 480.45,43.54 482.09,43.54 483.73,43.54 485.37,43.54 487.01,43.54 488.66,43.54 490.3,43.54 491.94,43.54 493.58,43.54 495.22,43.54 496.87,43.54 498.51,43.53 500.15,43.44 501.79,43.39 503.43,43.36 505.07,43.36 506.72,43.36 508.36,43.36 510,43.36 511.64,43.36 513.28,43.35 514.93,43.34 516.57,43.33 518.21,43.33 519.85,43.32 521.49,43.32 523.13,43.32 524.78,43.31 526.42,43.31 528.06,43.31 529.7,43.31 531.34,43.31 532.99,43.31 534.63,43.31 536.27,43.31 537.91,43.31 539.55,43.31 541.19,43.31 542.84,43.31 544.48,43.31 546.12,43.3 547.76,43.3 549.4,43.29 551.04,43.29 552.69,43.28 554.33,43.28 555.97,43.28 557.61,43.28 559.25,43.28 560.9,43.28 562.54,43.28 564.18,43.28 565.82,43.28 567.46,43.28 569.1,43.28 570.75,43.28 572.39,43.28 574.03,43.28 575.67,43.16 577.31,43.16 578.96,43.08 580.6,43.08 582.24,43.08 583.88,43.08 585.52,43.08 587.16,43.08 588.81,43.08 590.45,43.08 592.09,43.08 593.73,43.08 595.37,43.08 597.01,43.08 598.66,43.08 600.3,43.08 601.94,43.08 603.58,43.08 605.22,43.08 606.87,43.08 608.51,43.08 610.15,43.08 611.79,43.08 613.43,42.96 615.07,42.96 616.72,42.96 618.36,42.96 620,42.96 621.64,42.96 623.28,42.96 624.93,42.96 626.57,42.96 628.21,42.96 629.85,42.96 631.49,42.96 633.13,42.95 634.78,42.95 636.42,42.95 638.06,42.94 639.7,42.92 641.34,42.85 642.99,42.73 644.63,42.53 646.27,42.18 647.91,41.13 649.55,41.02 651.19,41.02 652.84,40.98 654.48,40.93 656.12,40.91 657.76,40.77 659.4,40.77 661.04,40.77 662.69,40.77 664.33,40.76 665.97,40.76 667.61,40.76 669.25,40.74 670.9,40.73 672.54,40.72 674.18,40.72 675.82,40.69 677.46,40.61 679.1,40.61 680.75,40.6 682.39,40.59 684.03,40.59 685.67,40.58 687.31,40.58 688.96,40.57 690.6,40.57 692.24,40.57 693.88,40.57 695.52,40.55 697.16,40.54 698.81,40.49 700.45,40.38 702.09,40.38 703.73,40.38 705.37,40.38 707.01,40.38 708.66,40.36 710.3,40.35 711.94,40.32 713.58,40.27 715.22,40.19 716.87,40.19 718.51,40.15 720.15,40.15 721.79,40.14 723.43,40.13 725.07,40.08 726.72,40.04 728.36,40.01 730,40"
+    />
+    <circle class="best-point" cx="70" cy="340" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="71.64" cy="335.26" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="73.28" cy="280.68" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="74.93" cy="278.38" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="76.57" cy="260.56" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="78.21" cy="248.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="79.85" cy="226.8" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="81.49" cy="216.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="83.13" cy="215.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="84.78" cy="213.43" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="86.42" cy="213.43" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="88.06" cy="206.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="89.7" cy="206.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="91.34" cy="197.63" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="92.99" cy="197.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="94.63" cy="175.75" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="96.27" cy="175.75" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="97.91" cy="161.07" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="99.55" cy="141.67" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="101.19" cy="124.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="102.84" cy="122.3" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="104.48" cy="122.3" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="106.12" cy="119.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="107.76" cy="115.88" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="109.4" cy="110.23" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="111.04" cy="104.45" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="112.69" cy="102.9" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="114.33" cy="97.23" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="115.97" cy="83.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="117.61" cy="77.84" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="119.25" cy="77.84" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="120.9" cy="76.35" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="122.54" cy="71.92" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="124.18" cy="67.88" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="125.82" cy="63.94" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="127.46" cy="63.94" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="129.1" cy="62.44" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="130.75" cy="58.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="132.39" cy="53.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="134.03" cy="53.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="135.67" cy="51.89" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="137.31" cy="51.06" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="138.96" cy="50.56" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="140.6" cy="50.56" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="142.24" cy="49.42" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="143.88" cy="49.42" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="145.52" cy="49.42" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="147.16" cy="49.4" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="148.81" cy="48.34" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="150.45" cy="48" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="152.09" cy="48" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="153.73" cy="47.87" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="155.37" cy="47.84" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="157.01" cy="47.84" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="158.66" cy="47.83" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="160.3" cy="47.81" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="161.94" cy="47.68" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="163.58" cy="47.64" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="165.22" cy="47.63" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="166.87" cy="47.63" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="168.51" cy="47.63" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="170.15" cy="47.63" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="171.79" cy="47.63" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="173.43" cy="47.41" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="175.07" cy="47.41" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="176.72" cy="47.35" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="178.36" cy="47.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="180" cy="47.14" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="181.64" cy="47.14" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="183.28" cy="47.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="184.93" cy="46.89" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="186.57" cy="46.89" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="188.21" cy="46.87" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="189.85" cy="46.87" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="191.49" cy="46.86" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="193.13" cy="46.84" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="194.78" cy="46.79" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="196.42" cy="46.75" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="198.06" cy="46.7" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="199.7" cy="46.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="201.34" cy="46.35" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="202.99" cy="46.35" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="204.63" cy="46.24" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="206.27" cy="46.24" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="207.91" cy="46.24" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="209.55" cy="46.24" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="211.19" cy="46.24" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="212.84" cy="46.24" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="214.48" cy="46.23" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="216.12" cy="46.22" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="217.76" cy="46.2" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="219.4" cy="46.19" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="221.04" cy="46.18" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="222.69" cy="46.18" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="224.33" cy="46.17" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="225.97" cy="46.17" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="227.61" cy="46.16" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="229.25" cy="46.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="230.9" cy="46.12" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="232.54" cy="46.09" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="234.18" cy="46.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="235.82" cy="46.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="237.46" cy="46.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="239.1" cy="46.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="240.75" cy="46.07" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="242.39" cy="46.06" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="244.03" cy="46.04" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="245.67" cy="46.02" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="247.31" cy="46.02" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="248.96" cy="46.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="250.6" cy="46.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="252.24" cy="46.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="253.88" cy="46.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="255.52" cy="46" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="257.16" cy="46" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="258.81" cy="46" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="260.45" cy="46" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="262.09" cy="46" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="263.73" cy="46" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="265.37" cy="45.99" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="267.01" cy="45.99" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="268.66" cy="45.99" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="270.3" cy="45.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="271.94" cy="45.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="273.58" cy="45.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="275.22" cy="45.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="276.87" cy="45.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="278.51" cy="45.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="280.15" cy="45.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="281.79" cy="45.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="283.43" cy="45.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="285.07" cy="45.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="286.72" cy="45.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="288.36" cy="45.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="290" cy="45.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="291.64" cy="45.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="293.28" cy="45.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="294.93" cy="45.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="296.57" cy="45.94" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="298.21" cy="45.94" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="299.85" cy="45.75" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="301.49" cy="45.75" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="303.13" cy="45.72" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="304.78" cy="45.72" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="306.42" cy="45.71" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="308.06" cy="45.71" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="309.7" cy="45.7" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="311.34" cy="45.7" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="312.99" cy="45.17" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="314.63" cy="44.94" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="316.27" cy="44.79" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="317.91" cy="44.79" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="319.55" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="321.19" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="322.84" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="324.48" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="326.12" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="327.76" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="329.4" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="331.04" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="332.69" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="334.33" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="335.97" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="337.61" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="339.25" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="340.9" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="342.54" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="344.18" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="345.82" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="347.46" cy="44.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="349.1" cy="44.37" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="350.75" cy="44.37" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="352.39" cy="44.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="354.03" cy="44.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="355.67" cy="44.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="357.31" cy="44.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="358.96" cy="44.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="360.6" cy="44.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="362.24" cy="44.14" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="363.88" cy="44.14" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="365.52" cy="44.14" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="367.16" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="368.81" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="370.45" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="372.09" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="373.73" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="375.37" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="377.01" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="378.66" cy="44.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="380.3" cy="44.12" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="381.94" cy="44.12" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="383.58" cy="44.12" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="385.22" cy="44.12" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="386.87" cy="44.12" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="388.51" cy="44.11" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="390.15" cy="44.11" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="391.79" cy="44.11" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="393.43" cy="44.11" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="395.07" cy="44.1" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="396.72" cy="44.09" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="398.36" cy="44.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="400" cy="44.06" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="401.64" cy="44.06" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="403.28" cy="44.05" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="404.93" cy="44.04" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="406.57" cy="44.03" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="408.21" cy="44" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="409.85" cy="44" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="411.49" cy="43.99" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="413.13" cy="43.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="414.78" cy="43.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="416.42" cy="43.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="418.06" cy="43.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="419.7" cy="43.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="421.34" cy="43.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="422.99" cy="43.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="424.63" cy="43.97" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="426.27" cy="43.93" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="427.91" cy="43.93" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="429.55" cy="43.93" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="431.19" cy="43.92" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="432.84" cy="43.83" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="434.48" cy="43.83" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="436.12" cy="43.83" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="437.76" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="439.4" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="441.04" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="442.69" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="444.33" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="445.97" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="447.61" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="449.25" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="450.9" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="452.54" cy="43.62" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="454.18" cy="43.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="455.82" cy="43.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="457.46" cy="43.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="459.1" cy="43.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="460.75" cy="43.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="462.39" cy="43.6" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="464.03" cy="43.6" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="465.67" cy="43.59" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="467.31" cy="43.59" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="468.96" cy="43.58" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="470.6" cy="43.58" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="472.24" cy="43.56" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="473.88" cy="43.55" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="475.52" cy="43.55" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="477.16" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="478.81" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="480.45" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="482.09" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="483.73" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="485.37" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="487.01" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="488.66" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="490.3" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="491.94" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="493.58" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="495.22" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="496.87" cy="43.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="498.51" cy="43.53" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="500.15" cy="43.44" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="501.79" cy="43.39" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="503.43" cy="43.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="505.07" cy="43.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="506.72" cy="43.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="508.36" cy="43.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="510" cy="43.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="511.64" cy="43.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="513.28" cy="43.35" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="514.93" cy="43.34" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="516.57" cy="43.33" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="518.21" cy="43.33" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="519.85" cy="43.32" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="521.49" cy="43.32" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="523.13" cy="43.32" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="524.78" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="526.42" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="528.06" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="529.7" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="531.34" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="532.99" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="534.63" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="536.27" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="537.91" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="539.55" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="541.19" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="542.84" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="544.48" cy="43.31" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="546.12" cy="43.3" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="547.76" cy="43.3" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="549.4" cy="43.29" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="551.04" cy="43.29" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="552.69" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="554.33" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="555.97" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="557.61" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="559.25" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="560.9" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="562.54" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="564.18" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="565.82" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="567.46" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="569.1" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="570.75" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="572.39" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="574.03" cy="43.28" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="575.67" cy="43.16" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="577.31" cy="43.16" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="578.96" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="580.6" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="582.24" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="583.88" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="585.52" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="587.16" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="588.81" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="590.45" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="592.09" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="593.73" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="595.37" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="597.01" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="598.66" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="600.3" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="601.94" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="603.58" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="605.22" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="606.87" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="608.51" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="610.15" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="611.79" cy="43.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="613.43" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="615.07" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="616.72" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="618.36" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="620" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="621.64" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="623.28" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="624.93" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="626.57" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="628.21" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="629.85" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="631.49" cy="42.96" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="633.13" cy="42.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="634.78" cy="42.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="636.42" cy="42.95" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="638.06" cy="42.94" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="639.7" cy="42.92" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="641.34" cy="42.85" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="642.99" cy="42.73" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="644.63" cy="42.53" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="646.27" cy="42.18" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="647.91" cy="41.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="649.55" cy="41.02" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="651.19" cy="41.02" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="652.84" cy="40.98" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="654.48" cy="40.93" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="656.12" cy="40.91" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="657.76" cy="40.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="659.4" cy="40.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="661.04" cy="40.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="662.69" cy="40.77" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="664.33" cy="40.76" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="665.97" cy="40.76" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="667.61" cy="40.76" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="669.25" cy="40.74" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="670.9" cy="40.73" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="672.54" cy="40.72" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="674.18" cy="40.72" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="675.82" cy="40.69" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="677.46" cy="40.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="679.1" cy="40.61" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="680.75" cy="40.6" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="682.39" cy="40.59" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="684.03" cy="40.59" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="685.67" cy="40.58" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="687.31" cy="40.58" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="688.96" cy="40.57" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="690.6" cy="40.57" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="692.24" cy="40.57" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="693.88" cy="40.57" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="695.52" cy="40.55" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="697.16" cy="40.54" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="698.81" cy="40.49" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="700.45" cy="40.38" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="702.09" cy="40.38" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="703.73" cy="40.38" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="705.37" cy="40.38" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="707.01" cy="40.38" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="708.66" cy="40.36" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="710.3" cy="40.35" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="711.94" cy="40.32" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="713.58" cy="40.27" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="715.22" cy="40.19" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="716.87" cy="40.19" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="718.51" cy="40.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="720.15" cy="40.15" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="721.79" cy="40.14" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="723.43" cy="40.13" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="725.07" cy="40.08" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="726.72" cy="40.04" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="728.36" cy="40.01" r="1.8" fill="#1f77b4" />
+    <circle class="best-point" cx="730" cy="40" r="1.8" fill="#1f77b4" />
+  </g>
+  <g class="avg-line">
+    <polyline
+      fill="none"
+      stroke="#ff7f0e"
+      stroke-width="1.5"
+      points="70,0 71.64,0 73.28,0 74.93,0 76.57,0 78.21,0 79.85,0 81.49,0 83.13,0 84.78,0 86.42,0 88.06,0 89.7,0 91.34,0 92.99,0 94.63,0 96.27,0 97.91,0 99.55,0 101.19,0 102.84,0 104.48,0 106.12,0 107.76,0 109.4,0 111.04,0 112.69,0 114.33,0 115.97,0 117.61,0 119.25,0 120.9,0 122.54,0 124.18,0 125.82,0 127.46,0 129.1,0 130.75,0 132.39,0 134.03,0 135.67,0 137.31,0 138.96,0 140.6,0 142.24,0 143.88,0 145.52,0 147.16,0 148.81,0 150.45,0 152.09,0 153.73,0 155.37,0 157.01,0 158.66,0 160.3,0 161.94,0 163.58,0 165.22,0 166.87,0 168.51,0 170.15,0 171.79,0 173.43,0 175.07,0 176.72,0 178.36,0 180,0 181.64,0 183.28,0 184.93,0 186.57,0 188.21,0 189.85,0 191.49,0 193.13,0 194.78,0 196.42,0 198.06,0 199.7,0 201.34,0 202.99,0 204.63,0 206.27,0 207.91,0 209.55,0 211.19,0 212.84,0 214.48,0 216.12,0 217.76,0 219.4,0 221.04,0 222.69,0 224.33,0 225.97,0 227.61,0 229.25,0 230.9,0 232.54,0 234.18,0 235.82,0 237.46,0 239.1,0 240.75,0 242.39,0 244.03,0 245.67,0 247.31,0 248.96,0 250.6,0 252.24,0 253.88,0 255.52,0 257.16,0 258.81,0 260.45,0 262.09,0 263.73,0 265.37,0 267.01,0 268.66,0 270.3,0 271.94,0 273.58,0 275.22,0 276.87,0 278.51,0 280.15,0 281.79,0 283.43,0 285.07,0 286.72,0 288.36,0 290,0 291.64,0 293.28,0 294.93,0 296.57,0 298.21,0 299.85,0 301.49,0 303.13,0 304.78,0 306.42,0 308.06,0 309.7,0 311.34,0 312.99,0 314.63,0 316.27,0 317.91,0 319.55,0 321.19,0 322.84,0 324.48,0 326.12,0 327.76,0 329.4,0 331.04,0 332.69,0 334.33,0 335.97,0 337.61,0 339.25,0 340.9,0 342.54,0 344.18,0 345.82,0 347.46,0 349.1,0 350.75,0 352.39,0 354.03,0 355.67,0 357.31,0 358.96,0 360.6,0 362.24,0 363.88,0 365.52,0 367.16,0 368.81,0 370.45,0 372.09,0 373.73,0 375.37,0 377.01,0 378.66,0 380.3,0 381.94,0 383.58,0 385.22,0 386.87,0 388.51,0 390.15,0 391.79,0 393.43,0 395.07,0 396.72,0 398.36,0 400,0 401.64,0 403.28,0 404.93,0 406.57,0 408.21,0 409.85,0 411.49,0 413.13,0 414.78,0 416.42,0 418.06,0 419.7,0 421.34,0 422.99,0 424.63,0 426.27,0 427.91,0 429.55,0 431.19,0 432.84,0 434.48,0 436.12,0 437.76,0 439.4,0 441.04,0 442.69,0 444.33,0 445.97,0 447.61,0 449.25,0 450.9,0 452.54,0 454.18,0 455.82,0 457.46,0 459.1,0 460.75,0 462.39,0 464.03,0 465.67,0 467.31,0 468.96,0 470.6,0 472.24,0 473.88,0 475.52,0 477.16,0 478.81,0 480.45,0 482.09,0 483.73,0 485.37,0 487.01,0 488.66,0 490.3,0 491.94,0 493.58,0 495.22,0 496.87,0 498.51,0 500.15,0 501.79,0 503.43,0 505.07,0 506.72,0 508.36,0 510,0 511.64,0 513.28,0 514.93,0 516.57,0 518.21,0 519.85,0 521.49,0 523.13,0 524.78,0 526.42,0 528.06,0 529.7,0 531.34,0 532.99,0 534.63,0 536.27,0 537.91,0 539.55,0 541.19,0 542.84,0 544.48,0 546.12,0 547.76,0 549.4,0 551.04,0 552.69,0 554.33,0 555.97,0 557.61,0 559.25,0 560.9,0 562.54,0 564.18,0 565.82,0 567.46,0 569.1,0 570.75,0 572.39,0 574.03,0 575.67,0 577.31,0 578.96,0 580.6,0 582.24,0 583.88,0 585.52,0 587.16,0 588.81,0 590.45,0 592.09,0 593.73,0 595.37,0 597.01,0 598.66,0 600.3,0 601.94,0 603.58,0 605.22,0 606.87,0 608.51,0 610.15,0 611.79,0 613.43,0 615.07,0 616.72,0 618.36,0 620,0 621.64,0 623.28,0 624.93,0 626.57,0 628.21,0 629.85,0 631.49,0 633.13,0 634.78,0 636.42,0 638.06,0 639.7,0 641.34,0 642.99,0 644.63,0 646.27,0 647.91,0 649.55,0 651.19,0 652.84,0 654.48,0 656.12,0 657.76,0 659.4,0 661.04,0 662.69,0 664.33,0 665.97,0 667.61,0 669.25,0 670.9,0 672.54,0 674.18,0 675.82,0 677.46,0 679.1,0 680.75,0 682.39,0 684.03,0 685.67,0 687.31,0 688.96,0 690.6,0 692.24,0 693.88,0 695.52,0 697.16,0 698.81,0 700.45,0 702.09,0 703.73,0 705.37,0 707.01,0 708.66,0 710.3,0 711.94,0 713.58,0 715.22,0 716.87,0 718.51,0 720.15,0 721.79,0 723.43,0 725.07,0 726.72,0 728.36,0 730,0"
+    />
+    <circle class="avg-point" cx="70" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="71.64" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="73.28" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="74.93" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="76.57" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="78.21" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="79.85" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="81.49" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="83.13" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="84.78" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="86.42" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="88.06" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="89.7" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="91.34" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="92.99" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="94.63" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="96.27" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="97.91" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="99.55" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="101.19" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="102.84" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="104.48" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="106.12" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="107.76" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="109.4" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="111.04" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="112.69" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="114.33" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="115.97" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="117.61" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="119.25" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="120.9" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="122.54" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="124.18" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="125.82" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="127.46" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="129.1" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="130.75" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="132.39" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="134.03" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="135.67" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="137.31" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="138.96" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="140.6" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="142.24" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="143.88" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="145.52" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="147.16" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="148.81" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="150.45" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="152.09" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="153.73" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="155.37" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="157.01" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="158.66" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="160.3" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="161.94" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="163.58" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="165.22" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="166.87" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="168.51" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="170.15" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="171.79" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="173.43" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="175.07" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="176.72" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="178.36" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="180" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="181.64" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="183.28" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="184.93" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="186.57" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="188.21" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="189.85" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="191.49" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="193.13" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="194.78" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="196.42" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="198.06" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="199.7" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="201.34" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="202.99" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="204.63" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="206.27" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="207.91" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="209.55" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="211.19" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="212.84" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="214.48" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="216.12" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="217.76" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="219.4" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="221.04" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="222.69" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="224.33" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="225.97" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="227.61" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="229.25" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="230.9" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="232.54" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="234.18" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="235.82" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="237.46" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="239.1" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="240.75" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="242.39" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="244.03" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="245.67" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="247.31" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="248.96" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="250.6" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="252.24" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="253.88" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="255.52" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="257.16" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="258.81" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="260.45" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="262.09" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="263.73" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="265.37" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="267.01" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="268.66" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="270.3" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="271.94" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="273.58" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="275.22" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="276.87" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="278.51" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="280.15" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="281.79" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="283.43" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="285.07" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="286.72" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="288.36" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="290" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="291.64" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="293.28" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="294.93" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="296.57" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="298.21" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="299.85" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="301.49" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="303.13" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="304.78" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="306.42" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="308.06" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="309.7" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="311.34" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="312.99" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="314.63" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="316.27" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="317.91" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="319.55" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="321.19" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="322.84" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="324.48" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="326.12" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="327.76" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="329.4" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="331.04" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="332.69" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="334.33" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="335.97" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="337.61" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="339.25" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="340.9" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="342.54" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="344.18" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="345.82" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="347.46" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="349.1" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="350.75" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="352.39" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="354.03" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="355.67" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="357.31" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="358.96" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="360.6" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="362.24" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="363.88" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="365.52" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="367.16" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="368.81" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="370.45" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="372.09" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="373.73" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="375.37" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="377.01" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="378.66" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="380.3" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="381.94" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="383.58" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="385.22" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="386.87" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="388.51" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="390.15" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="391.79" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="393.43" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="395.07" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="396.72" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="398.36" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="400" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="401.64" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="403.28" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="404.93" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="406.57" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="408.21" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="409.85" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="411.49" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="413.13" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="414.78" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="416.42" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="418.06" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="419.7" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="421.34" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="422.99" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="424.63" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="426.27" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="427.91" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="429.55" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="431.19" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="432.84" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="434.48" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="436.12" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="437.76" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="439.4" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="441.04" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="442.69" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="444.33" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="445.97" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="447.61" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="449.25" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="450.9" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="452.54" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="454.18" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="455.82" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="457.46" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="459.1" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="460.75" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="462.39" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="464.03" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="465.67" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="467.31" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="468.96" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="470.6" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="472.24" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="473.88" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="475.52" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="477.16" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="478.81" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="480.45" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="482.09" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="483.73" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="485.37" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="487.01" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="488.66" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="490.3" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="491.94" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="493.58" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="495.22" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="496.87" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="498.51" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="500.15" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="501.79" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="503.43" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="505.07" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="506.72" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="508.36" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="510" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="511.64" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="513.28" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="514.93" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="516.57" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="518.21" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="519.85" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="521.49" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="523.13" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="524.78" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="526.42" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="528.06" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="529.7" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="531.34" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="532.99" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="534.63" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="536.27" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="537.91" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="539.55" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="541.19" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="542.84" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="544.48" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="546.12" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="547.76" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="549.4" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="551.04" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="552.69" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="554.33" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="555.97" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="557.61" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="559.25" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="560.9" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="562.54" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="564.18" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="565.82" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="567.46" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="569.1" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="570.75" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="572.39" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="574.03" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="575.67" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="577.31" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="578.96" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="580.6" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="582.24" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="583.88" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="585.52" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="587.16" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="588.81" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="590.45" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="592.09" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="593.73" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="595.37" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="597.01" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="598.66" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="600.3" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="601.94" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="603.58" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="605.22" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="606.87" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="608.51" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="610.15" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="611.79" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="613.43" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="615.07" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="616.72" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="618.36" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="620" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="621.64" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="623.28" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="624.93" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="626.57" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="628.21" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="629.85" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="631.49" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="633.13" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="634.78" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="636.42" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="638.06" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="639.7" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="641.34" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="642.99" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="644.63" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="646.27" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="647.91" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="649.55" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="651.19" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="652.84" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="654.48" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="656.12" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="657.76" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="659.4" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="661.04" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="662.69" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="664.33" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="665.97" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="667.61" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="669.25" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="670.9" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="672.54" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="674.18" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="675.82" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="677.46" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="679.1" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="680.75" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="682.39" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="684.03" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="685.67" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="687.31" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="688.96" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="690.6" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="692.24" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="693.88" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="695.52" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="697.16" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="698.81" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="700.45" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="702.09" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="703.73" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="705.37" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="707.01" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="708.66" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="710.3" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="711.94" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="713.58" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="715.22" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="716.87" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="718.51" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="720.15" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="721.79" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="723.43" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="725.07" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="726.72" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="728.36" cy="0" r="1.8" fill="#ff7f0e" />
+    <circle class="avg-point" cx="730" cy="0" r="1.8" fill="#ff7f0e" />
+  </g>
+  <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
+    <rect
+      x="76"
+      y="42"
+      width="140"
+      height="40"
+      fill="#ffffff"
+      fill-opacity="0.85"
+      stroke="#cccccc"
+      stroke-width="0.5"
+    />
+    <line x1="82" y1="52" x2="100" y2="52" stroke="#1f77b4" stroke-width="2" />
+    <text x="106" y="56">best fitness</text>
+    <line x1="82" y1="68" x2="100" y2="68" stroke="#ff7f0e" stroke-width="2" />
+    <text x="106" y="72">avg fitness</text>
+  </g>
+  <g class="final-annotation" font-family="sans-serif" font-size="12" fill="#222222">
+    <line
+      x1="730"
+      y1="40"
+      x2="718"
+      y2="52"
+      stroke="#666666"
+      stroke-width="0.8"
+      stroke-dasharray="2,2"
+    />
+    <circle cx="730" cy="40" r="3.5" fill="#222222" />
+    <text x="718" y="52" text-anchor="end">gen 403: best=0.98, avg=0</text>
+  </g>
+</svg>
