@@ -85,6 +85,125 @@ The remaining examples (`intelligent_design`, `discovery`, `discovery_at_scale`,
 `adaptive_mutation`, `suggest_improvements`) are tagged **🛠 technique** — they demonstrate a single
 operator or algorithm rather than a complete training paradigm.
 
+## 🚀 Beyond Standard NEAT — what NEAT-AI ships
+
+NEAT-AI is a substantial **superset** of the textbook Stanley & Miikkulainen (2002) algorithm. The
+original paper described topology-and-weight neuroevolution; NEAT-AI keeps that core and layers on a
+broad set of techniques drawn from modern deep learning, Bayesian inference, and engineering
+practice. The list below summarises each capability in one line and points at the demo in this repo
+that exercises it (where one exists).
+
+- 🎓 **Backpropagation** — full mini-batch SGD (stochastic gradient descent) with momentum, L1/L2
+  weight decay, dropout, and K-fold cross-validation, run on the same creature representation that
+  evolution uses. Demonstrated by [🔢 MNIST](mnist_classification/README.md) and
+  [📈 Stock Market](stock_market/README.md).
+- 🧠 **Memetic evolution** — maintain an archive of the fittest weight vectors and re-seed the
+  population from it to shrug off mini-batch noise. Demonstrated by
+  [🧠 Memetic Evolution](memetic_evolution/README.md).
+- 🌡️ **MCMC mutation acceptance** — adaptive Metropolis-Hastings cooling so the empirical mutation
+  acceptance rate converges on the 23.4% optimum from Roberts/Gelman/Gilks (1997). Demonstrated by
+  [🌡️ MCMC Acceptance](mcmc_acceptance/README.md).
+- 🔬 **GPU-accelerated Discovery** — defect-driven structural mutation that brings _a bit of science
+  to the structural changes_: detect saturated, dead, dormant, and bottleneck neurons and target
+  mutations at them, with the heavy search loop running through a Rust FFI backed by GPU compute.
+  Demonstrated by [🔍 Discovery](discovery/README.md) and
+  [🔬 Discovery at Scale](discovery_at_scale/README.md).
+- 🧬 **Synthetic synapse training** — densify an evolved sparse creature with zero-weight synapses,
+  train them, then prune the unused edges so behaviour is preserved at lower complexity.
+  Demonstrated by [🧬 Synthetic Synapse](synthetic_synapse/README.md).
+- 🔀 **Advanced breeding** — crossover that aligns parents with different architectures via
+  innovation numbers and recombines disjoint/excess genes, plus
+  [🧬 CRISPR Injection](crispr_injection/README.md) for hand-crafted gene splicing into a stalled
+  population. Demonstrated by [🔀 Crossover](crossover/README.md) and the CRISPR demo above.
+- 🔮 **Predictive coding (opt-in)** — score creatures partly on how well their internal activations
+  predict the next observation, biasing evolution toward forward models that compress the
+  environment. Upstream feature; not yet isolated as a stand-alone demo here — see upstream
+  COMPARISON.md.
+- 🎛️ **Hyperparameter self-adaptation** — mutation rates, MCMC temperature, and crossover share
+  adapt online during a run, freeing the user from hand-tuning per task. The size-driven topology
+  policy is demonstrated by [🧬 Adaptive Mutation](adaptive_mutation/README.md).
+- 📈 **Adaptive population sizing** — population size is not fixed; the runtime grows or shrinks it
+  based on diversity and stagnation signals. Upstream feature; effects are visible across every
+  evolution-driven example in this repo.
+- 📦 **ONNX export** — trained creatures can be exported to the ONNX (Open Neural Network Exchange)
+  format and loaded by any ONNX-compatible runtime, decoupling deployment from Deno. Upstream
+  feature; not yet isolated as a stand-alone demo here — see upstream COMPARISON.md.
+- 🔁 **Transfer learning** — re-use a creature trained on one task as the seed for a related task,
+  preserving learnt weight structure rather than re-evolving from scratch. Closely related to
+  [🧠 Memetic Evolution](memetic_evolution/README.md), which seeds from a fittest archive.
+- ✂️ **Constant-activation neuron pruning** — remove neurons whose activations don't vary, folding
+  their bias contribution into downstream neighbours so the output is unchanged. Demonstrated by
+  [✂️ Neuron Pruning](neuron_pruning/README.md).
+- 💾 **Binary `.bin` training stream** — chunked binary on-disk format for fast, large-data
+  evolution; samples stream straight off the cache without per-row JSON parsing overhead. Upstream
+  feature in `neat-core`; surfaces in this repo through the data-heavy supervised examples
+  ([🔢 MNIST](mnist_classification/README.md), [📈 Stock Market](stock_market/README.md)).
+
+```mermaid
+flowchart TB
+    subgraph search ["🔎 search"]
+        MCMC2["🌡️ MCMC acceptance"]
+        ADAPT["🎛️ Hyperparameter<br/>self-adaptation"]
+        POP["📈 Adaptive<br/>population sizing"]
+    end
+
+    subgraph training ["🎓 training"]
+        BP["🎓 Backpropagation<br/>SGD + momentum,<br/>L1/L2, dropout, K-fold"]
+        MEME2["🧠 Memetic evolution"]
+        XFER["🔁 Transfer learning"]
+        PRED["🔮 Predictive coding"]
+    end
+
+    subgraph structure ["🧬 structure"]
+        DISC2["🔬 GPU-accelerated<br/>Discovery"]
+        SYN["🧬 Synthetic synapse"]
+        BREED["🔀 Advanced breeding<br/>+ CRISPR injection"]
+        PRUNE["✂️ Neuron pruning"]
+    end
+
+    subgraph scale ["⚡ scale"]
+        BIN["💾 Binary .bin<br/>training stream"]
+    end
+
+    subgraph interop ["🔌 interop"]
+        ONNX["📦 ONNX export"]
+    end
+
+    EX_MNIST["🔢 MNIST"]
+    EX_STOCK["📈 Stock Market"]
+    EX_MEME["🧠 Memetic Evolution"]
+    EX_MCMC["🌡️ MCMC Acceptance"]
+    EX_DISC["🔍 Discovery /<br/>🔬 Discovery at Scale"]
+    EX_SYN["🧬 Synthetic Synapse"]
+    EX_CROSS["🔀 Crossover /<br/>🧬 CRISPR Injection"]
+    EX_ADAPT["🧬 Adaptive Mutation"]
+    EX_PRUNE["✂️ Neuron Pruning"]
+
+    BP --> EX_MNIST
+    BP --> EX_STOCK
+    BIN --> EX_MNIST
+    BIN --> EX_STOCK
+    MEME2 --> EX_MEME
+    XFER --> EX_MEME
+    MCMC2 --> EX_MCMC
+    DISC2 --> EX_DISC
+    SYN --> EX_SYN
+    BREED --> EX_CROSS
+    ADAPT --> EX_ADAPT
+    PRUNE --> EX_PRUNE
+
+    style search fill:#fff3cd,stroke:#f5a623,color:#333
+    style training fill:#d4edda,stroke:#28a745,color:#333
+    style structure fill:#d6eaff,stroke:#3498db,color:#333
+    style scale fill:#fde2e2,stroke:#e74c3c,color:#333
+    style interop fill:#e8d6ff,stroke:#9b59b6,color:#333
+```
+
+> 📚 **See
+> [upstream `COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for
+> the full taxonomy** of capabilities — including the textbook NEAT baseline, deep-learning
+> additions, Bayesian additions, and engineering features — with citations and per-feature notes.
+
 ## 🧬 Examples at a Glance
 
 | Example                                                               | Paradigm      | What it shows                                                                                                                                                                                           | How to run                      |
