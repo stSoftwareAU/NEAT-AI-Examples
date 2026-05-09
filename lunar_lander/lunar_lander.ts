@@ -41,6 +41,7 @@ import {
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
 import {
   classifyOutcome,
   DEFAULT_PARAMS,
@@ -730,6 +731,64 @@ export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/lunar_lander_evolut
 /** Path to the per-generation evolution-chart SVG the runner emits. */
 export const EVOLUTION_CHART_PATH = "docs/screenshots/lunar_lander/evolution.svg";
 
+/** Path to the per-generation fitness-chart SVG the runner emits. */
+export const FITNESS_CHART_PATH = "docs/screenshots/lunar_lander/fitness.svg";
+
+/** Path to the per-generation evolution telemetry CSV the runner emits. */
+export const EVOLUTION_CSV_PATH = "docs/data/lunar_lander/evolution.csv";
+
+/** Header row written at the top of {@link EVOLUTION_CSV_PATH}. */
+export const EVOLUTION_CSV_HEADER = "generation,best_fitness,avg_fitness,landed_rate,wallclock_ms";
+
+/**
+ * One row of per-generation evolution telemetry. Captured during a run
+ * and serialised to {@link EVOLUTION_CSV_PATH} so downstream tools can
+ * inspect how the population's fitness improved over time.
+ */
+export interface EvolutionRow {
+  /** Zero-based generation index. */
+  generation: number;
+  /** Best fitness in this generation (max across the population). */
+  bestFitness: number;
+  /** Population mean fitness in this generation. */
+  avgFitness: number;
+  /** Fraction of the champion's perturbed-trial batch that landed. */
+  landedRate: number;
+  /** Milliseconds elapsed since the evolution loop began. */
+  wallclockMs: number;
+}
+
+/**
+ * Format an evolution-telemetry table into a CSV string with the exact
+ * {@link EVOLUTION_CSV_HEADER} header. Numeric fields use a fixed
+ * representation so the file is byte-deterministic for identical inputs.
+ */
+export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
+  const lines: string[] = [EVOLUTION_CSV_HEADER];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.generation,
+        formatCsvNumber(r.bestFitness),
+        formatCsvNumber(r.avgFitness),
+        formatCsvNumber(r.landedRate),
+        Math.round(r.wallclockMs),
+      ].join(","),
+    );
+  }
+  return lines.join("\n") + "\n";
+}
+
+/**
+ * Format a finite number with up to six decimal places, trimming trailing
+ * zeros so deterministic inputs produce a single canonical string.
+ * Non-finite values become "0" — the CSV must not leak NaN/Infinity.
+ */
+function formatCsvNumber(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  return Number(v.toFixed(6)).toString();
+}
+
 /**
  * Trivial `--name=value` CLI flag parser. Returns `undefined` when the
  * flag is absent or its value is not a finite number.
@@ -773,6 +832,7 @@ if (import.meta.main) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
   const evolutionSamples: EvolutionSample[] = [];
+  const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
   const result = evolveLanderController({
     ...DEFAULT_EVOLVE_OPTIONS,
@@ -784,6 +844,13 @@ if (import.meta.main) {
     },
     onGeneration: ({ generation, bestScore, meanScore, bestLandedRate, neurons, synapses }) => {
       evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
+      evolutionRows.push({
+        generation,
+        bestFitness: bestScore,
+        avgFitness: meanScore,
+        landedRate: bestLandedRate,
+        wallclockMs: Date.now() - evolutionStart,
+      });
       if (generation % 10 === 0) {
         console.log(
           `   Gen ${generation.toString().padStart(4)}  best=${
@@ -829,6 +896,30 @@ if (import.meta.main) {
     ensureDirSync("docs/screenshots/lunar_lander");
     await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
+
+  // Per-generation evolution telemetry: CSV (source of truth) plus a
+  // best/avg fitness line chart rendered from the same rows. Both are
+  // emitted on every full run so downstream tools and the README can
+  // reuse the same data.
+  if (evolutionRows.length > 0) {
+    ensureDirSync("docs/data/lunar_lander");
+    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
+    console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
+
+    const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
+      generation: r.generation,
+      bestFitness: r.bestFitness,
+      avgFitness: r.avgFitness,
+    }));
+    const fitnessSvg = renderFitnessChartSVG(fitnessSamples, {
+      title: "Lunar Lander — Fitness vs Generation",
+      bestLabel: "best fitness",
+      avgLabel: "avg fitness",
+    });
+    ensureDirSync("docs/screenshots/lunar_lander");
+    await Deno.writeTextFile(FITNESS_CHART_PATH, fitnessSvg);
+    console.log(`📈 Wrote fitness chart ${FITNESS_CHART_PATH}`);
   }
 
   // Render the multi-panel evolution-progression strip from the

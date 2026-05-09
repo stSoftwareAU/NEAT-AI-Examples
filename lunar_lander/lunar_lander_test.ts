@@ -15,11 +15,15 @@ import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
+import { parse as parseCsv } from "@std/csv";
 import {
   buildRandomPopulation,
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveLanderController,
+  formatEvolutionCsv,
   freeFallBaselineScore,
   type GenerationInfo,
   INPUT_COUNT,
@@ -928,3 +932,94 @@ Deno.test("renderRunSVG marks the landing pad with a TARGET indicator", () => {
   assert(svg.includes('class="target-marker"'), "expected a target-marker group");
   assert(svg.includes(">TARGET<"), "expected a 'TARGET' label on the pad indicator");
 });
+
+Deno.test(
+  "evolveLanderController: CSV row count equals the number of generation events (issue #199)",
+  () => {
+    // Run a tiny evolve with a fixed seed and capture one EvolutionRow
+    // per onGeneration callback. Pin the run to exactly three
+    // generations using the snapshot-checkpoint trick so the row count
+    // assertion is deterministic regardless of host speed.
+    const tmp = Deno.makeTempDirSync({ prefix: "lunar_lander_csv_test_" });
+    const events: GenerationInfo[] = [];
+    const rows: EvolutionRow[] = [];
+    const start = Date.now();
+    try {
+      evolveLanderController({
+        ...TEST_EVOLVE_OPTIONS,
+        mutationStrength: 0.001,
+        mutationRate: 0.001,
+        populationSize: 6,
+        snapshotConfig: { checkpoints: [1, 2, 3], outputDir: tmp },
+        onGeneration: (info) => {
+          events.push(info);
+          rows.push({
+            generation: info.generation,
+            bestFitness: info.bestScore,
+            avgFitness: info.meanScore,
+            landedRate: info.bestLandedRate,
+            wallclockMs: Date.now() - start,
+          });
+        },
+      });
+      assertEquals(rows.length, events.length);
+      assertEquals(rows.length, 3);
+
+      const csv = formatEvolutionCsv(rows);
+      const csvLines = csv.trimEnd().split("\n");
+      // Header + one row per generation.
+      assertEquals(csvLines.length, rows.length + 1);
+      assertEquals(csvLines[0], EVOLUTION_CSV_HEADER);
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "formatEvolutionCsv: header is exact and rows parse cleanly with @std/csv (issue #199)",
+  () => {
+    const rows: EvolutionRow[] = [
+      { generation: 0, bestFitness: -123.456, avgFitness: -789.0, landedRate: 0, wallclockMs: 12 },
+      { generation: 1, bestFitness: 10.5, avgFitness: -50.25, landedRate: 0.3, wallclockMs: 45 },
+      { generation: 2, bestFitness: 1000, avgFitness: 250.125, landedRate: 1, wallclockMs: 100 },
+    ];
+    const csv = formatEvolutionCsv(rows);
+
+    // Exact header — downstream tools key on this verbatim.
+    assert(
+      csv.startsWith(EVOLUTION_CSV_HEADER + "\n"),
+      `expected CSV to start with ${EVOLUTION_CSV_HEADER}, got ${csv.slice(0, 100)}`,
+    );
+    assertEquals(
+      EVOLUTION_CSV_HEADER,
+      "generation,best_fitness,avg_fitness,landed_rate,wallclock_ms",
+    );
+
+    // The CSV must parse cleanly with @std/csv into an array of objects
+    // keyed by header.
+    const parsed = parseCsv(csv, { skipFirstRow: true });
+    assertEquals(parsed.length, rows.length);
+
+    // Spot-check round-trip values.
+    for (let i = 0; i < rows.length; i++) {
+      const r = parsed[i] as Record<string, string>;
+      assertEquals(Number(r.generation), rows[i].generation);
+      assertEquals(Number(r.best_fitness), rows[i].bestFitness);
+      assertEquals(Number(r.avg_fitness), rows[i].avgFitness);
+      assertEquals(Number(r.landed_rate), rows[i].landedRate);
+      assertEquals(Number(r.wallclock_ms), rows[i].wallclockMs);
+    }
+
+    // Determinism — identical inputs produce byte-identical output.
+    assertEquals(formatEvolutionCsv(rows), csv);
+  },
+);
+
+Deno.test(
+  "formatEvolutionCsv: empty input emits header only (issue #199)",
+  () => {
+    const csv = formatEvolutionCsv([]);
+    assertEquals(csv, EVOLUTION_CSV_HEADER + "\n");
+  },
+);
