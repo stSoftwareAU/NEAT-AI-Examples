@@ -21,13 +21,18 @@ import {
   correctCount,
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveXorController,
+  formatEvolutionCsv,
   type GenerationInfo,
   INPUT_COUNT,
   meanSquaredError,
   OUTPUT_COUNT,
   planSegments,
   predict,
+  renderFitnessChartSvg,
+  renderTopologyChartSvg,
   writeXorDataset,
   xorSamples,
 } from "./xor_classification.ts";
@@ -152,6 +157,12 @@ Deno.test(
       ...DEFAULT_EVOLVE_OPTIONS,
       populationSize: 30,
       maxGenerations: 400,
+      // Tests skip the wall-clock backstop. NEAT-AI activates a
+      // GPU/discovery code path under `timeoutMinutes` whose dynamic
+      // library load Deno's --allow-ffi sanitizer treats as a leak; the
+      // production runner still exercises that path via
+      // `DEFAULT_EVOLVE_OPTIONS.timeoutMinutes`.
+      timeoutMinutes: 0,
     });
     assertEquals(
       result.solved,
@@ -194,6 +205,7 @@ Deno.test(
       maxGenerations: 3,
       populationSize: 6,
       errorThreshold: 0, // unreachable in three generations
+      timeoutMinutes: 0, // skip wall-clock backstop in tests (see "happy path")
       onGeneration: (info) => samples.push(info),
     });
     assertGreater(samples.length, 0);
@@ -223,6 +235,7 @@ Deno.test(
       populationSize: 6,
       maxGenerations: 3,
       errorThreshold: 0,
+      timeoutMinutes: 0, // skip wall-clock backstop in tests (see "happy path")
     };
     const a = await evolveXorController(opts);
     const b = await evolveXorController(opts);
@@ -247,6 +260,7 @@ Deno.test(
       maxGenerations: 2,
       populationSize: 6,
       errorThreshold: 0,
+      timeoutMinutes: 0, // skip wall-clock backstop in tests (see "happy path")
     });
     assertEquals(result.solved, false);
     assertGreaterOrEqual(result.generations, 1);
@@ -276,6 +290,7 @@ Deno.test(
         maxGenerations: 1,
         populationSize: 6,
         errorThreshold: 0,
+        timeoutMinutes: 0, // skip wall-clock backstop in tests
         snapshotConfig: { checkpoints: [1], outputDir: tmp },
       });
       const snaps = loadSnapshots(tmp);
@@ -385,6 +400,7 @@ Deno.test(
         errorThreshold: 0,
         maxGenerations: 4,
         populationSize: 6,
+        timeoutMinutes: 0, // skip wall-clock backstop in tests
         snapshotConfig: { checkpoints, outputDir: tmp },
       });
 
@@ -414,6 +430,106 @@ Deno.test(
     } finally {
       Deno.removeSync(tmp, { recursive: true });
     }
+  },
+);
+
+Deno.test("formatEvolutionCsv emits the canonical header and one row per sample", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.25, neuronCount: 3, synapseCount: 2 },
+    { generation: 2, bestFitness: 0.75, meanFitness: 0.4, neuronCount: 4, synapseCount: 3 },
+  ];
+  const csv = formatEvolutionCsv(rows);
+  const lines = csv.trim().split("\n");
+  assertEquals(lines.length, 1 + rows.length);
+  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+  assertEquals(lines[1], "1,0.5,0.25,3,2");
+  assertEquals(lines[2], "2,0.75,0.4,4,3");
+});
+
+Deno.test("formatEvolutionCsv handles empty input and trailing newline", () => {
+  const empty = formatEvolutionCsv([]);
+  assertEquals(empty, EVOLUTION_CSV_HEADER + "\n");
+  const single = formatEvolutionCsv([
+    { generation: 7, bestFitness: 0.123456789, meanFitness: NaN, neuronCount: 5, synapseCount: 6 },
+  ]);
+  // NaN must serialise as "0" and floats are trimmed to six significant digits
+  // beyond the decimal point.
+  assert(single.endsWith("\n"), "CSV must end with a single newline");
+  const lines = single.trim().split("\n");
+  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+  assertEquals(lines[1], "7,0.123457,0,5,6");
+});
+
+Deno.test("renderFitnessChartSvg produces a well-formed SVG referencing both fitness lines", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 3, synapseCount: 2 },
+    { generation: 2, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 4, synapseCount: 3 },
+  ];
+  const svg = renderFitnessChartSvg(rows);
+  assert(svg.startsWith("<svg"));
+  assert(svg.includes("</svg>"));
+  assert(svg.includes('class="best-fitness"'), "must emit the best-fitness polyline");
+  assert(svg.includes('class="mean-fitness"'), "must emit the mean-fitness polyline");
+  assert(svg.includes("Best vs Mean Fitness"));
+});
+
+Deno.test("renderFitnessChartSvg rejects empty input", () => {
+  let threw = false;
+  try {
+    renderFitnessChartSvg([]);
+  } catch (_err) {
+    threw = true;
+  }
+  assert(threw, "expected an error for empty input");
+});
+
+Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both count lines", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 3, synapseCount: 2 },
+    { generation: 5, bestFitness: 0.95, meanFitness: 0.7, neuronCount: 6, synapseCount: 9 },
+  ];
+  const svg = renderTopologyChartSvg(rows);
+  assert(svg.startsWith("<svg"));
+  assert(svg.includes("</svg>"));
+  assert(svg.includes('class="neuron-count"'), "must emit the neuron polyline");
+  assert(svg.includes('class="synapse-count"'), "must emit the synapse polyline");
+  assert(svg.includes("Topology Growth"));
+});
+
+Deno.test("renderTopologyChartSvg rejects empty input", () => {
+  let threw = false;
+  try {
+    renderTopologyChartSvg([]);
+  } catch (_err) {
+    threw = true;
+  }
+  assert(threw, "expected an error for empty input");
+});
+
+Deno.test(
+  "evolveXorController honours the timeoutMinutes backstop without throwing",
+  // Activating the 5-minute backstop loads NEAT-AI's GPU/discovery
+  // cleanup machinery, which Deno's test sanitizer reports as a leaked
+  // dynamic library when --allow-ffi is enabled. The behaviour is
+  // exactly what the audit (issue #205) wants — the production runner
+  // exercises it on every invocation. We disable the sanitizer flags
+  // for this test alone so the rest of the suite stays clean while the
+  // option is still verified end-to-end.
+  { sanitizeOps: false, sanitizeResources: false },
+  async () => {
+    // The 5-minute audit backstop is mandated by issue #205. The
+    // library requires a positive integer; we verify the option is
+    // accepted by running a short evolveDir end-to-end.
+    const result = await evolveXorController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 3,
+      populationSize: 6,
+      errorThreshold: 0,
+      timeoutMinutes: 5,
+    });
+    assertGreaterOrEqual(result.generations, 1);
+    const out = predict(result.champion, [0, 1]);
+    assert(Number.isFinite(out));
   },
 );
 
