@@ -14,7 +14,23 @@ controllers.
 landing pad. The simulator and the evolutionary loop run entirely in pure TypeScript, so the only
 external dependency is NEAT-AI's `Creature.activate` to compute each step's thruster commands.
 
-![Champion descent](../docs/screenshots/lunar_lander.svg)
+![Lunar-Lander champion replayed against an unseen validation scenario — terrain, marked pad, polyline trace, the moving lander tilting and firing its main / RCS thrusters, a shrinking FUEL HUD, and a colour-coded outcome badge in the top-right corner](../docs/screenshots/lunar_lander.svg)
+
+## 📊 Real Run Statistics
+
+On a default run (seed-driven, `targetError=0.01`, `timeoutMinutes=2`) we evolved for **245
+generations in 120.5 seconds**, reaching **5% validation landed-rate** (10 of 200 held-out
+scenarios) — the loop exited via `timeout` rather than `target`, with a champion of **11 neurons /
+22 synapses** and a best training fitness of `-166.0` against a free-fall baseline of `-984.7`.
+These numbers are reproduced verbatim from `./lunar_lander/run.sh` output and the
+[`docs/data/lunar_lander/evolution.csv`](../docs/data/lunar_lander/evolution.csv) artefact; the
+two-minute budget is intentionally tight so the example terminates predictably, so the captured
+champion is a partial controller — gen 1 is noise, training landed-rate climbs to ~10%, and the
+validation chart shows where the controller still crashes or drifts.
+
+> Continuous Integration runs the example in **quick mode** (`LUNAR_QUICK=1`, ~6 seconds) so
+> `quality.sh` finishes in seconds and never overwrites the canonical artefacts. The four artefacts
+> listed below come from a **manual full-budget run** of `./lunar_lander/run.sh`.
 
 ## 🔧 How It Works
 
@@ -22,42 +38,55 @@ external dependency is NEAT-AI's `Creature.activate` to compute each step's thru
 flowchart LR
     PHYS["🧮 Pure-TS Lander Physics<br/>(physics.ts)"]
     INIT["🎲 Uniform-random NEAT<br/>(no hand-crafted topology)"]
-    SCORE["📏 Multi-Trial Score<br/>landed / crashed / oob / flying"]
+    POOLS["🌱 Seed pools<br/>1000 train / 200 validate<br/>(disjoint)"]
+    TRAIN["📏 Multi-Trial Training Score<br/>landed / crashed / oob / flying"]
     SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
     MUTATE["🧬 Weight + Bias + Add-Neuron"]
-    SOLVED{"landed-rate ≥ 1−targetError?"}
+    STOP{"target reached<br/>OR timeout elapsed?"}
     CHAMP["💾 Save champion.json"]
     VALID["🧪 Validate vs 200 held-out scenarios"]
     PICK["🎯 Pick representative validation scenario<br/>(median score; index 0 if all landed)"]
     RUN["▶️ Replay champion from validation start"]
-    JSON["📝 .synthetic-lunar-lander/<br/>validation/results.json"]
-    SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg"]
+    JSON["📝 validation/results.json"]
+    CSV["🗒️ docs/data/lunar_lander/<br/>evolution.csv"]
+    FITN["📈 docs/screenshots/lunar_lander/<br/>fitness.svg<br/>(line chart)"]
+    BARS["📊 docs/screenshots/lunar_lander/<br/>validation.svg<br/>(bar chart)"]
+    SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg<br/>(validation episode)"]
 
-    INIT --> SCORE
-    PHYS --> SCORE
-    SCORE --> SELECT
+    INIT --> TRAIN
+    PHYS --> TRAIN
+    POOLS --> TRAIN
+    POOLS --> VALID
+    TRAIN --> SELECT
     SELECT --> MUTATE
-    MUTATE --> SCORE
-    SCORE --> SOLVED
-    SOLVED -- "no, time remaining" --> SELECT
-    SOLVED -- "yes, or timeout reached" --> CHAMP
+    MUTATE --> TRAIN
+    TRAIN --> CSV
+    TRAIN --> STOP
+    STOP -- "no, time remaining" --> SELECT
+    STOP -- "yes (target or timeout)" --> CHAMP
+    CSV --> FITN
     CHAMP --> VALID
     VALID --> JSON
+    VALID --> BARS
     VALID --> PICK
     PICK --> RUN
     RUN --> SVG
 
     style PHYS fill:#4a90d9,stroke:#333,color:#fff
     style INIT fill:#f5a623,stroke:#333,color:#fff
-    style SCORE fill:#f39c12,stroke:#333,color:#fff
+    style POOLS fill:#f5a623,stroke:#333,color:#fff
+    style TRAIN fill:#f39c12,stroke:#333,color:#fff
     style SELECT fill:#e67e22,stroke:#333,color:#fff
     style MUTATE fill:#e74c3c,stroke:#333,color:#fff
-    style SOLVED fill:#9b59b6,stroke:#333,color:#fff
+    style STOP fill:#9b59b6,stroke:#333,color:#fff
     style CHAMP fill:#7ed321,stroke:#333,color:#fff
     style VALID fill:#2980b9,stroke:#333,color:#fff
     style PICK fill:#16a085,stroke:#333,color:#fff
     style RUN fill:#bd10e0,stroke:#333,color:#fff
     style JSON fill:#34495e,stroke:#333,color:#fff
+    style CSV fill:#34495e,stroke:#333,color:#fff
+    style FITN fill:#50e3c2,stroke:#333,color:#fff
+    style BARS fill:#50e3c2,stroke:#333,color:#fff
     style SVG fill:#50e3c2,stroke:#333,color:#fff
 ```
 
@@ -70,10 +99,19 @@ memorisation. Every per-scenario outcome (`landed` / `crashed` / `out_of_bounds`
 final state and trial fitness is written to `.synthetic-lunar-lander/validation/results.json`.
 
 The descent screenshot embedded above (`docs/screenshots/lunar_lander.svg`) is rendered from a
-**representative validation episode**, not the canonical training launch — so the SVG demonstrates
-the controller handling an unseen state. The default selection rule is the validation scenario whose
-final score is the **median** across all validation scenarios; if every scenario lands, the runner
-falls back to validation index 0 to keep the choice deterministic when scores cluster tightly.
+**representative validation episode**, not the canonical training launch — so the SVG always shows
+the controller handling an unseen state, and on the captured run that state ends in a `crashed`
+outcome (the badge in the top-right corner reflects the real per-scenario result). The default
+selection rule is the validation scenario whose final score is the **median** across all validation
+scenarios; if every scenario lands, the runner falls back to validation index 0 to keep the choice
+deterministic when scores cluster tightly.
+
+The aggregate per-scenario outcome distribution is drawn alongside the descent SVG as a bar chart:
+
+![Lunar-Lander validation outcome bar chart — count of landed / crashed / out_of_bounds / flying outcomes across the 200 held-out validation scenarios](../docs/screenshots/lunar_lander/validation.svg)
+
+On the captured run the 200 validation scenarios broke down as 10 `landed`, 155 `crashed`, 32
+`out_of_bounds`, and 3 `flying`.
 
 ## 🎯 NEAT-AI Standard Stop Conditions
 
@@ -176,6 +214,13 @@ Artefacts:
   from the captured snapshots
 - `docs/screenshots/lunar_lander/evolution.svg` — dual-axis evolution chart plotting best score and
   champion neuron / synapse counts against generation
+- `docs/screenshots/lunar_lander/fitness.svg` — best vs average training fitness line chart per
+  generation (rendered from `evolution.csv`)
+- `docs/screenshots/lunar_lander/validation.svg` — per-validation-scenario outcome bar chart
+  (`landed` / `crashed` / `out_of_bounds` / `flying` counts across the 200 held-out scenarios)
+- `docs/data/lunar_lander/evolution.csv` — per-generation CSV
+  (`generation,best_fitness,avg_fitness,landed_rate,wallclock_ms`) consumed by the fitness chart and
+  by anyone who wants to plot the run themselves
 
 ## Evolution Progress
 
@@ -183,16 +228,21 @@ Artefacts:
 
 ![Lunar-Lander evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/lunar_lander/evolution.svg)
 
+![Lunar-Lander training-fitness line chart — best and average per-generation fitness across the run, sourced from evolution.csv](../docs/screenshots/lunar_lander/fitness.svg)
+
 The runner captures a snapshot of the **running champion** at the canonical checkpoint generations
-`[1, 10, 100, 500, 1000]` (those reached before the `timeoutMinutes` budget elapses). The cadence is
-wider than the previous fixed-topology demo because variable-topology evolution from uniform-random
-noise typically needs more generations to find structure.
+`[1, 10, 100, 500, 1000]` (those reached before the `timeoutMinutes` budget elapses — on the
+captured 245-generation run only the first three panels were captured before the 2-minute budget ran
+out). The cadence is wider than the previous fixed-topology demo because variable-topology evolution
+from uniform-random noise typically needs more generations to find structure.
 
 Each panel displays the champion's topology (inputs → hidden → outputs), the generation label, and
 the score at that checkpoint; the bottom strip charts the score over the captured generations. The
-narrative the panels tell is consistent: **gen 1 is random noise** (the panel-1 lander crashes most
-attempts), the middle panels show the controller learning to throttle and orient, and the final
-panel is a champion that lands softly on the pad on the majority of perturbed starts.
+narrative the panels tell is consistent: **gen 1 is random noise** (the panel-1 lander crashes every
+attempt), the middle panels show the controller starting to throttle and orient, and the final panel
+is the champion the runner saved when the timeout fired — on the captured run that champion lands
+~10% of training trials and 5% of the held-out validation pool, which is exactly why the validation
+bar chart is dominated by `crashed` rather than `landed`.
 
 ## 🛬 Entry Profile
 

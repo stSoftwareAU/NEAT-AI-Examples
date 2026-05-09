@@ -266,10 +266,13 @@ position and the pole angle at that timestep.
 
 ### 🚀 Lunar Lander — descent trajectory
 
-![Lunar Lander champion descent — the lander's trajectory above the lunar surface, ending on a flagged landing pad](docs/screenshots/lunar_lander.svg)
+![Lunar Lander champion descent on an unseen validation scenario — the lander's trajectory above the lunar surface, ending with a colour-coded outcome badge in the top-right corner](docs/screenshots/lunar_lander.svg)
 
-The lander's descent trajectory, rendered above the lunar surface. The marked pad shows the target
-touchdown zone; the lander's tilt and thruster bursts trace the controller's behaviour.
+The lander's descent on a **representative held-out validation scenario** — not the canonical
+training launch — so the SVG always shows the controller handling an unseen state. The marked pad
+shows the target touchdown zone; the lander's tilt and thruster bursts trace the controller's
+behaviour, and the top-right badge surfaces the per-scenario `landed` / `crashed` / `out_of_bounds`
+/ `flying` outcome.
 
 ### 🚗 Mountain Car — swing-up to the summit
 
