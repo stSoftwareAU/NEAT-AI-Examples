@@ -25,13 +25,38 @@ on a developer machine — typically a few hundred milliseconds.
 
 ## 🧠 Why does NEAT-AI need this?
 
-Vanilla NEAT struggles at scale because evolutionary search is unlikely to stumble on every useful
-inter-layer edge once a network grows wide. Backprop, by contrast, can fit any topology you give it
-— but it cannot fit edges that do not exist. Synthetic-synapse training closes the loop: NEAT finds
-the topology, backprop fills in the missing edges, then pruning removes the ones backprop decided
-were not useful.
+Textbook NEAT (Stanley & Miikkulainen 2002) struggles at scale because evolutionary search is
+unlikely to stumble on every useful inter-layer edge once a network grows wide. Backprop, by
+contrast, can fit any topology you give it — but it cannot fit edges that do not exist.
+Synthetic-synapse training closes the loop: NEAT finds the topology, backprop fills in the missing
+edges, then pruning removes the ones backprop decided were not useful.
 
-| Aspect              | Pure NEAT                                    | Synthetic-synapse training                                |
+> **NEAT-AI is not textbook NEAT.** The "evolution-cannot-find-every-useful-edge" failure mode is
+> recognised, and synthetic-synapse training is only one of several NEAT-AI techniques aimed at it.
+> Other mitigations shipped in NEAT-AI — each linked to its description in upstream
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) — include:
+>
+> - **[GPU-accelerated Discovery](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#2--error-guided-structural-evolution)**
+>   — error-guided structural mutation that targets saturated, dead, dormant, or bottleneck neurons
+>   instead of relying on lucky random edge insertions, with cached candidates
+>   ([`COMPARISON.md` feature 8](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#8--discovery-caching-and-disk-space-management))
+>   so the GPU search amortises across generations.
+> - **[Memetic evolution](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#1--memetic-evolution-hybrid-evolution--backpropagation)**
+>   — hybrid evolution + backpropagation that lets every generation refine its weights with gradient
+>   descent rather than waiting for evolution alone to find them.
+> - **[MCMC mutation acceptance](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#9--mcmc-mutation-acceptance)**
+>   — Markov chain Monte Carlo (MCMC) Metropolis-Hastings acceptance keeps occasional structural
+>   worsening so the population can escape local optima that pure greedy NEAT gets stuck on.
+> - **[Adaptive mutation policy](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+>   — hyperparameter self-adaptation rebalances structural-vs-weight mutation rates per generation
+>   based on how the population is actually progressing.
+> - **[Advanced breeding strategies](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#10--advanced-breeding-strategies)**
+>   — historical-marking-aware crossover combines useful sub-structures from different parents
+>   instead of relying on a single line of descent.
+> - **[Synthetic Synapse Training](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#12--synthetic-synapse-training)**
+>   — the densify-train-prune technique this example demonstrates.
+
+| Aspect              | Textbook NEAT                                | Synthetic-synapse training                                |
 | ------------------- | -------------------------------------------- | --------------------------------------------------------- |
 | Inter-layer edges   | Only those evolution discovered              | Every adjacent-layer pair, then pruned by gradient signal |
 | Cost at deployment  | Whatever evolution produced                  | Same — synthetic edges are removed before deployment      |
@@ -120,6 +145,12 @@ mathematics, no I/O, byte-deterministic for a given seed. The point of the demo 
 - The whole run is byte-deterministic for the same config.
 - The rendered SVG is well-formed, embeds all three phase labels, and addresses original vs.
   synthetic synapses through their own CSS classes.
+
+`synthetic_synapse_readme_test.ts` (issue
+[#188](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/188)) additionally verifies the
+README terminology — the comparison column is named "Textbook NEAT", no unqualified "textbook" /
+"vanilla" mislabelling survives, and the "Why does NEAT-AI need this?" section links each of the
+other scaling-failure mitigations to its anchor in upstream `COMPARISON.md`.
 
 ## 🧰 NEAT-AI Features Used
 
