@@ -1,9 +1,16 @@
 /**
- * Unit tests for the adaptive mutation rate demo (issue #86).
+ * Unit tests for the adaptive mutation rate demo (issue #86, audited #212).
  *
- * "What" tests only — every test calls a real function and asserts on
- * observable outputs (record structure, summary statistics, SVG
- * structure). No greps over source files.
+ * The demo was reworked under issue #212 so the seed passed to NEAT-AI
+ * is minimal (`new Creature(INPUT_COUNT, OUTPUT_COUNT)`) and evolution
+ * runs through `Creature.evolveDir(...)` over a binary `.bin` training
+ * set. Tests below exercise the new flow plus the documented analytic
+ * policy curve and SVG renderers.
+ *
+ * Tests are "what" tests: they call real functions with deterministic
+ * inputs and assert on the returned values, the resulting topology,
+ * and the SVG payload. No source-level grepping or implementation
+ * snooping.
  */
 import {
   assert,
@@ -12,338 +19,260 @@ import {
   assertGreater,
   assertGreaterOrEqual,
   assertLessOrEqual,
+  assertRejects,
+  assertStringIncludes,
   assertThrows,
 } from "@std/assert";
 
 import {
-  applyOperator,
-  buildInitialPopulation,
-  chooseOperator,
-  type CreatureSize,
+  type AdaptiveMutationConfig,
+  buildTargetNetwork,
+  creatureHeldOutScore,
   DEFAULT_ADAPTIVE_MUTATION_CONFIG,
   DEFAULT_POLICY_CONFIG,
-  meanTopologyShare,
-  OPERATOR_CATEGORY,
+  EVOLUTION_CSV_HEADER,
+  formatEvolutionCsv,
+  generateDataset,
+  INPUT_COUNT,
+  OUTPUT_COUNT,
   runAdaptiveMutationDemo,
-  runSingleEvolution,
   topologyProbability,
+  writeBinaryDataset,
 } from "./adaptive_mutation.ts";
 import {
-  PANEL_CLASS,
+  FITNESS_CURVE_CLASS,
+  NEURON_CURVE_CLASS,
   renderAdaptiveMutationSVG,
+  renderFitnessChartSvg,
+  renderTopologyChartSvg,
+  SIZE_CURVE_CLASS,
+  SYNAPSE_CURVE_CLASS,
   TOPOLOGY_CURVE_CLASS,
-  WEIGHT_CURVE_CLASS,
 } from "./svg.ts";
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
+
+/**
+ * Small config used throughout the test suite — keeps each test fast
+ * while still allowing NEAT-AI evolveDir to run a handful of
+ * generations. `timeoutMinutes: 0` skips the FFI cleanup paths so the
+ * Deno test sanitiser stays clean.
+ */
+const SMALL_CONFIG: AdaptiveMutationConfig = {
+  seed: 86,
+  trainingSize: 16,
+  targetError: 0.0001,
+  timeoutMinutes: 0,
+  populationSize: 6,
+  maxIterations: 3,
+  mutationRate: 0.6,
+  mutationAmount: 3,
+};
 
 Deno.test("topologyProbability decreases monotonically as size grows", () => {
-  const sizes: CreatureSize[] = [
-    { hidden: 5, synapses: 8 },
-    { hidden: 50, synapses: 100 },
-    { hidden: 256, synapses: 10_000 },
-  ];
-  const probs = sizes.map((s) => topologyProbability(s));
+  const probs = [0, 13, 100, 10_256].map((s) => topologyProbability(s));
   for (const p of probs) {
     assertGreaterOrEqual(p, 0);
     assertLessOrEqual(p, DEFAULT_POLICY_CONFIG.baseTopologyProb);
   }
-  // Strictly decreasing — bigger creature → smaller topology share.
   assertGreater(probs[0], probs[1]);
   assertGreater(probs[1], probs[2]);
+  assertGreater(probs[2], probs[3]);
 });
 
 Deno.test("topologyProbability rejects invalid policy", () => {
-  assertThrows(() =>
-    topologyProbability(
-      { hidden: 1, synapses: 1 },
-      { ...DEFAULT_POLICY_CONFIG, baseTopologyProb: 0 },
-    )
-  );
-  assertThrows(() =>
-    topologyProbability(
-      { hidden: 1, synapses: 1 },
-      { ...DEFAULT_POLICY_CONFIG, sizeScale: 0 },
-    )
-  );
+  assertThrows(() => topologyProbability(10, { ...DEFAULT_POLICY_CONFIG, baseTopologyProb: 0 }));
+  assertThrows(() => topologyProbability(10, { ...DEFAULT_POLICY_CONFIG, sizeScale: 0 }));
 });
 
-Deno.test("chooseOperator returns operators consistent with the OPERATOR_CATEGORY map", () => {
-  const rng = createDeterministicRandom(123);
-  const size: CreatureSize = { hidden: 5, synapses: 8 };
-  for (let i = 0; i < 200; i++) {
-    const op = chooseOperator(size, rng);
-    assert(op in OPERATOR_CATEGORY, `unknown operator ${op}`);
+Deno.test("topologyProbability rejects negative or non-finite size", () => {
+  assertThrows(() => topologyProbability(-1));
+  assertThrows(() => topologyProbability(Number.NaN));
+  assertThrows(() => topologyProbability(Number.POSITIVE_INFINITY));
+});
+
+Deno.test("topologyProbability matches the documented closed form", () => {
+  const policy = { baseTopologyProb: 0.6, sizeScale: 80 };
+  // size 0 → baseTopologyProb.
+  assertAlmostEquals(topologyProbability(0, policy), 0.6, 1e-12);
+  // size 80 → half of base.
+  assertAlmostEquals(topologyProbability(80, policy), 0.3, 1e-12);
+  // size 240 → quarter of base.
+  assertAlmostEquals(topologyProbability(240, policy), 0.15, 1e-12);
+});
+
+Deno.test("buildTargetNetwork - returns a creature with the correct I/O shape", () => {
+  const target = buildTargetNetwork(SMALL_CONFIG.seed);
+  assertEquals(target.input, INPUT_COUNT);
+  assertEquals(target.output, OUTPUT_COUNT);
+  assertGreater(target.synapses.length, 0);
+});
+
+Deno.test("generateDataset - is deterministic for a given seed", () => {
+  const target = buildTargetNetwork(SMALL_CONFIG.seed);
+  const a = generateDataset(target, 8, 99);
+  const b = generateDataset(target, 8, 99);
+  for (let i = 0; i < a.length; i++) {
+    assertEquals(Array.from(a[i].inputs), Array.from(b[i].inputs));
+    assertEquals(Array.from(a[i].targets), Array.from(b[i].targets));
   }
 });
 
-Deno.test("chooseOperator on a tiny creature is biased toward topology operators", () => {
-  const rng = createDeterministicRandom(42);
-  const size: CreatureSize = { hidden: 5, synapses: 8 };
-  let topology = 0;
-  let weight = 0;
-  for (let i = 0; i < 1000; i++) {
-    // Use a fresh size each iteration so the operator does not actually
-    // mutate the size in the loop — we only want to sample the policy.
-    const op = chooseOperator({ ...size }, rng);
-    if (OPERATOR_CATEGORY[op] === "topology") topology++;
-    else weight++;
-  }
-  // For size = 13 and default policy: p(topology) ≈ 0.6 / (1 + 13/80)
-  // ≈ 0.516. Allow generous tolerance for sampling noise.
-  const share = topology / (topology + weight);
-  assertGreater(share, 0.4);
+Deno.test("generateDataset - rejects non-positive size", () => {
+  const target = buildTargetNetwork(SMALL_CONFIG.seed);
+  assertThrows(() => generateDataset(target, 0, 1), Error, "size must be positive");
 });
 
-Deno.test("chooseOperator on a huge creature is biased toward weight operators", () => {
-  const rng = createDeterministicRandom(7);
-  const size: CreatureSize = { hidden: 256, synapses: 10_000 };
-  let topology = 0;
-  let weight = 0;
-  for (let i = 0; i < 1000; i++) {
-    const op = chooseOperator({ ...size }, rng);
-    if (OPERATOR_CATEGORY[op] === "topology") topology++;
-    else weight++;
-  }
-  const share = topology / (topology + weight);
-  // For size ≈ 10256 the topology probability is < 0.01 — anything
-  // approaching 0.1 would mean the policy is broken.
-  assertGreaterOrEqual(0.1, share);
-});
-
-Deno.test("applyOperator keeps creature sizes non-negative", () => {
-  const size: CreatureSize = { hidden: 1, synapses: 1 };
-  // remove_neuron must refuse to drop below 1 hidden.
-  applyOperator(size, "remove_neuron");
-  assertEquals(size.hidden, 1);
-  // remove_synapse must refuse to drop below 1 synapse.
-  applyOperator(size, "remove_synapse");
-  assertEquals(size.synapses, 1);
-});
-
-Deno.test("applyOperator add_neuron grows hidden by 1 and synapses by 1", () => {
-  const size: CreatureSize = { hidden: 5, synapses: 12 };
-  applyOperator(size, "add_neuron");
-  assertEquals(size.hidden, 6);
-  assertEquals(size.synapses, 13);
-});
-
-Deno.test("applyOperator add_synapse grows synapses by 1 only", () => {
-  const size: CreatureSize = { hidden: 5, synapses: 12 };
-  applyOperator(size, "add_synapse");
-  assertEquals(size.hidden, 5);
-  assertEquals(size.synapses, 13);
-});
-
-Deno.test("applyOperator weight/bias operators do not change size", () => {
-  const size: CreatureSize = { hidden: 5, synapses: 12 };
-  applyOperator(size, "mod_weight");
-  assertEquals(size, { hidden: 5, synapses: 12 });
-  applyOperator(size, "mod_bias");
-  assertEquals(size, { hidden: 5, synapses: 12 });
-});
-
-Deno.test("buildInitialPopulation returns the requested number of creatures", () => {
-  const pop = buildInitialPopulation(DEFAULT_ADAPTIVE_MUTATION_CONFIG.small, 5);
-  assertEquals(pop.length, 5);
-  for (const c of pop) {
-    assertEquals(c.hidden, DEFAULT_ADAPTIVE_MUTATION_CONFIG.small.initialHidden);
-    assertGreater(c.synapses, 0);
+Deno.test("writeBinaryDataset - emits a Float32 .bin of the expected size", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "adaptive_mutation_test_" });
+  try {
+    const target = buildTargetNetwork(SMALL_CONFIG.seed);
+    const ds = generateDataset(target, 4, 1);
+    const path = writeBinaryDataset(ds, tmp);
+    const stat = await Deno.stat(path);
+    const expectedBytes = ds.length * (INPUT_COUNT + OUTPUT_COUNT) * 4;
+    assertEquals(stat.size, expectedBytes);
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
   }
 });
 
-Deno.test("buildInitialPopulation rejects non-positive populationSize", () => {
-  assertThrows(() => buildInitialPopulation(DEFAULT_ADAPTIVE_MUTATION_CONFIG.small, 0));
+Deno.test("creatureHeldOutScore - returns a finite non-positive value", () => {
+  const target = buildTargetNetwork(SMALL_CONFIG.seed);
+  const ds = generateDataset(target, 8, 7);
+  const score = creatureHeldOutScore(target, ds);
+  assert(Number.isFinite(score), `held-out score not finite: ${score}`);
+  assertLessOrEqual(score, 0);
 });
 
-Deno.test("runSingleEvolution records exactly `generations` GenerationRecords", () => {
-  const rng = createDeterministicRandom(1);
-  const result = runSingleEvolution(
-    DEFAULT_ADAPTIVE_MUTATION_CONFIG.small,
-    25,
-    3,
-    4,
-    DEFAULT_POLICY_CONFIG,
-    rng,
-  );
-  assertEquals(result.records.length, 25);
-  for (let g = 0; g < 25; g++) {
-    assertEquals(result.records[g].generation, g);
-    // topologyRate + weightRate must equal 1 (within float tolerance).
-    assertAlmostEquals(
-      result.records[g].topologyRate + result.records[g].weightRate,
-      1,
-      1e-9,
-    );
-    assertGreaterOrEqual(result.records[g].topologyRate, 0);
-    assertLessOrEqual(result.records[g].topologyRate, 1);
-    // The total mutations recorded must equal mutationsPerGeneration *
-    // populationSize.
-    assertEquals(
-      result.records[g].topologyMutations + result.records[g].weightMutations,
-      3 * 4,
-    );
+Deno.test("creatureHeldOutScore - empty dataset returns 0", () => {
+  const target = buildTargetNetwork(SMALL_CONFIG.seed);
+  assertEquals(creatureHeldOutScore(target, []), 0);
+});
+
+Deno.test("runAdaptiveMutationDemo - rejects invalid configs", async () => {
+  await assertRejects(() => runAdaptiveMutationDemo({ ...SMALL_CONFIG, trainingSize: 0 }));
+  await assertRejects(() => runAdaptiveMutationDemo({ ...SMALL_CONFIG, maxIterations: 0 }));
+  await assertRejects(() => runAdaptiveMutationDemo({ ...SMALL_CONFIG, populationSize: 0 }));
+  await assertRejects(() => runAdaptiveMutationDemo({ ...SMALL_CONFIG, timeoutMinutes: -1 }));
+});
+
+Deno.test("runAdaptiveMutationDemo - emits per-generation telemetry rows", async () => {
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
+  assertGreater(result.evolutionRows.length, 0);
+  for (const row of result.evolutionRows) {
+    assertGreaterOrEqual(row.generation, 0);
+    assertGreaterOrEqual(row.neuronCount, INPUT_COUNT + OUTPUT_COUNT);
+    assertGreaterOrEqual(row.synapseCount, 0);
+    assert(Number.isFinite(row.bestFitness), "bestFitness must be finite");
   }
 });
 
-Deno.test("runSingleEvolution rejects invalid args", () => {
-  const rng = createDeterministicRandom(1);
-  assertThrows(() =>
-    runSingleEvolution(
-      DEFAULT_ADAPTIVE_MUTATION_CONFIG.small,
-      0,
-      3,
-      4,
-      DEFAULT_POLICY_CONFIG,
-      rng,
-    )
-  );
-  assertThrows(() =>
-    runSingleEvolution(
-      DEFAULT_ADAPTIVE_MUTATION_CONFIG.small,
-      5,
-      0,
-      4,
-      DEFAULT_POLICY_CONFIG,
-      rng,
-    )
-  );
+Deno.test("runAdaptiveMutationDemo - champion has the correct I/O shape", async () => {
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
+  assertEquals(result.champion.input, INPUT_COUNT);
+  assertEquals(result.champion.output, OUTPUT_COUNT);
+  // The minimal seed has neurons.length = INPUT_COUNT + OUTPUT_COUNT.
+  // After evolveDir runs at least one generation with mutationRate 0.6
+  // we expect at least the seed shape.
+  assertGreaterOrEqual(result.champion.neurons.length, INPUT_COUNT + OUTPUT_COUNT);
 });
 
-Deno.test("meanTopologyShare averages the per-generation topology rates", () => {
-  const records = [
-    {
-      generation: 0,
-      meanSize: 0,
-      topologyMutations: 0,
-      weightMutations: 0,
-      topologyRate: 1,
-      weightRate: 0,
-    },
+Deno.test("runAdaptiveMutationDemo - reports finite held-out score and wall-clock", async () => {
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
+  assert(Number.isFinite(result.heldOutScore));
+  assertGreaterOrEqual(result.wallClockMs, 0);
+  assertGreaterOrEqual(result.generations, 0);
+});
+
+Deno.test("formatEvolutionCsv - emits canonical header and one row per generation", () => {
+  const csv = formatEvolutionCsv([
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 6, synapseCount: 8 },
+    { generation: 2, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 7, synapseCount: 10 },
+  ]);
+  const lines = csv.trim().split("\n");
+  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+  assertEquals(lines.length, 3);
+  assertStringIncludes(lines[1], "1,0.5,0.4,6,8");
+  assertStringIncludes(lines[2], "2,0.7,0.6,7,10");
+});
+
+Deno.test("formatEvolutionCsv - handles non-finite numbers by writing 0", () => {
+  const csv = formatEvolutionCsv([
     {
       generation: 1,
-      meanSize: 0,
-      topologyMutations: 0,
-      weightMutations: 0,
-      topologyRate: 0.5,
-      weightRate: 0.5,
+      bestFitness: Number.NaN,
+      meanFitness: Number.POSITIVE_INFINITY,
+      neuronCount: 6,
+      synapseCount: 8,
     },
-    {
-      generation: 2,
-      meanSize: 0,
-      topologyMutations: 0,
-      weightMutations: 0,
-      topologyRate: 0,
-      weightRate: 1,
-    },
+  ]);
+  assertStringIncludes(csv, "1,0,0,6,8");
+});
+
+Deno.test("renderFitnessChartSvg - well-formed SVG with the fitness CSS class", () => {
+  const svg = renderFitnessChartSvg([
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 6, synapseCount: 8 },
+    { generation: 2, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 7, synapseCount: 10 },
+  ]);
+  assert(svg.startsWith("<svg"));
+  assert(svg.includes("</svg>"));
+  assertStringIncludes(svg, FITNESS_CURVE_CLASS);
+});
+
+Deno.test("renderFitnessChartSvg - rejects empty rows", () => {
+  assertThrows(() => renderFitnessChartSvg([]), Error, "at least one row");
+});
+
+Deno.test("renderTopologyChartSvg - well-formed SVG with the topology CSS classes", () => {
+  const svg = renderTopologyChartSvg([
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 6, synapseCount: 8 },
+    { generation: 2, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 7, synapseCount: 10 },
+  ]);
+  assert(svg.startsWith("<svg"));
+  assertStringIncludes(svg, NEURON_CURVE_CLASS);
+  assertStringIncludes(svg, SYNAPSE_CURVE_CLASS);
+});
+
+Deno.test("renderTopologyChartSvg - rejects empty rows", () => {
+  assertThrows(() => renderTopologyChartSvg([]), Error, "at least one row");
+});
+
+Deno.test("renderAdaptiveMutationSVG - well-formed SVG with both panel curves", () => {
+  const rows = [
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 6, synapseCount: 8 },
+    { generation: 5, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 8, synapseCount: 14 },
+    { generation: 10, bestFitness: 0.9, meanFitness: 0.85, neuronCount: 11, synapseCount: 22 },
   ];
-  assertAlmostEquals(meanTopologyShare(records), 0.5, 1e-9);
-  assertEquals(meanTopologyShare([]), 0);
-});
-
-Deno.test("runAdaptiveMutationDemo: small topology share strictly exceeds large share", () => {
-  const result = runAdaptiveMutationDemo(DEFAULT_ADAPTIVE_MUTATION_CONFIG);
-  // The acceptance criterion from issue #86: topology share is lower
-  // in the large-creature run than in the small-creature run.
-  assertGreater(
-    result.smallTopologyShareMean,
-    result.largeTopologyShareMean,
-    `small topology share (${result.smallTopologyShareMean.toFixed(4)}) must exceed ` +
-      `large topology share (${result.largeTopologyShareMean.toFixed(4)})`,
-  );
-  // The small run should still spend a meaningful fraction on topology.
-  assertGreater(result.smallTopologyShareMean, 0.2);
-  // The large run should be essentially all weight/bias.
-  assertGreaterOrEqual(0.05, result.largeTopologyShareMean);
-});
-
-Deno.test("runAdaptiveMutationDemo produces matched-length records for both runs", () => {
-  const result = runAdaptiveMutationDemo({
-    ...DEFAULT_ADAPTIVE_MUTATION_CONFIG,
-    generations: 20,
-  });
-  assertEquals(result.small.records.length, 20);
-  assertEquals(result.large.records.length, 20);
-  // Numeric arrays — verify every entry is a finite number in [0, 1].
-  for (let g = 0; g < 20; g++) {
-    for (const run of [result.small, result.large]) {
-      const r = run.records[g];
-      assert(Number.isFinite(r.topologyRate));
-      assert(Number.isFinite(r.weightRate));
-      assert(Number.isFinite(r.meanSize));
-      assertGreaterOrEqual(r.topologyRate, 0);
-      assertLessOrEqual(r.topologyRate, 1);
-      assertGreaterOrEqual(r.weightRate, 0);
-      assertLessOrEqual(r.weightRate, 1);
-    }
-  }
-});
-
-Deno.test("runAdaptiveMutationDemo is deterministic for the same config", () => {
-  const a = runAdaptiveMutationDemo(DEFAULT_ADAPTIVE_MUTATION_CONFIG);
-  const b = runAdaptiveMutationDemo(DEFAULT_ADAPTIVE_MUTATION_CONFIG);
-  assertEquals(a.smallTopologyShareMean, b.smallTopologyShareMean);
-  assertEquals(a.largeTopologyShareMean, b.largeTopologyShareMean);
-  for (let g = 0; g < a.small.records.length; g++) {
-    assertEquals(a.small.records[g].topologyRate, b.small.records[g].topologyRate);
-    assertEquals(a.large.records[g].topologyRate, b.large.records[g].topologyRate);
-  }
-});
-
-Deno.test("runAdaptiveMutationDemo rejects invalid configs", () => {
-  assertThrows(() =>
-    runAdaptiveMutationDemo({ ...DEFAULT_ADAPTIVE_MUTATION_CONFIG, generations: 0 })
-  );
-  assertThrows(() =>
-    runAdaptiveMutationDemo({ ...DEFAULT_ADAPTIVE_MUTATION_CONFIG, populationSize: 0 })
-  );
-});
-
-Deno.test("renderAdaptiveMutationSVG produces a well-formed SVG with both panels", () => {
-  const result = runAdaptiveMutationDemo({
-    ...DEFAULT_ADAPTIVE_MUTATION_CONFIG,
-    generations: 16,
-  });
   const svg = renderAdaptiveMutationSVG({
-    small: result.small,
-    large: result.large,
-  });
-  assert(svg.startsWith("<svg"), "must start with <svg>");
-  assert(svg.includes("</svg>"), "must contain </svg>");
-  assert(svg.includes(TOPOLOGY_CURVE_CLASS), "must include topology curve class");
-  assert(svg.includes(WEIGHT_CURVE_CLASS), "must include weight curve class");
-  assert(svg.includes(PANEL_CLASS), "must include the panel class");
-
-  // Expect 4 polylines: small {topology, weight} + large {topology, weight}.
-  const polylines = svg.match(/<polyline /g) ?? [];
-  assertGreaterOrEqual(polylines.length, 4);
-
-  // Width / height must be positive integers.
-  const widthMatch = svg.match(/width="(\d+)"/);
-  const heightMatch = svg.match(/height="(\d+)"/);
-  assert(widthMatch);
-  assert(heightMatch);
-  assertGreater(Number.parseInt(widthMatch![1], 10), 0);
-  assertGreater(Number.parseInt(heightMatch![1], 10), 0);
-});
-
-Deno.test("renderAdaptiveMutationSVG rejects empty record arrays", () => {
-  const empty = {
-    label: "x",
-    records: [],
-    initialSize: { hidden: 0, synapses: 0 },
-    finalMeanSize: { hidden: 0, synapses: 0 },
-  };
-  assertThrows(() => renderAdaptiveMutationSVG({ small: empty, large: empty }));
-});
-
-Deno.test("renderAdaptiveMutationSVG rejects mismatched record lengths", () => {
-  const result = runAdaptiveMutationDemo({
-    ...DEFAULT_ADAPTIVE_MUTATION_CONFIG,
+    rows,
+    heldOutScore: -0.05,
+    wallClockMs: 4321,
     generations: 10,
+    solved: true,
   });
-  const trimmed = {
-    ...result.large,
-    records: result.large.records.slice(0, 5),
-  };
-  assertThrows(() => renderAdaptiveMutationSVG({ small: result.small, large: trimmed }));
+  assert(svg.startsWith("<svg"));
+  assertStringIncludes(svg, SIZE_CURVE_CLASS);
+  assertStringIncludes(svg, TOPOLOGY_CURVE_CLASS);
+  // Caption quotes the measured numbers from the latest run.
+  assertStringIncludes(svg, "Generations: 10");
+  assertStringIncludes(svg, "Held-out -MSE: -0.0500");
+});
+
+Deno.test("renderAdaptiveMutationSVG - rejects empty rows", () => {
+  assertThrows(() =>
+    renderAdaptiveMutationSVG({
+      rows: [],
+      heldOutScore: 0,
+      wallClockMs: 0,
+      generations: 0,
+      solved: false,
+    })
+  );
+});
+
+Deno.test("DEFAULT_ADAPTIVE_MUTATION_CONFIG - has audit-policy stop conditions", () => {
+  assertEquals(DEFAULT_ADAPTIVE_MUTATION_CONFIG.timeoutMinutes, 5);
+  assertGreater(DEFAULT_ADAPTIVE_MUTATION_CONFIG.targetError, 0);
+  assertLessOrEqual(DEFAULT_ADAPTIVE_MUTATION_CONFIG.targetError, 0.1);
+  assertGreater(DEFAULT_ADAPTIVE_MUTATION_CONFIG.populationSize, 1);
+  assertGreater(DEFAULT_ADAPTIVE_MUTATION_CONFIG.maxIterations, 0);
 });

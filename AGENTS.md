@@ -81,7 +81,10 @@ entire point of the demo, so the no-warm-start policy does not apply:
 - `memetic_evolution` — re-seeds the population from an archive of fittest creatures.
 - `mcmc_acceptance` — pure Metropolis-Hastings sampler, not an evolution demo.
 - `synthetic_synapse` — densify-train-prune on an evolved sparse creature.
-- `adaptive_mutation` — visualises the mutation operator distribution on a pre-built creature.
+- `adaptive_mutation` — demonstrates NEAT-AI's adaptive mutation policy via measured topology growth
+  from a minimal seed (audited under #212); the example is listed here because its narrative is
+  policy demonstration rather than the noise → competent classification arc, even though gen 1 is
+  initialised from `new Creature(input, output)`.
 - `evolution_showcase` — long-form flagship run (still seeded minimally; see its README).
 
 ### Enforcement
