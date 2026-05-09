@@ -33,6 +33,9 @@ summarises the run (final score, total generations, wall-clock time).
 
 ## Running it
 
+> ⚡ **Speed note:** this example writes its training data in NEAT-AI's binary format — see
+> [`docs/binary_training_stream.md`](../docs/binary_training_stream.md).
+
 This is the **only** example in the repository that is not wired into `quality.sh`. Run it manually
 when you want the full result:
 

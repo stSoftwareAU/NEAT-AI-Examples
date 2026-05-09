@@ -70,6 +70,9 @@ make a structural splice well-defined and reversible:
 
 ## 🚀 Running the Example
 
+> ⚡ **Speed note:** this example writes its training data in NEAT-AI's binary format — see
+> [`docs/binary_training_stream.md`](../docs/binary_training_stream.md).
+
 ```bash
 ./crispr_injection/run.sh
 ```
