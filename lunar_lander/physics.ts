@@ -152,19 +152,65 @@ export function initialState(
 }
 
 /**
- * Sample a perturbed starting state. Used to evaluate a controller
- * across a fixed batch of varied initial conditions so robustness — not
- * a single lucky launch — drives selection. Each component is sampled
- * around the canonical {@link initialState} centre using independent
- * uniform draws scaled by `magnitude`:
+ * Per-component sampling ranges used by {@link perturbedInitialState}
+ * and {@link perturbedScenario} at `magnitude=1`. Ranges are chosen so
+ * every drawn scenario is recoverable by an ideal controller — the
+ * lander always starts above the ground, inside world bounds, with
+ * enough altitude and fuel to react.
  *
- *   - `x` ± 5·m metres of horizontal offset
- *   - `y` ± 5·m metres of altitude
- *   - `vx`, `vy` ± 0.5·m m/s
- *   - `angle` ± 0.05·m radians (≈ ±2.9° at `m=1`)
+ * Issue #195: ranges were widened so a champion cannot win by
+ * memorising a single trajectory. Each value is the symmetric half-
+ * range (i.e. the sampled offset is uniform on `[-r, +r]`).
+ */
+export const WIDE_RANGES = {
+  /** Horizontal offset around {@link DEFAULT_START_X} (metres). */
+  x: 25,
+  /** Altitude offset around {@link DEFAULT_START_ALTITUDE} (metres). */
+  y: 20,
+  /** Horizontal-velocity offset around {@link DEFAULT_START_VX} (m/s). */
+  vx: 3,
+  /** Vertical-velocity offset around 0 (m/s). */
+  vy: 2,
+  /** Tilt offset around 0 (radians; ≈ ±14° at `m=1`). */
+  angle: 0.25,
+  /** Fuel offset around {@link DEFAULT_START_FUEL}. */
+  fuel: 20,
+  /** Pad-centre horizontal offset around 0 (metres). */
+  padX: 20,
+} as const;
+
+/** A complete starting condition: lander state plus its terrain. */
+export interface LanderScenario {
+  /** Starting state of the lander. */
+  state: LanderState;
+  /** Terrain the lander operates within (notably `padX`). */
+  terrain: LanderTerrain;
+}
+
+/**
+ * Sample a perturbed starting state from the wider scenario
+ * distribution. Used to evaluate a controller across a batch of varied
+ * initial conditions so robustness — not a single lucky launch — drives
+ * selection. Each component is sampled around the canonical
+ * {@link initialState} centre using independent uniform draws scaled by
+ * `magnitude`. The per-component half-ranges at `magnitude=1` come from
+ * {@link WIDE_RANGES}:
  *
- * Fuel and angular velocity are held fixed so every trial in a batch
- * starts with the same propellant budget.
+ *   - `x` ± `WIDE_RANGES.x * m` metres around `DEFAULT_START_X`
+ *   - `y` ± `WIDE_RANGES.y * m` metres around `DEFAULT_START_ALTITUDE`
+ *   - `vx` ± `WIDE_RANGES.vx * m` m/s around `DEFAULT_START_VX`
+ *   - `vy` ± `WIDE_RANGES.vy * m` m/s around 0
+ *   - `angle` ± `WIDE_RANGES.angle * m` radians around 0
+ *   - `fuel` ± `WIDE_RANGES.fuel * m` units around `DEFAULT_START_FUEL`
+ *
+ * Issue #195: the legacy distribution was much narrower (≈ ±5 m, ±0.5
+ * m/s, ±0.05 rad, fuel fixed). Widening forces the controller to learn
+ * a real recovery policy rather than memorise one trajectory. Note
+ * that `padX` does **not** vary here — use {@link perturbedScenario}
+ * if pad-centre variation is also required.
+ *
+ * The angular velocity is held fixed at 0 so every trial starts
+ * spinning-free.
  *
  * @param random Deterministic PRNG returning values in `[0, 1)`.
  * @param magnitude Scaling factor for the per-component perturbation.
@@ -175,14 +221,50 @@ export function perturbedInitialState(
 ): LanderState {
   const sample = (range: number) => (random() * 2 - 1) * range;
   return {
-    x: DEFAULT_START_X + sample(5 * magnitude),
-    y: DEFAULT_START_ALTITUDE + sample(5 * magnitude),
-    vx: DEFAULT_START_VX + sample(0.5 * magnitude),
-    vy: sample(0.5 * magnitude),
-    angle: sample(0.05 * magnitude),
+    x: DEFAULT_START_X + sample(WIDE_RANGES.x * magnitude),
+    y: DEFAULT_START_ALTITUDE + sample(WIDE_RANGES.y * magnitude),
+    vx: DEFAULT_START_VX + sample(WIDE_RANGES.vx * magnitude),
+    vy: sample(WIDE_RANGES.vy * magnitude),
+    angle: sample(WIDE_RANGES.angle * magnitude),
     angularV: 0,
-    fuel: DEFAULT_START_FUEL,
+    fuel: DEFAULT_START_FUEL + sample(WIDE_RANGES.fuel * magnitude),
   };
+}
+
+/**
+ * Sample a perturbed scenario — both starting state and terrain. The
+ * state components are drawn exactly as in {@link perturbedInitialState};
+ * additionally, the pad's horizontal centre `padX` is sampled uniformly
+ * on `[-WIDE_RANGES.padX * m, +WIDE_RANGES.padX * m]` while the rest of
+ * the terrain (ground level, pad half-width, world half-width) stays at
+ * {@link DEFAULT_TERRAIN}.
+ *
+ * Every drawn scenario classifies as `flying` at `t=0`: the altitude
+ * offset is bounded so `y > groundY`, and the horizontal offset plus
+ * `DEFAULT_START_X` keep `|x| < worldHalfWidth`.
+ *
+ * @param random Deterministic PRNG returning values in `[0, 1)`.
+ * @param magnitude Scaling factor for the per-component perturbation.
+ */
+export function perturbedScenario(
+  random: () => number,
+  magnitude: number = 1.0,
+): LanderScenario {
+  const sample = (range: number) => (random() * 2 - 1) * range;
+  const state: LanderState = {
+    x: DEFAULT_START_X + sample(WIDE_RANGES.x * magnitude),
+    y: DEFAULT_START_ALTITUDE + sample(WIDE_RANGES.y * magnitude),
+    vx: DEFAULT_START_VX + sample(WIDE_RANGES.vx * magnitude),
+    vy: sample(WIDE_RANGES.vy * magnitude),
+    angle: sample(WIDE_RANGES.angle * magnitude),
+    angularV: 0,
+    fuel: DEFAULT_START_FUEL + sample(WIDE_RANGES.fuel * magnitude),
+  };
+  const terrain: LanderTerrain = {
+    ...DEFAULT_TERRAIN,
+    padX: sample(WIDE_RANGES.padX * magnitude),
+  };
+  return { state, terrain };
 }
 
 /**

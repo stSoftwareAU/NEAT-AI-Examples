@@ -22,10 +22,12 @@ import {
   type LanderState,
   NO_ACTION,
   perturbedInitialState,
+  perturbedScenario,
   SAFE_LANDING_ANGLE,
   SAFE_LANDING_VX_MAGNITUDE,
   SAFE_LANDING_VY_MAGNITUDE,
   step,
+  WIDE_RANGES,
 } from "./physics.ts";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -285,26 +287,59 @@ Deno.test("encodeState produces a 7-element Float32Array of [x, y, vx, vy, angle
   assertAlmostEquals(arr[6], 99, 1e-6);
 });
 
-Deno.test("perturbedInitialState centres on initialState", () => {
-  // Perturbations should be small relative to the canonical entry — at
-  // magnitude=1 the altitude varies by at most 5 m, vx by 0.5 m/s, and
-  // the angle by ~0.05 rad. Fuel and angularV are held fixed.
+Deno.test("perturbedInitialState centres on initialState within the widened ranges", () => {
+  // Issue #195: the perturbed-start distribution was widened so a
+  // champion cannot win by memorising a single trajectory. At
+  // magnitude=1 the per-component half-ranges are taken from
+  // WIDE_RANGES (x±25 m, y±20 m, vx±3 m/s, vy±2 m/s, angle±0.25 rad,
+  // fuel±20). Angular velocity is still held fixed at 0.
   const random = createDeterministicRandom(11);
   for (let i = 0; i < 100; i++) {
     const s = perturbedInitialState(random, 1.0);
-    assert(Math.abs(s.x - DEFAULT_START_X) <= 5);
-    assert(Math.abs(s.y - DEFAULT_START_ALTITUDE) <= 5);
-    assert(Math.abs(s.vx - DEFAULT_START_VX) <= 0.5);
-    assert(Math.abs(s.vy) <= 0.5);
-    assert(Math.abs(s.angle) <= 0.05);
+    assert(Math.abs(s.x - DEFAULT_START_X) <= WIDE_RANGES.x);
+    assert(Math.abs(s.y - DEFAULT_START_ALTITUDE) <= WIDE_RANGES.y);
+    assert(Math.abs(s.vx - DEFAULT_START_VX) <= WIDE_RANGES.vx);
+    assert(Math.abs(s.vy) <= WIDE_RANGES.vy);
+    assert(Math.abs(s.angle) <= WIDE_RANGES.angle);
     assertEquals(s.angularV, 0);
-    assertEquals(s.fuel, DEFAULT_START_FUEL);
+    assert(Math.abs(s.fuel - DEFAULT_START_FUEL) <= WIDE_RANGES.fuel);
   }
 });
 
 Deno.test("perturbedInitialState is deterministic for the same seed", () => {
   const a = perturbedInitialState(createDeterministicRandom(7), 1.0);
   const b = perturbedInitialState(createDeterministicRandom(7), 1.0);
+  assertEquals(a, b);
+});
+
+Deno.test("perturbedScenario varies padX within WIDE_RANGES.padX", () => {
+  const random = createDeterministicRandom(23);
+  let minPadX = Infinity;
+  let maxPadX = -Infinity;
+  for (let i = 0; i < 200; i++) {
+    const { state, terrain } = perturbedScenario(random, 1.0);
+    assert(Math.abs(terrain.padX) <= WIDE_RANGES.padX);
+    minPadX = Math.min(minPadX, terrain.padX);
+    maxPadX = Math.max(maxPadX, terrain.padX);
+    // The state still respects the same per-component bounds as
+    // perturbedInitialState.
+    assert(Math.abs(state.x - DEFAULT_START_X) <= WIDE_RANGES.x);
+    assert(state.y > DEFAULT_TERRAIN.groundY, `should start above ground (y=${state.y})`);
+    assert(
+      Math.abs(state.x) < DEFAULT_TERRAIN.worldHalfWidth,
+      `should start inside world (x=${state.x})`,
+    );
+  }
+  // Smoke-check that padX is actually swept rather than near-constant.
+  assert(
+    maxPadX - minPadX > WIDE_RANGES.padX,
+    `padX did not span its range: [${minPadX}, ${maxPadX}]`,
+  );
+});
+
+Deno.test("perturbedScenario is deterministic for the same seed", () => {
+  const a = perturbedScenario(createDeterministicRandom(3), 1.0);
+  const b = perturbedScenario(createDeterministicRandom(3), 1.0);
   assertEquals(a, b);
 });
 
