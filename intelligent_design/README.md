@@ -68,3 +68,19 @@ In production workflows, successful squash substitutions are recorded as "tacit 
 mappings from neuron UUID to squash function. This knowledge can be shared across machines (via a
 "hive" file in a git repository) or kept local. When a model is loaded, tacit knowledge is applied
 to quickly reapply known-good squash substitutions without rescanning.
+
+## 🧰 NEAT-AI Features Used
+
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies.
+
+Intelligent Design systematically optimises activation functions on an existing creature.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Unique Activation Functions (IF, MAX, MIN)](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — explores NEAT-AI's extended activation set (including IF/MAX/MIN/SOFTSIGN/etc. beyond textbook
+  NEAT) and picks the best per neuron.
+- **[Fitness-Driven Squash Mutation](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — swaps activation functions guided by fitness rather than randomly — the core operator this
+  example demonstrates.

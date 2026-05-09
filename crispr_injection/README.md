@@ -84,3 +84,18 @@ git. You will find:
 - `output/crispr_injection.svg` – the rendered topology + fitness chart
 
 A copy of the chart is also written to `docs/screenshots/crispr_injection.svg` for the main README.
+
+## 🧰 NEAT-AI Features Used
+
+CRISPR injection is one of NEAT-AI's gene-level structural operators. This example splices a
+hand-crafted edit gene into a stalled population.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[CRISPR Gene Injection](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#5--crispr-gene-injection)**
+  — splices a hand-crafted gene (a small sub-network) into evolved descendants by neuron UUID — the
+  central technique this example demonstrates.
+- **[UUID-Based Extensible Observations](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#3--uuid-based-extensible-observations)**
+  — neuron UUIDs make the splice cleanly addressable across crossovers and mutations — without
+  UUIDs, gene injection would not survive evolution.

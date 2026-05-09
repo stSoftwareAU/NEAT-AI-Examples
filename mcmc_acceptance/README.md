@@ -110,3 +110,14 @@ is unimportant — the same acceptance dynamics apply to any target distribution
   schedule actually pulls the chain toward the target).
 - The same seed produces identical proposals (determinism).
 - The rendered SVG is well-formed and embeds the 23.4% target line.
+
+## 🧰 NEAT-AI Features Used
+
+This example is a pure Metropolis-Hastings sampler over candidate mutations — no evolution loop.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[MCMC Mutation Acceptance](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#9--mcmc-mutation-acceptance)**
+  — Metropolis-Hastings acceptance test on candidate mutations, tuned for the ~23.4% acceptance
+  ratio that minimises autocorrelation.

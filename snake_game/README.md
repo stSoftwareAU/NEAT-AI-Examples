@@ -187,3 +187,27 @@ A few things that are not obvious from the code alone:
   library's seeded RNG. With a fixed seed the same champion is produced on every run.
 - **Per-episode seed is shared.** Every creature in a generation faces the same initial state and
   the same food sequence (given equivalent decisions), so fitness comparisons are fair.
+
+## 🧰 NEAT-AI Features Used
+
+Snake is a streaming-observation agent demo evolved from noise, so the demonstrated capability is
+NEAT-AI's evolutionary topology search driven by an episode-rollout fitness signal.
+
+> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
+> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
+> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
+> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
+> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
+> production-pipeline notes in
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
+> wider feature set.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — structural mutation co-evolved with weights against the apple-eating fitness signal across
+  streamed `Creature.activate` calls.
+- **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — weight and bias mutation paired with selection pressure on the survival-and-score fitness
+  function.

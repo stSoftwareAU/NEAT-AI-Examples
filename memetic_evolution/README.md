@@ -127,3 +127,17 @@ recorded and rendered as green dashed vertical lines on the fitness chart.
   outperforms the control by a measurable margin (the SVG demonstrates the lift visually).
 - The rendered SVG is well-formed, embeds both curves as polylines, and includes the seeding-marker
   class so the markers are individually addressable for downstream styling.
+
+## 🧰 NEAT-AI Features Used
+
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies.
+
+Memetic Evolution re-seeds the population from an archive of fittest creatures so successful weight
+patterns are remembered across generations.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Memetic Evolution](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#1--memetic-evolution-hybrid-evolution--backpropagation)**
+  — memetic recall: the population is re-seeded from an archive of fittest creatures so good weight
+  patterns survive structural change.

@@ -118,3 +118,15 @@ under the 90-second budget while still illustrating the shift the library perfor
 - The whole run is byte-deterministic for the same config.
 - The rendered SVG is well-formed, embeds both panels, and references the topology / weight curve
   CSS classes.
+
+## 🧰 NEAT-AI Features Used
+
+This example visualises NEAT-AI's adaptive-mutation operator distribution against a pre-built
+creature.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Hyperparameter Self-Adaptation](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — captures the operator-share distribution as it auto-shifts (topology vs. weight ops), the
+  central feature this example exists to surface.

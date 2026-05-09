@@ -259,6 +259,58 @@ Deno.test("README.md retains the Quality Check section", () => {
 });
 
 /* ------------------------------------------------------------------ */
+/*  Per-example "NEAT-AI Features Used" callout (issue #187)           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every per-example README must include a "NEAT-AI Features Used" section
+ * that lists the upstream capabilities the example actually invokes, with
+ * at least one bullet linking to upstream COMPARISON.md so the reader can
+ * drill in. See issue #187.
+ */
+
+const FEATURES_USED_HEADING_RE = /^##\s+.*NEAT-AI Features Used/im;
+const UPSTREAM_COMPARISON_LINK_RE =
+  /https?:\/\/github\.com\/stSoftwareAU\/NEAT-AI\/(?:blob|tree)\/[^\s)]*COMPARISON\.md(?:#[^\s)]*)?/i;
+
+function sliceFeaturesSection(content: string): string {
+  const headingIdx = content.search(FEATURES_USED_HEADING_RE);
+  if (headingIdx < 0) return "";
+  // Skip past the heading line itself, then bound by the next "## " heading.
+  const afterHeading = content.slice(headingIdx);
+  const nextLineBreak = afterHeading.indexOf("\n");
+  const body = nextLineBreak >= 0 ? afterHeading.slice(nextLineBreak + 1) : "";
+  const nextHeadingIdx = body.search(/^##\s+/m);
+  return nextHeadingIdx >= 0 ? body.slice(0, nextHeadingIdx) : body;
+}
+
+for (const dir of EXAMPLE_DIRS) {
+  Deno.test(`${dir}/README.md has a "NEAT-AI Features Used" section`, () => {
+    const content = Deno.readTextFileSync(`${dir}/README.md`);
+    assertEquals(
+      FEATURES_USED_HEADING_RE.test(content),
+      true,
+      `${dir}/README.md should contain a "## … NEAT-AI Features Used" section so readers see at a glance which upstream capabilities the example exercises (issue #187).`,
+    );
+  });
+
+  Deno.test(`${dir}/README.md NEAT-AI Features Used section links to upstream COMPARISON.md`, () => {
+    const content = Deno.readTextFileSync(`${dir}/README.md`);
+    const section = sliceFeaturesSection(content);
+    assertEquals(
+      section.length > 0,
+      true,
+      `${dir}/README.md must contain the NEAT-AI Features Used heading before this assertion runs (issue #187).`,
+    );
+    assertEquals(
+      UPSTREAM_COMPARISON_LINK_RE.test(section),
+      true,
+      `${dir}/README.md NEAT-AI Features Used section must link to upstream COMPARISON.md at least once so the reader can drill into the cited capability (issue #187).`,
+    );
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /*  Unique Features Showcase section (issue #91)                       */
 /* ------------------------------------------------------------------ */
 

@@ -152,3 +152,26 @@ A few things that are not obvious from the code alone:
 > version of this demo started from a hand-fixed 2-2-1 topology and only mutated weights, so the
 > neuron and synapse counts never changed. This page (and the screenshots) reflects the rewrite that
 > replaced the hand-rolled loop with real NEAT structural mutation from a minimal random seed.
+
+## 🧰 NEAT-AI Features Used
+
+XOR is the canonical neuroevolution "Hello World" — evolution from noise against a tiny supervised
+target. The capability surfaced here is plain NEAT-AI evolutionary topology search.
+
+> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
+> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
+> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
+> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
+> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
+> production-pipeline notes in
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
+> wider feature set.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — structural mutation (add-neuron / add-synapse) is mandatory because XOR is not linearly
+  separable from the direct-only random seed.
+- **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — weight and bias mutation co-evolved with structure against the squared-error fitness signal.

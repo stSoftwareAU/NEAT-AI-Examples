@@ -145,3 +145,25 @@ A few things that are not obvious from the code alone:
   canonical `MountainCar-v0` benchmark, so behaviour matches the textbook reference. Despite that
   pedigree, the simulator is plain TypeScript so the project remains "Deno + JSR" with no extra
   runtime.
+
+## 🧰 NEAT-AI Features Used
+
+Mountain Car is an evolution-from-noise agent demo, so the demonstrated capability is NEAT-AI's
+evolutionary topology search driven by an episode-rollout fitness signal.
+
+> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
+> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
+> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
+> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
+> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
+> production-pipeline notes in
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
+> wider feature set.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — structural mutation co-evolved with weights against the energy-build-up fitness signal.
+- **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — weight and bias mutation paired with selection pressure on the per-episode reward.
