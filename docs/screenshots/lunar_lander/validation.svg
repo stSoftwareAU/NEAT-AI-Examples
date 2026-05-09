@@ -22,12 +22,12 @@
     <rect
       class="count-bar count-bar-landed"
       x="72.55"
-      y="257.63"
+      y="247.68"
       width="37.65"
-      height="2.37"
+      height="12.32"
       fill="#2ca02c"
     />
-    <text x="91.38" y="253.63" text-anchor="middle" font-weight="bold">2</text>
+    <text x="91.38" y="243.68" text-anchor="middle" font-weight="bold">10</text>
     <text x="91.38" y="276" text-anchor="middle">landed</text>
     <rect
       class="count-bar count-bar-crashed"
@@ -37,27 +37,27 @@
       height="190.91"
       fill="#d62728"
     />
-    <text x="154.13" y="65.09" text-anchor="middle" font-weight="bold">161</text>
+    <text x="154.13" y="65.09" text-anchor="middle" font-weight="bold">155</text>
     <text x="154.13" y="276" text-anchor="middle">crashed</text>
     <rect
       class="count-bar count-bar-out_of_bounds"
       x="198.05"
-      y="218.5"
+      y="220.59"
       width="37.65"
-      height="41.5"
+      height="39.41"
       fill="#7f7f7f"
     />
-    <text x="216.88" y="214.5" text-anchor="middle" font-weight="bold">35</text>
+    <text x="216.88" y="216.59" text-anchor="middle" font-weight="bold">32</text>
     <text x="216.88" y="276" text-anchor="middle">out_of_bounds</text>
     <rect
       class="count-bar count-bar-flying"
       x="260.8"
-      y="257.63"
+      y="256.3"
       width="37.65"
-      height="2.37"
+      height="3.7"
       fill="#1f77b4"
     />
-    <text x="279.63" y="253.63" text-anchor="middle" font-weight="bold">2</text>
+    <text x="279.63" y="252.3" text-anchor="middle" font-weight="bold">3</text>
     <text x="279.63" y="276" text-anchor="middle">flying</text>
     <text
       x="50"
@@ -118,7 +118,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 4: crashed (score=-292.823)</title>
+      <title>scenario 4: crashed (score=-264.183)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -128,7 +128,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 5: crashed (score=-484.42)</title>
+      <title>scenario 5: crashed (score=-1278.428)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -138,7 +138,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 6: crashed (score=-261.734)</title>
+      <title>scenario 6: crashed (score=-238.62)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -148,7 +148,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 7: crashed (score=-429.967)</title>
+      <title>scenario 7: crashed (score=-386.468)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -158,17 +158,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 8: crashed (score=-281.358)</title>
+      <title>scenario 8: crashed (score=-267.411)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-out_of_bounds"
+      class="scenario-cell scenario-cell-crashed"
       x="526.97"
       y="51.26"
       width="18.67"
       height="18.48"
-      fill="#7f7f7f"
+      fill="#d62728"
     >
-      <title>scenario 9: out_of_bounds (score=-1500)</title>
+      <title>scenario 9: crashed (score=-1148.397)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -178,7 +178,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 10: crashed (score=-894.87)</title>
+      <title>scenario 10: crashed (score=-1287.937)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -188,7 +188,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 11: crashed (score=-346.194)</title>
+      <title>scenario 11: crashed (score=-331.375)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -198,7 +198,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 12: crashed (score=-319.713)</title>
+      <title>scenario 12: crashed (score=-290.542)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -208,7 +208,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 13: crashed (score=-533.895)</title>
+      <title>scenario 13: crashed (score=-449.504)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -218,7 +218,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 14: crashed (score=-340.528)</title>
+      <title>scenario 14: crashed (score=-321.348)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -228,7 +228,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 15: crashed (score=-546.403)</title>
+      <title>scenario 15: crashed (score=-1256.468)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -238,7 +238,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 16: crashed (score=-576.907)</title>
+      <title>scenario 16: crashed (score=-543.496)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -248,17 +248,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 17: crashed (score=-506.53)</title>
+      <title>scenario 17: crashed (score=-470.558)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-out_of_bounds"
+      class="scenario-cell scenario-cell-crashed"
       x="717.69"
       y="51.26"
       width="18.67"
       height="18.48"
-      fill="#7f7f7f"
+      fill="#d62728"
     >
-      <title>scenario 18: out_of_bounds (score=-1500)</title>
+      <title>scenario 18: crashed (score=-284.918)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -268,7 +268,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 19: crashed (score=-271.77)</title>
+      <title>scenario 19: crashed (score=-258.977)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -278,7 +278,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 20: crashed (score=-461.476)</title>
+      <title>scenario 20: crashed (score=-452.278)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -288,7 +288,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 21: crashed (score=-428.854)</title>
+      <title>scenario 21: crashed (score=-421.127)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -298,7 +298,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 22: crashed (score=-734.455)</title>
+      <title>scenario 22: crashed (score=-642.091)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -308,7 +308,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 23: crashed (score=-355.998)</title>
+      <title>scenario 23: crashed (score=-335.082)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -318,7 +318,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 24: crashed (score=-333.508)</title>
+      <title>scenario 24: crashed (score=-310.16)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -328,7 +328,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 25: crashed (score=-541.354)</title>
+      <title>scenario 25: crashed (score=-507.375)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -338,7 +338,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 26: crashed (score=-546.168)</title>
+      <title>scenario 26: crashed (score=-538.135)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -348,7 +348,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 27: crashed (score=-470.217)</title>
+      <title>scenario 27: crashed (score=-399.179)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -358,7 +358,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 28: crashed (score=-360.139)</title>
+      <title>scenario 28: crashed (score=-362.18)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -368,7 +368,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 29: crashed (score=-258.587)</title>
+      <title>scenario 29: crashed (score=-258.31)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -378,7 +378,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 30: crashed (score=-402.29)</title>
+      <title>scenario 30: crashed (score=-385.606)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -388,7 +388,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 31: crashed (score=-678.848)</title>
+      <title>scenario 31: crashed (score=-627.57)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -398,17 +398,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 32: crashed (score=-605.991)</title>
+      <title>scenario 32: crashed (score=-567.256)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="590.55"
       y="72.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 33: crashed (score=-219.932)</title>
+      <title>scenario 33: landed (score=1323.791)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -418,7 +418,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 34: crashed (score=-421.956)</title>
+      <title>scenario 34: crashed (score=-360.335)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -438,7 +438,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 36: crashed (score=-411.396)</title>
+      <title>scenario 36: crashed (score=-400.116)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -458,7 +458,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 38: crashed (score=-607.289)</title>
+      <title>scenario 38: crashed (score=-1309.317)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -468,7 +468,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 39: crashed (score=-522.979)</title>
+      <title>scenario 39: crashed (score=-415.568)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -478,7 +478,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 40: crashed (score=-423.074)</title>
+      <title>scenario 40: crashed (score=-382.793)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -498,17 +498,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 42: crashed (score=-439.943)</title>
+      <title>scenario 42: crashed (score=-378.765)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-out_of_bounds"
+      class="scenario-cell scenario-cell-crashed"
       x="357.45"
       y="93.26"
       width="18.67"
       height="18.48"
-      fill="#7f7f7f"
+      fill="#d62728"
     >
-      <title>scenario 43: out_of_bounds (score=-1500)</title>
+      <title>scenario 43: crashed (score=-1208.437)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -518,7 +518,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 44: crashed (score=-413.713)</title>
+      <title>scenario 44: crashed (score=-412.902)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -528,7 +528,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 45: crashed (score=-283.59)</title>
+      <title>scenario 45: crashed (score=-272.283)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -538,7 +538,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 46: crashed (score=-598.773)</title>
+      <title>scenario 46: crashed (score=-515.842)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -548,7 +548,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 47: crashed (score=-770.856)</title>
+      <title>scenario 47: crashed (score=-626.844)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -558,7 +558,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 48: crashed (score=-299.697)</title>
+      <title>scenario 48: crashed (score=-299.066)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -568,7 +568,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 49: crashed (score=-323.535)</title>
+      <title>scenario 49: crashed (score=-1078.54)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -578,7 +578,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 50: crashed (score=-331.592)</title>
+      <title>scenario 50: crashed (score=-323.402)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -588,7 +588,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 51: crashed (score=-493.691)</title>
+      <title>scenario 51: crashed (score=-483.553)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -598,7 +598,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 52: crashed (score=-363.334)</title>
+      <title>scenario 52: crashed (score=-346.293)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -608,7 +608,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 53: crashed (score=-336.492)</title>
+      <title>scenario 53: crashed (score=-301.921)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -618,7 +618,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 54: crashed (score=-343.285)</title>
+      <title>scenario 54: crashed (score=-351.692)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -658,7 +658,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 58: crashed (score=-601.183)</title>
+      <title>scenario 58: crashed (score=-460.079)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -668,7 +668,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 59: crashed (score=-361.465)</title>
+      <title>scenario 59: crashed (score=-304.458)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -688,7 +688,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 61: crashed (score=-373.114)</title>
+      <title>scenario 61: crashed (score=-334.123)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -698,7 +698,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 62: crashed (score=-447.22)</title>
+      <title>scenario 62: crashed (score=-394.82)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -708,7 +708,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 63: crashed (score=-598.581)</title>
+      <title>scenario 63: crashed (score=-605.809)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -718,7 +718,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 64: crashed (score=-490.856)</title>
+      <title>scenario 64: crashed (score=-437.901)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -728,7 +728,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 65: crashed (score=-390.313)</title>
+      <title>scenario 65: crashed (score=-1133.445)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -748,7 +748,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 67: crashed (score=-265.684)</title>
+      <title>scenario 67: crashed (score=-244.064)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -758,7 +758,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 68: crashed (score=-517.663)</title>
+      <title>scenario 68: crashed (score=-485.333)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -768,7 +768,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 69: crashed (score=-269.783)</title>
+      <title>scenario 69: crashed (score=-260.073)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -788,7 +788,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 71: crashed (score=-633.686)</title>
+      <title>scenario 71: crashed (score=-536.673)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -798,7 +798,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 72: crashed (score=-852.083)</title>
+      <title>scenario 72: crashed (score=-666.689)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -808,7 +808,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 73: crashed (score=-655.223)</title>
+      <title>scenario 73: crashed (score=-476.8)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -828,7 +828,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 75: crashed (score=-275.497)</title>
+      <title>scenario 75: crashed (score=-292.694)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-landed"
@@ -838,7 +838,7 @@
       height="18.48"
       fill="#2ca02c"
     >
-      <title>scenario 76: landed (score=1419.622)</title>
+      <title>scenario 76: landed (score=1422.921)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -848,7 +848,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 77: crashed (score=-313.407)</title>
+      <title>scenario 77: crashed (score=-279.123)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -858,17 +858,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 78: crashed (score=-359.096)</title>
+      <title>scenario 78: crashed (score=-301.488)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="675.31"
       y="114.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 79: crashed (score=-275.693)</title>
+      <title>scenario 79: landed (score=1444.175)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -878,7 +878,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 80: crashed (score=-529.831)</title>
+      <title>scenario 80: crashed (score=-537.838)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -888,7 +888,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 81: crashed (score=-706.524)</title>
+      <title>scenario 81: crashed (score=-643.217)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -898,7 +898,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 82: crashed (score=-255.007)</title>
+      <title>scenario 82: crashed (score=-236.75)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -918,7 +918,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 84: crashed (score=-862.718)</title>
+      <title>scenario 84: crashed (score=-682.171)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -928,7 +928,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 85: crashed (score=-498.53)</title>
+      <title>scenario 85: crashed (score=-441.228)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -938,7 +938,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 86: crashed (score=-764.899)</title>
+      <title>scenario 86: crashed (score=-720.68)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -958,7 +958,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 88: crashed (score=-410.657)</title>
+      <title>scenario 88: crashed (score=-403.68)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -968,7 +968,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 89: crashed (score=-391.685)</title>
+      <title>scenario 89: crashed (score=-383.925)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -978,7 +978,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 90: crashed (score=-334.704)</title>
+      <title>scenario 90: crashed (score=-330.85)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -998,7 +998,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 92: crashed (score=-342.454)</title>
+      <title>scenario 92: crashed (score=-331.003)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1008,7 +1008,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 93: crashed (score=-589.442)</title>
+      <title>scenario 93: crashed (score=-460.386)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1018,7 +1018,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 94: crashed (score=-640.007)</title>
+      <title>scenario 94: crashed (score=-657.4)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1028,7 +1028,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 95: crashed (score=-337.751)</title>
+      <title>scenario 95: crashed (score=-288.941)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1038,7 +1038,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 96: crashed (score=-390.775)</title>
+      <title>scenario 96: crashed (score=-309.478)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1048,7 +1048,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 97: crashed (score=-593.135)</title>
+      <title>scenario 97: crashed (score=-453.241)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1068,7 +1068,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 99: crashed (score=-237.389)</title>
+      <title>scenario 99: crashed (score=-224.347)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1078,7 +1078,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 100: crashed (score=-382.086)</title>
+      <title>scenario 100: crashed (score=-989.746)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1088,7 +1088,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 101: crashed (score=-422.945)</title>
+      <title>scenario 101: crashed (score=-328.777)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1108,17 +1108,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 103: crashed (score=-538.697)</title>
+      <title>scenario 103: crashed (score=-1239.628)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-out_of_bounds"
+      class="scenario-cell scenario-cell-crashed"
       x="760.07"
       y="135.26"
       width="18.67"
       height="18.48"
-      fill="#7f7f7f"
+      fill="#d62728"
     >
-      <title>scenario 104: out_of_bounds (score=-1500)</title>
+      <title>scenario 104: crashed (score=-1298.191)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1128,7 +1128,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 105: crashed (score=-623.69)</title>
+      <title>scenario 105: crashed (score=-600.05)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1138,7 +1138,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 106: crashed (score=-798.368)</title>
+      <title>scenario 106: crashed (score=-703.468)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1148,7 +1148,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 107: crashed (score=-664.456)</title>
+      <title>scenario 107: crashed (score=-629.849)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1168,7 +1168,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 109: crashed (score=-311.886)</title>
+      <title>scenario 109: crashed (score=-297.978)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1178,7 +1178,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 110: crashed (score=-606.99)</title>
+      <title>scenario 110: crashed (score=-460.618)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1188,7 +1188,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 111: crashed (score=-537.298)</title>
+      <title>scenario 111: crashed (score=-1287.723)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1198,7 +1198,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 112: crashed (score=-394.249)</title>
+      <title>scenario 112: crashed (score=-355.976)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1208,17 +1208,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 113: crashed (score=-545.82)</title>
+      <title>scenario 113: crashed (score=-444.655)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-out_of_bounds"
       x="526.97"
       y="156.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#7f7f7f"
     >
-      <title>scenario 114: crashed (score=-746.973)</title>
+      <title>scenario 114: out_of_bounds (score=-1500)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1228,17 +1228,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 115: crashed (score=-311.719)</title>
+      <title>scenario 115: crashed (score=-278.998)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="569.36"
       y="156.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 116: crashed (score=-264.353)</title>
+      <title>scenario 116: landed (score=1417.555)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1248,7 +1248,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 117: crashed (score=-585.315)</title>
+      <title>scenario 117: crashed (score=-1253.918)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1258,7 +1258,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 118: crashed (score=-432.297)</title>
+      <title>scenario 118: crashed (score=-376.561)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-landed"
@@ -1268,7 +1268,7 @@
       height="18.48"
       fill="#2ca02c"
     >
-      <title>scenario 119: landed (score=1350.666)</title>
+      <title>scenario 119: landed (score=1351.851)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1278,7 +1278,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 120: crashed (score=-660.049)</title>
+      <title>scenario 120: crashed (score=-521.845)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1291,14 +1291,14 @@
       <title>scenario 121: out_of_bounds (score=-1500)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-flying"
       x="696.5"
       y="156.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#1f77b4"
     >
-      <title>scenario 122: crashed (score=-240.926)</title>
+      <title>scenario 122: flying (score=-61.669)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1308,7 +1308,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 123: crashed (score=-666.062)</title>
+      <title>scenario 123: crashed (score=-575.665)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1318,7 +1318,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 124: crashed (score=-402.187)</title>
+      <title>scenario 124: crashed (score=-342.209)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1328,7 +1328,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 125: crashed (score=-313.491)</title>
+      <title>scenario 125: crashed (score=-279.899)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1348,7 +1348,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 127: crashed (score=-371.459)</title>
+      <title>scenario 127: crashed (score=-333.566)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1358,7 +1358,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 128: crashed (score=-309.459)</title>
+      <title>scenario 128: crashed (score=-1212.348)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1378,7 +1378,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 130: crashed (score=-298.147)</title>
+      <title>scenario 130: crashed (score=-279.64)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1388,7 +1388,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 131: crashed (score=-304.851)</title>
+      <title>scenario 131: crashed (score=-296.254)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1398,7 +1398,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 132: crashed (score=-331.32)</title>
+      <title>scenario 132: crashed (score=-1083.436)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1408,7 +1408,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 133: crashed (score=-616.029)</title>
+      <title>scenario 133: crashed (score=-548.94)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1418,17 +1418,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 134: crashed (score=-525.075)</title>
+      <title>scenario 134: crashed (score=-503.143)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="526.97"
       y="177.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 135: crashed (score=-256.78)</title>
+      <title>scenario 135: landed (score=1441.002)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1448,17 +1448,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 137: crashed (score=-318.447)</title>
+      <title>scenario 137: crashed (score=-284.527)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="590.55"
       y="177.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 138: crashed (score=-253.747)</title>
+      <title>scenario 138: landed (score=1303.958)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1468,7 +1468,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 139: crashed (score=-394.987)</title>
+      <title>scenario 139: crashed (score=-1177.697)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1481,14 +1481,14 @@
       <title>scenario 140: out_of_bounds (score=-1500)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="654.12"
       y="177.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 141: crashed (score=-265.837)</title>
+      <title>scenario 141: landed (score=1473.206)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1498,7 +1498,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 142: crashed (score=-826.528)</title>
+      <title>scenario 142: crashed (score=-683.154)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1508,7 +1508,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 143: crashed (score=-441.338)</title>
+      <title>scenario 143: crashed (score=-399.63)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1518,7 +1518,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 144: crashed (score=-277.033)</title>
+      <title>scenario 144: crashed (score=-249.325)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1528,7 +1528,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 145: crashed (score=-273.416)</title>
+      <title>scenario 145: crashed (score=-246.847)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-flying"
@@ -1538,7 +1538,7 @@
       height="18.48"
       fill="#1f77b4"
     >
-      <title>scenario 146: flying (score=-132.309)</title>
+      <title>scenario 146: flying (score=-121.884)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1548,7 +1548,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 147: crashed (score=-474.036)</title>
+      <title>scenario 147: crashed (score=-464.173)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1568,7 +1568,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 149: crashed (score=-524.183)</title>
+      <title>scenario 149: crashed (score=-421.336)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1578,7 +1578,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 150: crashed (score=-846.478)</title>
+      <title>scenario 150: crashed (score=-691.691)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1588,7 +1588,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 151: crashed (score=-542.06)</title>
+      <title>scenario 151: crashed (score=-498.925)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1598,17 +1598,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 152: crashed (score=-466.007)</title>
+      <title>scenario 152: crashed (score=-470.139)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-out_of_bounds"
       x="463.4"
       y="198.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#7f7f7f"
     >
-      <title>scenario 153: crashed (score=-921.186)</title>
+      <title>scenario 153: out_of_bounds (score=-1500)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1618,7 +1618,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 154: crashed (score=-307.668)</title>
+      <title>scenario 154: crashed (score=-272.331)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1628,7 +1628,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 155: crashed (score=-501.735)</title>
+      <title>scenario 155: crashed (score=-456.27)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1638,7 +1638,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 156: crashed (score=-363.542)</title>
+      <title>scenario 156: crashed (score=-304.98)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1648,7 +1648,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 157: crashed (score=-419.245)</title>
+      <title>scenario 157: crashed (score=-378.899)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1658,7 +1658,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 158: crashed (score=-429.742)</title>
+      <title>scenario 158: crashed (score=-445.03)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1668,7 +1668,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 159: crashed (score=-289.371)</title>
+      <title>scenario 159: crashed (score=-978.215)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-flying"
@@ -1678,7 +1678,7 @@
       height="18.48"
       fill="#1f77b4"
     >
-      <title>scenario 160: flying (score=-181.817)</title>
+      <title>scenario 160: flying (score=-171.691)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1688,7 +1688,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 161: crashed (score=-338.88)</title>
+      <title>scenario 161: crashed (score=-312.588)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1698,7 +1698,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 162: crashed (score=-594.31)</title>
+      <title>scenario 162: crashed (score=-547.773)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1708,7 +1708,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 163: crashed (score=-424.533)</title>
+      <title>scenario 163: crashed (score=-368.675)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1718,7 +1718,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 164: crashed (score=-765.218)</title>
+      <title>scenario 164: crashed (score=-642.139)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1728,7 +1728,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 165: crashed (score=-464.911)</title>
+      <title>scenario 165: crashed (score=-433.846)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1738,7 +1738,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 166: crashed (score=-302.553)</title>
+      <title>scenario 166: crashed (score=-255.833)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1748,7 +1748,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 167: crashed (score=-595.409)</title>
+      <title>scenario 167: crashed (score=-473.203)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1758,7 +1758,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 168: crashed (score=-427.046)</title>
+      <title>scenario 168: crashed (score=-414.829)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1768,7 +1768,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 169: crashed (score=-381.489)</title>
+      <title>scenario 169: crashed (score=-357.554)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1778,7 +1778,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 170: crashed (score=-401.41)</title>
+      <title>scenario 170: crashed (score=-368.338)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1788,7 +1788,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 171: crashed (score=-421.062)</title>
+      <title>scenario 171: crashed (score=-452.901)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1798,7 +1798,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 172: crashed (score=-629.18)</title>
+      <title>scenario 172: crashed (score=-574.782)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1818,7 +1818,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 174: crashed (score=-336.104)</title>
+      <title>scenario 174: crashed (score=-315.591)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1828,7 +1828,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 175: crashed (score=-323.544)</title>
+      <title>scenario 175: crashed (score=-316.955)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1838,17 +1838,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 176: crashed (score=-749.805)</title>
+      <title>scenario 176: crashed (score=-1349.96)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-out_of_bounds"
+      class="scenario-cell scenario-cell-crashed"
       x="526.97"
       y="219.26"
       width="18.67"
       height="18.48"
-      fill="#7f7f7f"
+      fill="#d62728"
     >
-      <title>scenario 177: out_of_bounds (score=-1500)</title>
+      <title>scenario 177: crashed (score=-1183.558)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1858,7 +1858,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 178: crashed (score=-331.212)</title>
+      <title>scenario 178: crashed (score=-323.705)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1868,17 +1868,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 179: crashed (score=-272.67)</title>
+      <title>scenario 179: crashed (score=-244.92)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="590.55"
       y="219.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 180: crashed (score=-287.891)</title>
+      <title>scenario 180: landed (score=1322.811)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1888,7 +1888,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 181: crashed (score=-257.852)</title>
+      <title>scenario 181: crashed (score=-243.046)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1898,7 +1898,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 182: crashed (score=-468.32)</title>
+      <title>scenario 182: crashed (score=-413.037)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1908,7 +1908,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 183: crashed (score=-318.5)</title>
+      <title>scenario 183: crashed (score=-304.404)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1918,7 +1918,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 184: crashed (score=-337.886)</title>
+      <title>scenario 184: crashed (score=-276.87)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1928,7 +1928,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 185: crashed (score=-355.058)</title>
+      <title>scenario 185: crashed (score=-1067.799)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1938,7 +1938,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 186: crashed (score=-311.509)</title>
+      <title>scenario 186: crashed (score=-284.793)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -1958,7 +1958,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 188: crashed (score=-476.114)</title>
+      <title>scenario 188: crashed (score=-416.599)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1968,17 +1968,17 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 189: crashed (score=-296.404)</title>
+      <title>scenario 189: crashed (score=-268.683)</title>
     </rect>
     <rect
-      class="scenario-cell scenario-cell-crashed"
+      class="scenario-cell scenario-cell-landed"
       x="357.45"
       y="240.26"
       width="18.67"
       height="18.48"
-      fill="#d62728"
+      fill="#2ca02c"
     >
-      <title>scenario 190: crashed (score=-242.544)</title>
+      <title>scenario 190: landed (score=1461.754)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -1988,7 +1988,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 191: crashed (score=-668.9)</title>
+      <title>scenario 191: crashed (score=-559.01)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -2008,7 +2008,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 193: crashed (score=-602.145)</title>
+      <title>scenario 193: crashed (score=-545.564)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -2018,7 +2018,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 194: crashed (score=-576.502)</title>
+      <title>scenario 194: crashed (score=-445.178)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-out_of_bounds"
@@ -2038,7 +2038,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 196: crashed (score=-519.528)</title>
+      <title>scenario 196: crashed (score=-420.771)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -2048,7 +2048,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 197: crashed (score=-510.09)</title>
+      <title>scenario 197: crashed (score=-432.674)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -2058,7 +2058,7 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 198: crashed (score=-339.954)</title>
+      <title>scenario 198: crashed (score=-321.661)</title>
     </rect>
     <rect
       class="scenario-cell scenario-cell-crashed"
@@ -2068,11 +2068,11 @@
       height="18.48"
       fill="#d62728"
     >
-      <title>scenario 199: crashed (score=-604.945)</title>
+      <title>scenario 199: crashed (score=-1224.067)</title>
     </rect>
     <text x="335" y="42" text-anchor="start" font-weight="bold">per-scenario outcome (n=200)</text>
     <text class="score-axis-min" x="335" y="276" text-anchor="start">min score -1500</text>
-    <text class="score-axis-max" x="780" y="276" text-anchor="end">max score 1419.622</text>
+    <text class="score-axis-max" x="780" y="276" text-anchor="end">max score 1473.206</text>
   </g>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#222">
     <rect class="legend-swatch" x="60" y="284" width="14" height="12" fill="#2ca02c" />

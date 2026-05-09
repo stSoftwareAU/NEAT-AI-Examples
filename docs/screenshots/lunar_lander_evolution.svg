@@ -1,15 +1,15 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 1000 376"
-  width="1000"
+  viewBox="0 0 600 376"
+  width="600"
   height="376"
   role="img"
   aria-label="Lunar Lander — Evolution Progress multi-panel strip"
 >
   <title>Lunar Lander — Evolution Progress</title>
-  <rect width="1000" height="376" fill="#fafafa" />
+  <rect width="600" height="376" fill="#fafafa" />
   <text
-    x="500"
+    x="300"
     y="22"
     text-anchor="middle"
     font-family="sans-serif"
@@ -34,7 +34,7 @@
         begin="0.00s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="1.80s"
       />
     </rect>
     <text
@@ -53,7 +53,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score -359.329</text>
+    >score -618.928</text>
     <circle cx="178" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="178" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="178" cy="204" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
@@ -75,7 +75,7 @@
         begin="0.60s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="1.80s"
       />
     </rect>
     <text
@@ -94,7 +94,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score -82.717</text>
+    >score -259.380</text>
     <circle cx="378" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="378" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="378" cy="204" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
@@ -116,7 +116,7 @@
         begin="1.20s"
         dur="0.60s"
         repeatCount="indefinite"
-        repeatDur="3.00s"
+        repeatDur="1.80s"
       />
     </rect>
     <text
@@ -135,133 +135,36 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 550.902</text>
-    <circle cx="500" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="113.33" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="158.67" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
+    >score -177.441</text>
+    <circle cx="500" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="578" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="578" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="578" cy="204" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
-  <g class="panel" data-generation="500" data-index="3">
-    <rect
-      x="606"
-      y="42"
-      width="188"
-      height="188"
-      fill="#ffffff"
-      stroke="#cccccc"
-      stroke-width="1"
-      rx="4"
-    >
-      <animate
-        attributeName="fill"
-        values="#ffffff;#fff7c2;#ffffff"
-        begin="1.80s"
-        dur="0.60s"
-        repeatCount="indefinite"
-        repeatDur="3.00s"
-      />
-    </rect>
-    <text
-      x="700"
-      y="58"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="12"
-      font-weight="bold"
-      fill="#222"
-    >Gen 500</text>
-    <text
-      x="700"
-      y="222"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#555"
-    >score 714.127</text>
-    <circle cx="700" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="102" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="170" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="778" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-    <circle cx="778" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-    <circle cx="778" cy="204" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-  </g>
-  <g class="panel" data-generation="1000" data-index="4">
-    <rect
-      x="806"
-      y="42"
-      width="188"
-      height="188"
-      fill="#ffffff"
-      stroke="#cccccc"
-      stroke-width="1"
-      rx="4"
-    >
-      <animate
-        attributeName="fill"
-        values="#ffffff;#fff7c2;#ffffff"
-        begin="2.40s"
-        dur="0.60s"
-        repeatCount="indefinite"
-        repeatDur="3.00s"
-      />
-    </rect>
-    <text
-      x="900"
-      y="58"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="12"
-      font-weight="bold"
-      fill="#222"
-    >Gen 1000</text>
-    <text
-      x="900"
-      y="222"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#555"
-    >score 714.127</text>
-    <circle cx="900" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="102" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="170" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="978" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-    <circle cx="978" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-    <circle cx="978" cy="204" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
-  </g>
-  <g class="progression" data-min="-359.329" data-max="714.127">
-    <rect x="0" y="236" width="1000" height="100" fill="#f4f4f4" />
+  <g class="progression" data-min="-618.928" data-max="-177.441">
+    <rect x="0" y="236" width="600" height="100" fill="#f4f4f4" />
     <polyline
       class="score-progression"
       fill="none"
       stroke="#1f77b4"
       stroke-width="2"
-      points="100,322 300,303.45 500,260.95 700,250 900,250"
+      points="100,322 300,263.36 500,250"
     />
     <circle cx="100" cy="322" r="3" fill="#1f77b4" />
-    <circle cx="300" cy="303.45" r="3" fill="#1f77b4" />
-    <circle cx="500" cy="260.95" r="3" fill="#1f77b4" />
-    <circle cx="700" cy="250" r="3" fill="#1f77b4" />
-    <circle cx="900" cy="250" r="3" fill="#1f77b4" />
-    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 714.127</text>
-    <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min -359.329</text>
+    <circle cx="300" cy="263.36" r="3" fill="#1f77b4" />
+    <circle cx="500" cy="250" r="3" fill="#1f77b4" />
+    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max -177.441</text>
+    <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min -618.928</text>
   </g>
   <g class="caption">
-    <rect x="0" y="336" width="1000" height="40" fill="#222222" />
+    <rect x="0" y="336" width="600" height="40" fill="#222222" />
     <text
-      x="500"
+      x="300"
       y="360"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="12"
       fill="#ffffff"
-    >final score 714.127 • 247 generations • 6.6min</text>
+    >final score -165.998 • 245 generations • 2.0min</text>
   </g>
 </svg>

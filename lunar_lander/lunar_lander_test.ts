@@ -1278,3 +1278,63 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "lunar_lander/README.md references each canonical artefact and they exist (issue #202)",
+  async () => {
+    // Structural guard: the README must keep pointing at the four
+    // canonical artefacts written by the full-budget runner — the
+    // descent SVG, the per-generation evolution CSV, the fitness line
+    // chart, and the validation outcome bar chart. If any of these
+    // paths drifts (rename, removal) or the underlying file is missing
+    // from the repo, this test fails loudly so the docs and the
+    // artefacts cannot diverge silently.
+    const readme = await Deno.readTextFile(new URL("./README.md", import.meta.url));
+    const repoRoot = new URL("../", import.meta.url);
+
+    const artefacts: Array<{ path: string; readmeRefs: string[] }> = [
+      {
+        path: "docs/screenshots/lunar_lander.svg",
+        readmeRefs: [
+          "docs/screenshots/lunar_lander.svg",
+          "../docs/screenshots/lunar_lander.svg",
+        ],
+      },
+      {
+        path: "docs/data/lunar_lander/evolution.csv",
+        readmeRefs: [
+          "docs/data/lunar_lander/evolution.csv",
+          "../docs/data/lunar_lander/evolution.csv",
+        ],
+      },
+      {
+        path: "docs/screenshots/lunar_lander/fitness.svg",
+        readmeRefs: [
+          "docs/screenshots/lunar_lander/fitness.svg",
+          "../docs/screenshots/lunar_lander/fitness.svg",
+        ],
+      },
+      {
+        path: "docs/screenshots/lunar_lander/validation.svg",
+        readmeRefs: [
+          "docs/screenshots/lunar_lander/validation.svg",
+          "../docs/screenshots/lunar_lander/validation.svg",
+        ],
+      },
+    ];
+
+    for (const { path, readmeRefs } of artefacts) {
+      const cited = readmeRefs.some((ref) => readme.includes(ref));
+      assert(
+        cited,
+        `lunar_lander/README.md must reference ${path} (looked for ${readmeRefs.join(" or ")})`,
+      );
+
+      const fileUrl = new URL(path, repoRoot);
+      assert(
+        existsSync(fileUrl),
+        `expected artefact ${path} to exist on disk (looked at ${fileUrl.pathname})`,
+      );
+    }
+  },
+);
