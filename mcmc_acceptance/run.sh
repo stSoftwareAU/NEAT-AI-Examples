@@ -23,12 +23,17 @@ deno run \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
+  --allow-ffi \
   mcmc_acceptance/mcmc_acceptance.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
+# Re-format the regenerated SVGs and CSV so subsequent `deno fmt --check`
+# runs stay clean — the renderers emit compact output for readability,
+# and `deno fmt` prefers attributes split across multiple lines.
 if [[ -f "docs/screenshots/mcmc_acceptance.svg" ]]; then
   deno fmt docs/screenshots/mcmc_acceptance.svg > /dev/null
+fi
+if [[ -d "docs/screenshots/mcmc_acceptance" ]]; then
+  deno fmt docs/screenshots/mcmc_acceptance/*.svg > /dev/null || true
 fi

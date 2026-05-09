@@ -82,7 +82,11 @@ entire point of the demo, so the no-warm-start policy does not apply:
   `new Creature(input, output)`.
 - `crossover` — breeds two parent creatures into an offspring.
 - `memetic_evolution` — re-seeds the population from an archive of fittest creatures.
-- `mcmc_acceptance` — pure Metropolis-Hastings sampler, not an evolution demo.
+- `mcmc_acceptance` — pairs an analytical Metropolis-Hastings sampler over a synthetic fitness
+  landscape (the historical demo from #89) with a minimal-seed `evolveDir` over a binary `.bin`
+  regression task (audited under #215); listed here because the analytical sampler runs outside any
+  NEAT-AI evolution loop, even though the audited second stage seeds NEAT-AI from
+  `new Creature(input, output)`.
 - `synthetic_synapse` — densify-train-prune on an evolved sparse creature.
 - `adaptive_mutation` — demonstrates NEAT-AI's adaptive mutation policy via measured topology growth
   from a minimal seed (audited under #212); the example is listed here because its narrative is
