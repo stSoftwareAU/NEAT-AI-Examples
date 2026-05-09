@@ -157,6 +157,47 @@ must actively manoeuvre — exactly like the classic Atari Lunar Lander.
 The controller has to translate sideways towards the pad while braking against gravity AND its own
 horizontal drift, all on a finite fuel budget.
 
+## 🧪 Wider Scenario Distribution and Disjoint Train/Validate Pools
+
+Issue [#195](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/195): a champion that simply
+memorises one trajectory must not pass evaluation. Two safeguards live in `physics.ts` and the new
+`scenarios.ts` module:
+
+- **Wider distribution** — `perturbedScenario` (and the legacy `perturbedInitialState`) draws every
+  component around the canonical entry across a substantially wider range. The half-ranges at
+  `magnitude=1` are exported as `WIDE_RANGES`:
+
+  | Component | Centre                   | ± Half-range | Notes                             |
+  | --------- | ------------------------ | ------------ | --------------------------------- |
+  | `x`       | `DEFAULT_START_X`        | 25 m         | Stays inside `worldHalfWidth`     |
+  | `y`       | `DEFAULT_START_ALTITUDE` | 20 m         | Always above the ground           |
+  | `vx`      | `DEFAULT_START_VX`       | 3 m/s        | —                                 |
+  | `vy`      | 0                        | 2 m/s        | —                                 |
+  | `angle`   | 0                        | 0.25 rad     | ≈ ±14°                            |
+  | `fuel`    | `DEFAULT_START_FUEL`     | 20 units     | Always > 0                        |
+  | `padX`    | 0                        | 20 m         | Pad still inside the world bounds |
+
+  Only `perturbedScenario` varies `padX` (it returns both the lander state and the terrain).
+
+- **Disjoint training and validation seed pools** — `generateScenarioPools(baseSeed, 1000, 200)` in
+  `scenarios.ts` derives two non-overlapping pools of 32-bit per-scenario seeds from a single base
+  seed, then realises each pool into `{ state, terrain }` pairs. Same base seed → identical pools;
+  different seeds → different pools. A controller that overfits training seeds cannot see validation
+  seeds during evolution, so the validation score reflects generalisation rather than memorisation.
+
+  ```mermaid
+  flowchart LR
+      SEED["base seed"] --> POOLS["seed-pool builder<br/>(32-bit, dedup)"]
+      POOLS --> TRAIN["1000 training seeds"]
+      POOLS --> VAL["200 validation seeds"]
+      TRAIN --> SAMPLER["perturbedScenario<br/>(wider distribution)"]
+      VAL --> SAMPLER
+      SAMPLER --> SCENARIOS["LanderState + Terrain pairs"]
+  ```
+
+  Every drawn scenario classifies as `flying` at `t=0`: above ground, inside the world bounds, with
+  fuel remaining — no impossible launches.
+
 ## 🧠 Why This Task Benefits from Temporal Memory
 
 Cart-Pole is solvable by a stateless linear policy — every timestep's correct action is determined
