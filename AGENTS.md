@@ -76,7 +76,10 @@ entire point of the demo, so the no-warm-start policy does not apply:
 - `discovery_at_scale` — labels a binary `.bin` training set from a hand-crafted reference creature
   built via `buildLargeCreature(...)` (the reference is the demo's hand-crafted state); the NEAT
   seed itself is the minimal `new Creature(input, output)` per issue #208.
-- `intelligent_design` — systematically optimises activation functions on an existing creature.
+- `intelligent_design` — evolves a creature from a minimal seed via `evolveDir`, then systematically
+  optimises activation functions on the evolved champion (audited under #214); listed here because
+  the squash improvement scan operates on a hand-curated creature, even though the seed itself is
+  `new Creature(input, output)`.
 - `crossover` — breeds two parent creatures into an offspring.
 - `memetic_evolution` — re-seeds the population from an archive of fittest creatures.
 - `mcmc_acceptance` — pure Metropolis-Hastings sampler, not an evolution demo.
