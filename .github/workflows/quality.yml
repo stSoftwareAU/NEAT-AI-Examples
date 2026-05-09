@@ -3,6 +3,11 @@
 # Runs the project quality checks on every push and pull request
 # targeting the Develop branch. This automates the quality gate
 # to ensure all examples remain functional across contributions.
+#
+# This workflow also generates a coverage report and uploads it to
+# Codecov on pull requests. It is the sole quality workflow for the
+# repository — the previous deno-quality.yml was a duplicate and was
+# removed in issue #231.
 
 name: Quality Check
 
@@ -24,15 +29,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
 
       - name: Cache Deno dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ~/.cache/deno
@@ -41,21 +46,37 @@ jobs:
           restore-keys: |
             deno-${{ runner.os }}-
 
-      - name: Run Deno lint
+      - name: Run deno lint
         run: deno lint
 
-      - name: Run Deno format check
+      - name: Run deno fmt --check
         run: deno fmt --check
 
-      - name: Run Deno type check
+      - name: Run deno check (type checking)
         run: deno check **/*.ts
 
       # Tests need --allow-net so the @stsoftware/neat-ai WASM
       # activation module can fetch its remote payload from jsr.io,
       # and --allow-ffi so the optional native discovery library can
       # load when present. Issue #73.
-      - name: Run unit tests
-        run: deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi
+      #
+      # --coverage produces a profile that is converted to lcov and
+      # uploaded to Codecov below. Issue #51.
+      - name: Run unit tests with coverage
+        run: deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --coverage=cov_profile
+
+      - name: Generate lcov coverage report
+        run: deno coverage cov_profile --lcov --output=coverage.lcov
+
+      # The codecov-action is a no-op when no coverage file is found,
+      # and we set fail_ci_if_error: false so a transient Codecov
+      # outage does not block the PR.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@0f8570b1a125f4937846a11fcfa3bcd548bd8c97 # v4.6.0
+        with:
+          files: coverage.lcov
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       - name: Run Intelligent Design example
         run: ./intelligent_design/run.sh
