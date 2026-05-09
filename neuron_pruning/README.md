@@ -106,3 +106,15 @@ math directly on the synapse array, which keeps the demo self-contained and byte
 - The whole run is byte-deterministic for the same config.
 - The rendered SVG is well-formed, embeds the topology / summary / legend panels, and references the
   pruned-neuron and bias-fold CSS classes.
+
+## 🧰 NEAT-AI Features Used
+
+Neuron Pruning is one of NEAT-AI's simplest, most effective operators: it removes neurons that
+became redundant after training.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Neuron Pruning](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — removes constant or low-utility neurons from a creature without changing its observable outputs
+  — the central technique this example demonstrates.

@@ -58,3 +58,21 @@ will find:
 - `creatures/offspring.json` – The crossover offspring
 - `creatures/evolved.json` – The offspring after multi-generation evolution
 - `output/` – Additional offspring from repeated crossover
+
+## 🧰 NEAT-AI Features Used
+
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies (the Stanley & Miikkulainen 2002
+algorithm).
+
+Crossover demonstrates NEAT-AI's basic mother-keep + father-50% breeding operator (one of several
+breeding strategies in NEAT-AI).
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Advanced Breeding Strategies](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#10--advanced-breeding-strategies)**
+  — mother-keep + father-50% blending — the simplest of NEAT-AI's breeding strategies (subgraph
+  transplantation, cosine-similarity alignment, and diversity-driven cross-population pairing all
+  live upstream).
+- **[Historical Marking](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — gene history (a standard-NEAT primitive) makes compatible crossover possible across topologies.

@@ -195,3 +195,26 @@ A few things that are not obvious from the code alone:
   library's `createSeededPopulation` decides the gen-1 structure (direct input → output connections,
   random weights, random output biases); the add-neuron structural mutation grows hidden topology
   during evolution. There is no "warm start" — gen 1 is genuine noise.
+
+## 🧰 NEAT-AI Features Used
+
+Lunar Lander is an agent demo — evolution-from-noise on a temporally-rich control task. The
+capability surfaced here is evolutionary topology search with NEAT-AI's CTRNN-style temporal memory
+neurons.
+
+> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
+> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
+> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
+> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
+> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
+> production-pipeline notes in
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
+> wider feature set.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — structural mutation co-evolved with weights and biases against the soft-landing fitness signal.
+- **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — weight and bias mutation, plus selection pressure on the episode-return fitness function.

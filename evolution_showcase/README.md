@@ -116,3 +116,27 @@ values:
   [`evolution_showcase_evolution.svg`](../docs/screenshots/evolution_showcase_evolution.svg).
 - **Fast unit test.** Uses `[1, 5, 10]` and a 6-strong population.
 - **Reuses common helpers.** No bespoke snapshot or render code — both are imported from `common/`.
+
+## 🧰 NEAT-AI Features Used
+
+**Acronym.** _NEAT_ = NeuroEvolution of Augmenting Topologies.
+
+The flagship long-form run focuses on the noise → competent story, so it deliberately uses a
+stripped-down operator subset.
+
+> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
+> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
+> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
+> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
+> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
+> production-pipeline notes in
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
+> wider feature set.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — structural mutation co-evolved with weights — the long-form fitness arc is the headline.
+- **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — weight and bias mutation against the chosen task's fitness signal.

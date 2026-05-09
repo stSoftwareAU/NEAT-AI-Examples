@@ -112,3 +112,15 @@ will find:
 - `creatures/baseline.json` – The untouched reference creature
 - `creatures/crippled.json` – The creature with the target neuron removed
 - `creatures/discovered.json` – The best candidate returned by discovery (when available)
+
+## 🧰 NEAT-AI Features Used
+
+Discovery is NEAT-AI's science-driven structural operator: rather than mutating randomly, it
+analyses activations to target the changes worth making.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Error-Guided Structural Evolution](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#2--error-guided-structural-evolution)**
+  — GPU-accelerated discovery of beneficial structural changes
+  (saturated/dead/dormant/bottleneck-neuron analysis) — the core capability this example exercises.

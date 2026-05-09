@@ -148,3 +148,18 @@ deno test --allow-read --allow-write --allow-env --allow-net --allow-ffi \
 
 The tests cover defect injection, defect detection statistics, dataset loading, SVG rendering
 (including byte-determinism), and the end-to-end demo pipeline using a small, fast configuration.
+
+## 🧰 NEAT-AI Features Used
+
+The at-scale variant reuses the same Discovery operator on a large pre-built creature, so it also
+exercises the disk-cache subsystem.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Error-Guided Structural Evolution](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#2--error-guided-structural-evolution)**
+  — applied to a large pre-built creature so the science-driven framing is visible at
+  production-scale topology sizes.
+- **[Discovery Caching and Disk Space Management](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#8--discovery-caching-and-disk-space-management)**
+  — Discovery results are cached to disk so repeat runs against the same large creature stay
+  tractable.

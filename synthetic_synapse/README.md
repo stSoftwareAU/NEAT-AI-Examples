@@ -120,3 +120,21 @@ mathematics, no I/O, byte-deterministic for a given seed. The point of the demo 
 - The whole run is byte-deterministic for the same config.
 - The rendered SVG is well-formed, embeds all three phase labels, and addresses original vs.
   synthetic synapses through their own CSS classes.
+
+## 🧰 NEAT-AI Features Used
+
+Synthetic Synapse Training is a NEAT-AI extension: densify-train-prune on an evolved sparse
+creature.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Synthetic Synapse Training](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#12--synthetic-synapse-training)**
+  — densify-train-prune step on an evolved sparse creature — the central technique this example
+  demonstrates.
+- **[Backpropagation](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — gradient-based weight tuning runs on the densified topology before pruning — concrete proof that
+  NEAT-AI is **not** evolution-only.
+- **[Neuron Pruning](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — the final pass removes the synthetic synapses that did not pull weight, keeping the creature
+  sparse.

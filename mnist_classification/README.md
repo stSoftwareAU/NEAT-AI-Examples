@@ -265,3 +265,32 @@ For the full training-methods catalogue (backpropagation, dropout, L1/L2 regular
 cross-validation, synthetic synapses, sparse training, batch processing, early stopping and more)
 see upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#training-methods).
+
+## 🧰 NEAT-AI Features Used
+
+MNIST is a supervised noise → competent demo, so the demonstrated capability is NEAT-AI's
+evolutionary topology search against a classification fitness signal. NEAT-AI's full training
+pipeline (backpropagation, mini-batch, dropout, L1/L2, K-fold, binary `.bin` streams) is
+intentionally **not** wired in here — the upstream MLP/SGD baseline in the README is the contrast
+for evolutionary search alone, **not** for NEAT-AI as a whole.
+
+> 🔎 **Stripped-down operator subset.** This example deliberately exercises a narrow slice of
+> NEAT-AI's full pipeline so the noise → competent story stays uncluttered. The production training
+> pipeline (backpropagation, dropout, L1/L2 regularisation, K-fold, binary `.bin` data streams,
+> distributed evolution, etc.) is intentionally **not** wired into this demo — see issue
+> [#185](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/185) and the upstream
+> production-pipeline notes in
+> [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) for the
+> wider feature set.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — structural mutation co-evolved with weights and biases against the cross-entropy classification
+  fitness signal.
+- **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — weight and bias mutation paired with selection pressure on the validation accuracy.
+- **[Backpropagation](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — available in NEAT-AI but **not** used by this demo — the MLP/SGD baseline shown in the README
+  runs separately for contrast. See `synthetic_synapse/` for an example that does invoke backprop.

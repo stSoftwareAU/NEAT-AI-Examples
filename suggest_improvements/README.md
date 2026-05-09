@@ -42,3 +42,17 @@ suggestions as GitHub issues, use the `gh` CLI:
 ```bash
 gh issue create --title "Improvement title" --label "enhancement" --body "Description"
 ```
+
+## 🧰 NEAT-AI Features Used
+
+This is a static-analysis utility — it does not invoke evolution itself. Instead, it reads the
+project's current example state and surfaces opportunities to wire in additional NEAT-AI
+capabilities.
+
+Features exercised (links go to upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
+
+- **[Cross-References Upstream Feature List](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — the suggestions point readers at upstream NEAT-AI features (memetic evolution, Markov chain
+  Monte Carlo (MCMC) mutation acceptance, Discovery, synthetic synapse, etc.) that are not yet
+  exercised by an example here.
