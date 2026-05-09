@@ -6,9 +6,12 @@
  * backprop has more degrees of freedom, then **pruning** the near-zero
  * synapses afterwards so the deployed creature stays lean.
  *
- * Vanilla NEAT struggles at scale because evolutionary search is unlikely to
- * discover every useful inter-layer edge in a wide network. Synthetic synapse
- * training side-steps that weakness by adding every missing edge between
+ * Textbook NEAT (Stanley & Miikkulainen 2002) struggles at scale because
+ * evolutionary search is unlikely to discover every useful inter-layer edge in
+ * a wide network — NEAT-AI ships several mitigations (GPU-accelerated
+ * Discovery, memetic evolution, MCMC mutation acceptance, adaptive mutation,
+ * advanced breeding) and synthetic-synapse training is one of them. Synthetic
+ * synapse training side-steps that weakness by adding every missing edge between
  * adjacent layers as a zero-weight "synthetic" synapse, training all weights
  * (existing and synthetic) together, and finally dropping any synthetic
  * synapse whose magnitude has stayed close to zero — the gradient told us it
