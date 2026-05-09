@@ -20,9 +20,12 @@ echo "🧠 Memetic Evolution Demo"
 echo ""
 
 deno run \
+  --v8-flags=--max-old-space-size=4096 \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
+  --allow-ffi \
   memetic_evolution/memetic_evolution.ts \
   "$@"
 

@@ -11,26 +11,43 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertRejects,
+  assertStringIncludes,
   assertThrows,
 } from "@std/assert";
+import { Creature } from "@stsoftware/neat-ai";
 
 import {
+  creatureHeldOutScore,
   DEFAULT_MEMETIC_CONFIG,
+  DEFAULT_MINIMAL_SEED_CONFIG,
+  EVOLUTION_CSV_HEADER,
   fitnessOn,
+  formatEvolutionCsv,
   forward,
   generateDataset,
+  INPUT_COUNT,
+  type MinimalSeedConfig,
   mutateWeights,
+  OUTPUT_COUNT,
   randomWeights,
   runMemeticEvolution,
+  runMinimalSeedEvolution,
   sampleMiniBatch,
   TARGET_WEIGHTS,
   WEIGHT_VECTOR_LENGTH,
+  writeBinaryDataset,
 } from "./memetic_evolution.ts";
 import {
   CONTROL_CURVE_CLASS,
+  FITNESS_CURVE_CLASS,
   MEMETIC_CURVE_CLASS,
+  NEURON_CURVE_CLASS,
+  renderFitnessChartSvg,
   renderMemeticSVG,
+  renderTopologyChartSvg,
   SEEDING_MARKER_CLASS,
+  SYNAPSE_CURVE_CLASS,
 } from "./svg.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 
@@ -273,4 +290,173 @@ Deno.test("renderMemeticSVG rejects mismatched record lengths", () => {
     { generation: 1, bestFitness: -0.05, seeded: false },
   ];
   assertThrows(() => renderMemeticSVG({ memetic, control, seedingGenerations: [] }));
+});
+
+/**
+ * Small config used for the minimal-seed `evolveDir` tests — keeps
+ * each test fast while still exercising the new code path.
+ * `timeoutMinutes: 0` skips the FFI cleanup paths so the Deno test
+ * sanitiser stays clean.
+ */
+const SMALL_MINIMAL_CONFIG: MinimalSeedConfig = {
+  targetError: 0.0001,
+  timeoutMinutes: 0,
+  populationSize: 6,
+  maxIterations: 3,
+  seed: 216,
+  mutationRate: 0.6,
+  mutationAmount: 3,
+};
+
+Deno.test("DEFAULT_MINIMAL_SEED_CONFIG - has audit-policy stop conditions", () => {
+  assertEquals(DEFAULT_MINIMAL_SEED_CONFIG.timeoutMinutes, 5);
+  assertGreater(DEFAULT_MINIMAL_SEED_CONFIG.targetError, 0);
+  assertGreaterOrEqual(0.1, DEFAULT_MINIMAL_SEED_CONFIG.targetError);
+  assertGreater(DEFAULT_MINIMAL_SEED_CONFIG.populationSize, 1);
+  assertGreater(DEFAULT_MINIMAL_SEED_CONFIG.maxIterations, 0);
+});
+
+Deno.test("INPUT_COUNT and OUTPUT_COUNT match the simulation topology", () => {
+  // The minimal seed must use the same I/O shape as the synthetic
+  // dataset (2 inputs → 1 output) so the binary `.bin` records line up.
+  assertEquals(INPUT_COUNT, 2);
+  assertEquals(OUTPUT_COUNT, 1);
+});
+
+Deno.test("writeBinaryDataset - emits a Float32 .bin of the expected size", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "memetic_evolution_test_" });
+  try {
+    const ds = generateDataset(123, 8);
+    const path = writeBinaryDataset(ds, tmp);
+    const stat = await Deno.stat(path);
+    const expectedBytes = ds.length * (INPUT_COUNT + OUTPUT_COUNT) * 4;
+    assertEquals(stat.size, expectedBytes);
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("runMinimalSeedEvolution - rejects invalid configs", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "memetic_evolution_test_" });
+  try {
+    const ds = generateDataset(1, 8);
+    writeBinaryDataset(ds, tmp);
+    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    await assertRejects(() =>
+      runMinimalSeedEvolution(seed, tmp, { ...SMALL_MINIMAL_CONFIG, targetError: 0 })
+    );
+    await assertRejects(() =>
+      runMinimalSeedEvolution(seed, tmp, { ...SMALL_MINIMAL_CONFIG, populationSize: 0 })
+    );
+    await assertRejects(() =>
+      runMinimalSeedEvolution(seed, tmp, { ...SMALL_MINIMAL_CONFIG, maxIterations: 0 })
+    );
+    await assertRejects(() =>
+      runMinimalSeedEvolution(seed, tmp, { ...SMALL_MINIMAL_CONFIG, timeoutMinutes: -1 })
+    );
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("runMinimalSeedEvolution - seed is minimal and emits telemetry rows", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "memetic_evolution_test_" });
+  try {
+    const ds = generateDataset(1, 16);
+    writeBinaryDataset(ds, tmp);
+
+    // Build the minimal seed exactly like the runner — only INPUT_COUNT
+    // and OUTPUT_COUNT are passed; no hidden hint, no warm start.
+    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    // The minimal seed has no hidden neurons.
+    assertEquals(seed.neurons.length, INPUT_COUNT + OUTPUT_COUNT);
+
+    const result = await runMinimalSeedEvolution(seed, tmp, SMALL_MINIMAL_CONFIG);
+
+    // Champion has the right I/O shape.
+    assertEquals(result.champion.input, INPUT_COUNT);
+    assertEquals(result.champion.output, OUTPUT_COUNT);
+
+    // At least one telemetry row was captured.
+    assertGreater(result.rows.length, 0);
+    for (const row of result.rows) {
+      assertGreaterOrEqual(row.generation, 0);
+      assertGreaterOrEqual(row.neuronCount, INPUT_COUNT + OUTPUT_COUNT);
+      assertGreaterOrEqual(row.synapseCount, 0);
+      assert(Number.isFinite(row.bestFitness));
+    }
+
+    // Wall-clock and generation count are non-negative.
+    assertGreaterOrEqual(result.wallClockMs, 0);
+    assertGreaterOrEqual(result.generations, 0);
+    assertEquals(result.seedNeuronCount, INPUT_COUNT + OUTPUT_COUNT);
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("creatureHeldOutScore - returns finite non-positive value", () => {
+  const ds = generateDataset(1, 8);
+  const creature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const score = creatureHeldOutScore(creature, ds);
+  assert(Number.isFinite(score));
+  assertGreaterOrEqual(0, score);
+});
+
+Deno.test("creatureHeldOutScore - empty dataset returns 0", () => {
+  const creature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  assertEquals(creatureHeldOutScore(creature, []), 0);
+});
+
+Deno.test("formatEvolutionCsv - emits canonical header and one row per generation", () => {
+  const csv = formatEvolutionCsv([
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 3, synapseCount: 2 },
+    { generation: 2, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 4, synapseCount: 5 },
+  ]);
+  const lines = csv.trim().split("\n");
+  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+  assertEquals(lines.length, 3);
+  assertStringIncludes(lines[1], "1,0.5,0.4,3,2");
+  assertStringIncludes(lines[2], "2,0.7,0.6,4,5");
+});
+
+Deno.test("formatEvolutionCsv - handles non-finite numbers by writing 0", () => {
+  const csv = formatEvolutionCsv([
+    {
+      generation: 1,
+      bestFitness: Number.NaN,
+      meanFitness: Number.POSITIVE_INFINITY,
+      neuronCount: 3,
+      synapseCount: 2,
+    },
+  ]);
+  assertStringIncludes(csv, "1,0,0,3,2");
+});
+
+Deno.test("renderFitnessChartSvg - well-formed SVG with the fitness CSS class", () => {
+  const svg = renderFitnessChartSvg([
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 3, synapseCount: 2 },
+    { generation: 2, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 4, synapseCount: 5 },
+  ]);
+  assert(svg.startsWith("<svg"));
+  assert(svg.includes("</svg>"));
+  assertStringIncludes(svg, FITNESS_CURVE_CLASS);
+});
+
+Deno.test("renderFitnessChartSvg - rejects empty rows", () => {
+  assertThrows(() => renderFitnessChartSvg([]), Error, "at least one row");
+});
+
+Deno.test("renderTopologyChartSvg - well-formed SVG with topology CSS classes", () => {
+  const svg = renderTopologyChartSvg([
+    { generation: 1, bestFitness: 0.5, meanFitness: 0.4, neuronCount: 3, synapseCount: 2 },
+    { generation: 2, bestFitness: 0.7, meanFitness: 0.6, neuronCount: 4, synapseCount: 5 },
+  ]);
+  assert(svg.startsWith("<svg"));
+  assertStringIncludes(svg, NEURON_CURVE_CLASS);
+  assertStringIncludes(svg, SYNAPSE_CURVE_CLASS);
+});
+
+Deno.test("renderTopologyChartSvg - rejects empty rows", () => {
+  assertThrows(() => renderTopologyChartSvg([]), Error, "at least one row");
 });
