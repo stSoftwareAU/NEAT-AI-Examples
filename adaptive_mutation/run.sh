@@ -1,13 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# Adaptive Mutation Rate Demo Runner (issue #86)
+# Adaptive Mutation Rate Demo Runner (issue #86, audited #212)
 #
-# Runs two evolution loops on the same synthetic task — one starting
-# from a small creature, one starting from a large creature — and
-# renders the dual-panel mutation-rate chart to
-# .adaptive-mutation/output/adaptive_mutation.svg (mirrored to
-# docs/screenshots/adaptive_mutation.svg).
+# Evolves a NEAT-AI creature from a minimal seed (input + output
+# counts only) over a binary `.bin` regression task, captures
+# per-generation telemetry, and writes the headline SVG plus the
+# fitness and topology charts.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -24,6 +23,9 @@ deno run \
   --allow-read \
   --allow-write \
   --allow-env \
+  --allow-net \
+  --allow-ffi \
+  --allow-run \
   adaptive_mutation/adaptive_mutation.ts \
   "$@"
 
@@ -32,6 +34,12 @@ deno run \
 # `deno fmt` prefers attributes split across multiple lines.
 if [[ -f "docs/screenshots/adaptive_mutation.svg" ]]; then
   deno fmt docs/screenshots/adaptive_mutation.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/adaptive_mutation/fitness.svg" ]]; then
+  deno fmt docs/screenshots/adaptive_mutation/fitness.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/adaptive_mutation/topology.svg" ]]; then
+  deno fmt docs/screenshots/adaptive_mutation/topology.svg > /dev/null
 fi
 if [[ -f ".adaptive-mutation/output/adaptive_mutation.svg" ]]; then
   deno fmt .adaptive-mutation/output/adaptive_mutation.svg > /dev/null

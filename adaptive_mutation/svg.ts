@@ -1,265 +1,403 @@
 /**
- * SVG rendering helpers for the adaptive mutation rate demo.
+ * SVG rendering helpers for the adaptive mutation rate demo (audit #212).
  *
- * Produces a two-panel line chart:
+ * Three renderers:
  *
- * - **Left panel** — small-creature run. Topology share starts high
- *   and stays high; weight share is its mirror image.
- * - **Right panel** — large-creature run. Topology share collapses
- *   toward zero almost immediately; weight share dominates.
- *
- * Both panels share a `[0, 1]` Y axis (rate) and a `[0, generations]`
- * X axis so the eye can compare the two curves directly.
+ * - {@link renderAdaptiveMutationSVG} — the headline SVG embedded at the
+ *   top of the README. A combined chart that overlays the **measured**
+ *   neuron / synapse trajectory from the latest run with the
+ *   **analytic** topology-mutation probability curve, demonstrating
+ *   how the adaptive policy tapers structural growth as size rises.
+ * - {@link renderFitnessChartSvg} — best vs mean fitness per
+ *   generation (#212 acceptance criterion).
+ * - {@link renderTopologyChartSvg} — neuron and synapse counts per
+ *   generation (#212 acceptance criterion).
  */
-import type { RunResult } from "./adaptive_mutation.ts";
+import {
+  DEFAULT_POLICY_CONFIG,
+  type EvolutionRow,
+  topologyProbability,
+} from "./adaptive_mutation.ts";
 
-/** Width (in SVG user units) of the rendered chart. */
-export const PLOT_WIDTH = 960;
-
-/** Height (in SVG user units) of the rendered chart. */
-export const PLOT_HEIGHT = 460;
-
-/** CSS class assigned to each topology rate polyline. */
+/** CSS class assigned to the topology-policy curve. */
 export const TOPOLOGY_CURVE_CLASS = "topology-rate";
 
-/** CSS class assigned to each weight rate polyline. */
-export const WEIGHT_CURVE_CLASS = "weight-rate";
+/** CSS class assigned to the measured size curve. */
+export const SIZE_CURVE_CLASS = "size-curve";
 
-/** CSS class assigned to the panel container groups. */
-export const PANEL_CLASS = "panel";
+/** CSS class assigned to the fitness-curve polyline. */
+export const FITNESS_CURVE_CLASS = "best-fitness";
 
-const MARGIN_TOP = 64;
-const MARGIN_BOTTOM = 64;
-const MARGIN_OUTER = 56;
-const PANEL_GAP = 36;
+/** CSS class assigned to the neuron-count polyline. */
+export const NEURON_CURVE_CLASS = "neuron-count";
+
+/** CSS class assigned to the synapse-count polyline. */
+export const SYNAPSE_CURVE_CLASS = "synapse-count";
 
 /** Inputs to {@link renderAdaptiveMutationSVG}. */
 export interface RenderAdaptiveMutationOptions {
-  /** Small-creature run result. */
-  small: RunResult;
-  /** Large-creature run result. */
-  large: RunResult;
+  /** Per-generation telemetry rows. */
+  rows: readonly EvolutionRow[];
+  /** Held-out score quoted in the caption. */
+  heldOutScore: number;
+  /** Wall-clock duration of the run, in milliseconds. */
+  wallClockMs: number;
+  /** Total generations evolved. */
+  generations: number;
+  /** True when the run reached `targetError`. */
+  solved: boolean;
+}
+
+const HEADLINE_WIDTH = 960;
+const HEADLINE_HEIGHT = 460;
+const HEADLINE_MARGIN = { top: 70, right: 80, bottom: 80, left: 70 };
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+function buildPolyline(points: readonly Point[]): string {
+  return points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
 }
 
 /**
- * Render the two-panel mutation-rate comparison as an SVG string.
- * Both panels share the same Y range (rate ∈ [0, 1]) and X range
- * (generation ∈ [0, generations - 1]) so the curves are directly
- * comparable.
+ * Render the headline two-axis chart. The left Y axis shows the
+ * **measured** creature size (neurons + synapses) per generation; the
+ * right Y axis shows the **analytic** topology-mutation probability
+ * curve `p(topology) = base / (1 + size / scale)` evaluated against
+ * each generation's measured size. The two curves should diverge: the
+ * size curve climbs as NEAT grows the network, and the policy curve
+ * collapses toward zero as a result.
  */
-export function renderAdaptiveMutationSVG(options: RenderAdaptiveMutationOptions): string {
-  const { small, large } = options;
-  if (small.records.length === 0 || large.records.length === 0) {
-    throw new Error("small and large records must be non-empty");
+export function renderAdaptiveMutationSVG(
+  options: RenderAdaptiveMutationOptions,
+): string {
+  const { rows, heldOutScore, wallClockMs, generations, solved } = options;
+  if (rows.length === 0) {
+    throw new Error("renderAdaptiveMutationSVG requires at least one row");
   }
-  if (small.records.length !== large.records.length) {
-    throw new Error(
-      `small (${small.records.length}) and large (${large.records.length}) must have equal length`,
+
+  const innerW = HEADLINE_WIDTH - HEADLINE_MARGIN.left - HEADLINE_MARGIN.right;
+  const innerH = HEADLINE_HEIGHT - HEADLINE_MARGIN.top - HEADLINE_MARGIN.bottom;
+  const innerX = HEADLINE_MARGIN.left;
+  const innerY = HEADLINE_MARGIN.top;
+
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
+
+  const sizes = rows.map((r) => r.neuronCount + r.synapseCount);
+  const maxSize = Math.max(...sizes, 1);
+  const policyValues = sizes.map((s) => topologyProbability(s, DEFAULT_POLICY_CONFIG));
+  const maxPolicy = Math.max(DEFAULT_POLICY_CONFIG.baseTopologyProb, ...policyValues);
+
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const sizeY = (s: number) => innerY + innerH - (s / maxSize) * innerH;
+  const policyY = (p: number) => innerY + innerH - (p / maxPolicy) * innerH;
+
+  const sizePts = rows.map((r, i) => ({
+    x: xScale(r.generation),
+    y: sizeY(sizes[i]),
+  }));
+  const policyPts = rows.map((r, i) => ({
+    x: xScale(r.generation),
+    y: policyY(policyValues[i]),
+  }));
+
+  const leftTicks: string[] = [];
+  const rightTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const ly = innerY + innerH - t * innerH;
+    leftTicks.push(
+      `    <line x1="${innerX.toFixed(2)}" y1="${ly.toFixed(2)}" ` +
+        `x2="${(innerX + innerW).toFixed(2)}" y2="${ly.toFixed(2)}" ` +
+        `stroke="#eeeeee" stroke-width="0.6"/>`,
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
+        `${(t * maxSize).toFixed(0)}</text>`,
+    );
+    rightTicks.push(
+      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#e67e22">` +
+        `${(t * maxPolicy).toFixed(2)}</text>`,
     );
   }
 
-  const totalGenerations = small.records.length;
-  const innerWidth = PLOT_WIDTH - MARGIN_OUTER * 2 - PANEL_GAP;
-  const panelWidth = innerWidth / 2;
-  const panelHeight = PLOT_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
+  const seconds = (wallClockMs / 1000).toFixed(1);
+  const captionLines = [
+    `Generations: ${generations}` + (solved ? " (solved)" : ""),
+    `Wall-clock: ${seconds}s`,
+    `Held-out -MSE: ${heldOutScore.toFixed(4)}`,
+  ];
 
-  const leftPanel = renderPanel({
-    x: MARGIN_OUTER,
-    y: MARGIN_TOP,
-    width: panelWidth,
-    height: panelHeight,
-    title: "Small creature",
-    subtitle: small.label,
-    initialSize: `start: ${small.initialSize.hidden} hidden / ${small.initialSize.synapses} syn`,
-    finalSize: `end:   ${small.finalMeanSize.hidden.toFixed(0)} hidden / ` +
-      `${small.finalMeanSize.synapses.toFixed(0)} syn`,
-    run: small,
-    totalGenerations,
-  });
+  const lines: string[] = [];
+  lines.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HEADLINE_WIDTH} ${HEADLINE_HEIGHT}" ` +
+      `width="${HEADLINE_WIDTH}" height="${HEADLINE_HEIGHT}" role="img" ` +
+      `aria-label="Adaptive mutation rate — measured topology vs analytic policy curve">`,
+  );
+  lines.push(`  <title>Adaptive Mutation Rate — Policy in Action</title>`);
+  lines.push(`  <rect width="${HEADLINE_WIDTH}" height="${HEADLINE_HEIGHT}" fill="#fafafa"/>`);
+  lines.push(
+    `  <text x="${HEADLINE_WIDTH / 2}" y="28" text-anchor="middle" ` +
+      `font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">` +
+      `Adaptive Mutation Rate — Topology Growth vs Policy Curve</text>`,
+  );
+  lines.push(
+    `  <text x="${HEADLINE_WIDTH / 2}" y="48" text-anchor="middle" ` +
+      `font-family="sans-serif" font-size="11" fill="#555">` +
+      `Measured size (neurons+synapses) climbs while the analytic ` +
+      `p(topology) collapses toward zero.</text>`,
+  );
+  lines.push(leftTicks.join("\n"));
+  lines.push(rightTicks.join("\n"));
+  // Axis labels.
+  lines.push(
+    `  <text x="${(innerX - 46).toFixed(2)}" y="${(innerY + innerH / 2).toFixed(2)}" ` +
+      `text-anchor="middle" dominant-baseline="middle" ` +
+      `transform="rotate(-90 ${(innerX - 46).toFixed(2)} ${(innerY + innerH / 2).toFixed(2)})" ` +
+      `font-family="sans-serif" font-size="11" fill="#2ca02c">size (neurons + synapses)</text>`,
+  );
+  lines.push(
+    `  <text x="${(innerX + innerW + 50).toFixed(2)}" y="${(innerY + innerH / 2).toFixed(2)}" ` +
+      `text-anchor="middle" dominant-baseline="middle" ` +
+      `transform="rotate(90 ${(innerX + innerW + 50).toFixed(2)} ${
+        (innerY + innerH / 2).toFixed(2)
+      })" ` +
+      `font-family="sans-serif" font-size="11" fill="#e67e22">p(topology mutation)</text>`,
+  );
+  // Curves.
+  lines.push(
+    `  <polyline class="${SIZE_CURVE_CLASS}" fill="none" stroke="#2ca02c" stroke-width="2" ` +
+      `points="${buildPolyline(sizePts)}"/>`,
+  );
+  lines.push(
+    `  <polyline class="${TOPOLOGY_CURVE_CLASS}" fill="none" stroke="#e67e22" stroke-width="2" ` +
+      `stroke-dasharray="6 3" points="${buildPolyline(policyPts)}"/>`,
+  );
+  // Generation axis labels.
+  lines.push(
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 26).toFixed(2)}" ` +
+      `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+  );
+  lines.push(
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 26).toFixed(2)}" ` +
+      `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+  );
+  // Caption box.
+  const captionX = innerX + 12;
+  const captionY = innerY + 12;
+  lines.push(
+    `  <rect x="${captionX.toFixed(2)}" y="${captionY.toFixed(2)}" width="200" height="56" ` +
+      `fill="#ffffff" fill-opacity="0.92" stroke="#cccccc"/>`,
+  );
+  for (let i = 0; i < captionLines.length; i++) {
+    lines.push(
+      `  <text x="${(captionX + 8).toFixed(2)}" y="${(captionY + 16 + i * 14).toFixed(2)}" ` +
+        `font-family="sans-serif" font-size="11" fill="#222">${captionLines[i]}</text>`,
+    );
+  }
+  // Legend.
+  const legendX = HEADLINE_WIDTH / 2 - 220;
+  const legendY = HEADLINE_HEIGHT - 30;
+  lines.push(
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#333">`,
+    `    <line x1="${legendX}" y1="${legendY}" x2="${legendX + 22}" y2="${legendY}" ` +
+      `stroke="#2ca02c" stroke-width="2"/>`,
+    `    <text x="${legendX + 28}" y="${legendY + 4}">measured size (left axis)</text>`,
+    `    <line x1="${legendX + 220}" y1="${legendY}" x2="${legendX + 242}" y2="${legendY}" ` +
+      `stroke="#e67e22" stroke-width="2" stroke-dasharray="6 3"/>`,
+    `    <text x="${legendX + 248}" y="${legendY + 4}">analytic p(topology) (right axis)</text>`,
+    `  </g>`,
+  );
+  lines.push(`</svg>`);
+  lines.push("");
+  return lines.join("\n");
+}
 
-  const rightPanel = renderPanel({
-    x: MARGIN_OUTER + panelWidth + PANEL_GAP,
-    y: MARGIN_TOP,
-    width: panelWidth,
-    height: panelHeight,
-    title: "Large creature",
-    subtitle: large.label,
-    initialSize: `start: ${large.initialSize.hidden} hidden / ${large.initialSize.synapses} syn`,
-    finalSize: `end:   ${large.finalMeanSize.hidden.toFixed(0)} hidden / ` +
-      `${large.finalMeanSize.synapses.toFixed(0)} syn`,
-    run: large,
-    totalGenerations,
-  });
+const TELEMETRY_SVG_WIDTH = 720;
+const TELEMETRY_SVG_HEIGHT = 320;
+const TELEMETRY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
+
+/**
+ * Render a two-line chart: best fitness (blue) and mean fitness
+ * (orange) versus generation. Throws if `rows` is empty.
+ */
+export function renderFitnessChartSvg(rows: readonly EvolutionRow[]): string {
+  if (rows.length === 0) {
+    throw new Error("renderFitnessChartSvg requires at least one row");
+  }
+  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
+  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
+  const innerX = TELEMETRY_MARGIN.left;
+  const innerY = TELEMETRY_MARGIN.top;
+
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
+
+  const allFitness = rows.flatMap((r) => [r.bestFitness, r.meanFitness]).filter(
+    Number.isFinite,
+  );
+  const minF = allFitness.length > 0 ? Math.min(...allFitness) : 0;
+  const maxF = allFitness.length > 0 ? Math.max(...allFitness) : 1;
+  const fSpan = (maxF - minF) || 1;
+
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const yScale = (f: number) => innerY + innerH - ((f - minF) / fSpan) * innerH;
+  const safeY = (f: number): number => Number.isFinite(f) ? yScale(f) : (innerY + innerH);
+
+  const bestPts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: safeY(r.bestFitness),
+  }));
+  const meanPts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: safeY(r.meanFitness),
+  }));
+
+  const yTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const v = minF + t * fSpan;
+    const ty = innerY + innerH - t * innerH;
+    yTicks.push(
+      `    <line x1="${innerX.toFixed(2)}" y1="${ty.toFixed(2)}" ` +
+        `x2="${(innerX + innerW).toFixed(2)}" y2="${ty.toFixed(2)}" ` +
+        `stroke="#eeeeee" stroke-width="0.6"/>`,
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ty + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#444">` +
+        `${v.toFixed(3)}</text>`,
+    );
+  }
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}" ` +
-    `width="${PLOT_WIDTH}" height="${PLOT_HEIGHT}" role="img" ` +
-    `aria-label="Adaptive mutation rate — small vs large creature">`,
-    `  <title>Adaptive Mutation Rate — Topology Share Drops as Creatures Grow</title>`,
-    `  <rect width="${PLOT_WIDTH}" height="${PLOT_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${PLOT_WIDTH / 2}" y="28" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">` +
-    `Adaptive Mutation Rate — Topology vs Weight Share</text>`,
-    leftPanel,
-    rightPanel,
-    renderLegend(),
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
+    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
+    `aria-label="Adaptive mutation — best vs mean fitness per generation">`,
+    `  <title>Adaptive Mutation — Best vs Mean Fitness</title>`,
+    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
+    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
+    `Adaptive Mutation — Best vs Mean Fitness</text>`,
+    yTicks.join("\n"),
+    `  <polyline class="${FITNESS_CURVE_CLASS}" fill="none" stroke="#1f77b4" stroke-width="2" ` +
+    `points="${buildPolyline(bestPts)}"/>`,
+    `  <polyline class="mean-fitness" fill="none" stroke="#ff7f0e" stroke-width="1.4" ` +
+    `stroke-dasharray="4 3" points="${buildPolyline(meanPts)}"/>`,
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
+    `    <rect x="${(innerX + innerW - 178).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
+    `width="172" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
+    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
+    `stroke="#1f77b4" stroke-width="2"/>`,
+    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
+    `best fitness</text>`,
+    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
+    `stroke="#ff7f0e" stroke-width="1.4" stroke-dasharray="4 3"/>`,
+    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
+    `mean fitness</text>`,
+    `  </g>`,
     `</svg>`,
     "",
   ].join("\n");
 }
 
-interface PanelOptions {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  title: string;
-  subtitle: string;
-  initialSize: string;
-  finalSize: string;
-  run: RunResult;
-  totalGenerations: number;
-}
+/**
+ * Render the neuron / synapse count chart for the README. Two lines
+ * share an X axis; the right Y axis shows synapse counts on a separate
+ * scale so the synapse line does not compress the neuron line into
+ * invisibility.
+ */
+export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
+  if (rows.length === 0) {
+    throw new Error("renderTopologyChartSvg requires at least one row");
+  }
+  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
+  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
+  const innerX = TELEMETRY_MARGIN.left;
+  const innerY = TELEMETRY_MARGIN.top;
 
-function renderPanel(opts: PanelOptions): string {
-  const { x, y, width, height, title, subtitle, initialSize, finalSize, run } = opts;
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
 
-  const xScale = (gen: number) => x + (gen / Math.max(1, opts.totalGenerations - 1)) * width;
-  const yScale = (rate: number) => y + (1 - rate) * height;
+  const neurons = rows.map((r) => r.neuronCount);
+  const synapses = rows.map((r) => r.synapseCount);
+  const maxNeurons = Math.max(...neurons, 1);
+  const maxSynapses = Math.max(...synapses, 1);
 
-  const topologyPoints = run.records
-    .map((r) => `${xScale(r.generation).toFixed(2)},${yScale(r.topologyRate).toFixed(2)}`)
-    .join(" ");
-  const weightPoints = run.records
-    .map((r) => `${xScale(r.generation).toFixed(2)},${yScale(r.weightRate).toFixed(2)}`)
-    .join(" ");
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
+  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
 
-  const lines: string[] = [];
-  lines.push(`  <g class="${PANEL_CLASS}" font-family="sans-serif">`);
-  lines.push(
-    `    <text x="${(x + width / 2).toFixed(2)}" y="${(y - 22).toFixed(2)}" ` +
-      `text-anchor="middle" font-size="14" font-weight="bold" fill="#222">${title}</text>`,
-  );
-  lines.push(
-    `    <text x="${(x + width / 2).toFixed(2)}" y="${(y - 6).toFixed(2)}" ` +
-      `text-anchor="middle" font-size="11" fill="#555">${subtitle}</text>`,
-  );
-  lines.push(
-    `    <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" ` +
-      `height="${height.toFixed(2)}" fill="#ffffff" stroke="#333" stroke-width="1"/>`,
-  );
-  lines.push(renderYTicks(x, y, height));
-  lines.push(renderXTicks(x, y, width, height, opts.totalGenerations, xScale));
-  lines.push(
-    `    <polyline class="${WEIGHT_CURVE_CLASS}" fill="none" stroke="#2e86de" ` +
-      `stroke-width="2" points="${weightPoints}"/>`,
-  );
-  lines.push(
-    `    <polyline class="${TOPOLOGY_CURVE_CLASS}" fill="none" stroke="#e67e22" ` +
-      `stroke-width="2" points="${topologyPoints}"/>`,
-  );
-  lines.push(renderAxisLabels(x, y, width, height));
-  lines.push(
-    `    <text x="${(x + 8).toFixed(2)}" y="${(y + height - 30).toFixed(2)}" ` +
-      `font-size="10" fill="#666">${escapeXml(initialSize)}</text>`,
-  );
-  lines.push(
-    `    <text x="${(x + 8).toFixed(2)}" y="${(y + height - 16).toFixed(2)}" ` +
-      `font-size="10" fill="#666">${escapeXml(finalSize)}</text>`,
-  );
-  lines.push(`  </g>`);
-  return lines.join("\n");
-}
+  const neuronPts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: neuronY(r.neuronCount),
+  }));
+  const synapsePts = rows.map((r) => ({
+    x: xScale(r.generation),
+    y: synapseY(r.synapseCount),
+  }));
 
-function renderYTicks(panelX: number, panelY: number, panelHeight: number): string {
-  const ticks = 5;
-  const lines: string[] = [`    <g class="ticks-y">`];
-  for (let i = 0; i < ticks; i++) {
-    const t = i / (ticks - 1);
-    const value = t;
-    const yPos = panelY + (1 - t) * panelHeight;
-    lines.push(
-      `      <line x1="${panelX.toFixed(2)}" y1="${yPos.toFixed(2)}" ` +
-        `x2="${(panelX - 5).toFixed(2)}" y2="${yPos.toFixed(2)}" ` +
-        `stroke="#333" stroke-width="1"/>`,
+  const leftTicks: string[] = [];
+  const rightTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const ly = innerY + innerH - t * innerH;
+    leftTicks.push(
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
+        `${(t * maxNeurons).toFixed(0)}</text>`,
     );
-    lines.push(
-      `      <text x="${(panelX - 8).toFixed(2)}" y="${(yPos + 4).toFixed(2)}" ` +
-        `text-anchor="end" font-size="11" fill="#333">${value.toFixed(2)}</text>`,
+    rightTicks.push(
+      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
+        `${(t * maxSynapses).toFixed(0)}</text>`,
     );
   }
-  lines.push(`    </g>`);
-  return lines.join("\n");
-}
 
-function renderXTicks(
-  _panelX: number,
-  panelY: number,
-  _panelWidth: number,
-  panelHeight: number,
-  totalGenerations: number,
-  xScale: (gen: number) => number,
-): string {
-  const ticks = 5;
-  const lines: string[] = [`    <g class="ticks-x">`];
-  const baseY = panelY + panelHeight;
-  for (let i = 0; i < ticks; i++) {
-    const t = i / (ticks - 1);
-    const gen = Math.round(t * (totalGenerations - 1));
-    const xPos = xScale(gen);
-    lines.push(
-      `      <line x1="${xPos.toFixed(2)}" y1="${baseY.toFixed(2)}" ` +
-        `x2="${xPos.toFixed(2)}" y2="${(baseY + 5).toFixed(2)}" ` +
-        `stroke="#333" stroke-width="1"/>`,
-    );
-    lines.push(
-      `      <text x="${xPos.toFixed(2)}" y="${(baseY + 18).toFixed(2)}" ` +
-        `text-anchor="middle" font-size="11" fill="#333">${gen}</text>`,
-    );
-  }
-  lines.push(`    </g>`);
-  return lines.join("\n");
-}
-
-function renderAxisLabels(
-  panelX: number,
-  panelY: number,
-  panelWidth: number,
-  panelHeight: number,
-): string {
-  const baseY = panelY + panelHeight;
-  const xMid = panelX + panelWidth / 2;
   return [
-    `    <g class="axis-labels" font-size="11" fill="#333">`,
-    `      <text x="${xMid.toFixed(2)}" y="${(baseY + 36).toFixed(2)}" ` +
-    `text-anchor="middle">generation</text>`,
-    `      <text x="${(panelX - 36).toFixed(2)}" y="${(panelY + panelHeight / 2).toFixed(2)}" ` +
-    `text-anchor="middle" dominant-baseline="middle" ` +
-    `transform="rotate(-90 ${(panelX - 36).toFixed(2)} ` +
-    `${(panelY + panelHeight / 2).toFixed(2)})">mutation share</text>`,
-    `    </g>`,
-  ].join("\n");
-}
-
-function renderLegend(): string {
-  const x = PLOT_WIDTH / 2 - 200;
-  const y = PLOT_HEIGHT - 28;
-  return [
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#333">`,
-    `    <line x1="${x}" y1="${y}" x2="${x + 22}" y2="${y}" ` +
-    `stroke="#e67e22" stroke-width="2"/>`,
-    `    <text x="${x + 28}" y="${y + 4}">topology mutations (add/remove neuron/synapse)</text>`,
-    `    <line x1="${x + 280}" y1="${y}" x2="${x + 302}" y2="${y}" ` +
-    `stroke="#2e86de" stroke-width="2"/>`,
-    `    <text x="${x + 308}" y="${y + 4}">weight/bias mutations</text>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
+    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
+    `aria-label="Adaptive mutation — neuron and synapse counts per generation">`,
+    `  <title>Adaptive Mutation — Topology Growth</title>`,
+    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
+    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
+    `Adaptive Mutation — Topology Growth</text>`,
+    leftTicks.join("\n"),
+    rightTicks.join("\n"),
+    `  <polyline class="${NEURON_CURVE_CLASS}" fill="none" stroke="#2ca02c" stroke-width="2" ` +
+    `points="${buildPolyline(neuronPts)}"/>`,
+    `  <polyline class="${SYNAPSE_CURVE_CLASS}" fill="none" stroke="#d62728" stroke-width="2" ` +
+    `stroke-dasharray="6 3" points="${buildPolyline(synapsePts)}"/>`,
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
+    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
+    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
+    `stroke="#2ca02c" stroke-width="2"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
+    `neurons (left axis)</text>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
+    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
+    `synapses (right axis)</text>`,
     `  </g>`,
+    `</svg>`,
+    "",
   ].join("\n");
-}
-
-function escapeXml(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
