@@ -24,10 +24,14 @@ import {
   DEFAULT_EVAL_SEEDS,
   DEFAULT_EVOLVE_OPTIONS,
   evaluateController,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveSnakeController,
+  formatEvolutionCsv,
   type GenerationInfo,
   mutateCreatureExport,
   pickBestReplaySeed,
+  renderTopologyChartSvg,
   replayController,
   scoreController,
   SOLVED_THRESHOLD,
@@ -150,6 +154,12 @@ Deno.test(
     // best controller in the population should be very far from
     // eating SOLVED_THRESHOLD food on average. Anything close to the
     // threshold on gen 1 would imply a warm start.
+    //
+    // Audit issue #222 replaced `maxGenerations` with the standard
+    // NEAT-AI `targetError` + `timeoutMinutes` stop conditions. We pin
+    // `maxGenerations: 1` so the loop exits after one generation
+    // regardless of fitness — the cap is retained as a tests-only
+    // safety override.
     let firstGenBestEaten = Infinity;
     evolveSnakeController({
       ...DEFAULT_EVOLVE_OPTIONS,
@@ -169,15 +179,55 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveSnakeController honours the hard generation cap",
+  "evolveSnakeController honours the timeoutMinutes wall-clock backstop",
   () => {
-    // With a tiny strength + tiny rate, the evolver cannot solve the
-    // task within the cap. The result must therefore stop at the cap
-    // and report `solved=false`.
+    // Audit issue #222 replaced the old `maxGenerations` cap with the
+    // standard NEAT-AI `targetError` + `timeoutMinutes` stop conditions.
+    // With a vanishingly small mutation rate, the evolver cannot solve
+    // the task. We force the loop to exit via the wall-clock backstop
+    // by setting an unreachable `targetError = -1` (target rate = 2,
+    // bounded above by 1) and a tiny `timeoutMinutes` budget — the
+    // returned `stopReason` must be `timeout` and `solved` false.
+    const start = Date.now();
+    const result = evolveSnakeController({
+      seed: 999,
+      populationSize: 4,
+      targetError: -1,
+      timeoutMinutes: 0.01, // ~600 ms
+      mutationStrength: 0.01,
+      mutationRate: 0.01,
+      addNeuronRate: 0,
+    });
+    const elapsedMs = Date.now() - start;
+    assertEquals(
+      result.solved,
+      false,
+      "with vanishing mutation the search must not solve snake within the timeout",
+    );
+    assertEquals(
+      result.stopReason,
+      "timeout",
+      `expected stopReason 'timeout', got ${result.stopReason}`,
+    );
+    assert(
+      elapsedMs < 30_000,
+      `expected the run to finish well under 30 seconds, took ${elapsedMs} ms`,
+    );
+  },
+);
+
+Deno.test(
+  "evolveSnakeController honours the optional maxGenerations safety cap",
+  () => {
+    // The optional `maxGenerations` field is retained as a tests-only
+    // safety cap. With vanishing mutation and a tiny cap the loop must
+    // exit at the cap and report `stopReason='cap'`.
     const cap = 3;
     const result = evolveSnakeController({
       seed: 999,
       populationSize: 4,
+      targetError: -1,
+      timeoutMinutes: 5,
       maxGenerations: cap,
       mutationStrength: 0.01,
       mutationRate: 0.01,
@@ -186,13 +236,10 @@ Deno.test(
     assertEquals(
       result.generations,
       cap,
-      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
+      `expected evolution to run to the cap of ${cap} generations, got ${result.generations}`,
     );
-    assertEquals(
-      result.solved,
-      false,
-      "with vanishing mutation the search must not solve snake within the cap",
-    );
+    assertEquals(result.solved, false);
+    assertEquals(result.stopReason, "cap");
   },
 );
 
@@ -231,6 +278,9 @@ Deno.test(
 );
 
 Deno.test("evolveSnakeController is reproducible — fixed seed, identical champion", () => {
+  // Pin the loop to a small generation cap so the test does not race
+  // the wall-clock backstop. Determinism applies regardless of stop
+  // condition.
   const a = evolveSnakeController({ ...DEFAULT_EVOLVE_OPTIONS, maxGenerations: 30 });
   const b = evolveSnakeController({ ...DEFAULT_EVOLVE_OPTIONS, maxGenerations: 30 });
   const aJson = JSON.stringify(a.champion.exportJSON());
@@ -269,6 +319,7 @@ Deno.test(
     evolveSnakeController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 3,
+      targetError: -1,
       populationSize: 6,
       addNeuronRate: 0,
       onGeneration: (info) => events.push(info),
@@ -290,6 +341,7 @@ Deno.test("evolveSnakeController emits checkpoint snapshot files when configured
     evolveSnakeController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 4,
+      targetError: -1,
       // Force a tiny, weak run so the early-stop branch cannot fire
       // before every checkpoint is captured.
       populationSize: 3,
@@ -353,4 +405,52 @@ Deno.test("renderRunSVG rejects an empty trace", () => {
     threw = true;
   }
   assertEquals(threw, true);
+});
+
+Deno.test(
+  "formatEvolutionCsv emits the audit-mandated header and one row per record",
+  () => {
+    // Audit issue #222: CSV header must be the canonical schema used
+    // by every audited example.
+    const rows: EvolutionRow[] = [
+      { generation: 0, bestFitness: -75.5, meanFitness: -90.1, neuronCount: 12, synapseCount: 32 },
+      { generation: 1, bestFitness: 42.0, meanFitness: -10.0, neuronCount: 13, synapseCount: 33 },
+    ];
+    const csv = formatEvolutionCsv(rows);
+    const lines = csv.trim().split("\n");
+    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+    assertEquals(
+      EVOLUTION_CSV_HEADER,
+      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+    );
+    assertEquals(lines.length, rows.length + 1);
+    assertEquals(lines[1], "0,-75.5,-90.1,12,32");
+    assertEquals(lines[2], "1,42,-10,13,33");
+    // Determinism: identical inputs produce identical bytes.
+    assertEquals(formatEvolutionCsv(rows), csv);
+  },
+);
+
+Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 0, bestFitness: -50, meanFitness: -90, neuronCount: 12, synapseCount: 32 },
+    { generation: 5, bestFitness: 100, meanFitness: 10, neuronCount: 13, synapseCount: 34 },
+    { generation: 10, bestFitness: 471, meanFitness: 200, neuronCount: 14, synapseCount: 36 },
+  ];
+  const svg = renderTopologyChartSvg(rows);
+  assert(svg.startsWith("<svg"), "must start with <svg>");
+  assert(svg.includes("</svg>"), "must contain </svg>");
+  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
+  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
+  assert(svg.includes("Snake — Topology Growth"));
+});
+
+Deno.test("renderTopologyChartSvg rejects empty input", () => {
+  let threw = false;
+  try {
+    renderTopologyChartSvg([]);
+  } catch (_err) {
+    threw = true;
+  }
+  assertEquals(threw, true, "expected empty input to throw");
 });
