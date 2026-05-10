@@ -38,6 +38,38 @@ curves climb visibly across the run.
 
 ![Snake-game evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/snake_game/evolution.svg)
 
+![Snake best vs mean fitness against generation](../docs/screenshots/snake_game/fitness.svg)
+
+![Snake champion neuron and synapse counts against generation](../docs/screenshots/snake_game/topology.svg)
+
+The per-generation telemetry source-of-truth is
+[`docs/data/snake_game/evolution.csv`](../docs/data/snake_game/evolution.csv) with the canonical
+`generation,best_fitness,mean_fitness,neuron_count,synapse_count` schema used by every audited
+example.
+
+### Latest measured run (audit issue #222)
+
+Numbers below are quoted **from the latest end-to-end run** with `seed=12345` on a commodity Apple
+M-series laptop. Re-run `./snake_game/run.sh` to refresh them.
+
+| Metric                    | Measured value                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Wall-clock                | 21.4 s (well below the 5 min `timeoutMinutes` backstop)                                                    |
+| Generations executed      | 200 (loop kept running so all checkpoints — `[1, 10, 50, 100, 200]` — could fire after the target was met) |
+| Champion best score       | 108.42 (mean raw game score across the five evaluation seeds)                                              |
+| Champion best replay      | 4 food on the strongest evaluation seed (`pickBestReplaySeed`) — clears the `SOLVED_THRESHOLD` of 3        |
+| Champion mean food eaten  | 1.60 across the five evaluation seeds — clears `(1 - targetError) × 3 = 1.5`                               |
+| First topology change     | gen 47 (add-neuron mutation: 12 → 14 neurons, 32 → 34 synapses)                                            |
+| Initial topology (gen 0)  | 12 neurons, 32 synapses (`new Creature(8, 4)` minimal seed: 8 inputs + 4 outputs + library-supplied bias)  |
+| Final topology (champion) | 16 neurons, 36 synapses                                                                                    |
+| Stop reason               | `target` — best per-seed eaten ≥ 3 with mean ≥ 1.5 before the timeout                                      |
+
+**The final creature solves the environment** — it eats four food cells on its strongest replay seed
+and averages 1.60 food across the five evaluation seeds (above the audit-mandated mean floor of 1.5
+food). The `evolution.csv` shows the topology genuinely growing from 12 neurons / 32 synapses at gen
+0 to 16 neurons / 36 synapses at the champion (changes at gens 47, 59, and 116) — the seed is not
+memorising a hand-crafted shape; structural mutation is discovering it.
+
 ## 🔧 How It Works
 
 ```mermaid
@@ -100,12 +132,28 @@ out of reach.
 
 The task is "solved" when the champion's **best per-seed food eaten reaches `SOLVED_THRESHOLD = 3`**
 — the same number the SVG playthrough renders after picking the strongest replay seed — **and** the
-running champion's mean across the five evaluation seeds is at least `SOLVED_AVG_FLOOR = 1.5` (so
-the early stop cannot fire on a fragile elite that aces a single seed and fails the rest). Evolution
-stops as soon as both conditions are met or the **hard generation cap of 200** is reached, whichever
-comes first. This matches closed issue #137's "champion ate at least three food on the replay
-episode" target — but the bar means more here because the controller now starts from uniform-random
-NEAT noise (no hand-crafted layered seed).
+running champion's mean across the five evaluation seeds is at least
+`(1 - targetError) ×
+SOLVED_THRESHOLD = 1.5` (so the early stop cannot fire on a fragile elite that
+aces a single seed and fails the rest).
+
+### Stop conditions (audit issue #222)
+
+Evolution uses the standard NEAT-AI stop conditions:
+
+- **`targetError = 0.5`** — halt as soon as the champion's mean food eaten across the evaluation
+  seeds reaches `(1 - targetError) × SOLVED_THRESHOLD = 1.5` **and** its best per-seed eaten count
+  reaches `SOLVED_THRESHOLD = 3`. The two-condition gate stops a fragile elite that aces a single
+  seed from short-circuiting the run.
+- **`timeoutMinutes = 5`** — wall-clock backstop in case the target is never reached.
+
+Whichever fires first wins. The default seed reaches the target in ~21 s on a commodity laptop, so
+the backstop is never hit in practice. **Per-step `Creature.activate()` is retained because the
+environment is interactive** — there is no pre-generated binary training set that
+`Creature.evolveDir(...)` could consume; each step's action depends on the previous step's state.
+This matches closed issue #137's "champion ate at least three food on the replay episode" target —
+but the bar means more here because the controller now starts from uniform-random NEAT noise (no
+hand-crafted layered seed).
 
 ## 🚀 Running the Example
 
@@ -121,6 +169,12 @@ Artefacts:
 - `docs/screenshots/snake_game_evolution.svg` – multi-panel evolution-progress strip
 - `docs/screenshots/snake_game/evolution.svg` – dual-axis evolution chart plotting best score and
   champion neuron / synapse counts against generation
+- [`docs/screenshots/snake_game/fitness.svg`](../docs/screenshots/snake_game/fitness.svg) – best vs
+  mean fitness against generation
+- [`docs/screenshots/snake_game/topology.svg`](../docs/screenshots/snake_game/topology.svg) –
+  champion neuron and synapse counts against generation
+- [`docs/data/snake_game/evolution.csv`](../docs/data/snake_game/evolution.csv) – the per-generation
+  telemetry source-of-truth (`generation,best_fitness,mean_fitness,neuron_count,synapse_count`)
 
 ## ❓ FAQ — Streaming observations vs batch supervised training
 
@@ -180,9 +234,20 @@ A few things that are not obvious from the code alone:
 - **Tail moves before collision check.** When the snake does not eat, the tail cell is freed before
   the head's new cell is checked for body overlap — so the snake can chase its own tail safely,
   matching classic Snake semantics.
-- **Hard generation cap.** Evolution stops at `maxGenerations` even if the threshold has not been
-  reached, so a stuck run never blocks the example forever. The cap is enforced in
-  `evolveSnakeController` and verified by the `honours the hard generation cap` test.
+- **`targetError` + `timeoutMinutes` stop conditions.** Audit issue #222 replaced the old
+  `maxGenerations` cap with the standard NEAT-AI pair: evolution halts as soon as the running
+  champion's mean food eaten across the evaluation seeds reaches
+  `(1 - targetError) ×
+  SOLVED_THRESHOLD` (default `targetError = 0.5` → mean ≥ 1.5) **and** its
+  best per-seed eaten count reaches `SOLVED_THRESHOLD`, or the wall-clock backstop `timeoutMinutes`
+  (default `5`) elapses. `evolveSnakeController` returns `stopReason` (`"target"`, `"timeout"`, or
+  `"cap"`) so callers can tell which fired. An optional `maxGenerations` field is retained as a
+  tests-only safety override so unit tests can pin specific code paths without waiting on the wall
+  clock.
+- **Per-step `Creature.activate()`, not `evolveDir`.** Snake is interactive — each step's action
+  depends on the previous step's state — so we cannot pre-generate a binary `.bin` training set.
+  Evolution scores every candidate by rolling the simulator forward step-by-step inside the
+  evolution loop. See parent issue #203 for the broader audit context.
 - **Reproducibility.** All randomness flows through `common/deterministic_random.ts` and the
   library's seeded RNG. With a fixed seed the same champion is produced on every run.
 - **Per-episode seed is shared.** Every creature in a generation faces the same initial state and

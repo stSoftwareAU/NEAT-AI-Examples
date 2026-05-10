@@ -51,6 +51,7 @@ import {
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
 import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { type Heading, newGame, type SnakeState, step } from "./snake.ts";
@@ -170,12 +171,198 @@ export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/snake_game_evolutio
 /** Path to the per-generation dual-axis evolution-chart SVG. */
 export const EVOLUTION_CHART_PATH = "docs/screenshots/snake_game/evolution.svg";
 
+/** Path to the per-generation evolution telemetry CSV (audit issue #222). */
+export const EVOLUTION_CSV_PATH = "docs/data/snake_game/evolution.csv";
+
+/** Header row for the per-generation telemetry CSV (audit issue #222). */
+export const EVOLUTION_CSV_HEADER =
+  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
+
+/** Best/mean fitness chart path (audit issue #222). */
+export const FITNESS_SVG_PATH = "docs/screenshots/snake_game/fitness.svg";
+
+/** Neuron / synapse count chart path (audit issue #222). */
+export const TOPOLOGY_SVG_PATH = "docs/screenshots/snake_game/topology.svg";
+
+/**
+ * One row of per-generation evolution telemetry. Captured during a run
+ * and serialised to {@link EVOLUTION_CSV_PATH} so downstream tools can
+ * inspect how the population's fitness and topology evolved over time.
+ */
+export interface EvolutionRow {
+  /** Zero-based generation index. */
+  generation: number;
+  /** Best fitness in this generation (mean shaped fitness across eval seeds). */
+  bestFitness: number;
+  /** Population mean fitness in this generation. */
+  meanFitness: number;
+  /** Neuron count of this generation's champion creature. */
+  neuronCount: number;
+  /** Synapse count of this generation's champion creature. */
+  synapseCount: number;
+}
+
+/**
+ * Format a finite number with up to six decimal places, trimming
+ * trailing zeros so deterministic inputs produce a single canonical
+ * string. Non-finite values become "0" — the CSV must not leak
+ * NaN/Infinity.
+ */
+function formatCsvNumber(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  return Number(v.toFixed(6)).toString();
+}
+
+/**
+ * Format an evolution-telemetry table into a CSV string with the exact
+ * {@link EVOLUTION_CSV_HEADER} header. Numeric fields use a fixed
+ * representation so the file is byte-deterministic for identical
+ * inputs.
+ */
+export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
+  const lines: string[] = [EVOLUTION_CSV_HEADER];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.generation,
+        formatCsvNumber(r.bestFitness),
+        formatCsvNumber(r.meanFitness),
+        r.neuronCount,
+        r.synapseCount,
+      ].join(","),
+    );
+  }
+  return lines.join("\n") + "\n";
+}
+
+// ---- Topology chart renderer -------------------------------------------
+// Pairs with the shared `renderFitnessChartSVG` from
+// `common/fitness_chart.ts` — together the two SVGs satisfy the
+// "neuron/synapse" + "best/mean fitness" charts requested by audit
+// issue #222.
+
+const TOPOLOGY_SVG_WIDTH = 720;
+const TOPOLOGY_SVG_HEIGHT = 320;
+const TOPOLOGY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
+
+/**
+ * Render the neuron / synapse count chart for the README. Two lines
+ * share an X axis; the right Y axis shows synapse counts on a separate
+ * scale so the synapse line does not compress the neuron line into
+ * invisibility. Throws if `rows` is empty.
+ */
+export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
+  if (rows.length === 0) {
+    throw new Error("renderTopologyChartSvg requires at least one row");
+  }
+  const innerW = TOPOLOGY_SVG_WIDTH - TOPOLOGY_MARGIN.left - TOPOLOGY_MARGIN.right;
+  const innerH = TOPOLOGY_SVG_HEIGHT - TOPOLOGY_MARGIN.top - TOPOLOGY_MARGIN.bottom;
+  const innerX = TOPOLOGY_MARGIN.left;
+  const innerY = TOPOLOGY_MARGIN.top;
+
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
+
+  const maxNeurons = Math.max(...rows.map((r) => r.neuronCount), 1);
+  const maxSynapses = Math.max(...rows.map((r) => r.synapseCount), 1);
+
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
+  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
+
+  const neuronPts = rows
+    .map((r) => `${xScale(r.generation).toFixed(2)},${neuronY(r.neuronCount).toFixed(2)}`)
+    .join(" ");
+  const synapsePts = rows
+    .map((r) => `${xScale(r.generation).toFixed(2)},${synapseY(r.synapseCount).toFixed(2)}`)
+    .join(" ");
+
+  const leftTicks: string[] = [];
+  const rightTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const ly = innerY + innerH - t * innerH;
+    leftTicks.push(
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
+        `${(t * maxNeurons).toFixed(0)}</text>`,
+    );
+    rightTicks.push(
+      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
+        `${(t * maxSynapses).toFixed(0)}</text>`,
+    );
+  }
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TOPOLOGY_SVG_WIDTH} ${TOPOLOGY_SVG_HEIGHT}" ` +
+    `width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" role="img" ` +
+    `aria-label="Snake — neuron and synapse counts per generation">`,
+    `  <title>Snake — Topology Growth</title>`,
+    `  <rect width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" fill="#fafafa"/>`,
+    `  <text x="${TOPOLOGY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
+    `Snake — Topology Growth</text>`,
+    leftTicks.join("\n"),
+    rightTicks.join("\n"),
+    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
+    `points="${neuronPts}"/>`,
+    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
+    `stroke-dasharray="6 3" points="${synapsePts}"/>`,
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
+    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
+    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
+    `stroke="#2ca02c" stroke-width="2"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
+    `neurons (left axis)</text>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
+    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
+    `synapses (right axis)</text>`,
+    `  </g>`,
+    `</svg>`,
+    "",
+  ].join("\n");
+}
+
 /** Configuration options for {@link evolveSnakeController}. */
 export interface EvolveOptions {
   seed: number;
   populationSize: number;
-  /** Hard cap on the number of generations before giving up. */
-  maxGenerations: number;
+  /**
+   * NEAT-AI standard target-error stop condition (audit issue #222).
+   * Evolution halts as soon as the running champion's mean food eaten
+   * across the evaluation seed batch reaches `(1 - targetError) ×
+   * SOLVED_THRESHOLD` (default `targetError = 0.5` → mean ≥ 1.5 of the
+   * three-food target, equivalent to {@link SOLVED_AVG_FLOOR}) **and**
+   * its best per-seed eaten count reaches {@link SOLVED_THRESHOLD}.
+   * The two-condition gate guards against fragile elites that ace one
+   * seed and fail the rest.
+   */
+  targetError: number;
+  /**
+   * NEAT-AI standard wall-clock stop condition (audit issue #222).
+   * Evolution halts when the elapsed time since the loop began exceeds
+   * `timeoutMinutes` minutes (default `5`). Whichever of `targetError`
+   * and `timeoutMinutes` fires first wins.
+   */
+  timeoutMinutes: number;
+  /**
+   * Optional additional safety cap on the number of generations. When
+   * unset the loop is bounded only by `targetError` and `timeoutMinutes`
+   * (matching the audit-mandated stop conditions). Tests pin it to a
+   * small value to exercise specific code paths without waiting on the
+   * wall clock.
+   */
+  maxGenerations?: number;
   mutationStrength: number;
   mutationRate: number;
   /**
@@ -220,17 +407,42 @@ export interface EvolveResult {
   championSteps: number;
   /** Episode seed used for the replay SVG. */
   championReplaySeed: number;
-  /** Number of generations actually run before stopping (≤ maxGenerations). */
+  /** Number of generations actually run before stopping. */
   generations: number;
   /** True when the champion's mean food eaten reached {@link SOLVED_THRESHOLD}. */
   solved: boolean;
+  /** Wall-clock duration of the evolution loop in milliseconds. */
+  wallclockMs: number;
+  /**
+   * Why the evolution loop terminated:
+   * - `"target"` — the champion met both `targetError` and the best-seed
+   *   eaten threshold.
+   * - `"timeout"` — `timeoutMinutes` elapsed before the target fired.
+   * - `"cap"` — the optional `maxGenerations` cap was reached (test path).
+   */
+  stopReason: "target" | "timeout" | "cap";
 }
 
-/** Sensible defaults for the demonstration runner. */
+/**
+ * Sensible defaults for the demonstration runner.
+ *
+ * - `targetError = 0.5` makes the per-example target the existing
+ *   `SOLVED_AVG_FLOOR = 1.5` mean food eaten (`(1 - 0.5) × 3 = 1.5`),
+ *   paired with the best-per-seed `SOLVED_THRESHOLD = 3` gate so a
+ *   fragile elite cannot trip the early stop.
+ * - `timeoutMinutes = 5` is the audit-mandated wall-clock backstop.
+ *   The default seed reaches the target well within this budget on a
+ *   commodity laptop, so the backstop is rarely hit in practice.
+ */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 200,
-  maxGenerations: 200,
+  // NEAT-AI standard stop conditions: evolution halts as soon as the
+  // running champion's mean food eaten across the evaluation seed
+  // batch reaches `(1 - targetError) × SOLVED_THRESHOLD` AND its best
+  // per-seed eaten count reaches `SOLVED_THRESHOLD` (audit issue #222).
+  targetError: 0.5,
+  timeoutMinutes: 5,
   mutationStrength: 1.0,
   mutationRate: 0.5,
   addNeuronRate: 0.06,
@@ -569,11 +781,19 @@ function topologyCounts(json: CreatureExport): { neurons: number; synapses: numb
  * over so the best fitness is monotonically non-decreasing. A small
  * {@link RANDOM_INJECTION_FRACTION} of every generation is replaced
  * by fresh uniform-random NEAT genomes so structural diversity does
- * not collapse onto the elite's local optimum. Stops as soon as the
- * running champion's **best per-seed eaten count** reaches
- * {@link SOLVED_THRESHOLD} or `maxGenerations` is exhausted,
- * whichever comes first — the **hard generation cap** is the second
- * guarantee.
+ * not collapse onto the elite's local optimum.
+ *
+ * Stops as soon as the running champion meets the audit-mandated stop
+ * conditions (issue #222):
+ *
+ * - **`targetError`** — its mean food eaten across the evaluation seed
+ *   batch reaches `(1 - targetError) × SOLVED_THRESHOLD` **and** its
+ *   best per-seed eaten count reaches {@link SOLVED_THRESHOLD}
+ *   (default `targetError = 0.5` → mean ≥ 1.5, best ≥ 3).
+ * - **`timeoutMinutes`** — wall-clock backstop that fires whichever
+ *   comes first (default 5 min).
+ * - **`maxGenerations`** — optional safety cap, used by tests; left
+ *   unset for the audit defaults.
  */
 export function evolveSnakeController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -581,6 +801,9 @@ export function evolveSnakeController(
   const random = createDeterministicRandom(options.seed);
   const maxSteps = options.maxSteps ?? MAX_STEPS;
   const evalSeeds = options.evalSeeds ?? DEFAULT_EVAL_SEEDS;
+  const targetMeanEaten = (1 - options.targetError) * SOLVED_THRESHOLD;
+  const timeoutMs = options.timeoutMinutes * 60_000;
+  const loopStart = Date.now();
 
   // Counter for deterministic hidden-neuron UUIDs so the export stream
   // is reproducible across runs with the same seed.
@@ -614,8 +837,14 @@ export function evolveSnakeController(
   let bestEatenAvg = 0;
   let bestMaxEaten = 0;
   let solvedAt = -1;
+  let stopReason: "target" | "timeout" | "cap" = "timeout";
+  let generation = 0;
 
-  for (let generation = 0; generation < options.maxGenerations; generation++) {
+  // Loop while no stop condition has fired. The body computes whether
+  // the champion meets the target gate and whether the wall-clock has
+  // expired; either condition (or the optional `maxGenerations` cap)
+  // breaks the loop.
+  while (true) {
     population.sort((a, b) => b.fitness - a.fitness);
     const generationBest = population[0];
     if (generationBest.fitness > bestFitness) {
@@ -645,26 +874,41 @@ export function evolveSnakeController(
       }
     }
 
-    // Two-condition early stop: the running champion must reach the
-    // best-seed eaten threshold AND demonstrate it is not a one-trick
-    // pony — its mean eaten across the seed batch must be above
-    // {@link SOLVED_AVG_FLOOR}. Without the floor the search would
-    // halt the first time a fragile elite gets lucky on a single
-    // seed, leaving the user with a champion that fails most spawns.
-    if (bestMaxEaten >= SOLVED_THRESHOLD && bestEatenAvg >= SOLVED_AVG_FLOOR) {
-      if (solvedAt < 0) solvedAt = generation;
+    // Two-condition early stop (audit issue #222): the running champion
+    // must reach the best-seed eaten threshold AND demonstrate it is
+    // not a one-trick pony — its mean eaten across the seed batch must
+    // be at least the audit-mandated `targetMeanEaten` floor (derived
+    // from `targetError`). Without the floor the search would halt the
+    // first time a fragile elite gets lucky on a single seed, leaving
+    // the user with a champion that fails most spawns.
+    const targetMet = bestMaxEaten >= SOLVED_THRESHOLD && bestEatenAvg >= targetMeanEaten;
+    if (targetMet && solvedAt < 0) solvedAt = generation;
+
+    const elapsedMs = Date.now() - loopStart;
+    const timedOut = elapsedMs >= timeoutMs;
+    const cappedOut = options.maxGenerations !== undefined &&
+      generation + 1 >= options.maxGenerations;
+
+    if (targetMet) {
       // When capturing evolution snapshots, keep running until the
-      // next not-yet-fired checkpoint within maxGenerations is
-      // captured — otherwise the progression strip would be a single
-      // panel.
-      if (options.snapshotConfig) {
-        const nextCheckpoint = options.snapshotConfig.checkpoints
-          .filter((c) => c > generation + 1 && c <= options.maxGenerations)
-          .sort((a, b) => a - b)[0];
-        if (nextCheckpoint === undefined) break;
-      } else {
+      // next not-yet-fired checkpoint is captured — otherwise the
+      // progression strip would be a single panel.
+      const nextCheckpoint = options.snapshotConfig?.checkpoints
+        .filter((c) => c > generation + 1)
+        .sort((a, b) => a - b)[0];
+      if (nextCheckpoint === undefined) {
+        stopReason = "target";
         break;
       }
+    }
+
+    if (timedOut) {
+      stopReason = solvedAt >= 0 ? "target" : "timeout";
+      break;
+    }
+    if (cappedOut) {
+      stopReason = solvedAt >= 0 ? "target" : "cap";
+      break;
     }
 
     const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
@@ -728,6 +972,7 @@ export function evolveSnakeController(
       });
     }
     population = next;
+    generation++;
   }
 
   const champion = Creature.fromJSON(bestJSON);
@@ -744,8 +989,10 @@ export function evolveSnakeController(
     championEaten: replay.eaten,
     championSteps: replay.steps,
     championReplaySeed: pick.seed,
-    generations: solvedAt >= 0 ? solvedAt + 1 : options.maxGenerations,
-    solved: replay.eaten >= SOLVED_THRESHOLD && bestEatenAvg >= SOLVED_AVG_FLOOR,
+    generations: generation + 1,
+    solved: replay.eaten >= SOLVED_THRESHOLD && bestEatenAvg >= targetMeanEaten,
+    wallclockMs: Date.now() - loopStart,
+    stopReason,
   };
 }
 
@@ -761,12 +1008,19 @@ if (import.meta.main) {
   const { creaturesDir } = setupWorkingDirs(".synthetic-snake");
 
   console.log("🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log(
+    `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError} ` +
+      `(mean eaten ≥ ${(1 - DEFAULT_EVOLVE_OPTIONS.targetError) * SOLVED_THRESHOLD} ` +
+      `with best per-seed eaten ≥ ${SOLVED_THRESHOLD}), ` +
+      `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}`,
+  );
   ensureDirSync(SNAPSHOTS_DIR);
   for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
   const evolutionStart = Date.now();
   const evolutionSamples: EvolutionSample[] = [];
+  const evolutionRows: EvolutionRow[] = [];
   const result = evolveSnakeController({
     ...DEFAULT_EVOLVE_OPTIONS,
     snapshotConfig: {
@@ -777,9 +1031,15 @@ if (import.meta.main) {
       { generation, bestFitness, meanFitness, bestEaten, bestScore, neurons, synapses },
     ) => {
       evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
+      evolutionRows.push({
+        generation,
+        bestFitness,
+        meanFitness,
+        neuronCount: neurons,
+        synapseCount: synapses,
+      });
       if (
         generation % 25 === 0 ||
-        generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1 ||
         bestEaten >= SOLVED_THRESHOLD
       ) {
         console.log(
@@ -799,7 +1059,8 @@ if (import.meta.main) {
     `\n${verdictIcon} Champion ate ${result.championEaten} food on the replay episode ` +
       `(avg=${result.championEatenAvg.toFixed(2)} across ${DEFAULT_EVAL_SEEDS.length} seeds, ` +
       `score=${result.bestScore.toFixed(2)}, generations=${result.generations}, ` +
-      `threshold=${SOLVED_THRESHOLD}).`,
+      `threshold=${SOLVED_THRESHOLD}, stop=${result.stopReason}, ` +
+      `wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
   // Save the champion creature.
@@ -825,6 +1086,33 @@ if (import.meta.main) {
     ensureDirSync("docs/screenshots/snake_game");
     await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
+
+  // Per-generation evolution telemetry (audit issue #222): CSV (source
+  // of truth) + best/mean fitness chart + neuron/synapse topology chart.
+  // All three are emitted on every full run so downstream tools and the
+  // README can reuse the same data.
+  if (evolutionRows.length > 0) {
+    ensureDirSync("docs/data/snake_game");
+    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
+    console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
+
+    ensureDirSync("docs/screenshots/snake_game");
+    const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
+      generation: r.generation,
+      bestFitness: r.bestFitness,
+      avgFitness: r.meanFitness,
+    }));
+    const fitnessSvg = renderFitnessChartSVG(fitnessSamples, {
+      title: "Snake — Fitness vs Generation",
+      bestLabel: "best fitness",
+      avgLabel: "mean fitness",
+    });
+    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
+    console.log(`📈 Wrote fitness chart ${FITNESS_SVG_PATH}`);
+
+    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(evolutionRows));
+    console.log(`📐 Wrote topology chart ${TOPOLOGY_SVG_PATH}`);
   }
 
   // Render the multi-panel evolution-progression strip from the

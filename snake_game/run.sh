@@ -34,7 +34,9 @@ deno run \
 for svg in \
   "docs/screenshots/snake_game.svg" \
   "docs/screenshots/snake_game_evolution.svg" \
-  "docs/screenshots/snake_game/evolution.svg"; do
+  "docs/screenshots/snake_game/evolution.svg" \
+  "docs/screenshots/snake_game/fitness.svg" \
+  "docs/screenshots/snake_game/topology.svg"; do
   if [[ -f "${svg}" ]]; then
     deno fmt "${svg}" > /dev/null
   fi
