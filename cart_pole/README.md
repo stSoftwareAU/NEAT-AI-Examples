@@ -39,8 +39,8 @@ flowchart LR
     SCORE["📏 Mean Across 10 Perturbed Trials<br/>(capped at 500 steps each)"]
     SELECT["🏆 Truncation Selection<br/>top 50% are parents"]
     MUTATE["🧬 Mutate: weights · biases · add-neuron"]
-    SOLVED{"Mean ≥ 480?"}
-    CAP{"Generation cap reached?"}
+    SOLVED{"Mean ≥ 480?<br/>(targetError = 0.04)"}
+    CAP{"timeoutMinutes elapsed?<br/>(default 5 min)"}
     CHAMP["💾 Save champion.json"]
     RUN["▶️ Replay Champion"]
     SVG["🖼️ docs/screenshots/cart_pole.svg"]
@@ -83,10 +83,16 @@ flowchart LR
 The score is the **mean** number of timesteps the pole stays within ±12° and the cart stays within
 ±2.4 m across **ten perturbed-start trials**, capped at 500 steps per trial. The task is "solved"
 when the champion's mean reaches **480** (the `SOLVED_THRESHOLD`) — i.e. the controller balances on
-average for at least 96% of the time across the ten different starting states. Evolution stops as
-soon as the threshold is met or the **hard generation cap** of 1200 is reached, whichever comes
-first. (The cap was raised from 400 to 1200 in issue #160 so the canonical 1000-generation
-checkpoint can fire under the harder wobble regime.)
+average for at least 96% of the time across the ten different starting states. Audit issue #220
+replaced the old `maxGenerations` cap with the standard NEAT-AI stop conditions:
+
+- **`targetError = 0.04`** — halt as soon as the champion's mean balance score reaches
+  `MAX_STEPS * (1 - targetError) = 500 × 0.96 = 480`, exactly preserving the historical
+  `SOLVED_THRESHOLD` semantics.
+- **`timeoutMinutes = 5`** — wall-clock backstop. The default seed reaches the target in well under
+  a minute when no evolution-progression snapshots are configured; the runner intentionally pushes
+  on past the target hit so the captured snapshot strip captures multiple checkpoint generations,
+  and on a commodity laptop the checkpoint cadence consumes the full 5-minute budget.
 
 ## 🚀 Running the Example
 
@@ -104,6 +110,14 @@ Artefacts:
   the captured snapshots
 - `docs/screenshots/cart_pole_evolution_chart.svg` – dual-axis evolution chart plotting best score
   and champion neuron / synapse counts against generation
+- [`docs/data/cart_pole/evolution.csv`](../docs/data/cart_pole/evolution.csv) – per-generation
+  telemetry source-of-truth (`generation,best_fitness,mean_fitness,neuron_count,synapse_count`)
+- [`docs/screenshots/cart_pole/fitness.svg`](../docs/screenshots/cart_pole/fitness.svg) – best vs
+  mean fitness against generation, rendered by the shared
+  [`common/fitness_chart.ts`](../common/fitness_chart.ts) helper
+- [`docs/screenshots/cart_pole/topology.svg`](../docs/screenshots/cart_pole/topology.svg) – neuron /
+  synapse counts of the running champion against generation, rendered by the
+  `renderTopologyChartSvg` helper exported from [`cart_pole.ts`](cart_pole.ts)
 
 ## Evolution Progress
 
@@ -111,11 +125,44 @@ Artefacts:
 
 ![Cart-Pole evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/cart_pole_evolution_chart.svg)
 
-The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
-generations `[1, 10, 100, 500, 1000]` (those that fall inside the configured `maxGenerations`). The
-cadence is extended past the original `[1, 10, 100, 500]` because variable-topology evolution from
+### 📊 Per-Generation Telemetry (audit issue #220)
+
+The committed [`docs/data/cart_pole/evolution.csv`](../docs/data/cart_pole/evolution.csv) holds one
+row per generation with the canonical
+`generation,best_fitness,mean_fitness,neuron_count,synapse_count` schema used by every audited
+example. The two SVGs below are rendered from the same CSV:
+
+![Cart-Pole best vs mean per-trial mean balance score against generation](../docs/screenshots/cart_pole/fitness.svg)
+
+![Cart-Pole champion neuron and synapse counts against generation](../docs/screenshots/cart_pole/topology.svg)
+
+#### Measured numbers from the latest run (seed `12345`)
+
+| Metric                           | Value                                       |
+| -------------------------------- | ------------------------------------------- |
+| Generations run                  | **247**                                     |
+| Wall-clock duration              | **5 m 1 s** (`timeoutMinutes = 5` backstop) |
+| Generation target first met      | **gen 11** (`best_fitness = 500.0`)         |
+| Final champion mean score        | **500.0 / 500** (full cap on every trial)   |
+| Threshold                        | 480 / 500 (`targetError = 0.04`)            |
+| Stop reason                      | `target` (target met within budget)         |
+| Generation 0 topology            | **5 neurons, 4 synapses** (minimal seed)    |
+| Final champion topology          | **9 neurons, 8 synapses**                   |
+| Generation 0 best / mean fitness | **409.2 / 62.1**                            |
+| Final-generation mean fitness    | **441.6**                                   |
+
+Topology genuinely changes across the run — gen 0 is the bare minimal seed (4 inputs + 1 output with
+direct synapses, zero hidden neurons), and by the time wall-clock runs out the running champion
+carries four hidden neurons and four extra synapses. The chart's polyline shows neutral-drift
+growth: the elite first hits the 500/500 score cap at gen 11 with no hidden neurons, then
+structurally-mutated children that match the cap progressively replace it.
+
+The runner also captures a snapshot of the **running champion** at each of the canonical checkpoint
+generations `[1, 10, 100, 500, 1000]` (those that fall inside the wall-clock budget). The cadence is
+extended past the original `[1, 10, 100, 500]` because variable-topology evolution from
 uniform-random noise typically needs more generations to converge than the old fixed-topology search
-did.
+did. Numbers above are direct from the latest committed `evolution.csv` — re-run
+`./cart_pole/run.sh` to refresh them and the embedded SVGs together.
 
 Generation 1 is the **uniform-random NEAT population** straight from `new Creature(4, 1)` — direct
 input → output connections with weights and biases drawn by the library's RNG. The intermediate
@@ -167,9 +214,22 @@ A few things that are not obvious from the code alone:
   `setRandomNumberGenerator(createSeededRng(seed))`, and our local PRNG
   (`common/deterministic_random.ts`) drives mutation. With a fixed seed the same champion is
   produced on every run.
-- **Hard generation cap.** Evolution stops at `maxGenerations` even if the threshold has not been
-  reached, so a stuck run never blocks the example forever. The cap is enforced in
-  `evolveCartPoleController` and verified by the `honours the hard generation cap` test.
+- **`targetError` + `timeoutMinutes` stop conditions.** Audit issue #220 replaced the legacy
+  `maxGenerations` cap with the standard NEAT-AI pair: evolution halts as soon as the champion's
+  mean balance score reaches `MAX_STEPS * (1 - targetError)` (default `0.04` → 480 / 500) or the
+  wall-clock backstop `timeoutMinutes` (default `5`) elapses. `evolveCartPoleController` returns
+  `stopReason ∈ { "target", "timeout", "iterations" }` so callers can tell which guarantee fired.
+  The `honours the timeoutMinutes wall-clock backstop` unit test exercises the backstop end-to-end.
+- **Per-step `activate()` is retained.** Cart-pole is an interactive reinforcement learning
+  environment — the agent observes a live simulator and acts at every timestep, so there is no
+  pre-generated `.bin` training set to pass to the upstream NEAT-AI training loop. Audit issue #220
+  explicitly preserves this choice; the only change is the stop-condition refactor described above.
+- **Tie-breaking by structural complexity.** Once the score saturates at `MAX_STEPS`, sorting only
+  by `score` would freeze the elite at whatever structure first hit the cap (the minimal linear seed
+  is already enough to balance ten wobble patterns). The sort breaks ties by preferring the creature
+  with **more synapses**, so structurally-mutated children that _match_ the score-cap progressively
+  replace the elite. This is the mechanism that makes the topology chart above show measurable
+  growth.
 - **No Python required.** Despite cart-pole being the canonical OpenAI Gym example, the simulator
   here is plain TypeScript so the whole project remains "Deno + JSR" with no extra runtime.
 

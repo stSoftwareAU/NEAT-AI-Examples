@@ -40,3 +40,9 @@ fi
 if [[ -f "docs/screenshots/cart_pole/evolution.svg" ]]; then
   deno fmt docs/screenshots/cart_pole/evolution.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/cart_pole/fitness.svg" ]]; then
+  deno fmt docs/screenshots/cart_pole/fitness.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/cart_pole/topology.svg" ]]; then
+  deno fmt docs/screenshots/cart_pole/topology.svg > /dev/null
+fi

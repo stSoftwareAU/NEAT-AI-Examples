@@ -12,12 +12,16 @@ import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-a
 import {
   buildRandomPopulation,
   DEFAULT_EVOLVE_OPTIONS,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveCartPoleController,
+  formatEvolutionCsv,
   type GenerationInfo,
   INPUT_COUNT,
   MAX_STEPS,
   mutateCreatureExport,
   OUTPUT_COUNT,
+  renderTopologyChartSvg,
   replayController,
   scoreController,
   scoreTiltDirectionPolicy,
@@ -165,9 +169,13 @@ Deno.test(
     // someone zeroing `disturbanceMagnitude`) will flunk this bound.
     let firstGenMean = -Infinity;
     let firstGenBest = -Infinity;
+    // Audit issue #220 replaced `maxGenerations` with `targetError` +
+    // `timeoutMinutes`. Force the loop to exit after gen 0 by capping
+    // `iterations` to 1 — the iterations cap is checked alongside the
+    // standard NEAT-AI stop conditions.
     evolveCartPoleController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: 1,
+      iterations: 1,
       onGeneration: (info) => {
         if (info.generation === 0 && firstGenMean === -Infinity) {
           firstGenMean = info.meanScore;
@@ -203,9 +211,13 @@ Deno.test(
     let firstGenMean = -Infinity;
     let lastGenMean = -Infinity;
     const targetGen = 20;
+    // Audit issue #220: replace the old `maxGenerations` cap with the
+    // standard NEAT-AI `targetError` + `timeoutMinutes` stop conditions
+    // plus the optional `iterations` field used here only to bound the
+    // test deterministically without relying on wall-clock timing.
     evolveCartPoleController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: targetGen,
+      iterations: targetGen,
       onGeneration: (info) => {
         if (info.generation === 0 && firstGenMean === -Infinity) {
           firstGenMean = info.meanScore;
@@ -225,20 +237,21 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveCartPoleController honours the hard generation cap",
+  "evolveCartPoleController honours the timeoutMinutes wall-clock backstop",
   () => {
-    // With a tiny strength + tiny rate, the evolver cannot solve the
-    // task within the cap. The result must therefore stop at the cap
-    // and report `solved=false`.
-    const cap = 3;
-    // seed=999 with pop=4 produces an initial population whose best
-    // member scores well below SOLVED_THRESHOLD, so the early-stop
-    // branch in `evolveCartPoleController` cannot fire and the loop
-    // must run all the way to `maxGenerations`.
+    // Audit issue #220 replaced the old `maxGenerations` cap with the
+    // standard NEAT-AI `targetError` + `timeoutMinutes` stop conditions.
+    // With a vanishingly small mutation rate, the evolver cannot solve
+    // the task. Force the loop to exit via the wall-clock backstop by
+    // setting an unreachable `targetError = -1` (target score = MAX_STEPS
+    // * 2, never met) and a tiny `timeoutMinutes` budget — the returned
+    // `stopReason` must be `timeout` and `solved` false.
+    const start = Date.now();
     const result = evolveCartPoleController({
       seed: 999,
       populationSize: 4,
-      maxGenerations: cap,
+      targetError: -1,
+      timeoutMinutes: 0.01, // ~600 ms
       mutationStrength: 0.01,
       mutationRate: 0.01,
       addNeuronRate: 0,
@@ -246,15 +259,24 @@ Deno.test(
       trialSeed: 1,
       initialPerturbation: 0.2,
     });
-    assertEquals(
-      result.generations,
-      cap,
-      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
-    );
+    const elapsedMs = Date.now() - start;
     assertEquals(
       result.solved,
       false,
-      "with vanishing mutation the search must not solve cart-pole within the cap",
+      "with vanishing mutation the search must not solve cart-pole",
+    );
+    assertEquals(
+      result.stopReason,
+      "timeout",
+      `expected stopReason 'timeout', got ${result.stopReason}`,
+    );
+    assert(
+      result.bestScore < SOLVED_THRESHOLD,
+      `expected best score below threshold, got ${result.bestScore}`,
+    );
+    assert(
+      elapsedMs < 30_000,
+      `expected the run to finish well under 30 seconds, took ${elapsedMs} ms`,
     );
   },
 );
@@ -382,9 +404,13 @@ Deno.test(
     const tmp = Deno.makeTempDirSync({ prefix: "cart_pole_snap_diff_" });
     try {
       const checkpoints = [1, 30];
+      // Audit issue #220: bound the loop via the optional `iterations`
+      // cap (renamed from the removed `maxGenerations`) so the test runs
+      // for exactly 30 generations regardless of the standard NEAT-AI
+      // `targetError` / `timeoutMinutes` stop conditions.
       evolveCartPoleController({
         ...DEFAULT_EVOLVE_OPTIONS,
-        maxGenerations: 30,
+        iterations: 30,
         snapshotConfig: { checkpoints, outputDir: tmp },
       });
       const snapshots = loadSnapshots(tmp);
@@ -418,10 +444,14 @@ Deno.test(
       // a single generation and trigger the early-stop break before all
       // configured snapshot checkpoints fire.
       const checkpoints = [1, 2, 3];
+      // Audit issue #220: bound the loop via `targetError = -1`
+      // (unreachable, target score = MAX_STEPS * 2) and a short timeout
+      // so the run stops once the last checkpoint is captured.
       evolveCartPoleController({
         seed: 1,
         populationSize: 3,
-        maxGenerations: 4,
+        targetError: -1,
+        timeoutMinutes: 0.05, // ~3s — enough for a few generations of a tiny pop
         mutationStrength: 0.05,
         mutationRate: 0.05,
         addNeuronRate: 0,
@@ -459,10 +489,14 @@ Deno.test(
   "evolveCartPoleController emits GenerationInfo with sensible neuron and synapse counts",
   () => {
     const samples: GenerationInfo[] = [];
+    // Audit issue #220: bound via `iterations` so the test runs three
+    // generations deterministically regardless of wall-clock timing.
     evolveCartPoleController({
       seed: 1,
       populationSize: 3,
-      maxGenerations: 3,
+      targetError: -1,
+      timeoutMinutes: 1,
+      iterations: 3,
       mutationStrength: 0.05,
       mutationRate: 0.05,
       addNeuronRate: 0,
@@ -482,6 +516,54 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "formatEvolutionCsv emits the audit-mandated header and one row per record",
+  () => {
+    // Audit issue #220: CSV header must be the canonical schema used by
+    // every audited example.
+    const rows: EvolutionRow[] = [
+      { generation: 0, bestFitness: 12.5, meanFitness: 8.2, neuronCount: 5, synapseCount: 4 },
+      { generation: 1, bestFitness: 200, meanFitness: 80, neuronCount: 6, synapseCount: 5 },
+    ];
+    const csv = formatEvolutionCsv(rows);
+    const lines = csv.trim().split("\n");
+    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+    assertEquals(
+      EVOLUTION_CSV_HEADER,
+      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+    );
+    assertEquals(lines.length, rows.length + 1);
+    assertEquals(lines[1], "0,12.5,8.2,5,4");
+    assertEquals(lines[2], "1,200,80,6,5");
+    // Determinism: identical inputs produce identical bytes.
+    assertEquals(formatEvolutionCsv(rows), csv);
+  },
+);
+
+Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 0, bestFitness: 50, meanFitness: 20, neuronCount: 5, synapseCount: 4 },
+    { generation: 5, bestFitness: 200, meanFitness: 100, neuronCount: 6, synapseCount: 5 },
+    { generation: 10, bestFitness: 480, meanFitness: 320, neuronCount: 7, synapseCount: 6 },
+  ];
+  const svg = renderTopologyChartSvg(rows);
+  assert(svg.startsWith("<svg"), "must start with <svg>");
+  assert(svg.includes("</svg>"), "must contain </svg>");
+  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
+  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
+  assert(svg.includes("Cart Pole — Topology Growth"));
+});
+
+Deno.test("renderTopologyChartSvg rejects empty input", () => {
+  let threw = false;
+  try {
+    renderTopologyChartSvg([]);
+  } catch (_err) {
+    threw = true;
+  }
+  assertEquals(threw, true, "expected empty input to throw");
+});
 
 Deno.test(
   "running cart_pole.ts via run.sh-style execution emits champion.json and SVG",
