@@ -18,15 +18,22 @@ external dependency is NEAT-AI's `Creature.activate` to compute each step's thru
 
 ## 📊 Real Run Statistics
 
-On a default run (seed-driven, `targetError=0.01`, `timeoutMinutes=2`) we evolved for **245
-generations in 120.5 seconds**, reaching **5% validation landed-rate** (10 of 200 held-out
+On a default run (seed-driven, `targetError=0.01`, `timeoutMinutes=2`) we evolved for **135
+generations in 120.7 seconds**, reaching **4.5% validation landed-rate** (9 of 200 held-out
 scenarios) — the loop exited via `timeout` rather than `target`, with a champion of **11 neurons /
-22 synapses** and a best training fitness of `-166.0` against a free-fall baseline of `-984.7`.
+22 synapses** and a best training fitness of `-168.0` against a free-fall baseline of `-984.7`.
 These numbers are reproduced verbatim from `./lunar_lander/run.sh` output and the
 [`docs/data/lunar_lander/evolution.csv`](../docs/data/lunar_lander/evolution.csv) artefact; the
 two-minute budget is intentionally tight so the example terminates predictably, so the captured
 champion is a partial controller — gen 1 is noise, training landed-rate climbs to ~10%, and the
 validation chart shows where the controller still crashes or drifts.
+
+The topology genuinely grows during the run rather than being memorised from a hand-crafted seed:
+the gen-1 snapshot is **10 neurons / 21 synapses** (NEAT-AI's minimal `(input, output)` seed — seven
+inputs and three outputs, fully connected with no hidden layer) and the final-generation champion is
+**11 neurons / 22 synapses** (one hidden neuron and one extra synapse spliced in by an add-neuron
+structural mutation). The neuron/synapse evolution chart below renders this growth from the same
+per-generation telemetry stream.
 
 > Continuous Integration runs the example in **quick mode** (`LUNAR_QUICK=1`, ~6 seconds) so
 > `quality.sh` finishes in seconds and never overwrites the canonical artefacts. The four artefacts
@@ -110,8 +117,8 @@ The aggregate per-scenario outcome distribution is drawn alongside the descent S
 
 ![Lunar-Lander validation outcome bar chart — count of landed / crashed / out_of_bounds / flying outcomes across the 200 held-out validation scenarios](../docs/screenshots/lunar_lander/validation.svg)
 
-On the captured run the 200 validation scenarios broke down as 10 `landed`, 155 `crashed`, 32
-`out_of_bounds`, and 3 `flying`.
+On the captured run the 200 validation scenarios broke down as 9 `landed`, 156 `crashed`, 32
+`out_of_bounds`, and 3 `flying`, with a mean validation fitness of `-526.2`.
 
 ## 🎯 NEAT-AI Standard Stop Conditions
 
@@ -232,17 +239,18 @@ Artefacts:
 
 The runner captures a snapshot of the **running champion** at the canonical checkpoint generations
 `[1, 10, 100, 500, 1000]` (those reached before the `timeoutMinutes` budget elapses — on the
-captured 245-generation run only the first three panels were captured before the 2-minute budget ran
+captured 135-generation run only the first three panels were captured before the 2-minute budget ran
 out). The cadence is wider than the previous fixed-topology demo because variable-topology evolution
 from uniform-random noise typically needs more generations to find structure.
 
 Each panel displays the champion's topology (inputs → hidden → outputs), the generation label, and
 the score at that checkpoint; the bottom strip charts the score over the captured generations. The
 narrative the panels tell is consistent: **gen 1 is random noise** (the panel-1 lander crashes every
-attempt), the middle panels show the controller starting to throttle and orient, and the final panel
-is the champion the runner saved when the timeout fired — on the captured run that champion lands
-~10% of training trials and 5% of the held-out validation pool, which is exactly why the validation
-bar chart is dominated by `crashed` rather than `landed`.
+attempt and the topology is the bare 10-neuron / 21-synapse minimal seed), the middle panels show
+the controller starting to throttle and orient, and the final panel is the champion the runner saved
+when the timeout fired — an 11-neuron / 22-synapse network that lands ~10% of training trials and
+4.5% of the held-out validation pool, which is exactly why the validation bar chart is dominated by
+`crashed` rather than `landed`.
 
 ## 🛬 Entry Profile
 
@@ -339,6 +347,19 @@ A few things that are not obvious from the code alone:
   library's `createSeededPopulation` decides the gen-1 structure (direct input → output connections,
   random weights, random output biases); the add-neuron structural mutation grows hidden topology
   during evolution. There is no "warm start" — gen 1 is genuine noise.
+- **Minimal-seed audit.** Issue [#224](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/224)
+  re-confirmed the audit guarantees against the merged
+  [#195](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/195) /
+  [#196](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/196) /
+  [#198](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/198)–[#202](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/202)
+  pipeline: only `INPUT_COUNT` and `OUTPUT_COUNT` are passed to NEAT-AI's `createSeededPopulation`
+  (no `hiddenLayers`, no `nodes`, no pre-built `network.json`); the per-step `activate()` call is
+  justified by the interactive RL environment; stop conditions are the standard `targetError` +
+  `timeoutMinutes` pair; and the gen-0 champion's topology is the bare 10-neuron / 21-synapse seed,
+  growing to 11 neurons / 22 synapses by the final generation on the captured 135-generation run.
+  The unit test `evolveLanderController gen-0 champion uses NEAT-AI's
+  minimal seed` enforces the
+  seed shape, and the per-generation neuron/synapse chart embedded above shows the growth visually.
 
 ## 🧰 NEAT-AI Features Used
 

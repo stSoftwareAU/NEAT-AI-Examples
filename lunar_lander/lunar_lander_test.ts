@@ -660,6 +660,49 @@ Deno.test(
 );
 
 Deno.test(
+  "evolveLanderController gen-0 champion uses NEAT-AI's minimal seed (issue #224)",
+  () => {
+    // Audit guarantee: the gen-0 champion must come straight from
+    // NEAT-AI's minimal `(input, output)` seed — 10 neurons (7 inputs
+    // + 3 outputs) and a dense 7×3 = 21 synapses. Any deviation here
+    // means somebody slipped in a hand-crafted topology hint, which
+    // breaks the noise → competent story this audit is enforcing.
+    const tmp = Deno.makeTempDirSync({ prefix: "lunar_lander_seed_test_" });
+    const events: GenerationInfo[] = [];
+    try {
+      evolveLanderController({
+        ...TEST_EVOLVE_OPTIONS,
+        // No structural mutation in this test — gen 0 is observed as
+        // the library produces it, before any add-neuron mutation has
+        // had a chance to fire. The snapshot checkpoint at gen 1 keeps
+        // the loop running long enough for one onGeneration event.
+        addNeuronRate: 0,
+        populationSize: 6,
+        snapshotConfig: { checkpoints: [1], outputDir: tmp },
+        onGeneration: (info) => events.push(info),
+      });
+      assertGreater(events.length, 0);
+      const gen0 = events[0];
+      assertEquals(gen0.generation, 0);
+      assertEquals(
+        gen0.neurons,
+        INPUT_COUNT + OUTPUT_COUNT,
+        `gen 0 must show the minimal-seed neuron count (${INPUT_COUNT + OUTPUT_COUNT}); ` +
+          `a hand-crafted topology hint would push it higher`,
+      );
+      assertEquals(
+        gen0.synapses,
+        INPUT_COUNT * OUTPUT_COUNT,
+        `gen 0 must show the dense ${INPUT_COUNT}×${OUTPUT_COUNT} synapse count; ` +
+          `a hand-crafted hidden layer would change this`,
+      );
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
   "renderRunSVG draws an explosion when the run crashed (issue #177)",
   () => {
     // Hand-craft a trace whose final frame is a hard crash off the pad —
