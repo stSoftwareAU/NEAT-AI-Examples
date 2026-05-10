@@ -2,27 +2,16 @@
  * Dataset helpers for the MNIST classification example.
  *
  * The example consumes the canonical MNIST handwritten-digit dataset.
- * The two test-set IDX files (`t10k-images-idx3-ubyte.gz` and
- * `t10k-labels-idx1-ubyte.gz`) are downloaded from the Common Visual
- * Data Foundation (CVDF) Google-Cloud mirror — the standard mirror
- * recommended by the MNIST community now that Yann LeCun's original
- * site has been retired. Each file is pinned by SHA-256 in
- * `mnist_classification.ts` so the pipeline is byte-deterministic.
+ * The IDX files are downloaded from the Common Visual Data Foundation
+ * (CVDF) Google-Cloud mirror — the standard mirror recommended by the
+ * MNIST community now that Yann LeCun's original site has been retired.
+ * Each file is pinned by SHA-256 in `mnist_classification.ts` so the
+ * pipeline is byte-deterministic.
  *
- * Although the issue text mentions a "CSV mirror", the IDX format is:
- *
- *   1. Tiny — the test set is ~1.6 MB compressed (vs ~18 MB CSV).
- *   2. The canonical primary source for MNIST.
- *   3. Stably hosted on a CDN that is publicly digest-pinnable.
- *
- * That makes IDX the right choice for keeping the repository small and
- * the CI run fast. The README documents the trade-off.
- *
- * After download we decompress, parse the IDX header, mean-pool each
- * 28×28 image down to 14×14 (so the evolutionary search only has to
- * tune 196 weights per output class), and emit `DigitSample` records
- * carrying both the down-sampled feature vector (network input) and
- * the original 784-pixel array (rendered into the SVG grid).
+ * Each `DigitSample` carries the raw 28×28 pixels both as a normalised
+ * `[0, 1]` Float32-friendly feature vector (the network's input — 784
+ * features in row-major order) and as the original 0..255 byte array
+ * (rendered into the SVG grid).
  */
 
 import { ensureDir } from "@std/fs";
@@ -31,11 +20,8 @@ import { dirname } from "@std/path";
 /** Native side length of an MNIST image. */
 export const IMAGE_SIZE = 28;
 
-/** Down-sampled feature grid side length used by the network. */
-export const DOWNSAMPLED_SIZE = 14;
-
-/** Total number of features fed to the network (`14 * 14`). */
-export const FEATURE_COUNT = DOWNSAMPLED_SIZE * DOWNSAMPLED_SIZE;
+/** Total number of features fed to the network (`28 * 28`). */
+export const FEATURE_COUNT = IMAGE_SIZE * IMAGE_SIZE;
 
 /** Number of digit classes (0..9). */
 export const CLASS_COUNT = 10;
@@ -47,15 +33,15 @@ export interface DigitSample {
   /** Ground-truth class label (0..9). */
   label: number;
   /**
-   * Down-sampled feature vector of length {@link FEATURE_COUNT}, with
-   * each value in `[0, 1]` (mean-pooled over the 2×2 source block and
+   * Raw 28×28 feature vector of length {@link FEATURE_COUNT} in
+   * row-major order, with each value in `[0, 1]` (the source byte
    * normalised by 255).
    */
   features: number[];
   /**
    * Raw 28×28 grey pixels (0..255) in row-major order. Carried so the
-   * SVG renderer can show each digit at full resolution even though
-   * the network only sees the down-sampled feature vector.
+   * SVG renderer can show each digit at full resolution alongside the
+   * normalised feature vector consumed by the network.
    */
   pixels: number[];
 }
@@ -132,54 +118,6 @@ export function parseIdxLabels(buf: Uint8Array): IdxLabels {
 }
 
 /**
- * Mean-pool an `srcSize × srcSize` greyscale image down to
- * `dstSize × dstSize`. Each output pixel is the average of a
- * `(srcSize / dstSize) × (srcSize / dstSize)` block of source pixels,
- * normalised by 255 so the result is in `[0, 1]`.
- *
- * Throws when the source is not an integer multiple of the target —
- * that would require interpolation, which is out of scope for the
- * teaching example.
- */
-export function downsamplePixels(
-  pixels: ArrayLike<number>,
-  srcSize: number,
-  dstSize: number,
-): number[] {
-  if (dstSize <= 0 || srcSize <= 0) {
-    throw new Error(
-      `downsamplePixels: sizes must be positive (got src=${srcSize}, dst=${dstSize})`,
-    );
-  }
-  if (srcSize % dstSize !== 0) {
-    throw new Error(
-      `downsamplePixels: srcSize ${srcSize} must be an integer multiple of dstSize ${dstSize}`,
-    );
-  }
-  if (pixels.length !== srcSize * srcSize) {
-    throw new Error(
-      `downsamplePixels: expected ${srcSize * srcSize} pixels, got ${pixels.length}`,
-    );
-  }
-  const block = srcSize / dstSize;
-  const blockArea = block * block;
-  const out = new Array<number>(dstSize * dstSize).fill(0);
-  for (let dy = 0; dy < dstSize; dy++) {
-    for (let dx = 0; dx < dstSize; dx++) {
-      let sum = 0;
-      for (let oy = 0; oy < block; oy++) {
-        const sy = dy * block + oy;
-        for (let ox = 0; ox < block; ox++) {
-          sum += pixels[sy * srcSize + (dx * block + ox)];
-        }
-      }
-      out[dy * dstSize + dx] = sum / (blockArea * 255);
-    }
-  }
-  return out;
-}
-
-/**
  * Combine parsed images and labels into a list of {@link DigitSample}
  * records. Throws when the two files disagree on `count` or when the
  * image dimensions are not the expected 28×28.
@@ -201,10 +139,12 @@ export function buildDigitSamples(images: IdxImages, labels: IdxLabels): DigitSa
   for (let i = 0; i < images.count; i++) {
     const start = i * stride;
     const pixels = images.data.subarray(start, start + stride);
+    const features = new Array<number>(stride);
+    for (let j = 0; j < stride; j++) features[j] = pixels[j] / 255;
     samples.push({
       index: i,
       label: labels.data[i],
-      features: downsamplePixels(pixels, IMAGE_SIZE, DOWNSAMPLED_SIZE),
+      features,
       pixels: Array.from(pixels),
     });
   }
