@@ -70,9 +70,21 @@ after 200 timesteps of the canonical `MountainCar-v0` horizon. Each candidate is
 **five different perturbed-start trials**: the starting `x` is sampled uniformly from
 `[-0.55, -0.45]` (the canonical `-0.5` ± `0.05`) so a controller cannot solve the task by exploiting
 a single favourable launch. The `score` reported is the **mean** per-trial score, and the run is
-"solved" when the champion's **summit-reached fraction** reaches the `SOLVED_THRESHOLD` of **0.8** —
-eight in ten trials must crest the flag within the step cap. Evolution stops as soon as that
-threshold is met or the **hard generation cap** of 300 is reached, whichever comes first.
+"solved" when the champion's **summit-reached fraction** reaches the `SOLVED_THRESHOLD` of **0.8**
+(equivalently `targetError = 0.2`) — eight in ten trials must crest the flag within the step cap.
+
+### Stop conditions (audit issue #221)
+
+Evolution uses the standard NEAT-AI stop conditions:
+
+- **`targetError = 0.2`** — halt as soon as the champion's summit rate reaches `1 - targetError`,
+  i.e. ≥ 80% of the perturbed-start trials crest the flag.
+- **`timeoutMinutes = 5`** — wall-clock backstop in case the target is never reached.
+
+Whichever fires first wins. The default seed reaches the target in well under a minute on a
+commodity laptop, so the backstop is never hit in practice. Per-step `Creature.activate()` is
+retained because the environment is interactive — there is no pre-generated binary training set that
+`Creature.evolveDir(...)` could consume; each step's action depends on the previous step's state.
 
 ## 🚀 Running the Example
 
@@ -90,6 +102,13 @@ Artefacts:
   from the captured snapshots
 - `docs/screenshots/mountain_car/evolution.svg` – dual-axis evolution chart plotting best score and
   champion neuron / synapse counts against generation
+- [`docs/screenshots/mountain_car/fitness.svg`](../docs/screenshots/mountain_car/fitness.svg) – best
+  vs mean per-trial fitness against generation
+- [`docs/screenshots/mountain_car/topology.svg`](../docs/screenshots/mountain_car/topology.svg) –
+  champion neuron and synapse counts against generation
+- [`docs/data/mountain_car/evolution.csv`](../docs/data/mountain_car/evolution.csv) – the
+  per-generation telemetry source-of-truth
+  (`generation,best_fitness,mean_fitness,neuron_count,synapse_count`)
 
 ## 📈 Evolution Progress
 
@@ -97,12 +116,16 @@ Artefacts:
 
 ![Mountain-Car evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/mountain_car/evolution.svg)
 
+![Mountain-Car best vs mean per-trial fitness against generation](../docs/screenshots/mountain_car/fitness.svg)
+
+![Mountain-Car champion neuron and synapse counts against generation](../docs/screenshots/mountain_car/topology.svg)
+
 The runner captures a snapshot of the **running champion** at each of the checkpoint generations
-`[1, 10, 50, 150, 300]` (those that fall inside the configured `maxGenerations`). The cadence is
-chosen to match variable-topology evolution from uniform-random noise: gen 1 is pure noise, gens 10
-/ 50 / 150 show the controller growing structure and shifting weights, and the final captured panel
-shows the swing-up policy cresting the flag. The chart fits a normal window — the milestones are
-spaced so the score-progression polyline is readable end-to-end.
+`[1, 10, 50, 150, 300]`. The cadence is chosen to match variable-topology evolution from
+uniform-random noise: gen 1 is pure noise, gens 10 / 50 / 150 show the controller growing structure
+and shifting weights, and the final captured panel shows the swing-up policy cresting the flag. The
+chart fits a normal window — the milestones are spaced so the score-progression polyline is readable
+end-to-end.
 
 Generation 1 is the **uniform-random NEAT population** straight from `new Creature(2, 3)` — direct
 input → output connections with weights and biases drawn by the library's RNG. Most gen-1 creatures
@@ -110,6 +133,28 @@ waste their 200 steps rocking inside the valley without ever cresting the flag, 
 mean per-trial score sits at the failure baseline (well below any successful score). The
 intermediate milestones show the controller learning the swing-up strategy; the final champion meets
 the 80% summit-rate threshold across the perturbed-start batch.
+
+### Latest measured run (audit issue #221)
+
+Numbers below are quoted **from the latest end-to-end run** with `seed=12345` on a commodity Apple
+M-series laptop. Re-run `./mountain_car/run.sh` to refresh them.
+
+| Metric                      | Measured value                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Wall-clock                  | 22.8 s (well below the 5 min backstop)                                                                     |
+| Generations executed        | 300 (loop kept running so all checkpoints — `[1, 10, 50, 150, 300]` — could fire after the target was met) |
+| Champion best score         | 471.0 (mean per-trial score)                                                                               |
+| Champion summit rate        | 100% (5 / 5 perturbed trials cleared the flag)                                                             |
+| First positive best fitness | gen 55 (first partial swing-up)                                                                            |
+| First topology change       | gen 37 (add-neuron mutation: 5 → 7 neurons, 6 → 8 synapses)                                                |
+| Initial topology (gen 0)    | 5 neurons, 6 synapses (`new Creature(2, 3)` minimal seed)                                                  |
+| Final topology (champion)   | 7 neurons, 8 synapses                                                                                      |
+| Stop reason                 | `target` — summit rate ≥ 80% before the timeout                                                            |
+
+**The final creature solves the environment** — it crests the goal flag on every one of the five
+perturbed-start trials in well under the 200-step horizon. The `evolution.csv` shows the topology
+genuinely growing (5 → 7 neurons; 6 → 8 synapses), so the seed is not memorising a hand-crafted
+shape; structural mutation is discovering it.
 
 ## 🧠 Tacit Knowledge
 
@@ -138,9 +183,15 @@ A few things that are not obvious from the code alone:
   `setRandomNumberGenerator(createSeededRng(seed))`, and our local PRNG
   (`common/deterministic_random.ts`) drives mutation. With a fixed seed the same champion is
   produced on every run.
-- **Hard generation cap.** Evolution stops at `maxGenerations` even if the threshold has not been
-  reached, so a stuck run never blocks the example forever. The cap is enforced in
-  `evolveMountainCarController` and verified by the `honours the hard generation cap` test.
+- **`targetError` + `timeoutMinutes` stop conditions.** Audit issue #221 replaced the old
+  `maxGenerations` cap with the standard NEAT-AI pair: evolution halts as soon as the champion's
+  summit rate reaches `1 - targetError` (default `0.2` → 80%) or the wall-clock backstop
+  `timeoutMinutes` (default `5`) elapses. `evolveMountainCarController` returns `stopReason`
+  (`"target"` or `"timeout"`) so callers can tell which fired.
+- **Per-step `Creature.activate()`, not `evolveDir`.** Mountain Car is interactive — each step's
+  action depends on the previous step's state — so we cannot pre-generate a binary `.bin` training
+  set. Evolution scores every candidate by rolling the simulator forward step-by-step inside the
+  evolution loop. See parent issue #203 for the broader audit context.
 - **OpenAI Gym lineage.** Update rules, bounds, action set, and the 200-step horizon all match the
   canonical `MountainCar-v0` benchmark, so behaviour matches the textbook reference. Despite that
   pedigree, the simulator is plain TypeScript so the project remains "Deno + JSR" with no extra

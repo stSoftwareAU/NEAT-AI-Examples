@@ -20,12 +20,16 @@ import {
   buildRandomPopulation,
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveMountainCarController,
+  formatEvolutionCsv,
   type GenerationInfo,
   INPUT_COUNT,
   MAX_STEPS,
   mutateCreatureExport,
   OUTPUT_COUNT,
+  renderTopologyChartSvg,
   replayController,
   scoreController,
   scoreSwingUpPolicy,
@@ -175,11 +179,17 @@ Deno.test(
     // never reach the goal flag, so the population mean per-trial
     // score sits at the failure baseline (≈ FAILURE_FLAT_PENALTY plus
     // a small partial-credit term) — far below any successful score.
+    //
+    // Audit issue #221 replaced `maxGenerations` with the standard
+    // NEAT-AI `targetError` + `timeoutMinutes` stop conditions. We use
+    // `targetError = 1` (target rate = 0, satisfied at gen 0) so the
+    // loop terminates immediately after the first generation.
     let firstGenMean = Infinity;
     let firstGenBestSummit = Infinity;
     evolveMountainCarController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: 1,
+      targetError: 1,
+      timeoutMinutes: 1,
       onGeneration: (info) => {
         if (info.generation === 0 && firstGenMean === Infinity) {
           firstGenMean = info.meanScore;
@@ -209,16 +219,21 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveMountainCarController honours the hard generation cap",
+  "evolveMountainCarController honours the timeoutMinutes wall-clock backstop",
   () => {
-    // With a tiny strength and tiny rate, the evolver cannot solve the
-    // task within the cap. The result must therefore stop at the cap
-    // and report `solved=false`.
-    const cap = 3;
+    // Audit issue #221 replaced the old `maxGenerations` cap with the
+    // standard NEAT-AI `targetError` + `timeoutMinutes` stop conditions.
+    // With a vanishingly small mutation rate, the evolver cannot solve
+    // the task. We force the loop to exit via the wall-clock backstop
+    // by setting an unreachable `targetError = -1` (target rate = 2,
+    // bounded above by 1) and a tiny `timeoutMinutes` budget — the
+    // returned `stopReason` must be `timeout` and `solved` false.
+    const start = Date.now();
     const result = evolveMountainCarController({
       seed: 999,
       populationSize: 4,
-      maxGenerations: cap,
+      targetError: -1,
+      timeoutMinutes: 0.01, // ~600 ms
       mutationStrength: 0.01,
       mutationRate: 0.01,
       addNeuronRate: 0,
@@ -226,19 +241,24 @@ Deno.test(
       trialSeed: 1,
       initialPerturbation: 0.05,
     });
-    assertEquals(
-      result.generations,
-      cap,
-      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
-    );
+    const elapsedMs = Date.now() - start;
     assertEquals(
       result.solved,
       false,
-      "with vanishing mutation the search must not solve mountain-car within the cap",
+      "with vanishing mutation the search must not solve mountain-car",
+    );
+    assertEquals(
+      result.stopReason,
+      "timeout",
+      `expected stopReason 'timeout', got ${result.stopReason}`,
     );
     assert(
       result.summitRate < SOLVED_THRESHOLD,
       `expected summit rate below threshold, got ${result.summitRate}`,
+    );
+    assert(
+      elapsedMs < 30_000,
+      `expected the run to finish well under 30 seconds, took ${elapsedMs} ms`,
     );
   },
 );
@@ -271,11 +291,15 @@ Deno.test(
 Deno.test(
   "evolveMountainCarController emits GenerationInfo with sensible neuron and synapse counts",
   () => {
+    // Audit issue #221: budget the run via `targetError` (immediately
+    // satisfied at gen 0 by `targetError = 1`) so the loop exits after
+    // one generation regardless of fitness.
     const samples: GenerationInfo[] = [];
     evolveMountainCarController({
       seed: 1,
       populationSize: 3,
-      maxGenerations: 3,
+      targetError: 1,
+      timeoutMinutes: 1,
       mutationStrength: 0.05,
       mutationRate: 0.05,
       addNeuronRate: 0,
@@ -303,12 +327,15 @@ Deno.test(
     try {
       // Tiny population + weak mutation so the loop does not solve in a
       // single generation and trigger early-stop before all checkpoints
-      // fire.
+      // fire. Audit issue #221: bound the loop via `targetError = -1`
+      // (unreachable, target rate = 2 > 1) and a short timeout so the
+      // run stops once the last checkpoint is captured.
       const checkpoints = [1, 2, 3];
       evolveMountainCarController({
         seed: 1,
         populationSize: 3,
-        maxGenerations: 4,
+        targetError: -1,
+        timeoutMinutes: 0.05, // ~3s — enough for 3 generations of a tiny pop
         mutationStrength: 0.05,
         mutationRate: 0.05,
         addNeuronRate: 0,
@@ -341,6 +368,54 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "formatEvolutionCsv emits the audit-mandated header and one row per record",
+  () => {
+    // Audit issue #221: CSV header must be the canonical schema used by
+    // every audited example.
+    const rows: EvolutionRow[] = [
+      { generation: 0, bestFitness: -75.5, meanFitness: -90.1, neuronCount: 5, synapseCount: 6 },
+      { generation: 1, bestFitness: 42.0, meanFitness: -10.0, neuronCount: 6, synapseCount: 7 },
+    ];
+    const csv = formatEvolutionCsv(rows);
+    const lines = csv.trim().split("\n");
+    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+    assertEquals(
+      EVOLUTION_CSV_HEADER,
+      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+    );
+    assertEquals(lines.length, rows.length + 1);
+    assertEquals(lines[1], "0,-75.5,-90.1,5,6");
+    assertEquals(lines[2], "1,42,-10,6,7");
+    // Determinism: identical inputs produce identical bytes.
+    assertEquals(formatEvolutionCsv(rows), csv);
+  },
+);
+
+Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 0, bestFitness: -50, meanFitness: -90, neuronCount: 5, synapseCount: 6 },
+    { generation: 5, bestFitness: 100, meanFitness: 10, neuronCount: 6, synapseCount: 7 },
+    { generation: 10, bestFitness: 471, meanFitness: 200, neuronCount: 7, synapseCount: 8 },
+  ];
+  const svg = renderTopologyChartSvg(rows);
+  assert(svg.startsWith("<svg"), "must start with <svg>");
+  assert(svg.includes("</svg>"), "must contain </svg>");
+  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
+  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
+  assert(svg.includes("Mountain Car — Topology Growth"));
+});
+
+Deno.test("renderTopologyChartSvg rejects empty input", () => {
+  let threw = false;
+  try {
+    renderTopologyChartSvg([]);
+  } catch (_err) {
+    threw = true;
+  }
+  assertEquals(threw, true, "expected empty input to throw");
+});
 
 Deno.test("replayController returns a non-empty trace starting at the initial state", () => {
   const pop = buildRandomPopulation(4, 1);
