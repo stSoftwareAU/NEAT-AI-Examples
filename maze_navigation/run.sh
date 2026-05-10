@@ -42,3 +42,9 @@ fi
 if [[ -f "docs/screenshots/maze_navigation_evolution_chart.svg" ]]; then
   deno fmt docs/screenshots/maze_navigation_evolution_chart.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/maze_navigation/fitness.svg" ]]; then
+  deno fmt docs/screenshots/maze_navigation/fitness.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/maze_navigation/topology.svg" ]]; then
+  deno fmt docs/screenshots/maze_navigation/topology.svg > /dev/null
+fi
