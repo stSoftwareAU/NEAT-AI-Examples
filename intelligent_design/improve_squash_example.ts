@@ -115,17 +115,17 @@ export interface MinimalSeedEvolutionConfig {
  *
  * The reference creature this seed must imitate has 4 inputs, 5 hidden
  * neurons (with mixed squashes), and 1 output (see
- * {@link createReferenceCreature}). A `targetError` of 0.005 is tight
+ * {@link createReferenceCreature}). A `targetError` of 0.0001 is tight
  * enough that the minimal seed has to grow real hidden structure while
  * still being reachable inside the 5-minute backstop.
  */
 export const DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG: MinimalSeedEvolutionConfig = {
-  targetError: 0.005,
+  targetError: 0.0001,
   timeoutMinutes: 5,
   populationSize: 24,
-  maxIterations: 300,
-  mutationRate: 0.6,
-  mutationAmount: 3,
+  maxIterations: 700,
+  mutationRate: 0.8,
+  mutationAmount: 5,
   seed: 214214,
 };
 

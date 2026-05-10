@@ -303,10 +303,17 @@ function addHiddenNeuron(
     toUUID: original.toUUID,
   });
 
-  // Hidden neurons must precede output neurons to keep the topology
-  // forward-only and the `from < to` invariant satisfied.
+  // Hidden neurons must stay before every output. For hidden targets,
+  // insert directly before the target; for output targets, insert before
+  // the first output so NEAT-AI 4.x validation keeps the export ordered.
+  const targetIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
+  const target = targetIdx === -1 ? undefined : creature.neurons[targetIdx];
   const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = firstOutputIdx === -1 ? creature.neurons.length : firstOutputIdx;
+  const insertAt = target?.type === "hidden"
+    ? targetIdx
+    : firstOutputIdx === -1
+    ? creature.neurons.length
+    : firstOutputIdx;
   const newNeurons = [
     ...creature.neurons.slice(0, insertAt),
     newNeuron,

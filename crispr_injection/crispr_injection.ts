@@ -190,10 +190,10 @@ export interface CrisprEvolutionConfig {
  * give ADD_NODE / ADD_CONN mutations enough generations to take hold.
  */
 export const DEFAULT_CRISPR_EVOLUTION_CONFIG: CrisprEvolutionConfig = {
-  targetError: 0.0005,
+  targetError: 0.000001,
   timeoutMinutes: 5,
   populationSize: 32,
-  maxIterations: 400,
+  maxIterations: 600,
   seed: 209209,
 };
 

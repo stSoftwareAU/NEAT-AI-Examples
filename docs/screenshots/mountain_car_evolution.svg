@@ -178,7 +178,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 470.000</text>
+    >score 475.000</text>
     <circle cx="700" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="700" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="778" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
@@ -221,28 +221,28 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 471.000</text>
+    >score 475.000</text>
     <circle cx="900" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="900" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="978" cy="68" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="978" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
     <circle cx="978" cy="204" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
-  <g class="progression" data-min="-72.233" data-max="471.000">
+  <g class="progression" data-min="-72.233" data-max="475.000">
     <rect x="0" y="236" width="1000" height="100" fill="#f4f4f4" />
     <polyline
       class="score-progression"
       fill="none"
       stroke="#1f77b4"
       stroke-width="2"
-      points="100,322 300,322 500,312.83 700,250.13 900,250"
+      points="100,322 300,322 500,312.9 700,250 900,250"
     />
     <circle cx="100" cy="322" r="3" fill="#1f77b4" />
     <circle cx="300" cy="322" r="3" fill="#1f77b4" />
-    <circle cx="500" cy="312.83" r="3" fill="#1f77b4" />
-    <circle cx="700" cy="250.13" r="3" fill="#1f77b4" />
+    <circle cx="500" cy="312.9" r="3" fill="#1f77b4" />
+    <circle cx="700" cy="250" r="3" fill="#1f77b4" />
     <circle cx="900" cy="250" r="3" fill="#1f77b4" />
-    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 471.000</text>
+    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 475.000</text>
     <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min -72.233</text>
   </g>
   <g class="caption">
@@ -254,6 +254,6 @@
       font-family="sans-serif"
       font-size="12"
       fill="#ffffff"
-    >final score 471.000 • 300 generations • 22.9s</text>
+    >final score 475.000 • 300 generations • 1.1min</text>
   </g>
 </svg>

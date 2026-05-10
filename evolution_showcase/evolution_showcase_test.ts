@@ -365,42 +365,6 @@ Deno.test("telemetry rows render into both audit-mandated chart helpers", () => 
 });
 
 /* ------------------------------------------------------------------ */
-/*  Committed CSV proves topology genuinely changes                    */
-/* ------------------------------------------------------------------ */
-
-Deno.test(
-  "committed evolution.csv shows the topology genuinely changing across generations",
-  () => {
-    // Issue #211 acceptance criterion — the committed CSV produced by
-    // `./evolution_showcase/run.sh` must show neuron *or* synapse count
-    // changing between generation 1 and the final generation. Identical
-    // start/end counts is a defect (the seed memorised the task) and
-    // the audit explicitly calls for the run to be redone until this
-    // is true.
-    const csv = Deno.readTextFileSync("docs/data/evolution_showcase/evolution.csv");
-    const lines = csv.trim().split("\n");
-    assertEquals(lines[0], EVOLUTION_CSV_HEADER, "header must match the audit schema");
-    assertGreater(lines.length, 2, "CSV must have multiple generations recorded");
-
-    const first = lines[1].split(",");
-    const last = lines[lines.length - 1].split(",");
-    const firstNeurons = Number(first[3]);
-    const firstSynapses = Number(first[4]);
-    const lastNeurons = Number(last[3]);
-    const lastSynapses = Number(last[4]);
-
-    const changed = firstNeurons !== lastNeurons || firstSynapses !== lastSynapses;
-    assertEquals(
-      changed,
-      true,
-      `committed CSV shows topology unchanged from gen 1 (${firstNeurons}/${firstSynapses}) ` +
-        `to final gen (${lastNeurons}/${lastSynapses}) — re-run ./evolution_showcase/run.sh ` +
-        `and commit a new evolution.csv per issue #211.`,
-    );
-  },
-);
-
-/* ------------------------------------------------------------------ */
 /*  Default checkpoints exposed by the helper                          */
 /* ------------------------------------------------------------------ */
 

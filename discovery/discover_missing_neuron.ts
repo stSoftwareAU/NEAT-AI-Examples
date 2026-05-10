@@ -103,10 +103,10 @@ export const DEFAULT_DISCOVERY_CONFIG: DiscoveryEvolutionConfig = {
   // forced to grow hidden structure to satisfy the stop condition —
   // otherwise the topology chart would flatline (acceptance criterion
   // in issue #207).
-  targetError: 0.0005,
+  targetError: 0.000001,
   timeoutMinutes: 5,
   populationSize: 24,
-  maxIterations: 250,
+  maxIterations: 900,
   seed: 207207,
 };
 
