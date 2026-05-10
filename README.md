@@ -85,6 +85,11 @@ The remaining examples (`intelligent_design`, `discovery`, `discovery_at_scale`,
 `adaptive_mutation`, `suggest_improvements`) are tagged **🛠 technique** — they demonstrate a single
 operator or algorithm rather than a complete training paradigm.
 
+> 📖 **Deeper read.** [`docs/event-driven-evolution.md`](docs/event-driven-evolution.md) maps every
+> example to its paradigm and to the NEAT-AI evolution API it should call (`Creature.evolveDir()`
+> for supervised batch, `Creature.evolveEnv()` for event-driven), explains why the two loops cannot
+> share a scoring path, and tracks the migration status of the five event-driven examples.
+
 ## 🚀 Beyond Standard NEAT — what NEAT-AI ships
 
 NEAT-AI is a substantial **superset** of the textbook Stanley & Miikkulainen (2002) algorithm. The
