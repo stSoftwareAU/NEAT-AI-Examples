@@ -40,3 +40,9 @@ fi
 if [[ -f "docs/screenshots/mountain_car/evolution.svg" ]]; then
   deno fmt docs/screenshots/mountain_car/evolution.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/mountain_car/fitness.svg" ]]; then
+  deno fmt docs/screenshots/mountain_car/fitness.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/mountain_car/topology.svg" ]]; then
+  deno fmt docs/screenshots/mountain_car/topology.svg > /dev/null
+fi
