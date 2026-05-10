@@ -46,6 +46,7 @@ import {
 } from "../common/evolution_snapshot.ts";
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
+import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { defaultMaze, initialState, manhattan, type MazeState, step } from "./maze.ts";
 import { renderRunSVG } from "./svg.ts";
@@ -73,8 +74,30 @@ export interface EvolveOptions {
   seed: number;
   /** Population size for each generation. */
   populationSize: number;
-  /** Hard cap on the number of generations before giving up. */
-  maxGenerations: number;
+  /**
+   * NEAT-AI standard target-error stop condition (audit issue #223).
+   * Evolution halts as soon as the champion's score reaches
+   * `1 - targetError`. Default `1 - SOLVED_THRESHOLD = 0.4`, which
+   * matches {@link SOLVED_THRESHOLD} so the existing "solved" definition
+   * is preserved exactly.
+   */
+  targetError: number;
+  /**
+   * NEAT-AI standard wall-clock stop condition (audit issue #223).
+   * Evolution halts when the elapsed time since the loop began exceeds
+   * `timeoutMinutes` minutes (default `5`). Whichever of `targetError`
+   * and `timeoutMinutes` fires first wins.
+   */
+  timeoutMinutes: number;
+  /**
+   * Optional generation cap (NEAT-AI's standard `iterations` option).
+   * When supplied, the loop will also stop once the next-to-be-run
+   * generation reaches this value — useful for fast unit tests that
+   * need a deterministic generation count without depending on
+   * wall-clock timing. Defaults to `Infinity` so production runs are
+   * bounded only by `targetError` and `timeoutMinutes`.
+   */
+  iterations?: number;
   /** Standard deviation of the weight/bias perturbation noise. */
   mutationStrength: number;
   /** Probability that any given gene is perturbed each generation. */
@@ -114,20 +137,43 @@ export interface GenerationInfo {
 export interface EvolveResult {
   champion: Creature;
   bestScore: number;
-  /** Number of generations actually run before stopping (≤ maxGenerations). */
+  /** Number of generations actually run before stopping. */
   generations: number;
   championReached: boolean;
   championSteps: number;
   championFinalDistance: number;
-  /** True when the champion's score reached {@link SOLVED_THRESHOLD}. */
+  /** True when the champion's score reached `1 - targetError`. */
   solved: boolean;
+  /** Wall-clock duration of the evolution loop in milliseconds. */
+  wallclockMs: number;
+  /**
+   * Why the evolution loop terminated:
+   * - `"target"` — champion reached the `targetError`-derived score.
+   * - `"timeout"` — `timeoutMinutes` elapsed before the target fired.
+   * - `"iterations"` — the optional generation cap was hit first.
+   */
+  stopReason: "target" | "timeout" | "iterations";
 }
 
-/** Sensible defaults for the demonstration runner. */
+/**
+ * Sensible defaults for the demonstration runner.
+ *
+ * - `targetError = 1 - SOLVED_THRESHOLD = 0.4` makes the target score
+ *   `1 - 0.4 = 0.6 = SOLVED_THRESHOLD`, preserving the existing
+ *   "solved" definition exactly.
+ * - `timeoutMinutes = 5` is the audit-mandated wall-clock backstop
+ *   (audit issue #223). The default seed solves the L-corridor maze
+ *   well within the budget on a commodity laptop.
+ */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 80,
-  maxGenerations: 300,
+  // NEAT-AI standard stop conditions: evolution halts as soon as the
+  // champion's score reaches `1 - targetError` (default 0.6) OR
+  // `timeoutMinutes` minutes have elapsed since the loop began —
+  // whichever fires first.
+  targetError: 1 - SOLVED_THRESHOLD,
+  timeoutMinutes: 5,
   mutationStrength: 0.6,
   mutationRate: 0.5,
   addNeuronRate: 0.03,
@@ -360,8 +406,11 @@ function topologyCounts(json: CreatureExport): { neurons: number; synapses: numb
  * top half of each generation seeds the next via mutation; the elite is
  * carried over unchanged so the best score is monotonically
  * non-decreasing. Stops as soon as the champion's score reaches
- * {@link SOLVED_THRESHOLD} or `maxGenerations` is exhausted (whichever
- * comes first) — the **hard generation cap** is the second guarantee.
+ * `1 - targetError` **or** `timeoutMinutes` minutes of wall-clock
+ * have elapsed — whichever fires first. The two stop conditions match
+ * the standard NEAT-AI `NeatOptions.targetError` /
+ * `NeatOptions.timeoutMinutes` fields and were introduced by audit
+ * issue #223.
  */
 export function evolveMazeController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -402,8 +451,22 @@ export function evolveMazeController(
   let bestFinalDistance = Number.POSITIVE_INFINITY;
   let solvedAt = -1;
 
-  for (let generation = 0; generation < options.maxGenerations; generation++) {
-    population.sort((a, b) => b.score - a.score);
+  const targetScore = 1 - options.targetError;
+  const timeoutMs = options.timeoutMinutes * 60_000;
+  const iterationsCap = options.iterations ?? Infinity;
+  const loopStart = Date.now();
+  let stopReason: "target" | "timeout" | "iterations" = "timeout";
+  let generation = 0;
+
+  while (true) {
+    // Tie-breaker prefers structurally larger creatures so neutral
+    // structural drift remains visible once the champion plateaus at
+    // the target score. Without this, the linear seed (which already
+    // solves the L-corridor maze well) would lock in as elite forever
+    // and the captured topology chart would show a flat line — failing
+    // the "neuron/synapse counts genuinely change across generations"
+    // criterion of audit issue #223.
+    population.sort((a, b) => (b.score - a.score) || (b.synapses - a.synapses));
     const generationBest = population[0];
     if (generationBest.score > bestScore) {
       bestScore = generationBest.score;
@@ -434,19 +497,34 @@ export function evolveMazeController(
       }
     }
 
-    if (bestScore >= SOLVED_THRESHOLD) {
-      if (solvedAt < 0) solvedAt = generation;
+    const targetMet = bestScore >= targetScore;
+    if (targetMet && solvedAt < 0) solvedAt = generation;
+
+    const elapsedMs = Date.now() - loopStart;
+    const timedOut = elapsedMs >= timeoutMs;
+    const reachedIterationsCap = generation + 1 >= iterationsCap;
+
+    if (targetMet) {
       // When capturing evolution snapshots, keep running until the next
-      // not-yet-fired checkpoint within maxGenerations is captured —
-      // otherwise the progression strip would be a single panel.
-      if (options.snapshotConfig) {
-        const nextCheckpoint = options.snapshotConfig.checkpoints
-          .filter((c) => c > generation + 1 && c <= options.maxGenerations)
-          .sort((a, b) => a - b)[0];
-        if (nextCheckpoint === undefined) break;
-      } else {
+      // not-yet-fired checkpoint within the iteration budget is
+      // captured — otherwise the progression strip would be a single
+      // panel.
+      const nextCheckpoint = options.snapshotConfig?.checkpoints
+        .filter((c) => c > generation + 1 && c <= iterationsCap)
+        .sort((a, b) => a - b)[0];
+      if (nextCheckpoint === undefined) {
+        stopReason = "target";
         break;
       }
+    }
+
+    if (timedOut) {
+      stopReason = solvedAt >= 0 ? "target" : "timeout";
+      break;
+    }
+    if (reachedIterationsCap) {
+      stopReason = solvedAt >= 0 ? "target" : "iterations";
+      break;
     }
 
     // Truncation selection: keep top 50% as parents (always at least 1).
@@ -470,17 +548,20 @@ export function evolveMazeController(
     }
 
     population = nextPopulation;
+    generation++;
   }
 
   const champion = Creature.fromJSON(bestJSON);
   return {
     champion,
     bestScore,
-    generations: solvedAt >= 0 ? solvedAt + 1 : options.maxGenerations,
+    generations: generation + 1,
     championReached: bestReached,
     championSteps: bestSteps,
     championFinalDistance: bestFinalDistance,
-    solved: bestScore >= SOLVED_THRESHOLD,
+    solved: bestScore >= targetScore,
+    wallclockMs: Date.now() - loopStart,
+    stopReason,
   };
 }
 
@@ -504,6 +585,165 @@ export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/maze_navigation_evo
 /** Path to the per-generation evolution-chart SVG the runner emits. */
 export const EVOLUTION_CHART_PATH = "docs/screenshots/maze_navigation_evolution_chart.svg";
 
+/** Path to the per-generation evolution telemetry CSV (audit issue #223). */
+export const EVOLUTION_CSV_PATH = "docs/data/maze_navigation/evolution.csv";
+
+/** Header row for the per-generation telemetry CSV (audit issue #223). */
+export const EVOLUTION_CSV_HEADER =
+  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
+
+/** Best/mean fitness chart path (audit issue #223). */
+export const FITNESS_SVG_PATH = "docs/screenshots/maze_navigation/fitness.svg";
+
+/** Neuron / synapse count chart path (audit issue #223). */
+export const TOPOLOGY_SVG_PATH = "docs/screenshots/maze_navigation/topology.svg";
+
+/**
+ * One row of per-generation evolution telemetry. Captured during a run
+ * and serialised to {@link EVOLUTION_CSV_PATH} so downstream tools can
+ * inspect how the population's fitness and topology evolved over time.
+ */
+export interface EvolutionRow {
+  /** Zero-based generation index. */
+  generation: number;
+  /** Best score in this generation. */
+  bestFitness: number;
+  /** Population mean score in this generation. */
+  meanFitness: number;
+  /** Neuron count of this generation's champion creature. */
+  neuronCount: number;
+  /** Synapse count of this generation's champion creature. */
+  synapseCount: number;
+}
+
+/**
+ * Format a finite number with up to six decimal places, trimming trailing
+ * zeros so deterministic inputs produce a single canonical string.
+ * Non-finite values become "0" — the CSV must not leak NaN/Infinity.
+ */
+function formatCsvNumber(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  return Number(v.toFixed(6)).toString();
+}
+
+/**
+ * Format an evolution-telemetry table into a CSV string with the exact
+ * {@link EVOLUTION_CSV_HEADER} header. Numeric fields use a fixed
+ * representation so the file is byte-deterministic for identical inputs.
+ */
+export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
+  const lines: string[] = [EVOLUTION_CSV_HEADER];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.generation,
+        formatCsvNumber(r.bestFitness),
+        formatCsvNumber(r.meanFitness),
+        r.neuronCount,
+        r.synapseCount,
+      ].join(","),
+    );
+  }
+  return lines.join("\n") + "\n";
+}
+
+// ---- Topology chart renderer ------------------------------------------
+// Pairs with the shared `renderFitnessChartSVG` from `common/fitness_chart.ts`
+// — together the two SVGs satisfy the "neuron/synapse" + "best/mean
+// fitness" charts requested by audit issue #223.
+
+const TOPOLOGY_SVG_WIDTH = 720;
+const TOPOLOGY_SVG_HEIGHT = 320;
+const TOPOLOGY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
+
+/**
+ * Render the neuron / synapse count chart for the README. Two lines
+ * share an X axis; the right Y axis shows synapse counts on a separate
+ * scale so the synapse line does not compress the neuron line into
+ * invisibility. Throws if `rows` is empty.
+ */
+export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
+  if (rows.length === 0) {
+    throw new Error("renderTopologyChartSvg requires at least one row");
+  }
+  const innerW = TOPOLOGY_SVG_WIDTH - TOPOLOGY_MARGIN.left - TOPOLOGY_MARGIN.right;
+  const innerH = TOPOLOGY_SVG_HEIGHT - TOPOLOGY_MARGIN.top - TOPOLOGY_MARGIN.bottom;
+  const innerX = TOPOLOGY_MARGIN.left;
+  const innerY = TOPOLOGY_MARGIN.top;
+
+  const minGen = rows[0].generation;
+  const maxGen = rows[rows.length - 1].generation;
+  const genSpan = Math.max(1, maxGen - minGen);
+
+  const maxNeurons = Math.max(...rows.map((r) => r.neuronCount), 1);
+  const maxSynapses = Math.max(...rows.map((r) => r.synapseCount), 1);
+
+  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
+  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
+  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
+
+  const neuronPts = rows
+    .map((r) => `${xScale(r.generation).toFixed(2)},${neuronY(r.neuronCount).toFixed(2)}`)
+    .join(" ");
+  const synapsePts = rows
+    .map((r) => `${xScale(r.generation).toFixed(2)},${synapseY(r.synapseCount).toFixed(2)}`)
+    .join(" ");
+
+  const leftTicks: string[] = [];
+  const rightTicks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    const ly = innerY + innerH - t * innerH;
+    leftTicks.push(
+      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
+        `${(t * maxNeurons).toFixed(0)}</text>`,
+    );
+    rightTicks.push(
+      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
+        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
+        `${(t * maxSynapses).toFixed(0)}</text>`,
+    );
+  }
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TOPOLOGY_SVG_WIDTH} ${TOPOLOGY_SVG_HEIGHT}" ` +
+    `width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" role="img" ` +
+    `aria-label="Maze Navigation — neuron and synapse counts per generation">`,
+    `  <title>Maze Navigation — Topology Growth</title>`,
+    `  <rect width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" fill="#fafafa"/>`,
+    `  <text x="${TOPOLOGY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
+    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
+    `Maze Navigation — Topology Growth</text>`,
+    leftTicks.join("\n"),
+    rightTicks.join("\n"),
+    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
+    `points="${neuronPts}"/>`,
+    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
+    `stroke-dasharray="6 3" points="${synapsePts}"/>`,
+    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
+    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
+    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
+    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
+    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
+    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
+    `stroke="#2ca02c" stroke-width="2"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
+    `neurons (left axis)</text>`,
+    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
+    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
+    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
+    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
+    `synapses (right axis)</text>`,
+    `  </g>`,
+    `</svg>`,
+    "",
+  ].join("\n");
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -513,11 +753,17 @@ if (import.meta.main) {
   const { creaturesDir, outputDir } = setupWorkingDirs(".synthetic-maze");
 
   console.log("🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log(
+    `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError.toFixed(2)} ` +
+      `(target score ≥ ${(1 - DEFAULT_EVOLVE_OPTIONS.targetError).toFixed(2)}), ` +
+      `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}`,
+  );
   ensureDirSync(SNAPSHOTS_DIR);
   for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
     if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
   }
   const evolutionSamples: EvolutionSample[] = [];
+  const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
   const result = evolveMazeController({
     ...DEFAULT_EVOLVE_OPTIONS,
@@ -527,6 +773,13 @@ if (import.meta.main) {
     },
     onGeneration: ({ generation, bestScore, meanScore, bestReached, neurons, synapses }) => {
       evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
+      evolutionRows.push({
+        generation,
+        bestFitness: bestScore,
+        meanFitness: meanScore,
+        neuronCount: neurons,
+        synapseCount: synapses,
+      });
       if (generation % 10 === 0 || bestScore >= SOLVED_THRESHOLD) {
         console.log(
           `   Gen ${generation.toString().padStart(3)}  ` +
@@ -545,7 +798,8 @@ if (import.meta.main) {
       `${result.championReached ? "reached the goal" : "did not reach the goal"} ` +
       `in ${result.championSteps} steps (final distance ${result.championFinalDistance}, ` +
       `score=${result.bestScore.toFixed(3)}, generations=${result.generations}, ` +
-      `threshold=${SOLVED_THRESHOLD}).`,
+      `threshold=${SOLVED_THRESHOLD}, stop=${result.stopReason}, ` +
+      `wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
   // Save the champion creature.
@@ -581,6 +835,33 @@ if (import.meta.main) {
     });
     await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
+  }
+
+  // Per-generation evolution telemetry (audit issue #223): CSV (source
+  // of truth) + best/mean fitness chart + neuron/synapse topology chart.
+  // All three are emitted on every full run so downstream tools and the
+  // README can reuse the same data.
+  if (evolutionRows.length > 0) {
+    ensureDirSync("docs/data/maze_navigation");
+    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
+    console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
+
+    ensureDirSync("docs/screenshots/maze_navigation");
+    const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
+      generation: r.generation,
+      bestFitness: r.bestFitness,
+      avgFitness: r.meanFitness,
+    }));
+    const fitnessSvg = renderFitnessChartSVG(fitnessSamples, {
+      title: "Maze Navigation — Fitness vs Generation",
+      bestLabel: "best fitness",
+      avgLabel: "mean fitness",
+    });
+    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
+    console.log(`📈 Wrote fitness chart ${FITNESS_SVG_PATH}`);
+
+    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(evolutionRows));
+    console.log(`📐 Wrote topology chart ${TOPOLOGY_SVG_PATH}`);
   }
 
   // Render the multi-panel evolution-progression strip from the

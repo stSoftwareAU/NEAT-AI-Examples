@@ -11,9 +11,13 @@ import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-a
 import {
   buildRandomPopulation,
   DEFAULT_EVOLVE_OPTIONS,
+  EVOLUTION_CSV_HEADER,
+  type EvolutionRow,
   evolveMazeController,
+  formatEvolutionCsv,
   type GenerationInfo,
   mutateCreatureExport,
+  renderTopologyChartSvg,
   replayController,
   scoreController,
   SOLVED_THRESHOLD,
@@ -123,9 +127,12 @@ Deno.test(
     // the population as a whole has not been warm-started.
     let firstGenMean = -Infinity;
     let firstGenBestReached = true;
+    // Audit issue #223 replaced `maxGenerations` with the standard
+    // NEAT-AI `targetError` + `timeoutMinutes` stop conditions. We use
+    // `iterations: 1` so the loop terminates immediately after gen 0.
     evolveMazeController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: 1,
+      iterations: 1,
       onGeneration: (info) => {
         if (info.generation === 0 && firstGenMean === -Infinity) {
           firstGenMean = info.meanScore;
@@ -150,16 +157,20 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveMazeController honours the hard generation cap",
+  "evolveMazeController honours the iterations generation cap",
   () => {
-    // With a tiny strength + tiny rate, the evolver cannot solve the
-    // task within the cap. The result must therefore stop at the cap
-    // and report `solved=false`.
+    // Audit issue #223 replaced the old `maxGenerations` cap with the
+    // standard NEAT-AI `targetError` + `timeoutMinutes` stop conditions
+    // plus an optional `iterations` deterministic cap. With a vanishing
+    // mutation rate the evolver cannot solve the task within the cap,
+    // so the result must stop at the cap and report `solved=false`.
     const cap = 3;
     const result = evolveMazeController({
       seed: 999,
       populationSize: 4,
-      maxGenerations: cap,
+      targetError: -1, // unreachable: target score = 2 > 1
+      timeoutMinutes: 1,
+      iterations: cap,
       mutationStrength: 0.01,
       mutationRate: 0.01,
       addNeuronRate: 0,
@@ -167,12 +178,45 @@ Deno.test(
     assertEquals(
       result.generations,
       cap,
-      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
+      `expected evolution to run to the iterations cap of ${cap} generations, got ${result.generations}`,
     );
     assertEquals(
       result.solved,
       false,
       "with vanishing mutation the search must not solve the maze within the cap",
+    );
+    assertEquals(
+      result.stopReason,
+      "iterations",
+      `expected stopReason 'iterations', got ${result.stopReason}`,
+    );
+  },
+);
+
+Deno.test(
+  "evolveMazeController honours the timeoutMinutes wall-clock backstop",
+  () => {
+    // Audit issue #223: with an unreachable target and a vanishing
+    // budget the loop must exit via the wall-clock backstop and report
+    // `stopReason='timeout'`.
+    const result = evolveMazeController({
+      seed: 999,
+      populationSize: 4,
+      targetError: -1, // unreachable
+      timeoutMinutes: 0.005, // ~300 ms
+      mutationStrength: 0.01,
+      mutationRate: 0.01,
+      addNeuronRate: 0,
+    });
+    assertEquals(
+      result.solved,
+      false,
+      "with vanishing mutation the search must not solve the maze",
+    );
+    assertEquals(
+      result.stopReason,
+      "timeout",
+      `expected stopReason 'timeout', got ${result.stopReason}`,
     );
   },
 );
@@ -274,7 +318,9 @@ Deno.test(
       evolveMazeController({
         seed: 1,
         populationSize: 3,
-        maxGenerations: 4,
+        targetError: -1, // unreachable so the loop runs to the iterations cap
+        timeoutMinutes: 1,
+        iterations: 4,
         mutationStrength: 0.05,
         mutationRate: 0.05,
         addNeuronRate: 0,
@@ -312,7 +358,9 @@ Deno.test(
     evolveMazeController({
       seed: 1,
       populationSize: 3,
-      maxGenerations: 3,
+      targetError: -1, // unreachable so the loop runs to the iterations cap
+      timeoutMinutes: 1,
+      iterations: 3,
       mutationStrength: 0.05,
       mutationRate: 0.05,
       addNeuronRate: 0,
@@ -330,6 +378,54 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "formatEvolutionCsv emits the audit-mandated header and one row per record",
+  () => {
+    // Audit issue #223: CSV header must be the canonical schema used by
+    // every audited example.
+    const rows: EvolutionRow[] = [
+      { generation: 0, bestFitness: 0.12, meanFitness: 0.05, neuronCount: 9, synapseCount: 20 },
+      { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 10, synapseCount: 21 },
+    ];
+    const csv = formatEvolutionCsv(rows);
+    const lines = csv.trim().split("\n");
+    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
+    assertEquals(
+      EVOLUTION_CSV_HEADER,
+      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+    );
+    assertEquals(lines.length, rows.length + 1);
+    assertEquals(lines[1], "0,0.12,0.05,9,20");
+    assertEquals(lines[2], "1,0.6,0.3,10,21");
+    // Determinism: identical inputs produce identical bytes.
+    assertEquals(formatEvolutionCsv(rows), csv);
+  },
+);
+
+Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
+  const rows: EvolutionRow[] = [
+    { generation: 0, bestFitness: 0.1, meanFitness: 0.05, neuronCount: 9, synapseCount: 20 },
+    { generation: 5, bestFitness: 0.4, meanFitness: 0.2, neuronCount: 10, synapseCount: 21 },
+    { generation: 10, bestFitness: 0.9, meanFitness: 0.6, neuronCount: 12, synapseCount: 24 },
+  ];
+  const svg = renderTopologyChartSvg(rows);
+  assert(svg.startsWith("<svg"), "must start with <svg>");
+  assert(svg.includes("</svg>"), "must contain </svg>");
+  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
+  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
+  assert(svg.includes("Maze Navigation — Topology Growth"));
+});
+
+Deno.test("renderTopologyChartSvg rejects empty input", () => {
+  let threw = false;
+  try {
+    renderTopologyChartSvg([]);
+  } catch (_err) {
+    threw = true;
+  }
+  assertEquals(threw, true, "expected empty input to throw");
+});
 
 Deno.test("buildRandomPopulation members all serialise as CreatureExport", () => {
   const pop = buildRandomPopulation(2024, 3);
