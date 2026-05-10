@@ -3,20 +3,12 @@ set -euo pipefail
 
 # MNIST Handwritten-Digit Classification Example Runner
 #
-# Default mode (audit issue #210): writes a binary `.bin` training
-# subset, seeds NEAT-AI with `new Creature(196, 10)` (no hidden hint,
-# no warm start) and runs `Creature.evolveDir(...)` over the `.bin`
-# stream until either the per-example `targetError` is reached or the
-# `timeoutMinutes: 5` backstop fires. Emits per-generation telemetry
-# (CSV + best/mean fitness SVG + neuron / synapse SVG) plus the
-# prediction grid SVG and a confusion matrix.
-#
-# Optional modes:
-#   - MNIST_MLP_BASELINE=1: SGD/MLP baseline (`evolveMLPClassifier`)
-#     for fast comparison; does not start from random noise and does
-#     not grow topology.
-#   - MNIST_NEAT_EVOLUTION=1: legacy long-form developer screenshot
-#     run using the in-process `evolveClassifier` mutation loop.
+# Writes the FULL 60 000-record MNIST training set to a binary `.bin`
+# file, seeds NEAT-AI with `new Creature(784, 10)` (no hidden hint, no
+# warm start), and runs `Creature.evolveDir(dataDir,
+# { targetError: 0.001, timeoutMinutes: 10 })` exactly once. Saves the
+# evolved champion + a confusion matrix and renders the prediction-grid
+# SVG.
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
@@ -43,16 +35,9 @@ deno run \
   mnist_classification/mnist_classification.ts \
   "$@"
 
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
+# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
 # stay clean — the renderer emits compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
-for svg in \
-  "docs/screenshots/mnist_classification.svg" \
-  "docs/screenshots/mnist_classification/evolution.svg" \
-  "docs/screenshots/mnist_classification/fitness.svg" \
-  "docs/screenshots/mnist_classification/topology.svg" \
-  "docs/screenshots/mnist_classification_evolution.svg"; do
-  if [[ -f "${svg}" ]]; then
-    deno fmt "${svg}" > /dev/null
-  fi
-done
+if [[ -f "docs/screenshots/mnist_classification.svg" ]]; then
+  deno fmt "docs/screenshots/mnist_classification.svg" > /dev/null
+fi

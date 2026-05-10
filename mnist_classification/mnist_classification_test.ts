@@ -5,7 +5,7 @@
  * deterministic data (synthetic IDX bytes built in-memory or a tiny
  * hand-crafted DigitSample list) and asserts on the observable
  * outputs (parsed counts, network accuracy, SVG structure, byte-stable
- * champion serialisation).
+ * binary file output).
  */
 
 import {
@@ -14,7 +14,6 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
-  assertLess,
   assertRejects,
   assertThrows,
 } from "@std/assert";
@@ -27,8 +26,6 @@ import {
   buildDigitSamples,
   CLASS_COUNT,
   type DigitSample,
-  DOWNSAMPLED_SIZE,
-  downsamplePixels,
   FEATURE_COUNT,
   IMAGE_SIZE,
   parseIdxImages,
@@ -38,38 +35,19 @@ import {
 } from "./data.ts";
 import {
   buildGridCells,
-  buildGridCellsFromGenes,
-  buildMLPCreatureJSON,
-  buildRandomPopulation,
   classificationAccuracy,
   confusionMatrix,
-  confusionMatrixGenes,
-  DEFAULT_EVOLVE_OPTIONS,
-  DEFAULT_MNIST_EVOLUTION_CONFIG,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
-  evolveClassifier,
-  evolveMLPClassifier,
-  formatEvolutionCsv,
-  mutateCreatureExport,
   pickGridSamples,
   predict,
-  predictWithGenes,
-  rowsToEvolutionSamples,
-  rowsToFitnessSamples,
-  runMinimalSeedEvolution,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
-import { initMLPGenes } from "./gradient.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
 
 /**
  * Build a synthetic IDX-3 image buffer with `count` images of size
  * `IMAGE_SIZE × IMAGE_SIZE`. Each image's pixel block is a function of
  * its label so the resulting dataset has a strong, learnable signal —
- * pixels in the digit's own row are 220, all others are 20. That gives
- * mutation evolution something concrete to discover within the CI
- * 5-minute budget.
+ * pixels in the digit's own row are 220, all others are 20.
  */
 function buildSyntheticIdx(
   seed: number,
@@ -97,20 +75,23 @@ function buildSyntheticIdx(
     const label = i % CLASS_COUNT;
     labelBuf[8 + i] = label;
     const offset = 16 + i * stride;
-    // Label-specific stripe pattern: rows in [labelRow*2, labelRow*2 + 1]
-    // are bright; everything else is dim plus tiny noise.
     const labelRow = label;
     for (let y = 0; y < IMAGE_SIZE; y++) {
       const blockY = Math.floor(y / (IMAGE_SIZE / CLASS_COUNT));
       const baseValue = blockY === labelRow ? 220 : 20;
       for (let x = 0; x < IMAGE_SIZE; x++) {
-        const noise = Math.floor(rng() * 8); // [0..7]
+        const noise = Math.floor(rng() * 8);
         imageBuf[offset + y * IMAGE_SIZE + x] = Math.min(255, baseValue + noise);
       }
     }
   }
   return { images: imageBuf, labels: labelBuf };
 }
+
+Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
+  assertEquals(FEATURE_COUNT, 784);
+  assertEquals(FEATURE_COUNT, IMAGE_SIZE * IMAGE_SIZE);
+});
 
 Deno.test("parseIdxImages parses synthetic header and body", () => {
   const { images } = buildSyntheticIdx(1, 2);
@@ -125,7 +106,6 @@ Deno.test("parseIdxLabels parses synthetic labels", () => {
   const { labels } = buildSyntheticIdx(1, 3);
   const parsed = parseIdxLabels(labels);
   assertEquals(parsed.count, 3 * CLASS_COUNT);
-  // Labels are round-robin so the first 10 are 0..9.
   for (let i = 0; i < CLASS_COUNT; i++) {
     assertEquals(parsed.data[i], i);
   }
@@ -133,40 +113,37 @@ Deno.test("parseIdxLabels parses synthetic labels", () => {
 
 Deno.test("parseIdxImages rejects bad magic numbers", () => {
   const buf = new Uint8Array(16);
-  // Magic 0 is not the IDX-3 sentinel.
   assertThrows(() => parseIdxImages(buf), Error, "bad magic");
 });
 
 Deno.test("parseIdxLabels rejects truncated buffers", () => {
   const view = new DataView(new ArrayBuffer(8));
   view.setUint32(0, 0x00000801);
-  view.setUint32(4, 100); // claims 100 labels but no body
+  view.setUint32(4, 100);
   assertThrows(() => parseIdxLabels(new Uint8Array(view.buffer)), Error, "truncated");
 });
 
-Deno.test("downsamplePixels mean-pools 28×28 to 14×14 with values in [0,1]", () => {
-  const pixels = new Uint8Array(IMAGE_SIZE * IMAGE_SIZE).fill(128);
-  const down = downsamplePixels(pixels, IMAGE_SIZE, DOWNSAMPLED_SIZE);
-  assertEquals(down.length, FEATURE_COUNT);
-  for (const v of down) assertAlmostEquals(v, 128 / 255, 1e-9);
-});
-
-Deno.test("downsamplePixels rejects mismatched sizes", () => {
-  const pixels = new Uint8Array(IMAGE_SIZE * IMAGE_SIZE).fill(0);
-  assertThrows(
-    () => downsamplePixels(pixels, IMAGE_SIZE, 13),
-    Error,
-    "must be an integer multiple",
-  );
-});
-
-Deno.test("buildDigitSamples produces one sample per (image, label) pair", () => {
+Deno.test("buildDigitSamples produces one 784-feature sample per (image, label) pair", () => {
   const { images, labels } = buildSyntheticIdx(2, 2);
   const samples = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
   assertEquals(samples.length, 2 * CLASS_COUNT);
   assertEquals(samples[0].label, 0);
   assertEquals(samples[0].features.length, FEATURE_COUNT);
   assertEquals(samples[0].pixels.length, IMAGE_SIZE * IMAGE_SIZE);
+  for (const v of samples[0].features) {
+    assert(v >= 0 && v <= 1, `expected feature in [0,1], got ${v}`);
+  }
+});
+
+Deno.test("buildDigitSamples normalises features to pixel/255", () => {
+  const { images, labels } = buildSyntheticIdx(8, 1);
+  const samples = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
+  for (const sample of samples) {
+    assertEquals(sample.features.length, FEATURE_COUNT);
+    for (let j = 0; j < FEATURE_COUNT; j++) {
+      assertAlmostEquals(sample.features[j], sample.pixels[j] / 255, 1e-9);
+    }
+  }
 });
 
 Deno.test("splitDataset slices contiguously and validates counts", () => {
@@ -176,7 +153,6 @@ Deno.test("splitDataset slices contiguously and validates counts", () => {
   assertEquals(split.train.length, 20);
   assertEquals(split.validation.length, 10);
   assertEquals(split.test.length, 10);
-  // No overlap, contiguous order preserved.
   assertEquals(split.train[0].index, 0);
   assertEquals(split.validation[0].index, 20);
   assertEquals(split.test[0].index, 30);
@@ -200,80 +176,8 @@ Deno.test("splitDataset rejects splits that exceed available samples", () => {
   );
 });
 
-Deno.test("buildRandomPopulation produces uniform-random NEAT genomes", () => {
-  // Topology must NOT be hand-specified — the library decides shape.
-  // We assert only that the population has the requested size and that
-  // every member is a valid Creature with the right input/output counts
-  // and LOGISTIC outputs.
-  const pop = buildRandomPopulation(42, 5, FEATURE_COUNT, CLASS_COUNT);
-  assertEquals(pop.length, 5);
-  for (const json of pop) {
-    assertEquals(json.input, FEATURE_COUNT);
-    assertEquals(json.output, CLASS_COUNT);
-    const creature = Creature.fromJSON(json);
-    creature.validate();
-    creature.clearState();
-    const out = creature.activate(Float32Array.from(new Array(FEATURE_COUNT).fill(0.5)));
-    assertEquals(out.length, CLASS_COUNT);
-    for (const v of out) {
-      assert(Number.isFinite(v), `expected finite output, got ${v}`);
-    }
-    // Every output neuron must be LOGISTIC — the only topology
-    // constraint set by the example. Hidden neurons must NOT be
-    // hand-specified at gen 1.
-    const outputNeurons = json.neurons.filter((n) => n.type === "output");
-    assertEquals(outputNeurons.length, CLASS_COUNT);
-    for (const n of outputNeurons) {
-      assertEquals(n.squash, "LOGISTIC");
-    }
-    const hiddenNeurons = json.neurons.filter((n) => n.type === "hidden");
-    assertEquals(
-      hiddenNeurons.length,
-      0,
-      "no hidden neurons should be hand-specified in the initial population",
-    );
-  }
-});
-
-Deno.test("buildRandomPopulation is deterministic for the same seed", () => {
-  const a = buildRandomPopulation(99, 4, FEATURE_COUNT, CLASS_COUNT);
-  const b = buildRandomPopulation(99, 4, FEATURE_COUNT, CLASS_COUNT);
-  assertEquals(a.length, b.length);
-  for (let i = 0; i < a.length; i++) {
-    assertEquals(JSON.stringify(a[i]), JSON.stringify(b[i]));
-  }
-});
-
-Deno.test("mutateCreatureExport yields a valid creature", () => {
-  const random = createDeterministicRandom(7);
-  const pop = buildRandomPopulation(1, 1, FEATURE_COUNT, CLASS_COUNT);
-  const child = mutateCreatureExport(pop[0], random, 1.0, 0.3);
-  Creature.fromJSON(child).validate();
-});
-
-Deno.test("mutateCreatureExport with addNeuronRate=1 grows topology", () => {
-  // Forcing addNeuronRate=1 must split exactly one synapse, adding
-  // one hidden neuron and replacing one synapse with two.
-  const pop = buildRandomPopulation(3, 1, FEATURE_COUNT, CLASS_COUNT);
-  const parent = pop[0];
-  const random = createDeterministicRandom(13);
-  const child = mutateCreatureExport(parent, random, 0, 0, {
-    addNeuronRate: 1,
-    hiddenCounter: { value: 0 },
-  });
-  const parentHidden = parent.neurons.filter((n) => n.type === "hidden").length;
-  const childHidden = child.neurons.filter((n) => n.type === "hidden").length;
-  assertEquals(childHidden - parentHidden, 1, "expected exactly one new hidden neuron");
-  assertEquals(
-    child.synapses.length - parent.synapses.length,
-    1,
-    "splitting one synapse adds one net synapse (-1 + 2)",
-  );
-  Creature.fromJSON(child).validate();
-});
-
 Deno.test("predict returns the argmax index", () => {
-  // Hand-build a tiny LOGISTIC creature whose third output dominates.
+  // Hand-build a tiny creature whose third output dominates.
   const json = {
     neurons: [
       { type: "input" as const, squash: "LOGISTIC", index: 0, uuid: "input-0" },
@@ -351,8 +255,7 @@ Deno.test("classificationAccuracy returns the correct fraction", () => {
 });
 
 Deno.test("classificationAccuracy returns 0 on an empty list", () => {
-  const pop = buildRandomPopulation(1, 1, FEATURE_COUNT, CLASS_COUNT);
-  const creature = Creature.fromJSON(pop[0]);
+  const creature = new Creature(FEATURE_COUNT, CLASS_COUNT);
   assertEquals(classificationAccuracy(creature, []), 0);
 });
 
@@ -398,257 +301,6 @@ Deno.test("confusionMatrix is square and counts true vs predicted", () => {
   assertEquals(m[1][1], 1);
 });
 
-Deno.test(
-  "evolveClassifier — happy path: champion accuracy crosses a reduced threshold on a tiny fold",
-  () => {
-    // In-CI variant: a small `inputCount × classCount` problem with a
-    // strong per-class signal so mutation-from-noise evolution can
-    // converge inside a few hundred milliseconds. The headline
-    // 95 %-on-real-MNIST run is the developer screenshot one-off and
-    // is intentionally NOT exercised here.
-    const inputCount = 8;
-    const classCount = 3;
-    const samplesPerClass = 12;
-    const samples: DigitSample[] = [];
-    let idx = 0;
-    for (let pass = 0; pass < samplesPerClass; pass++) {
-      for (let label = 0; label < classCount; label++) {
-        const features = new Array<number>(inputCount).fill(0);
-        // One-hot-ish signal: feature `label` and `label + classCount`
-        // both fire for class `label`; the other features are zeros.
-        features[label] = 1;
-        features[label + classCount] = 1;
-        samples.push({
-          index: idx++,
-          label,
-          features,
-          pixels: new Array(IMAGE_SIZE * IMAGE_SIZE).fill(0),
-        });
-      }
-    }
-    const trainCount = 24;
-    const valCount = 6;
-    const split = {
-      train: samples.slice(0, trainCount),
-      validation: samples.slice(trainCount, trainCount + valCount),
-      test: samples.slice(trainCount + valCount),
-    };
-    const REDUCED_THRESHOLD = 0.6;
-    const result = evolveClassifier(split, {
-      seed: 12345,
-      populationSize: 16,
-      maxGenerations: 50,
-      mutationStrength: 0.6,
-      mutationRate: 0.3,
-      addNeuronRate: 0,
-      inputCount,
-      classCount,
-      accuracyThreshold: REDUCED_THRESHOLD,
-    });
-    assertGreaterOrEqual(
-      result.validationAccuracy,
-      REDUCED_THRESHOLD,
-      `validation accuracy should reach the reduced ${
-        (REDUCED_THRESHOLD * 100).toFixed(0)
-      }% in-CI threshold, got ${result.validationAccuracy}`,
-    );
-    assertEquals(result.solved, true);
-    Creature.fromJSON(result.champion.exportJSON()).validate();
-  },
-);
-
-Deno.test(
-  "evolveClassifier — gen-1 population is noise (mean accuracy near chance)",
-  () => {
-    // Generation 1 must be uniform-random noise: the population's mean
-    // accuracy must sit near 1/CLASS_COUNT (10%), confirming no
-    // warm-start is being applied. We use the canonical synthetic
-    // signal-bearing dataset to keep the test fast.
-    const { images, labels } = buildSyntheticIdx(13, 5);
-    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
-    const split = splitDataset(all, { trainCount: 30, validationCount: 10, testCount: 10 });
-    let firstGenMean = -Infinity;
-    let firstGenBest = -Infinity;
-    evolveClassifier(split, {
-      seed: 24681,
-      populationSize: 32,
-      maxGenerations: 1,
-      mutationStrength: 0.1,
-      mutationRate: 0.1,
-      addNeuronRate: 0,
-      inputCount: FEATURE_COUNT,
-      classCount: CLASS_COUNT,
-      accuracyThreshold: 1.0,
-      onGeneration: (info) => {
-        if (info.generation === 0) {
-          firstGenMean = info.meanAccuracy;
-          firstGenBest = info.bestAccuracy;
-        }
-      },
-    });
-    // The mean across a 32-strong uniform-random NEAT population must
-    // sit far below half-way between chance and a competent classifier.
-    // A warm-started population would post a mean well above this bar.
-    const chance = 1 / CLASS_COUNT;
-    assertLess(
-      firstGenMean,
-      chance + 0.25,
-      `expected gen-1 mean accuracy near chance (${chance}), got ${firstGenMean}`,
-    );
-    // Sanity: the best of a random population can occasionally beat
-    // chance by luck, but it should be well below "solved" — we check
-    // it is not absurdly high (≥ 80 %), proving no warm-start.
-    assertLess(
-      firstGenBest,
-      0.8,
-      `gen-1 best should not look pre-trained, got ${firstGenBest}`,
-    );
-  },
-);
-
-Deno.test(
-  "evolveClassifier — onGeneration emits neurons and synapses for the champion",
-  () => {
-    // The dual-axis evolution chart needs per-generation topology
-    // counts. Assert that the `GenerationInfo` payload exposes sane
-    // `neurons` and `synapses` integers for the generation-1 champion
-    // (gen-1 has no hidden neurons, so neurons = inputs + outputs and
-    // synapses = inputs * outputs for the library's uniform-random
-    // direct-wired topology).
-    const { images, labels } = buildSyntheticIdx(31, 3);
-    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
-    const split = splitDataset(all, { trainCount: 18, validationCount: 6, testCount: 6 });
-    const infos: Array<{ neurons: number; synapses: number; generation: number }> = [];
-    evolveClassifier(split, {
-      seed: 4242,
-      populationSize: 4,
-      maxGenerations: 1,
-      mutationStrength: 0.1,
-      mutationRate: 0.1,
-      addNeuronRate: 0,
-      inputCount: FEATURE_COUNT,
-      classCount: CLASS_COUNT,
-      accuracyThreshold: 1.0,
-      onGeneration: (info) => {
-        infos.push({
-          generation: info.generation,
-          neurons: info.neurons,
-          synapses: info.synapses,
-        });
-      },
-    });
-    assertEquals(infos.length, 1);
-    const gen0 = infos[0];
-    assertEquals(gen0.generation, 0);
-    // Gen-1 (index 0): direct input → output wiring with no hidden
-    // neurons. Library counts include both input and output neurons.
-    assertEquals(gen0.neurons, FEATURE_COUNT + CLASS_COUNT);
-    assertEquals(gen0.synapses, FEATURE_COUNT * CLASS_COUNT);
-    assert(Number.isInteger(gen0.neurons));
-    assert(Number.isInteger(gen0.synapses));
-    assertGreater(gen0.neurons, 0);
-    assertGreater(gen0.synapses, 0);
-  },
-);
-
-Deno.test(
-  "evolveClassifier — honours the hard generation cap",
-  () => {
-    // With a vanishing mutation strength + zero structural mutation the
-    // search cannot solve the task within the cap. The result must
-    // therefore stop at the cap and report `solved=false`.
-    const { images, labels } = buildSyntheticIdx(17, 3);
-    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
-    const split = splitDataset(all, { trainCount: 18, validationCount: 6, testCount: 6 });
-    const cap = 3;
-    const result = evolveClassifier(split, {
-      seed: 555,
-      populationSize: 4,
-      maxGenerations: cap,
-      mutationStrength: 0.0001,
-      mutationRate: 0.0001,
-      addNeuronRate: 0,
-      inputCount: FEATURE_COUNT,
-      classCount: CLASS_COUNT,
-      accuracyThreshold: 0.999,
-    });
-    assertEquals(
-      result.generations,
-      cap,
-      `expected evolution to run to the hard cap of ${cap} generations, got ${result.generations}`,
-    );
-    assertEquals(
-      result.solved,
-      false,
-      "with vanishing mutation the search must not cross the threshold within the cap",
-    );
-  },
-);
-
-Deno.test("evolveClassifier — empty validation slice raises a clear error", () => {
-  const samples: DigitSample[] = [
-    { index: 0, label: 0, features: new Array(FEATURE_COUNT).fill(0.5), pixels: [] },
-  ];
-  assertThrows(
-    () =>
-      evolveClassifier(
-        { train: samples, validation: [], test: [] },
-        {
-          ...DEFAULT_EVOLVE_OPTIONS,
-          populationSize: 2,
-          maxGenerations: 1,
-        },
-      ),
-    Error,
-    "validation set must not be empty",
-  );
-});
-
-Deno.test("evolveClassifier — empty training slice raises a clear error", () => {
-  const samples: DigitSample[] = [
-    { index: 0, label: 0, features: new Array(FEATURE_COUNT).fill(0.5), pixels: [] },
-  ];
-  assertThrows(
-    () =>
-      evolveClassifier(
-        { train: [], validation: samples, test: [] },
-        {
-          ...DEFAULT_EVOLVE_OPTIONS,
-          populationSize: 2,
-          maxGenerations: 1,
-        },
-      ),
-    Error,
-    "training set must not be empty",
-  );
-});
-
-Deno.test(
-  "evolveClassifier — reproducibility: two runs with the same seed produce byte-identical champions",
-  () => {
-    const { images, labels } = buildSyntheticIdx(11, 4);
-    const all = buildDigitSamples(parseIdxImages(images), parseIdxLabels(labels));
-    const opts = {
-      seed: 9999,
-      populationSize: 6,
-      maxGenerations: 4,
-      mutationStrength: 0.2,
-      mutationRate: 0.2,
-      addNeuronRate: 0,
-      inputCount: FEATURE_COUNT,
-      classCount: CLASS_COUNT,
-      accuracyThreshold: 1.0,
-    };
-    const split1 = splitDataset(all, { trainCount: 20, validationCount: 10, testCount: 10 });
-    const split2 = splitDataset(all, { trainCount: 20, validationCount: 10, testCount: 10 });
-    const r1 = evolveClassifier(split1, opts);
-    const r2 = evolveClassifier(split2, opts);
-    const j1 = JSON.stringify(r1.champion.exportJSON());
-    const j2 = JSON.stringify(r2.champion.exportJSON());
-    assertEquals(j1, j2);
-  },
-);
-
 Deno.test("pickGridSamples spreads picks across classes when possible", () => {
   const samples: DigitSample[] = [];
   for (let i = 0; i < 20; i++) {
@@ -660,7 +312,6 @@ Deno.test("pickGridSamples spreads picks across classes when possible", () => {
     });
   }
   const picks = pickGridSamples(samples, 10);
-  // First sweep should hit every class.
   const labels = new Set(picks.map((s) => s.label));
   assertEquals(labels.size, CLASS_COUNT);
 });
@@ -675,8 +326,7 @@ Deno.test("buildGridCells emits at most GRID_ROWS*GRID_COLS cells with frames", 
       pixels: new Array(IMAGE_SIZE * IMAGE_SIZE).fill(0),
     });
   }
-  const pop = buildRandomPopulation(101, 1, FEATURE_COUNT, CLASS_COUNT);
-  const creature = Creature.fromJSON(pop[0]);
+  const creature = new Creature(FEATURE_COUNT, CLASS_COUNT);
   const cells = buildGridCells(creature, samples, 2);
   assertGreaterOrEqual(cells.length, 1);
   assert(cells.length <= GRID_ROWS * GRID_COLS);
@@ -690,7 +340,7 @@ Deno.test("buildGridCells emits at most GRID_ROWS*GRID_COLS cells with frames", 
   }
 });
 
-Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels", () => {
+Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels for the 784-feature flow", () => {
   const cells = [
     {
       frames: [
@@ -710,12 +360,10 @@ Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels", () =
   const svg = renderDigitGridSVG({ cells, accuracy: 0.6, validationAccuracy: 0.55 });
   assert(svg.startsWith("<svg"));
   assert(svg.includes("</svg>"));
-  // SMIL animation present (animation only emitted when frames > 1).
+  assertGreater(svg.length, 0);
   assert(svg.match(/<animate /), "expected at least one <animate> element");
-  // Both colour codes should appear: green for correct, red for wrong.
   assert(svg.includes("#2ecc71"));
   assert(svg.includes("#e74c3c"));
-  // Caption mentions the metrics.
   assert(svg.includes("Validation accuracy"));
   assert(svg.includes("Test accuracy"));
 });
@@ -728,311 +376,7 @@ Deno.test("renderDigitGridSVG throws on an empty cell list", () => {
   );
 });
 
-Deno.test("buildMLPCreatureJSON — produces a creature that round-trips through Creature.fromJSON", () => {
-  const random = createDeterministicRandom(101);
-  const genes = initMLPGenes(random, 4, 3, 2);
-  const json = buildMLPCreatureJSON(genes);
-  assertEquals(json.input, 4);
-  assertEquals(json.output, 2);
-  // 4 inputs × 3 hidden + 3 hidden × 2 outputs = 18 synapses.
-  assertEquals(json.synapses.length, 4 * 3 + 3 * 2);
-  // 4 inputs + 3 hidden + 2 outputs = 9 neurons.
-  assertEquals(json.neurons.length, 4 + 3 + 2);
-  const creature = Creature.fromJSON(asCreatureExport(json));
-  creature.validate();
-  const out = creature.activate(Float32Array.from([0.1, 0.2, 0.3, 0.4]));
-  assertEquals(out.length, 2);
-});
-
-Deno.test("buildMLPCreatureJSON — rejects mismatched layer sizes", () => {
-  // W2 row length must equal hiddenCount = W1.length.
-  assertThrows(
-    () =>
-      buildMLPCreatureJSON({
-        W1: [[0, 0]],
-        b1: [0],
-        W2: [[0, 0]],
-        b2: [0],
-      }),
-    Error,
-    "W2 row 0 has 2 weights",
-  );
-});
-
-Deno.test(
-  "evolveMLPClassifier — reaches high validation accuracy on a trivially separable synthetic split",
-  () => {
-    // Build a synthetic dataset where each class has a unique hot
-    // feature — a simple MLP should master this in a handful of
-    // epochs even with a tiny hidden layer.
-    const samples: DigitSample[] = [];
-    for (let i = 0; i < 300; i++) {
-      const label = i % CLASS_COUNT;
-      const features = new Array<number>(FEATURE_COUNT).fill(0);
-      features[label] = 1;
-      samples.push({
-        index: i,
-        label,
-        features,
-        pixels: new Array<number>(IMAGE_SIZE * IMAGE_SIZE).fill(0),
-      });
-    }
-    const split = {
-      train: samples.slice(0, 200),
-      validation: samples.slice(200, 250),
-      test: samples.slice(250, 300),
-    };
-    const result = evolveMLPClassifier(split, {
-      seed: 13579,
-      inputCount: FEATURE_COUNT,
-      classCount: CLASS_COUNT,
-      hiddenCount: 16,
-      maxEpochs: 30,
-      batchSize: 16,
-      learningRate: 0.5,
-      momentum: 0.9,
-      accuracyThreshold: 0.99,
-    });
-    assertGreater(result.validationAccuracy, 0.9);
-    // History captures one entry per executed epoch.
-    assertEquals(result.history.length, result.epochs);
-    // The lifted creature serialises and re-loads cleanly.
-    Creature.fromJSON(result.champion.exportJSON()).validate();
-  },
-);
-
-Deno.test("evolveMLPClassifier — empty validation slice raises a clear error", () => {
-  const sample: DigitSample = {
-    index: 0,
-    label: 0,
-    features: new Array<number>(FEATURE_COUNT).fill(0.5),
-    pixels: [],
-  };
-  assertThrows(
-    () =>
-      evolveMLPClassifier(
-        { train: [sample], validation: [], test: [] },
-        {
-          seed: 1,
-          inputCount: FEATURE_COUNT,
-          classCount: CLASS_COUNT,
-          hiddenCount: 4,
-          maxEpochs: 1,
-          batchSize: 1,
-          learningRate: 0.1,
-          momentum: 0,
-        },
-      ),
-    Error,
-    "validation set must not be empty",
-  );
-});
-
-Deno.test(
-  "predictWithGenes / confusionMatrixGenes — agree with the lifted creature on a small set",
-  () => {
-    const random = createDeterministicRandom(71);
-    const genes = initMLPGenes(random, FEATURE_COUNT, 8, CLASS_COUNT);
-    const json = buildMLPCreatureJSON(genes);
-    const creature = Creature.fromJSON(asCreatureExport(json));
-    const samples: DigitSample[] = [];
-    for (let i = 0; i < 5; i++) {
-      const features = new Array<number>(FEATURE_COUNT).fill(0).map((_, k) => (k % (i + 2)) / 10);
-      samples.push({
-        index: i,
-        label: i % CLASS_COUNT,
-        features,
-        pixels: new Array<number>(IMAGE_SIZE * IMAGE_SIZE).fill(0),
-      });
-    }
-    for (const s of samples) {
-      assertEquals(predictWithGenes(genes, s.features), predict(creature, s.features));
-    }
-    const m1 = confusionMatrixGenes(genes, samples);
-    const m2 = confusionMatrix(creature, samples);
-    assertEquals(m1, m2);
-  },
-);
-
-Deno.test("buildGridCellsFromGenes — emits well-formed cells matching the genome predictions", () => {
-  const samples: DigitSample[] = [];
-  for (let i = 0; i < 30; i++) {
-    samples.push({
-      index: i,
-      label: i % CLASS_COUNT,
-      features: new Array<number>(FEATURE_COUNT).fill(0),
-      pixels: new Array<number>(IMAGE_SIZE * IMAGE_SIZE).fill(0),
-    });
-  }
-  const random = createDeterministicRandom(83);
-  const genes = initMLPGenes(random, FEATURE_COUNT, 8, CLASS_COUNT);
-  const cells = buildGridCellsFromGenes(genes, samples, 2);
-  assertGreaterOrEqual(cells.length, 1);
-  for (const cell of cells) {
-    assert(cell.frames.length > 0);
-    for (const frame of cell.frames) {
-      assertEquals(frame.pixels.length, IMAGE_SIZE * IMAGE_SIZE);
-      assert(frame.label >= 0 && frame.label < CLASS_COUNT);
-      assert(frame.prediction >= 0 && frame.prediction < CLASS_COUNT);
-    }
-  }
-});
-
-// -- README content tests --------------------------------------------
-// "What" tests against the published README. Each test reads the file
-// from disk and asserts the corrected wording from issue #185 is
-// present so the README cannot regress to implying NEAT-AI lacks
-// backpropagation. These tests inspect the *artefact*, not source code,
-// so they remain valid regardless of how the example is implemented.
-
-const README_PATH = new URL("./README.md", import.meta.url);
-
-async function readReadme(): Promise<string> {
-  return await Deno.readTextFile(README_PATH);
-}
-
-Deno.test("README — does not contain the misleading 'SGD beats NEAT' phrasing", async () => {
-  const text = await readReadme();
-  assert(
-    !/SGD beats NEAT by orders of magnitude/i.test(text),
-    "README must not contain the misleading 'SGD beats NEAT' line — it should contrast SGD with evolutionary structural search instead.",
-  );
-});
-
-Deno.test("README — explicitly notes NEAT-AI ships backpropagation", async () => {
-  const text = await readReadme();
-  assert(
-    /NEAT-AI\s+ships\s+(?:full\s+)?backpropagation/i.test(text),
-    "README must include the canonical 'NEAT-AI ships backpropagation' wording.",
-  );
-});
-
-Deno.test("README — links to upstream COMPARISON.md training-methods anchor", async () => {
-  const text = await readReadme();
-  assert(
-    text.includes(
-      "https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#training-methods",
-    ),
-    "README must link to upstream COMPARISON.md#training-methods for the training-methods comparison.",
-  );
-});
-
-Deno.test("README — distinguishes the demo's stripped-down loop from the production pipeline", async () => {
-  const text = await readReadme();
-  assert(
-    /stripped-down/i.test(text),
-    "README must describe the demo's NEAT loop as 'stripped-down' to make the demo-vs-production split obvious.",
-  );
-  assert(
-    /production training pipeline/i.test(text) ||
-      /production pipeline/i.test(text),
-    "README must mention NEAT-AI's 'production training pipeline' alongside the demo loop.",
-  );
-});
-
-Deno.test("README — has a 'Where NEAT-AI is faster than this demo suggests' section listing the four features", async () => {
-  const text = await readReadme();
-  assert(
-    /Where NEAT-AI is faster than this demo suggests/.test(text),
-    "README must contain the 'Where NEAT-AI is faster than this demo suggests' subsection.",
-  );
-  // Must mention all four accelerators.
-  assert(/binary/i.test(text), "subsection must mention the binary training stream");
-  assert(
-    /\.bin/.test(text) || /IDX\s*→\s*\.bin/.test(text),
-    "subsection must mention the .bin training stream",
-  );
-  assert(/memetic/i.test(text), "subsection must mention memetic evolution");
-  assert(/MCMC/.test(text), "subsection must mention MCMC mutation acceptance");
-  assert(/Discovery/.test(text), "subsection must mention NEAT-AI-Discovery");
-});
-
-Deno.test("README — flowchart MUT label flags 'demo only' and names the production operators", async () => {
-  const text = await readReadme();
-  // The Mermaid MUT node should describe the demo limitation explicitly.
-  assert(
-    /demo only/i.test(text),
-    "flowchart MUT caption must include 'demo only' to flag the stripped-down operator set.",
-  );
-  // Each of the production operators should be named in the MUT caption area.
-  assert(
-    /backprop/i.test(text) && /memetic/i.test(text) && /MCMC/i.test(text) &&
-      /discovery/i.test(text),
-    "MUT caption must name the production-pipeline operators (backprop, memetic, MCMC, discovery).",
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Audit minimal-seed `evolveDir` flow (issue #210)
-// ---------------------------------------------------------------------------
-
-Deno.test("DEFAULT_MNIST_EVOLUTION_CONFIG honours the issue #210 stop-condition rule", () => {
-  // The audit mandates per-example targetError + a 5-minute backstop.
-  assert(
-    DEFAULT_MNIST_EVOLUTION_CONFIG.targetError > 0,
-    "targetError must be a positive per-example MSE budget",
-  );
-  assertEquals(
-    DEFAULT_MNIST_EVOLUTION_CONFIG.timeoutMinutes,
-    5,
-    "timeoutMinutes must be the audit-mandated 5-minute backstop",
-  );
-  assertGreater(DEFAULT_MNIST_EVOLUTION_CONFIG.populationSize, 0);
-  assertGreater(DEFAULT_MNIST_EVOLUTION_CONFIG.maxIterations, 0);
-  assertGreater(DEFAULT_MNIST_EVOLUTION_CONFIG.trainingRecords, 0);
-});
-
-Deno.test("EVOLUTION_CSV_HEADER matches the schema mandated by issue #210", () => {
-  assertEquals(
-    EVOLUTION_CSV_HEADER,
-    "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
-  );
-});
-
-Deno.test("formatEvolutionCsv emits the audit schema and one row per input", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: -1234.5, meanFitness: 0, neuronCount: 206, synapseCount: 1960 },
-    { generation: 2, bestFitness: -1.234, meanFitness: -2.5, neuronCount: 207, synapseCount: 1961 },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines.length, 3, "header + 2 rows = 3 lines");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "1,-1234.5,0,206,1960");
-  assertEquals(lines[2], "2,-1.234,-2.5,207,1961");
-});
-
-Deno.test("formatEvolutionCsv replaces non-finite fitness with 0", () => {
-  const rows: EvolutionRow[] = [
-    {
-      generation: 1,
-      bestFitness: Number.NEGATIVE_INFINITY,
-      meanFitness: Number.NaN,
-      neuronCount: 1,
-      synapseCount: 1,
-    },
-  ];
-  const lines = formatEvolutionCsv(rows).trim().split("\n");
-  assertEquals(lines[1], "1,0,0,1,1");
-});
-
-Deno.test("rowsToFitnessSamples maps best/mean fitness to the chart helper shape", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.5, meanFitness: 0.1, neuronCount: 1, synapseCount: 2 },
-  ];
-  const samples = rowsToFitnessSamples(rows);
-  assertEquals(samples, [{ generation: 1, bestFitness: 0.5, avgFitness: 0.1 }]);
-});
-
-Deno.test("rowsToEvolutionSamples maps the row shape to the evolution chart shape", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.5, meanFitness: 0.1, neuronCount: 5, synapseCount: 7 },
-  ];
-  const samples = rowsToEvolutionSamples(rows);
-  assertEquals(samples, [{ generation: 1, score: 0.5, neurons: 5, synapses: 7 }]);
-});
-
-Deno.test("writeMnistTrainingBin writes the documented binary record stride", () => {
+Deno.test("writeMnistTrainingBin writes the documented binary record stride (784 + 10)", () => {
   const tmp = Deno.makeTempDirSync({ prefix: "mnist-bin-" });
   try {
     const samples: DigitSample[] = [
@@ -1052,19 +396,54 @@ Deno.test("writeMnistTrainingBin writes the documented binary record stride", ()
     const path = join(tmp, "mnist_train.bin");
     writeMnistTrainingBin(samples, path);
     const bytes = Deno.readFileSync(path);
-    // 2 records × (196 features + 10 outputs) × 4 bytes = 1648 bytes.
+    // 2 records × (784 features + 10 outputs) × 4 bytes = 6 352 bytes.
     assertEquals(bytes.byteLength, samples.length * (FEATURE_COUNT + CLASS_COUNT) * 4);
 
     const view = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
-    // Record 0: features[0..195] then one-hot label-3 (output_3 = 1).
+    // Record 0: features[0..783] then one-hot label-3 (output_3 = 1).
     assertAlmostEquals(view[0], samples[0].features[0], 1e-6);
     for (let c = 0; c < CLASS_COUNT; c++) {
       assertAlmostEquals(view[FEATURE_COUNT + c], c === 3 ? 1 : 0, 1e-6);
     }
-    // Record 1: features[0..195] then one-hot label-7 (output_7 = 1).
+    // Record 1: features[0..783] then one-hot label-7 (output_7 = 1).
     const stride = FEATURE_COUNT + CLASS_COUNT;
     for (let c = 0; c < CLASS_COUNT; c++) {
       assertAlmostEquals(view[stride + FEATURE_COUNT + c], c === 7 ? 1 : 0, 1e-6);
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("writeMnistTrainingBin round-trips synthetic samples", () => {
+  // Round-trip: write a small synthetic batch then read every Float32
+  // back and confirm features and one-hot labels match exactly.
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-bin-rt-" });
+  try {
+    const samples: DigitSample[] = [];
+    for (let i = 0; i < 4; i++) {
+      const features = new Array<number>(FEATURE_COUNT).fill(0).map((_, j) => ((i + j) % 7) / 13);
+      samples.push({
+        index: i,
+        label: i % CLASS_COUNT,
+        features,
+        pixels: [],
+      });
+    }
+    const path = join(tmp, "rt.bin");
+    writeMnistTrainingBin(samples, path);
+    const bytes = Deno.readFileSync(path);
+    const view = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    const stride = FEATURE_COUNT + CLASS_COUNT;
+    assertEquals(view.length, samples.length * stride);
+    for (let i = 0; i < samples.length; i++) {
+      const base = i * stride;
+      for (let j = 0; j < FEATURE_COUNT; j++) {
+        assertAlmostEquals(view[base + j], samples[i].features[j], 1e-6);
+      }
+      for (let c = 0; c < CLASS_COUNT; c++) {
+        assertAlmostEquals(view[base + FEATURE_COUNT + c], c === samples[i].label ? 1 : 0, 1e-6);
+      }
     }
   } finally {
     Deno.removeSync(tmp, { recursive: true });
@@ -1103,76 +482,30 @@ Deno.test("writeMnistTrainingBin rejects out-of-range labels", () => {
   }
 });
 
-Deno.test("runMinimalSeedEvolution rejects non-positive config values", async () => {
-  const seed = new Creature(2, 1);
-  await assertRejects(
-    () =>
-      runMinimalSeedEvolution(seed, "/tmp", {
-        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
-        targetError: -1,
-      }),
-    Error,
-    "targetError must be positive",
-  );
-  await assertRejects(
-    () =>
-      runMinimalSeedEvolution(seed, "/tmp", {
-        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
-        timeoutMinutes: 0,
-      }),
-    Error,
-    "timeoutMinutes must be positive",
-  );
-  await assertRejects(
-    () =>
-      runMinimalSeedEvolution(seed, "/tmp", {
-        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
-        populationSize: 0,
-      }),
-    Error,
-    "populationSize must be positive",
-  );
-  await assertRejects(
-    () =>
-      runMinimalSeedEvolution(seed, "/tmp", {
-        ...DEFAULT_MNIST_EVOLUTION_CONFIG,
-        maxIterations: 0,
-      }),
-    Error,
-    "maxIterations must be positive",
-  );
-});
-
-Deno.test(
-  "audit committed CSV: gen-1 and final neuron / synapse counts genuinely change",
-  () => {
-    // Issue #210 acceptance criterion: "Verify neuron and synapse counts
-    // genuinely change across generations. If start == end, the seed is
-    // still memorised; fix and re-run."
-    const text = Deno.readTextFileSync("docs/data/mnist_classification/evolution.csv");
-    const lines = text.trim().split("\n");
-    assertGreaterOrEqual(lines.length, 3, "expected header + at least two rows");
-    const first = lines[1].split(",");
-    const last = lines[lines.length - 1].split(",");
-    const firstNeurons = Number(first[3]);
-    const firstSynapses = Number(first[4]);
-    const lastNeurons = Number(last[3]);
-    const lastSynapses = Number(last[4]);
-    const changed = firstNeurons !== lastNeurons || firstSynapses !== lastSynapses;
-    assert(
-      changed,
-      `Topology must change between gen-1 and final; got start=${firstNeurons}/${firstSynapses}` +
-        ` final=${lastNeurons}/${lastSynapses}`,
+Deno.test("writeMnistTrainingBin rejects feature vectors of the wrong length", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-bin-" });
+  try {
+    const sample: DigitSample = {
+      index: 0,
+      label: 0,
+      features: new Array<number>(196).fill(0),
+      pixels: [],
+    };
+    assertThrows(
+      () => writeMnistTrainingBin([sample], join(tmp, "out.bin")),
+      Error,
+      `expected ${FEATURE_COUNT} features`,
     );
-  },
-);
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
 
 Deno.test("readGzippedFile rejects a missing file", async () => {
   await assertRejects(() => readGzippedFile("/no/such/path/data.gz"), Error);
 });
 
 Deno.test("readGzippedFile round-trips bytes via DecompressionStream", async () => {
-  // Compress a tiny payload, write it to disk, then read it back.
   const original = new TextEncoder().encode("hello mnist!");
   // deno-lint-ignore no-explicit-any
   const blob = new Blob([original as any]);
