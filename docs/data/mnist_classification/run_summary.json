@@ -1,0 +1,13 @@
+{
+  "trainingRecords": 60000,
+  "evolveWallClockMs": 610032,
+  "targetError": 0.001,
+  "timeoutMinutes": 10,
+  "seedNeurons": 794,
+  "seedSynapses": 7840,
+  "finalNeurons": 794,
+  "finalSynapses": 7841,
+  "validationAccuracy": 0.109,
+  "testAccuracy": 0.1037,
+  "stopCondition": "timeoutMinutes"
+}
