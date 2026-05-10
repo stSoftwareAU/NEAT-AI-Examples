@@ -82,8 +82,55 @@ export const TRAIN_LABELS_PATH = join(MNIST_ROOT, "data", "train-labels-idx1-uby
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/mnist_classification.svg";
 
+/**
+ * Committed copy of the run summary JSON. The README quotes numbers
+ * from this file (audited by `readme_screenshot_honesty_test.ts`), so
+ * the runner writes a small canonical copy under `docs/data/` in
+ * addition to the working-directory copy under `.synthetic-mnist/`.
+ */
+export const RUN_SUMMARY_DOCS_PATH = "docs/data/mnist_classification/run_summary.json";
+
 /** Sub-directory under `MNIST_ROOT` holding the binary `.bin` training set. */
 export const BIN_TRAIN_DIR = `${MNIST_ROOT}/bin`;
+
+/**
+ * Small JSON written next to the champion + confusion matrix capturing
+ * the measured numbers the README quotes. Keep the schema small and
+ * stable — `readme_screenshot_honesty_test.ts` cross-checks the README
+ * against this file.
+ */
+export interface MnistRunSummary {
+  /** Training-set record count fed to `evolveDir`. */
+  trainingRecords: number;
+  /** Wall-clock time taken by the single `evolveDir` call, in ms. */
+  evolveWallClockMs: number;
+  /** `evolveDir` `targetError` option used for the run. */
+  targetError: number;
+  /** `evolveDir` `timeoutMinutes` option used for the run. */
+  timeoutMinutes: number;
+  /** Neuron count of the minimal seed before evolution. */
+  seedNeurons: number;
+  /** Synapse count of the minimal seed before evolution. */
+  seedSynapses: number;
+  /** Neuron count of the post-evolution champion. */
+  finalNeurons: number;
+  /** Synapse count of the post-evolution champion. */
+  finalSynapses: number;
+  /**
+   * Argmax accuracy on the held-out validation slice (tail of the
+   * 60 000-image training file).
+   */
+  validationAccuracy: number;
+  /** Argmax accuracy on the canonical 10 000-image test set. */
+  testAccuracy: number;
+  /**
+   * Which stop condition fired. Inferred from wall-clock vs the
+   * `timeoutMinutes` budget: if the run consumed (effectively) the full
+   * budget it is reported as `timeoutMinutes`; otherwise as
+   * `targetError`.
+   */
+  stopCondition: "targetError" | "timeoutMinutes";
+}
 
 /**
  * Activate the creature on a single feature vector and return the
@@ -256,6 +303,21 @@ function dirnameOf(path: string): string {
   return i < 0 ? "." : path.slice(0, i);
 }
 
+/**
+ * Decide which stop condition fired for an `evolveDir` call configured
+ * with `targetError` + `timeoutMinutes`. The NEAT-AI promise resolves
+ * without surfacing the reason directly, so we infer from the realised
+ * wall-clock vs the budget: if the run ate at least 95 % of the
+ * timeout it is reported as `timeoutMinutes`, otherwise `targetError`.
+ */
+export function inferStopCondition(
+  evolveWallClockMs: number,
+  timeoutMinutes: number,
+): "targetError" | "timeoutMinutes" {
+  const budgetMs = timeoutMinutes * 60_000;
+  return evolveWallClockMs >= budgetMs * 0.95 ? "timeoutMinutes" : "targetError";
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
@@ -346,17 +408,24 @@ if (import.meta.main) {
 
   // Stage 2 — minimal seed → single `evolveDir` call. The only options
   // permitted by issue #270 are `targetError` and `timeoutMinutes`.
+  const TARGET_ERROR = 0.001;
+  const TIMEOUT_MINUTES = 10;
   const seed = new Creature(FEATURE_COUNT, CLASS_COUNT);
+  const seedNeurons = seed.neurons.length;
+  const seedSynapses = seed.synapses.length;
   console.log(
-    `🌱 Seed topology: ${seed.neurons.length} neurons, ` +
-      `${seed.synapses.length} synapses (no hidden neurons)`,
+    `🌱 Seed topology: ${seedNeurons} neurons, ` +
+      `${seedSynapses} synapses (no hidden neurons)`,
   );
   console.log(
     `\n🧪 Evolving via Creature.evolveDir(${binDir}, ` +
-      `{ targetError: 0.001, timeoutMinutes: 10 })…`,
+      `{ targetError: ${TARGET_ERROR}, timeoutMinutes: ${TIMEOUT_MINUTES} })…`,
   );
   const evolveStart = Date.now();
-  await seed.evolveDir(binDir, { targetError: 0.001, timeoutMinutes: 10 });
+  await seed.evolveDir(binDir, {
+    targetError: TARGET_ERROR,
+    timeoutMinutes: TIMEOUT_MINUTES,
+  });
   const evolveMs = Date.now() - evolveStart;
   console.log(
     `\n✅ Evolution finished in ${(evolveMs / 1000).toFixed(1)}s.` +
@@ -397,6 +466,28 @@ if (import.meta.main) {
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, gridSvg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
+
+  // Stage 5 — write the small canonical run summary (the README quotes
+  // these numbers and `readme_screenshot_honesty_test.ts` cross-checks
+  // them against the published prose).
+  const summary: MnistRunSummary = {
+    trainingRecords: trainSamples.length,
+    evolveWallClockMs: evolveMs,
+    targetError: TARGET_ERROR,
+    timeoutMinutes: TIMEOUT_MINUTES,
+    seedNeurons,
+    seedSynapses,
+    finalNeurons: seed.neurons.length,
+    finalSynapses: seed.synapses.length,
+    validationAccuracy,
+    testAccuracy,
+    stopCondition: inferStopCondition(evolveMs, TIMEOUT_MINUTES),
+  };
+  const summaryPath = join(outputDir, "run_summary.json");
+  await safeWriteJson(summaryPath, summary);
+  ensureDirSync(dirnameOf(RUN_SUMMARY_DOCS_PATH));
+  await safeWriteJson(RUN_SUMMARY_DOCS_PATH, summary);
+  console.log(`📝 Wrote run summary to ${summaryPath} and ${RUN_SUMMARY_DOCS_PATH}`);
 
   console.log(
     `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,
