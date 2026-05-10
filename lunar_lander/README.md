@@ -353,7 +353,6 @@ A few things that are not obvious from the code alone:
   [#196](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/196) /
   [#198](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/198)–[#202](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/202)
   pipeline: only `INPUT_COUNT` and `OUTPUT_COUNT` are passed to NEAT-AI's `createSeededPopulation`
-  (no `hiddenLayers`, no `nodes`, no pre-built `network.json`); the per-step `activate()` call is
   justified by the interactive reinforcement learning (RL) environment; stop conditions are the
   standard `targetError` + `timeoutMinutes` pair; and the gen-0 champion's topology is the bare
   10-neuron / 21-synapse seed, growing to 11 neurons / 22 synapses by the final generation on the

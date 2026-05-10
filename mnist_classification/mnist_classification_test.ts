@@ -37,6 +37,7 @@ import {
   buildGridCells,
   classificationAccuracy,
   confusionMatrix,
+  inferStopCondition,
   pickGridSamples,
   predict,
   writeMnistTrainingBin,
@@ -499,6 +500,20 @@ Deno.test("writeMnistTrainingBin rejects feature vectors of the wrong length", (
   } finally {
     Deno.removeSync(tmp, { recursive: true });
   }
+});
+
+Deno.test("inferStopCondition reports timeoutMinutes when wall-clock fills the budget", () => {
+  // 10-minute budget, used 9 m 35 s ≈ 95 % of the budget → timeoutMinutes.
+  assertEquals(inferStopCondition(575_000, 10), "timeoutMinutes");
+  // 10-minute budget exactly used.
+  assertEquals(inferStopCondition(600_000, 10), "timeoutMinutes");
+});
+
+Deno.test("inferStopCondition reports targetError when the run finishes well inside the budget", () => {
+  // 10-minute budget, used 1 minute → targetError fired first.
+  assertEquals(inferStopCondition(60_000, 10), "targetError");
+  // 1-minute budget, used 30 s → targetError.
+  assertEquals(inferStopCondition(30_000, 1), "targetError");
 });
 
 Deno.test("readGzippedFile rejects a missing file", async () => {
