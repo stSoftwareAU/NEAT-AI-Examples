@@ -1,8 +1,8 @@
 ## Summary
 
-Rewires the MNIST example to the canonical supervised-batch shape: write the **full
-60 000-record** training set to a `.bin` file, seed NEAT-AI with `new Creature(784, 10)` (raw 28×28
-pixels — no down-sampling, no hidden hint, no warm start), and call
+Rewires the MNIST example to the canonical supervised-batch shape: write the **full 60 000-record**
+training set to a `.bin` file, seed NEAT-AI with `new Creature(784, 10)` (raw 28×28 pixels — no
+down-sampling, no hidden hint, no warm start), and call
 `Creature.evolveDir(dataDir, { targetError: 0.001, timeoutMinutes: 10 })` exactly once. All legacy
 modes (`evolveClassifier`, `evolveMLPClassifier`, `runMinimalSeedEvolution` chunking wrapper, MLP
 gradient module, per-generation telemetry plumbing) are removed. Closes #270.
@@ -36,10 +36,10 @@ flowchart LR
 New / refreshed tests in `mnist_classification/mnist_classification_test.ts`:
 
 - `FEATURE_COUNT is 784 (full 28×28)` — pins the raw-pixel feature shape.
-- `buildDigitSamples produces one 784-feature sample per (image, label) pair` — replaces the
-  14×14 down-sampled assertion.
-- `buildDigitSamples normalises features to pixel/255` — confirms the new normalisation matches
-  the raw-pixel / 255 contract.
+- `buildDigitSamples produces one 784-feature sample per (image, label) pair` — replaces the 14×14
+  down-sampled assertion.
+- `buildDigitSamples normalises features to pixel/255` — confirms the new normalisation matches the
+  raw-pixel / 255 contract.
 - `writeMnistTrainingBin writes the documented binary record stride (784 + 10)` and
   `writeMnistTrainingBin round-trips synthetic samples` — verify the binary stream layout for the
   new feature shape.

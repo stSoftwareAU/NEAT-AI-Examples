@@ -443,9 +443,9 @@ export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   // per-seed eaten count reaches `SOLVED_THRESHOLD` (audit issue #222).
   targetError: 0.5,
   timeoutMinutes: 5,
-  mutationStrength: 1.0,
-  mutationRate: 0.5,
-  addNeuronRate: 0.06,
+  mutationStrength: 2.0,
+  mutationRate: 0.8,
+  addNeuronRate: 0.08,
 };
 
 /**
@@ -538,21 +538,17 @@ function addHiddenNeuron(
     toUUID: original.toUUID,
   });
 
-  // The library assigns runtime indices in array order, so all
-  // hidden neurons must precede the first output neuron to keep the
-  // topology forward-only (and the library validates this on load).
-  // Inserting the new hidden neuron just before the first output is
-  // the simplest position that satisfies the rule for every possible
-  // split — split target may be an output, a hidden neuron, or
-  // (implicitly) an input. When the new hidden's index ends up
-  // higher than its synapse target's index (e.g. an old hidden
-  // neuron sitting between us and the output), the library silently
-  // strips the resulting recurrent synapse on load. That makes the
-  // mutation a no-op for those rare cases, which is acceptable here
-  // because the search is generational and the next mutation tries
-  // a different split.
+  // Hidden neurons must stay before every output. For hidden targets,
+  // insert directly before the target; for output targets, insert before
+  // the first output so NEAT-AI 4.x validation keeps the export ordered.
+  const targetIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
+  const target = targetIdx === -1 ? undefined : creature.neurons[targetIdx];
   const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = firstOutputIdx === -1 ? creature.neurons.length : firstOutputIdx;
+  const insertAt = target?.type === "hidden"
+    ? targetIdx
+    : firstOutputIdx === -1
+    ? creature.neurons.length
+    : firstOutputIdx;
   const newNeurons = [
     ...creature.neurons.slice(0, insertAt),
     newNeuron,

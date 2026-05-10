@@ -92,9 +92,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 0.760</text>
-    <circle cx="300" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="300" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
+    >score 0.765</text>
     <circle cx="378" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
   <g class="panel" data-generation="50" data-index="2">
@@ -134,11 +132,6 @@
       font-size="11"
       fill="#555"
     >score 0.768</text>
-    <circle cx="500" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="102" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="170" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="500" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="578" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
   <g class="panel" data-generation="100" data-index="3">
@@ -178,9 +171,6 @@
       font-size="11"
       fill="#555"
     >score 0.769</text>
-    <circle cx="700" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="778" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
   <g class="panel" data-generation="200" data-index="4">
@@ -219,30 +209,27 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 0.770</text>
+    >score 0.769</text>
     <circle cx="900" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="95.2" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="122.4" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="149.6" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="900" cy="176.8" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
+    <circle cx="900" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="900" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="978" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
-  <g class="progression" data-min="0.757" data-max="0.770">
+  <g class="progression" data-min="0.757" data-max="0.769">
     <rect x="0" y="236" width="1000" height="100" fill="#f4f4f4" />
     <polyline
       class="score-progression"
       fill="none"
       stroke="#1f77b4"
       stroke-width="2"
-      points="100,322 300,305.93 500,261.65 700,257.92 900,250"
+      points="100,322 300,272.63 500,254.63 700,253.85 900,250"
     />
     <circle cx="100" cy="322" r="3" fill="#1f77b4" />
-    <circle cx="300" cy="305.93" r="3" fill="#1f77b4" />
-    <circle cx="500" cy="261.65" r="3" fill="#1f77b4" />
-    <circle cx="700" cy="257.92" r="3" fill="#1f77b4" />
+    <circle cx="300" cy="272.63" r="3" fill="#1f77b4" />
+    <circle cx="500" cy="254.63" r="3" fill="#1f77b4" />
+    <circle cx="700" cy="253.85" r="3" fill="#1f77b4" />
     <circle cx="900" cy="250" r="3" fill="#1f77b4" />
-    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 0.770</text>
+    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 0.769</text>
     <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min 0.757</text>
   </g>
   <g class="caption">
@@ -254,6 +241,6 @@
       font-family="sans-serif"
       font-size="12"
       fill="#ffffff"
-    >final score 0.770 • 201 generations • 4.4s</text>
+    >final score 0.769 • 200 generations • 10.9s</text>
   </g>
 </svg>

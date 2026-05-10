@@ -170,28 +170,27 @@
       font-family="sans-serif"
       font-size="11"
       fill="#555"
-    >score 1.000</text>
-    <circle cx="700" cy="68" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="102" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="136" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
-    <circle cx="700" cy="170" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
+    >score 0.976</text>
+    <circle cx="700" cy="68" r="3" fill="#888888" stroke="#222" stroke-width="0.5" />
+    <circle cx="700" cy="113.33" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
+    <circle cx="700" cy="158.67" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="700" cy="204" r="3" fill="#bd10e0" stroke="#222" stroke-width="0.5" />
     <circle cx="778" cy="136" r="3" fill="#16a085" stroke="#222" stroke-width="0.5" />
   </g>
-  <g class="progression" data-min="0.749" data-max="1.000">
+  <g class="progression" data-min="0.749" data-max="0.976">
     <rect x="0" y="236" width="800" height="100" fill="#f4f4f4" />
     <polyline
       class="score-progression"
       fill="none"
       stroke="#1f77b4"
       stroke-width="2"
-      points="100,322 300,321.64 500,321.63 700,250"
+      points="100,322 300,321.61 500,321.59 700,250"
     />
     <circle cx="100" cy="322" r="3" fill="#1f77b4" />
-    <circle cx="300" cy="321.64" r="3" fill="#1f77b4" />
-    <circle cx="500" cy="321.63" r="3" fill="#1f77b4" />
+    <circle cx="300" cy="321.61" r="3" fill="#1f77b4" />
+    <circle cx="500" cy="321.59" r="3" fill="#1f77b4" />
     <circle cx="700" cy="250" r="3" fill="#1f77b4" />
-    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 1.000</text>
+    <text x="6" y="248" font-family="sans-serif" font-size="10" fill="#555">max 0.976</text>
     <text x="6" y="332" font-family="sans-serif" font-size="10" fill="#555">min 0.749</text>
   </g>
   <g class="caption">
@@ -203,6 +202,6 @@
       font-family="sans-serif"
       font-size="12"
       fill="#ffffff"
-    >final score 1.000 • 186 generations • 1.7s</text>
+    >final score 0.976 • 204 generations • 4.2s</text>
   </g>
 </svg>

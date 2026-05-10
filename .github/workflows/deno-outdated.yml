@@ -1,45 +1,38 @@
-# Deno Dependency Updates workflow for NEAT-AI-Examples
+# Deno Dependency Freshness workflow for NEAT-AI-Examples
 #
-# Runs `deno outdated --update --latest` on a weekly schedule (and on
-# demand via workflow_dispatch) to refresh imports in deno.json /
-# deno.lock to their latest versions, then opens a pull request with
-# the changes for review.
+# Runs `deno outdated --latest` on pull requests so dependency drift is
+# visible while work is in review. This workflow reports stale imports
+# but does not modify the branch or open bot PRs.
 
-name: Deno Dependency Updates
+name: Deno Dependency Freshness
 
 on:
-  schedule:
-    - cron: "0 6 * * 1"
+  pull_request:
+    branches:
+      - Develop
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   outdated:
-    name: Update Deno dependencies
+    name: Check Deno dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
 
-      - name: Update dependencies to latest versions
-        run: deno outdated --update --latest
-
-      - name: Open pull request with updates
-        uses: peter-evans/create-pull-request@v7
-        with:
-          # Org-level PAT (Issue #1636); falls back to GITHUB_TOKEN when
-          # the secret is unset. Using the PAT ensures downstream PR
-          # workflows fire on the resulting pull request.
-          token: ${{ secrets.ACTIONS_PUSH || secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update Deno dependencies"
-          title: "chore: update Deno dependencies"
-          branch: chore/deno-outdated
-          body: "Automated Deno dependency update via `deno outdated --update --latest`."
+      - name: Check dependencies are current
+        run: |
+          deno outdated --latest > deno-outdated.txt
+          if [[ -s deno-outdated.txt ]]; then
+            echo "::error::Deno dependencies are outdated. Run 'deno outdated --update --latest' locally and commit the result."
+            cat deno-outdated.txt
+            exit 1
+          fi
