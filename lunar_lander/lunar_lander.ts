@@ -54,7 +54,7 @@ import {
   type LanderOutcome,
   type LanderState,
   type LanderTerrain,
-  perturbedInitialState,
+  perturbedScenario,
   step,
 } from "./physics.ts";
 import { renderRunSVG, type TraceFrame } from "./svg.ts";
@@ -402,13 +402,36 @@ export function mutateCreatureExport(
   return child;
 }
 
-/** Convert the creature's three outputs into a thruster action. */
+/**
+ * Convert the creature's three outputs into a thruster action.
+ *
+ * The main engine (`outputs[0]`) is independently thresholded at 0.5,
+ * but the two rotation channels (`outputs[1]` = left, `outputs[2]` =
+ * right) are decoded with a winner-takes-all rule: only the strictly
+ * larger of the two fires, and only when it crosses the 0.5 threshold.
+ *
+ * Issue #253: with independent thresholding, evolution settled on
+ * controllers whose left and right outputs were both stuck above 0.5,
+ * applying equal-and-opposite torques (net zero rotation) while still
+ * burning fuel on both thrusters. That made rotation an ineffectual
+ * control surface — the lander could only succeed via translation and
+ * the main engine, which is precisely the symptom reported in the
+ * issue's screenshot. Mutual exclusion turns left/right into a clean
+ * three-state ("rotate-left", "rotate-right", "no-rotate") signal that
+ * the search can actually optimise.
+ */
 export function decodeAction(outputs: ArrayLike<number>): LanderAction {
-  return {
-    main: outputs[0] >= 0.5,
-    left: outputs[1] >= 0.5,
-    right: outputs[2] >= 0.5,
-  };
+  const main = outputs[0] >= 0.5;
+  const leftOut = outputs[1];
+  const rightOut = outputs[2];
+  let left = false;
+  let right = false;
+  if (leftOut > rightOut && leftOut >= 0.5) {
+    left = true;
+  } else if (rightOut > leftOut && rightOut >= 0.5) {
+    right = true;
+  }
+  return { main, left, right };
 }
 
 /**
@@ -499,8 +522,16 @@ export function scoreController(
   let total = 0;
   let landed = 0;
   for (let t = 0; t < trials; t++) {
-    const start = perturbation > 0 ? perturbedInitialState(random, perturbation) : initialState();
-    const r = runEpisode(creature, start, maxSteps);
+    // Issue #253: training trials now also vary the pad's horizontal
+    // centre (`padX`) — not just the lander's start state — so a
+    // controller cannot "memorise" pad-at-zero. This brings training
+    // into line with the validation pipeline (and the README's
+    // perturbedScenario diagram), forcing evolution to find a policy
+    // that aims at whatever pad the scenario gives it.
+    const scenario = perturbation > 0
+      ? perturbedScenario(random, perturbation)
+      : { state: initialState(), terrain: DEFAULT_TERRAIN };
+    const r = runEpisode(creature, scenario.state, maxSteps, scenario.terrain);
     records.push(r);
     total += r.score;
     if (r.outcome === "landed") landed += 1;
