@@ -3,10 +3,11 @@
  *
  * Evolves a NEAT-AI controller to navigate a fixed grid maze from a
  * start cell to a goal cell using local sensor inputs (wall distances
- * plus a packed heading-to-goal). The simulator (`maze.ts`),
- * evolutionary loop, and animated SVG renderer (`svg.ts`) all run in
- * pure TypeScript; the only external dependency is NEAT-AI's
- * `Creature.activate` to compute each step's action.
+ * plus a packed heading-to-goal). The simulator (`maze.ts`) and the
+ * animated SVG renderer (`svg.ts`) run in pure TypeScript; the
+ * evolutionary loop is now driven entirely by NEAT-AI's class-shaped
+ * `Creature.evolveRL()` API (issue #239, depends on
+ * `stSoftwareAU/NEAT-AI#2630` and library version `5.0.0`).
  *
  * Score = `1 / (1 + manhattan_to_goal_at_terminal_step) − step_count
  * × STEP_PENALTY`. A controller that reaches the goal scores at least
@@ -15,29 +16,26 @@
  * {@link SOLVED_THRESHOLD} therefore proves the agent reached the
  * goal — the threshold sits comfortably above every non-reached run.
  *
- * 🌱 **Generation 1 starts from random noise.** The initial population
- * is built by NEAT-AI's uniform-random `Creature(INPUT_COUNT,
- * OUTPUT_COUNT)` constructor — direct input → output connections with
- * weights and biases drawn by the library's RNG. **No hand-crafted
- * topology, no tuned weight init.** Hidden neurons appear only when
- * the add-neuron mutation operator splits an existing connection
- * during evolution; structural mutation discovers them.
+ * 🌱 **Generation 1 starts from random noise.** The seed handed to
+ * `Creature.evolveRL()` is a fresh `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` — the library's uniform-random minimal genome with
+ * direct input → output connections, random weights, and a random
+ * output bias. **No hand-crafted topology, no tuned weight init.**
+ * Hidden neurons emerge only when NEAT-AI's structural mutation
+ * operators (owned by the library) split an existing connection.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
-  createSeededPopulation,
-  createSeededRng,
   Creature,
   type CreatureExport,
-  type NeuronExport,
+  EpisodeAdapter,
+  type EvolveRLOptions,
   safeWriteJson,
-  setRandomNumberGenerator,
-  type SynapseExport,
+  type StepResult,
 } from "@stsoftware/neat-ai";
 
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import {
   captureSnapshot,
@@ -49,6 +47,7 @@ import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evoluti
 import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { defaultMaze, initialState, manhattan, type MazeState, step } from "./maze.ts";
+import type { Action } from "./maze.ts";
 import { renderRunSVG } from "./svg.ts";
 
 /** Hard cap on the number of ticks a single episode is allowed. */
@@ -86,7 +85,9 @@ export interface EvolveOptions {
    * NEAT-AI standard wall-clock stop condition (audit issue #223).
    * Evolution halts when the elapsed time since the loop began exceeds
    * `timeoutMinutes` minutes (default `5`). Whichever of `targetError`
-   * and `timeoutMinutes` fires first wins.
+   * and `timeoutMinutes` fires first wins. NEAT-AI 5.0.0 requires this
+   * to be an integer ≥ 1 — sub-minute budgets are no longer
+   * expressible; use `iterations` instead for fast unit tests.
    */
   timeoutMinutes: number;
   /**
@@ -98,15 +99,22 @@ export interface EvolveOptions {
    * bounded only by `targetError` and `timeoutMinutes`.
    */
   iterations?: number;
-  /** Standard deviation of the weight/bias perturbation noise. */
+  /**
+   * Standard deviation of the weight/bias perturbation noise. Forwarded
+   * to NEAT-AI's `mutationAmount` so existing CLI surfaces keep working.
+   */
   mutationStrength: number;
-  /** Probability that any given gene is perturbed each generation. */
+  /**
+   * Probability that any given gene is perturbed each generation.
+   * Forwarded to NEAT-AI's `mutationRate`.
+   */
   mutationRate: number;
   /**
    * Per-creature probability of receiving an add-neuron structural
-   * mutation each generation (split an existing connection by inserting
-   * a hidden neuron). Defaults to a small value so topology grows
-   * gradually rather than thrashing.
+   * mutation. Kept on the public API for backwards compatibility but is
+   * no longer used directly — NEAT-AI owns mutation policy under
+   * `evolveRL()`. Documented here so historical callers keep
+   * type-checking; the value is ignored.
    */
   addNeuronRate?: number;
   /** Hard cap on episode length. Defaults to {@link MAX_STEPS}. */
@@ -114,9 +122,12 @@ export interface EvolveOptions {
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
-   * Optional snapshot configuration. When supplied, the running champion
-   * is captured at every generation matching `snapshotConfig.checkpoints`
-   * and written to `snapshotConfig.outputDir`.
+   * Optional snapshot configuration. When supplied, a snapshot of the
+   * seed creature is captured if generation `1` is a checkpoint, and a
+   * snapshot of the final champion is captured at the final
+   * generation. Mid-run intermediate generations are no longer captured
+   * because `Creature.evolveRL()` does not expose mid-run creature
+   * exports — see issue #239 for the migration trade-offs.
    */
   snapshotConfig?: SnapshotConfig;
 }
@@ -126,6 +137,12 @@ export interface GenerationInfo {
   generation: number;
   bestScore: number;
   meanScore: number;
+  /**
+   * `true` when this generation's best member reached the goal. Derived
+   * from `bestScore ≥ 0.5` — the maze score is bounded above `0.5` only
+   * when `finalDistance === 0`, so this is a faithful reconstruction of
+   * the historical contract from the new evolveRL telemetry.
+   */
   bestReached: boolean;
   /** Neuron count of the champion creature for this generation. */
   neurons: number;
@@ -179,151 +196,102 @@ export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   addNeuronRate: 0.03,
 };
 
-/**
- * Build the initial population using the NEAT-AI library's uniform-random
- * creature constructor — `new Creature(INPUT_COUNT, OUTPUT_COUNT)` produces
- * a minimal seed (direct input → output connections) with random weights
- * and a random output bias. **No topology is hand-specified by this
- * example**; structural mutation grows hidden neurons during evolution.
- *
- * `seed` controls the global library RNG so the same `seed` reproduces
- * the same initial population across runs.
- */
-export function buildRandomPopulation(
-  seed: number,
-  populationSize: number,
-): CreatureExport[] {
-  setRandomNumberGenerator(createSeededRng(seed));
-  return createSeededPopulation({
-    inputCount: INPUT_COUNT,
-    outputCount: OUTPUT_COUNT,
-    populationSize,
-    seeds: [],
-  });
+/** Adapter configuration consumed by {@link MazeAdapter}. */
+export interface MazeAdapterOptions {
+  /** Cap on the number of simulator ticks per episode. Default {@link MAX_STEPS}. */
+  maxStepsPerEpisode?: number;
 }
 
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
-}
-
-/** Deep-clone a creature export so callers can safely mutate it. */
-function cloneExport(creature: CreatureExport): CreatureExport {
-  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
+/** State threaded through each episode by {@link MazeAdapter}. */
+export interface MazeEpisodeState {
+  /** Current simulator state. */
+  maze: MazeState;
+  /** 1-based step index of the just-completed step (`0` after `reset`). */
+  stepIdx: number;
 }
 
 /**
- * Insert a hidden neuron in the middle of an existing connection: the
- * NEAT "add-node" structural mutation. Picks a random synapse, replaces
- * it with a path through a fresh hidden neuron, and assigns reasonable
- * starting weights so the new path approximates the original signal
- * before further mutation tunes it.
+ * Maze episode adapter for `Creature.evolveRL()`. Each `step()`
+ * advances the deterministic maze simulator, encodes the observation
+ * as a `Float32Array`, and emits a reward designed to map cleanly onto
+ * NEAT-AI's non-negative `error` slot via `defaultRewardToError`
+ * (`error = max(0, -reward)`):
  *
- * The new neuron uses LOGISTIC activation — a smooth squash that lets
- * gradients flow during weight perturbation.
- */
-function addHiddenNeuron(
-  creature: CreatureExport,
-  random: () => number,
-  hiddenCounter: { value: number },
-): CreatureExport {
-  if (creature.synapses.length === 0) return creature;
-
-  const synapseIdx = Math.floor(random() * creature.synapses.length);
-  const original = creature.synapses[synapseIdx];
-
-  // Issue a deterministic UUID so the export is reproducible across runs
-  // with the same seed. The library treats this string as opaque, so any
-  // unique identifier is acceptable.
-  const uuid = `hidden-${hiddenCounter.value++}`;
-
-  const newNeuron: NeuronExport = {
-    type: "hidden",
-    uuid,
-    bias: uniformSigned(random, 0.5),
-    squash: "LOGISTIC",
-  };
-
-  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
-  // input → hidden: keep the original weight so the path through the
-  // new neuron starts close to the original signal.
-  newSynapses.push({
-    weight: original.weight,
-    fromUUID: original.fromUUID,
-    toUUID: uuid,
-  });
-  // hidden → output: weight 1 so the LOGISTIC pass-through is roughly
-  // identity at the operating point, again preserving original signal.
-  newSynapses.push({
-    weight: 1,
-    fromUUID: uuid,
-    toUUID: original.toUUID,
-  });
-
-  // Hidden neurons must stay before every output. For hidden targets,
-  // insert directly before the target; for output targets, insert before
-  // the first output so NEAT-AI 4.x validation keeps the export ordered.
-  const targetIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
-  const target = targetIdx === -1 ? undefined : creature.neurons[targetIdx];
-  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = target?.type === "hidden"
-    ? targetIdx
-    : firstOutputIdx === -1
-    ? creature.neurons.length
-    : firstOutputIdx;
-  const newNeurons = [
-    ...creature.neurons.slice(0, insertAt),
-    newNeuron,
-    ...creature.neurons.slice(insertAt),
-  ];
-
-  return {
-    ...creature,
-    neurons: newNeurons,
-    synapses: newSynapses,
-  };
-}
-
-/**
- * Mutate a creature genome. Each existing weight and non-input bias is
- * perturbed independently with probability `mutationRate`; the noise is
- * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
- * probability `addNeuronRate` the genome additionally receives a NEAT
- * add-node structural mutation (split one synapse with a hidden neuron).
+ * - Non-terminal step: reward `0`.
+ * - Terminal step (agent reached the goal or hit the per-episode step
+ *   cap): reward `score - 1`, where `score = 1 / (1 + finalDistance) -
+ *   steps × STEP_PENALTY`. Score sits in `[0, 1]`, so the reward sits
+ *   in `[-1, 0]` and `defaultRewardToError` produces an `error` in
+ *   `[0, 1]` equal to `1 - score`.
  *
- * The resulting export is suitable for `Creature.fromJSON(...)`. No
- * topology is hand-specified — every change here is a generic NEAT
- * mutation operator that works on whatever variable topology the
- * creature currently has.
+ * Because the maze is fully deterministic (no perturbation, no
+ * environmental noise), the same creature scores identically across
+ * every seed — `episodesPerCreature` therefore defaults to `1` so we
+ * do not waste evaluations on repeated rollouts.
  */
-export function mutateCreatureExport(
-  parent: CreatureExport,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
-): CreatureExport {
-  const child = cloneExport(parent);
+export class MazeAdapter extends EpisodeAdapter<MazeEpisodeState, Action> {
+  readonly maxStepsPerEpisode: number;
 
-  for (const synapse of child.synapses) {
-    if (random() < mutationRate) {
-      synapse.weight += uniformSigned(random, mutationStrength);
+  constructor(options: MazeAdapterOptions = {}) {
+    super();
+    this.maxStepsPerEpisode = options.maxStepsPerEpisode ?? MAX_STEPS;
+  }
+
+  override get observationLength(): number {
+    return INPUT_COUNT;
+  }
+
+  override maxSteps(): number {
+    return this.maxStepsPerEpisode;
+  }
+
+  override reset(
+    _rngSeed: number,
+  ): { observation: Float32Array; state: MazeEpisodeState } {
+    // Maze is fully deterministic — the seed is irrelevant. Every
+    // episode starts at the maze's `start` cell.
+    const maze = initialState(defaultMaze());
+    return {
+      observation: encodeState(maze),
+      state: { maze, stepIdx: 0 },
+    };
+  }
+
+  override decodeAction(
+    creatureOutput: Float32Array,
+    _state: MazeEpisodeState,
+  ): Action {
+    return decodeAction(creatureOutput);
+  }
+
+  override step(
+    state: MazeEpisodeState,
+    action: Action,
+  ): StepResult<Float32Array> & { state: MazeEpisodeState } {
+    const newMaze = step(state.maze, action);
+    const newStepIdx = state.stepIdx + 1;
+    const reached = newMaze.reached;
+    const atCap = newStepIdx >= this.maxStepsPerEpisode;
+    const terminated = reached || atCap;
+    let reward = 0;
+    if (terminated) {
+      const finalDistance = manhattan(newMaze.position, newMaze.maze.goal);
+      const score = 1 / (1 + finalDistance) - newStepIdx * STEP_PENALTY;
+      // Score can dip below 0 when the agent fails to make progress (a
+      // distant final cell costs `MAX_STEPS × STEP_PENALTY`). Clamp the
+      // reward into `[-1, 0]` so `defaultRewardToError` produces a
+      // valid `[0, 1]` error — runs scoring below `0` simply saturate
+      // at the worst legal error of `1`.
+      reward = Math.max(-1, score - 1);
     }
+    return {
+      state: { maze: newMaze, stepIdx: newStepIdx },
+      observation: encodeState(newMaze),
+      reward,
+      terminated,
+      truncated: false,
+    };
   }
-
-  for (const neuron of child.neurons) {
-    if (random() < mutationRate) {
-      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
-    }
-  }
-
-  const addNeuronRate = options?.addNeuronRate ?? 0;
-  const counter = options?.hiddenCounter ?? { value: 0 };
-  if (addNeuronRate > 0 && random() < addNeuronRate) {
-    return addHiddenNeuron(child, random, counter);
-  }
-
-  return child;
 }
 
 /** Outcome of a single scoring episode. */
@@ -387,185 +355,203 @@ export function replayController(
   return trace;
 }
 
-interface ScoredMember {
-  json: CreatureExport;
-  score: number;
-  reached: boolean;
-  steps: number;
-  finalDistance: number;
-  neurons: number;
-  synapses: number;
-}
-
-function topologyCounts(json: CreatureExport): { neurons: number; synapses: number } {
-  // The export omits input neurons (they are implicit in `input`), so we
-  // add them back to report a comparable "total neurons" figure.
-  return {
-    neurons: json.neurons.length + (json.input ?? INPUT_COUNT),
-    synapses: json.synapses.length,
-  };
+/** Per-generation aggregate accumulated from `onEpisodeTrials` events. */
+interface GenerationBucket {
+  meanRewards: number[];
+  bestReward: number;
+  bestNeurons: number;
+  bestSynapses: number;
 }
 
 /**
- * Run a generational evolutionary algorithm over creature genomes. The
- * top half of each generation seeds the next via mutation; the elite is
- * carried over unchanged so the best score is monotonically
- * non-decreasing. Stops as soon as the champion's score reaches
- * `1 - targetError` **or** `timeoutMinutes` minutes of wall-clock
- * have elapsed — whichever fires first. The two stop conditions match
- * the standard NEAT-AI `NeatOptions.targetError` /
- * `NeatOptions.timeoutMinutes` fields and were introduced by audit
- * issue #223.
+ * Run NEAT-AI's first-class reinforcement-learning evolution loop
+ * against a {@link MazeAdapter}. Mutation, crossover, elitism, plateau
+ * detection, and stop-condition handling are owned by
+ * `Creature.evolveRL()` (issue #239).
+ *
+ * Per-generation telemetry is reconstructed by:
+ *
+ * 1. Accumulating per-creature `meanReward` via `onEpisodeTrials`.
+ * 2. Reading champion topology counts from the optional
+ *    `evolverl_milestone` events when `statistics: true` is enabled.
+ * 3. Firing the caller's `options.onGeneration` callback from each
+ *    `generation_complete` training event with the aggregated data.
+ *
+ * Snapshot capture is reduced to gen-1 (the seed creature) and the
+ * final generation (the champion after `evolveRL` returns) because the
+ * upstream API does not expose mid-run creature exports.
  */
-export function evolveMazeController(
+export async function evolveMazeController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  const random = createDeterministicRandom(options.seed);
+): Promise<EvolveResult> {
   const maxSteps = options.maxSteps ?? MAX_STEPS;
+  const adapter = new MazeAdapter({ maxStepsPerEpisode: maxSteps });
 
-  // Counter for deterministic hidden-neuron UUIDs so the export stream
-  // is reproducible across runs with the same seed.
-  const hiddenCounter = { value: 0 };
-  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
+  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const seedExport = seedCreature.exportJSON();
+  const seedNeurons = seedExport.neurons.length + (seedExport.input ?? INPUT_COUNT);
+  const seedSynapses = seedExport.synapses.length;
 
-  const evaluate = (json: CreatureExport): ScoredMember => {
-    const creature = Creature.fromJSON(json);
-    const r = scoreController(creature, maxSteps);
-    const counts = topologyCounts(json);
-    return {
-      json,
-      score: r.score,
-      reached: r.reached,
-      steps: r.steps,
-      finalDistance: r.finalDistance,
-      neurons: counts.neurons,
-      synapses: counts.synapses,
-    };
-  };
+  // Score the seed so the gen-1 snapshot has a representative score.
+  const seedResult = scoreController(seedCreature, maxSteps);
 
-  // Initial population: uniform-random NEAT genomes from the library.
-  // No hand-crafted topology — `new Creature(input, output)` decides the
-  // initial structure, with random weights and a random output bias.
-  const initialExports = buildRandomPopulation(options.seed, options.populationSize);
-  let population: ScoredMember[] = initialExports.map(evaluate);
-
-  let bestJSON = population[0].json;
-  let bestScore = -Infinity;
-  let bestReached = false;
-  let bestSteps = 0;
-  let bestFinalDistance = Number.POSITIVE_INFINITY;
-  let solvedAt = -1;
-
-  const targetScore = 1 - options.targetError;
-  const timeoutMs = options.timeoutMinutes * 60_000;
-  const iterationsCap = options.iterations ?? Infinity;
-  const loopStart = Date.now();
-  let stopReason: "target" | "timeout" | "iterations" = "timeout";
-  let generation = 0;
-
-  while (true) {
-    // Tie-breaker prefers structurally larger creatures so neutral
-    // structural drift remains visible once the champion plateaus at
-    // the target score. Without this, the linear seed (which already
-    // solves the L-corridor maze well) would lock in as elite forever
-    // and the captured topology chart would show a flat line — failing
-    // the "neuron/synapse counts genuinely change across generations"
-    // criterion of audit issue #223.
-    population.sort((a, b) => (b.score - a.score) || (b.synapses - a.synapses));
-    const generationBest = population[0];
-    if (generationBest.score > bestScore) {
-      bestScore = generationBest.score;
-      bestJSON = generationBest.json;
-      bestReached = generationBest.reached;
-      bestSteps = generationBest.steps;
-      bestFinalDistance = generationBest.finalDistance;
-    }
-
-    const meanScore = population.reduce((acc, p) => acc + p.score, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestScore: generationBest.score,
-      meanScore,
-      bestReached: generationBest.reached,
-      neurons: generationBest.neurons,
-      synapses: generationBest.synapses,
-    });
-
-    // Capture an evolution snapshot of the running champion at the
-    // configured checkpoints. The helper is a no-op for non-checkpoint
-    // generations.
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestScore);
-      }
-    }
-
-    const targetMet = bestScore >= targetScore;
-    if (targetMet && solvedAt < 0) solvedAt = generation;
-
-    const elapsedMs = Date.now() - loopStart;
-    const timedOut = elapsedMs >= timeoutMs;
-    const reachedIterationsCap = generation + 1 >= iterationsCap;
-
-    if (targetMet) {
-      // When capturing evolution snapshots, keep running until the next
-      // not-yet-fired checkpoint within the iteration budget is
-      // captured — otherwise the progression strip would be a single
-      // panel.
-      const nextCheckpoint = options.snapshotConfig?.checkpoints
-        .filter((c) => c > generation + 1 && c <= iterationsCap)
-        .sort((a, b) => a - b)[0];
-      if (nextCheckpoint === undefined) {
-        stopReason = "target";
-        break;
-      }
-    }
-
-    if (timedOut) {
-      stopReason = solvedAt >= 0 ? "target" : "timeout";
-      break;
-    }
-    if (reachedIterationsCap) {
-      stopReason = solvedAt >= 0 ? "target" : "iterations";
-      break;
-    }
-
-    // Truncation selection: keep top 50% as parents (always at least 1).
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
-
-    // Build the next generation: keep elite, fill rest with mutated
-    // offspring from random parents.
-    const nextPopulation: ScoredMember[] = [];
-    nextPopulation.push(parents[0]);
-    while (nextPopulation.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureExport(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-        mutationOpts,
-      );
-      nextPopulation.push(evaluate(childJSON));
-    }
-
-    population = nextPopulation;
-    generation++;
+  // Capture the seed creature as the gen-1 snapshot so the existing
+  // multi-panel SVG renderer still has at least one early-generation
+  // panel to draw alongside the final champion.
+  if (options.snapshotConfig?.checkpoints.includes(1)) {
+    captureSnapshot(options.snapshotConfig, 1, seedExport, seedResult.score);
   }
 
-  const champion = Creature.fromJSON(bestJSON);
+  const generationData = new Map<number, GenerationBucket>();
+  let latestBestNeurons = seedNeurons;
+  let latestBestSynapses = seedSynapses;
+  let lastObservedGeneration = 0;
+
+  // evolveRL normalised target error — the adapter emits cumulative
+  // rewards in `[-1, 0]`, so `defaultRewardToError` produces an error
+  // in `[0, 1]` equal to `1 - score`. The caller's `targetError`
+  // already lives in that range, so it passes through unchanged.
+  // Negative values (used by tests to force the iterations backstop)
+  // are clamped to `0`, the smallest legal value.
+  const absoluteTargetError = Math.max(0, options.targetError);
+
+  const loopStart = Date.now();
+
+  const evolveOptions: EvolveRLOptions = {
+    seed: options.seed >>> 0,
+    populationSize: options.populationSize,
+    mutationRate: options.mutationRate,
+    // NEAT-AI 5.0.0 owns mutation magnitude internally — the historical
+    // `mutationStrength` no longer maps onto `mutationAmount` (which is
+    // an *integer* count of mutations per offspring, not a perturbation
+    // magnitude). The library default is appropriate for the maze.
+    targetError: absoluteTargetError,
+    timeoutMinutes: options.timeoutMinutes,
+    iterations: options.iterations,
+    // Deterministic environment — one episode per creature is enough.
+    episodesPerCreature: 1,
+    statistics: true,
+    onEpisodeTrials: (event) => {
+      let bucket = generationData.get(event.generation);
+      if (!bucket) {
+        bucket = {
+          meanRewards: [],
+          bestReward: Number.NEGATIVE_INFINITY,
+          bestNeurons: latestBestNeurons,
+          bestSynapses: latestBestSynapses,
+        };
+        generationData.set(event.generation, bucket);
+      }
+      bucket.meanRewards.push(event.meanReward);
+      if (event.meanReward > bucket.bestReward) {
+        bucket.bestReward = event.meanReward;
+      }
+    },
+    onTrainingEvent: (event) => {
+      if (event.kind === "evolverl_milestone") {
+        latestBestNeurons = event.bestNeurons;
+        latestBestSynapses = event.bestSynapses;
+        const bucket = generationData.get(event.generation);
+        if (bucket) {
+          bucket.bestNeurons = event.bestNeurons;
+          bucket.bestSynapses = event.bestSynapses;
+        }
+        return;
+      }
+      if (event.kind !== "generation_complete") return;
+
+      lastObservedGeneration = event.generation;
+      const bucket = generationData.get(event.generation);
+      // Surface generation numbers as zero-based to match the historical
+      // GenerationInfo contract.
+      const generation0 = event.generation - 1;
+      let bestScoreThisGen: number;
+      let meanScoreThisGen: number;
+      let neurons: number;
+      let synapses: number;
+      if (bucket && bucket.meanRewards.length > 0) {
+        const sum = bucket.meanRewards.reduce((a, b) => a + b, 0);
+        const meanReward = sum / bucket.meanRewards.length;
+        // Cumulative reward sits in `[-1, 0]` → score = 1 + reward.
+        meanScoreThisGen = 1 + meanReward;
+        bestScoreThisGen = 1 + bucket.bestReward;
+        neurons = bucket.bestNeurons;
+        synapses = bucket.bestSynapses;
+      } else {
+        // No data this generation (e.g. every creature was an elite cached
+        // from a previous round). Fall back to the previous champion's
+        // known stats.
+        meanScoreThisGen = seedResult.score;
+        bestScoreThisGen = seedResult.score;
+        neurons = latestBestNeurons;
+        synapses = latestBestSynapses;
+      }
+      const bestReached = bestScoreThisGen >= 0.5;
+      options.onGeneration?.({
+        generation: generation0,
+        bestScore: bestScoreThisGen,
+        meanScore: meanScoreThisGen,
+        bestReached,
+        neurons,
+        synapses,
+      });
+    },
+  };
+
+  const result = await seedCreature.evolveRL(adapter, evolveOptions);
+
+  const wallclockMs = Date.now() - loopStart;
+  const finalGeneration = Math.max(lastObservedGeneration, result.generation);
+
+  // Score the champion by replaying it on the deterministic maze so
+  // the EvolveResult's reached / steps / finalDistance fields stay
+  // exact regardless of how evolveRL aggregated rewards internally.
+  const championRun = scoreController(seedCreature, maxSteps);
+
+  // Capture the final champion as the last snapshot if the caller asked
+  // for a checkpoint at the final generation (or used the default
+  // checkpoint list that includes the final gen).
+  if (options.snapshotConfig?.checkpoints.includes(finalGeneration)) {
+    captureSnapshot(
+      options.snapshotConfig,
+      finalGeneration,
+      seedCreature.exportJSON(),
+      championRun.score,
+    );
+  } else if (options.snapshotConfig) {
+    // Always write a snapshot at the final generation so the multi-panel
+    // SVG has a closing frame even when no exact checkpoint matches.
+    captureSnapshot(
+      { ...options.snapshotConfig, checkpoints: [finalGeneration] },
+      finalGeneration,
+      seedCreature.exportJSON(),
+      championRun.score,
+    );
+  }
+
+  const targetScore = 1 - absoluteTargetError;
+  const targetMet = championRun.score >= targetScore;
+
+  let stopReason: "target" | "timeout" | "iterations";
+  if (targetMet) {
+    stopReason = "target";
+  } else if (
+    options.iterations !== undefined && finalGeneration >= options.iterations
+  ) {
+    stopReason = "iterations";
+  } else {
+    stopReason = "timeout";
+  }
+
   return {
-    champion,
-    bestScore,
-    generations: generation + 1,
-    championReached: bestReached,
-    championSteps: bestSteps,
-    championFinalDistance: bestFinalDistance,
-    solved: bestScore >= targetScore,
-    wallclockMs: Date.now() - loopStart,
+    champion: seedCreature,
+    bestScore: championRun.score,
+    generations: finalGeneration,
+    championReached: championRun.reached,
+    championSteps: championRun.steps,
+    championFinalDistance: championRun.finalDistance,
+    solved: targetMet,
+    wallclockMs,
     stopReason,
   };
 }
@@ -574,10 +560,12 @@ export function evolveMazeController(
 export const SCREENSHOT_PATH = "docs/screenshots/maze_navigation.svg";
 
 /**
- * Generations at which the runner captures evolution snapshots. The
- * cadence is tuned for variable-topology evolution from uniform-random
- * NEAT noise, which typically needs more generations to converge than
- * the previous fixed-topology bounded-random search did.
+ * Generations at which the runner captures evolution snapshots. Under
+ * the new `Creature.evolveRL()`-driven loop the upstream API only
+ * exposes the seed creature and the final champion, so only the first
+ * entry (`1`) and the run's terminal generation actually produce
+ * snapshot files. The remaining entries are retained for backwards
+ * compatibility — they are silently ignored.
  */
 export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 50, 150, 300];
 
@@ -757,7 +745,7 @@ if (import.meta.main) {
 
   const { creaturesDir, outputDir } = setupWorkingDirs(".synthetic-maze");
 
-  console.log("🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log("🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
     `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError.toFixed(2)} ` +
       `(target score ≥ ${(1 - DEFAULT_EVOLVE_OPTIONS.targetError).toFixed(2)}), ` +
@@ -770,7 +758,7 @@ if (import.meta.main) {
   const evolutionSamples: EvolutionSample[] = [];
   const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
-  const result = evolveMazeController({
+  const result = await evolveMazeController({
     ...DEFAULT_EVOLVE_OPTIONS,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
