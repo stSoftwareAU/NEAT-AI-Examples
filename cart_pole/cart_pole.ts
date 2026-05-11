@@ -2,36 +2,35 @@
  * Cart-Pole Balancing Example
  *
  * Evolves a NEAT-AI creature to balance an inverted pole on a moving
- * cart — the classic neuroevolution control benchmark. The simulator
- * (see `physics.ts`) and the evolutionary loop run entirely in pure
- * TypeScript; the only external dependency is NEAT-AI's
- * `Creature.activate` to compute each step's action.
+ * cart — the classic neuroevolution control benchmark. The physics
+ * simulator (see `physics.ts`) is pure TypeScript. The evolutionary
+ * loop is now driven entirely by NEAT-AI's class-shaped
+ * `Creature.evolveRL()` API (issue #236, depends on
+ * `stSoftwareAU/NEAT-AI#2630` and library version `5.0.0`).
  *
  * Inputs (per timestep): `[x, v, theta, omega]`.
  * Output: a single scalar in `[-1, 1]` (HARD_TANH default). When
  * `>= 0` the controller pushes right, otherwise left.
  * Score: the **mean** number of timesteps the pole stays upright across
- * a fixed batch of perturbed-start trials, capped at `MAX_STEPS` per
- * trial. The task is "solved" when the mean reaches `SOLVED_THRESHOLD`.
+ * `episodesPerCreature` perturbed-start trials, capped at `MAX_STEPS`
+ * per trial. The task is "solved" when the mean reaches
+ * `SOLVED_THRESHOLD`.
  *
- * 🌱 **Generation 1 starts from random noise.** The initial population
- * is built by the NEAT-AI library from uniform-random weights and biases
- * — no hand-crafted topology, no tuned weight init. Structural mutation
- * (weight perturbation, bias perturbation, and add-neuron splits)
- * discovers the controller from there.
+ * 🌱 **Generation 1 starts from random noise.** The seed passed to
+ * `Creature.evolveRL()` is a brand-new `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` — the library's uniform-random minimal genome. No
+ * topology is hand-specified; structural mutation is owned by NEAT-AI.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
-  createSeededPopulation,
-  createSeededRng,
   Creature,
   type CreatureExport,
-  type NeuronExport,
+  EpisodeAdapter,
+  type EvolveRLOptions,
   safeWriteJson,
-  setRandomNumberGenerator,
-  type SynapseExport,
+  type StepResult,
 } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -44,7 +43,10 @@ import {
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
-import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
+import {
+  type EpisodeAdapter as LocalEpisodeAdapter,
+  runEpisode,
+} from "../common/episode_runner.ts";
 import {
   type CartPoleParams,
   type CartPoleState,
@@ -73,10 +75,18 @@ export const MAX_STEPS = 500;
  * — a high bar that still tolerates the occasional unlucky start.
  *
  * Equivalent to a `targetError = 1 - SOLVED_THRESHOLD / MAX_STEPS = 0.04`
- * under the audit-mandated NEAT-AI stop-condition convention (audit
- * issue #220).
+ * under the audit-mandated NEAT-AI stop-condition convention. With
+ * `Creature.evolveRL()` the cumulative episode reward is mapped to
+ * NEAT-AI's non-negative `error` slot via `defaultRewardToError`:
+ * `error = max(0, -reward)`. The {@link CartPoleAdapter} normalises
+ * rewards into `[-1, 0]` so the resulting error sits in `[0, 1]` as
+ * required by `NeatOptions.targetError` — the caller's `0.04` value
+ * therefore maps straight onto the upstream API without rescaling.
  */
 export const SOLVED_THRESHOLD = 480;
+
+/** Cart-pole action — `+1` pushes the cart right, `-1` pushes it left. */
+export type CartPoleAction = 1 | -1;
 
 /** Configuration options for {@link evolveCartPoleController}. */
 export interface EvolveOptions {
@@ -87,10 +97,11 @@ export interface EvolveOptions {
   /**
    * NEAT-AI standard target-error stop condition (audit issue #220).
    * Evolution halts as soon as the champion's mean balance score reaches
-   * `MAX_STEPS * (1 - targetError)` — i.e. the pole stays upright for at
-   * least the target fraction of the cap on average across the
-   * perturbed-start trial batch. Default `0.04` (96% upright,
-   * matching {@link SOLVED_THRESHOLD}).
+   * `MAX_STEPS * (1 - targetError)`. Default `0.04` (mean steps ≥ 480 =
+   * {@link SOLVED_THRESHOLD}). The value is mapped onto the absolute
+   * error-units consumed by `EvolveRLOptions.targetError` inside this
+   * function — the caller still talks in the historical normalised
+   * fraction so existing tests and CLI surface remain unchanged.
    */
   targetError: number;
   /**
@@ -109,33 +120,40 @@ export interface EvolveOptions {
    * and `timeoutMinutes`.
    */
   iterations?: number;
-  /** Standard deviation of the weight/bias perturbation noise. */
+  /**
+   * Standard deviation of the weight/bias perturbation noise. Forwarded
+   * to NEAT-AI's `mutationAmount` so existing CLI surfaces keep working.
+   */
   mutationStrength: number;
-  /** Probability that any given gene is perturbed each generation. */
+  /**
+   * Probability that any given gene is perturbed each generation.
+   * Forwarded to NEAT-AI's `mutationRate`.
+   */
   mutationRate: number;
   /**
    * Per-creature probability of receiving an add-neuron structural
-   * mutation each generation (split an existing connection by inserting
-   * a hidden neuron). Defaults to a small value so topology grows
-   * gradually rather than thrashing.
+   * mutation. Kept on the public API for backwards compatibility but is
+   * no longer used directly — NEAT-AI owns mutation policy under
+   * `evolveRL()`. Documented here so historical callers keep
+   * type-checking; the value is ignored.
    */
   addNeuronRate?: number;
   /**
    * Number of independent perturbed-start trials each candidate is
-   * scored on (mean across trials). Defaults to `1` (legacy single
-   * symmetric launch). See {@link ScoreOptions}.
+   * scored on (mean across trials). Defaults to `1`. Maps to
+   * `EvolveRLOptions.episodesPerCreature`.
    */
   trials?: number;
   /**
    * Half-width of the uniform `[-m, +m]` perturbation applied to each
-   * component of the initial state. Defaults to `0`, i.e. every trial
-   * starts from the perfectly symmetric `(0, 0, 0, 0)` state.
+   * component of the initial state. Defaults to `0`.
    */
   initialPerturbation?: number;
   /**
    * Seed for sampling the per-evaluation initial-state perturbations.
-   * Held constant for the whole run so candidates within a generation
-   * — and across generations — are scored on the same set of starts.
+   * No longer applied directly — NEAT-AI rotates a per-generation seed
+   * set derived from `EvolveRLOptions.seed`. Retained on the public API
+   * for backwards compatibility.
    */
   trialSeed?: number;
   /**
@@ -152,17 +170,21 @@ export interface EvolveOptions {
    */
   disturbanceProbability?: number;
   /**
-   * Seed for the deterministic disturbance PRNG. Held constant for the
-   * whole evolve run so the wobble pattern any creature is evaluated
-   * against is reproducible across generations.
+   * Seed for the deterministic disturbance PRNG. No longer applied
+   * directly — the wobble seed is derived from each episode's seed
+   * inside the adapter so episodes within a generation see different
+   * wobble patterns yet remain deterministic across runs.
    */
   disturbanceSeed?: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
-   * Optional snapshot configuration. When supplied, the running champion
-   * is captured at every generation matching `snapshotConfig.checkpoints`
-   * and written to `snapshotConfig.outputDir`.
+   * Optional snapshot configuration. When supplied, a snapshot of the
+   * seed creature is captured if generation `1` is a checkpoint, and a
+   * snapshot of the final champion is captured if `result.generations`
+   * is a checkpoint. Mid-run intermediate generations are no longer
+   * captured because `Creature.evolveRL()` does not expose mid-run
+   * creature exports — see issue #236 for the migration trade-offs.
    */
   snapshotConfig?: SnapshotConfig;
 }
@@ -176,27 +198,13 @@ export interface ScoreOptions {
    * inputs always produce identical scores.
    */
   trialSeed?: number;
-  /**
-   * Half-width of the uniform `[-m, +m]` perturbation applied to each
-   * component of every trial's initial state. Default 0 (no
-   * perturbation — every trial starts from the symmetric zero state).
-   */
+  /** Half-width of the uniform `[-m, +m]` perturbation. Default 0. */
   initialPerturbation?: number;
-  /**
-   * Magnitude of the in-episode wobble disturbance force (newtons)
-   * applied to the cart in addition to the controller's action force.
-   * Default `0`.
-   */
+  /** Wobble disturbance magnitude (newtons). Default `0`. */
   disturbanceMagnitude?: number;
-  /**
-   * Per-step probability (in `[0, 1]`) that a wobble disturbance fires.
-   * Default `0`. Only consulted when `disturbanceMagnitude > 0`.
-   */
+  /** Wobble disturbance probability `[0, 1]`. Default `0`. */
   disturbanceProbability?: number;
-  /**
-   * Seed for the deterministic disturbance PRNG. Identical inputs
-   * always produce identical scores.
-   */
+  /** Deterministic disturbance PRNG seed. */
   disturbanceSeed?: number;
 }
 
@@ -235,220 +243,173 @@ export interface EvolveResult {
 /**
  * Sensible defaults for the demonstration runner.
  *
- * - `targetError = 0.04` makes the target balance score
- *   `MAX_STEPS * (1 - 0.04) = 480 = SOLVED_THRESHOLD`, so the existing
- *   "solved" definition is preserved exactly.
- * - `timeoutMinutes = 5` is the audit-mandated wall-clock backstop
- *   (audit issue #220). The default seed solves cart-pole well within
- *   the budget on a commodity laptop.
+ * `targetError = 0.04` makes the target balance score `MAX_STEPS * (1 -
+ * 0.04) = 480 = SOLVED_THRESHOLD`. Inside
+ * {@link evolveCartPoleController} this is converted to the absolute
+ * error scale `MAX_STEPS - SOLVED_THRESHOLD = 20` consumed by
+ * `EvolveRLOptions.targetError`.
  */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 60,
-  // NEAT-AI standard stop conditions: evolution halts as soon as the
-  // champion's mean balance score reaches `MAX_STEPS * (1 - targetError)`
-  // (default 480) OR `timeoutMinutes` minutes have elapsed since the
-  // loop began — whichever fires first.
   targetError: 1 - SOLVED_THRESHOLD / MAX_STEPS,
   timeoutMinutes: 5,
   mutationStrength: 0.6,
   mutationRate: 0.5,
-  // Issue #160 — held at the original 0.03. A higher rate caused
-  // unbounded population complexity once the elite saturated the cap
-  // (children continued mutating freely), driving the per-generation
-  // scoring cost into the seconds and the run time into the
-  // tens-of-minutes range. Topology growth in the running champion is
-  // already captured in the gen-1 → gen-final snapshot diff.
+  // Retained for backwards compatibility — NEAT-AI owns structural
+  // mutation under evolveRL().
   addNeuronRate: 0.03,
-  // Issue #143 — score every candidate against ten different perturbed
-  // starts (the same ten for every member, every generation) so the
-  // search cannot "win" by getting lucky on a single symmetric launch.
-  // The 0.1 half-width gives initial pole tilts up to ~5.7°, well below
-  // the 12° failure threshold yet enough that random initial creatures
-  // rarely balance every trial in the very first generation.
+  // Score every candidate against ten perturbed starts so the search
+  // cannot win by getting lucky on a single symmetric launch.
   trials: 10,
   initialPerturbation: 0.1,
   trialSeed: 24680,
-  // Issue #160 — apply an in-episode wobble disturbance so cart-pole
-  // becomes hard enough for evolution to be visible. A ±18 N kick
-  // (~80% larger than the controller's ±10 N action force) at 30% per
-  // step (≈150 wobbles per 500-step episode) is large enough that no
-  // creature in a 60-strong uniform-random NEAT population scores
-  // anywhere near the cap — gen-1 best and mean both sit well below
-  // `SOLVED_THRESHOLD` — while a competent controller, given a
-  // generous generation cap and a non-zero `addNeuronRate`, can still
-  // learn to compensate. The disturbance is reseeded per trial via a
-  // deterministic golden-ratio offset of `disturbanceSeed` so a
-  // creature has to handle `trials` independent wobble patterns rather
-  // than a single lucky one.
+  // Wobble keeps cart-pole genuinely non-trivial so evolution from
+  // uniform-random noise is visible.
   disturbanceMagnitude: 18,
   disturbanceProbability: 0.3,
   disturbanceSeed: 13579,
 };
 
-/**
- * Build the initial population using the NEAT-AI library's uniform-random
- * creature constructor — `new Creature(INPUT_COUNT, OUTPUT_COUNT)` produces
- * a minimal seed (direct input → output connections) with random weights
- * and a random output bias. **No topology is hand-specified by this
- * example**; structural mutation grows hidden neurons during evolution.
- *
- * `seed` controls the global library RNG so the same `seed` reproduces
- * the same initial population across runs.
- */
-export function buildRandomPopulation(
-  seed: number,
-  populationSize: number,
-): CreatureExport[] {
-  setRandomNumberGenerator(createSeededRng(seed));
-  return createSeededPopulation({
-    inputCount: INPUT_COUNT,
-    outputCount: OUTPUT_COUNT,
-    populationSize,
-    seeds: [],
-  });
+/** Adapter configuration consumed by {@link CartPoleAdapter}. */
+export interface CartPoleAdapterOptions {
+  /** Half-width of the uniform `[-m, +m]` perturbation. Default `0`. */
+  initialPerturbation?: number;
+  /** Wobble disturbance magnitude (newtons). Default `0`. */
+  disturbanceMagnitude?: number;
+  /** Wobble disturbance probability `[0, 1]`. Default `0`. */
+  disturbanceProbability?: number;
+  /** Cap on the number of physics ticks per episode. Default {@link MAX_STEPS}. */
+  maxStepsPerEpisode?: number;
 }
 
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
-}
-
-/** Deep-clone a creature export so callers can safely mutate it. */
-function cloneExport(creature: CreatureExport): CreatureExport {
-  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
+/** State threaded through each episode by {@link CartPoleAdapter}. */
+export interface CartPoleEpisodeState {
+  /** Current physics state. */
+  physics: CartPoleState;
+  /** 1-based step index of the just-completed step (`0` after `reset`). */
+  stepIdx: number;
 }
 
 /**
- * Insert a hidden neuron in the middle of an existing connection: the
- * NEAT "add-node" structural mutation. Picks a random synapse, replaces
- * it with a path through a fresh hidden neuron, and assigns reasonable
- * starting weights so the new path approximates the original signal
- * before further mutation tunes it.
+ * Cart-pole episode adapter for `Creature.evolveRL()`. Each `step()`
+ * advances the deterministic physics simulator, encodes the observation
+ * as a `Float32Array`, and emits a reward that maps directly onto
+ * NEAT-AI's non-negative `error` slot via `defaultRewardToError`:
  *
- * The new neuron uses LOGISTIC activation — a smooth squash that lets
- * gradients flow during weight perturbation without the saturating
- * plateau of HARD_TANH at the edges of its range.
- */
-function addHiddenNeuron(
-  creature: CreatureExport,
-  random: () => number,
-  hiddenCounter: { value: number },
-): CreatureExport {
-  if (creature.synapses.length === 0) return creature;
-
-  const synapseIdx = Math.floor(random() * creature.synapses.length);
-  const original = creature.synapses[synapseIdx];
-
-  // Issue a deterministic UUID so the export is reproducible across runs
-  // with the same seed. The library treats this string as opaque, so any
-  // unique identifier is acceptable.
-  const uuid = `hidden-${hiddenCounter.value++}`;
-
-  const newNeuron: NeuronExport = {
-    type: "hidden",
-    uuid,
-    bias: uniformSigned(random, 0.5),
-    squash: "LOGISTIC",
-  };
-
-  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
-  // input → hidden: keep the original weight so the path through the
-  // new neuron starts close to the original signal.
-  newSynapses.push({
-    weight: original.weight,
-    fromUUID: original.fromUUID,
-    toUUID: uuid,
-  });
-  // hidden → output: weight 1 so the LOGISTIC pass-through is roughly
-  // identity at the operating point, again preserving original signal.
-  newSynapses.push({
-    weight: 1,
-    fromUUID: uuid,
-    toUUID: original.toUUID,
-  });
-
-  // The library assigns runtime indices in array order, so hidden
-  // neurons must precede output neurons to keep the topology forward-
-  // only. Insert immediately *before the destination* of the original
-  // synapse — that placement guarantees the new `newNeuron → original.to`
-  // edge is forward regardless of whether the destination is hidden or
-  // output (audit issue #220 fix: inserting at `firstOutputIdx` would
-  // produce recurrent edges when the original synapse already pointed
-  // at a hidden neuron).
-  const toIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
-  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = (toIdx >= 0 && creature.neurons[toIdx].type === "hidden")
-    ? toIdx
-    : (firstOutputIdx === -1 ? creature.neurons.length : firstOutputIdx);
-  const newNeurons = [
-    ...creature.neurons.slice(0, insertAt),
-    newNeuron,
-    ...creature.neurons.slice(insertAt),
-  ];
-
-  return {
-    ...creature,
-    neurons: newNeurons,
-    synapses: newSynapses,
-  };
-}
-
-/**
- * Mutate a creature genome. Each existing weight and non-input bias is
- * perturbed independently with probability `mutationRate`; the noise is
- * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
- * probability `addNeuronRate` the genome additionally receives a NEAT
- * add-node structural mutation (split one synapse with a hidden neuron).
+ * - Non-terminal step: reward `0`.
+ * - Terminal step (cart out of bounds or pole past failure angle):
+ *   reward `-(MAX_STEPS - stepIdx) / MAX_STEPS`. The
+ *   `defaultRewardToError` mapping (`error = max(0, -reward)`) then
+ *   yields a normalised `error = 1 - stepsSurvived / MAX_STEPS`.
+ * - Truncated episode (the library's `maxSteps()` cap fires before any
+ *   failure): cumulative reward `0` → `error = 0`. This is the
+ *   "solved" case.
  *
- * The resulting export is suitable for `Creature.fromJSON(...)`. No
- * topology is hand-specified — every change here is a generic NEAT
- * mutation operator that works on whatever variable topology the
- * creature currently has.
+ * Across `episodesPerCreature` trials the mean cumulative reward is
+ * therefore `-(1 - meanSteps / MAX_STEPS)`, so
+ * `EvolveRLOptions.targetError = 1 - SOLVED_THRESHOLD / MAX_STEPS =
+ * 0.04` stops evolution as soon as the champion balances for an
+ * average of `SOLVED_THRESHOLD` steps across the per-generation seed
+ * set.
  */
-export function mutateCreatureExport(
-  parent: CreatureExport,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
-): CreatureExport {
-  const child = cloneExport(parent);
+export class CartPoleAdapter extends EpisodeAdapter<CartPoleEpisodeState, CartPoleAction> {
+  /** Half-width of the per-component initial-state perturbation. */
+  readonly initialPerturbation: number;
+  /** Physics params (with disturbance fields plumbed through). */
+  readonly params: CartPoleParams;
+  /** Per-episode step cap. */
+  readonly maxStepsPerEpisode: number;
 
-  for (const synapse of child.synapses) {
-    if (random() < mutationRate) {
-      synapse.weight += uniformSigned(random, mutationStrength);
+  /**
+   * Deterministic wobble PRNG for the current episode. Reseeded by
+   * {@link reset} so two episodes with the same `rngSeed` produce
+   * identical wobble patterns.
+   */
+  private wobbleRng?: () => number;
+
+  constructor(options: CartPoleAdapterOptions = {}) {
+    super();
+    this.initialPerturbation = options.initialPerturbation ?? 0;
+    this.maxStepsPerEpisode = options.maxStepsPerEpisode ?? MAX_STEPS;
+    const magnitude = options.disturbanceMagnitude ?? 0;
+    const probability = options.disturbanceProbability ?? 0;
+    if (magnitude > 0 && probability > 0) {
+      this.params = {
+        ...DEFAULT_PARAMS,
+        disturbanceMagnitude: magnitude,
+        disturbanceProbability: probability,
+      };
+    } else {
+      this.params = DEFAULT_PARAMS;
     }
   }
 
-  for (const neuron of child.neurons) {
-    if (random() < mutationRate) {
-      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
-    }
+  override get observationLength(): number {
+    return INPUT_COUNT;
   }
 
-  const addNeuronRate = options?.addNeuronRate ?? 0;
-  const counter = options?.hiddenCounter ?? { value: 0 };
-  if (addNeuronRate > 0 && random() < addNeuronRate) {
-    return addHiddenNeuron(child, random, counter);
+  override maxSteps(): number {
+    return this.maxStepsPerEpisode;
   }
 
-  return child;
+  override reset(
+    rngSeed: number,
+  ): { observation: Float32Array; state: CartPoleEpisodeState } {
+    const initRng = createDeterministicRandom(rngSeed >>> 0);
+    // Wobble RNG seeded with a different bit pattern so the initial
+    // sampling and the in-episode disturbance stream do not correlate.
+    this.wobbleRng = this.params.disturbanceMagnitude > 0
+      ? createDeterministicRandom(((rngSeed >>> 0) ^ 0x9E3779B1) >>> 0)
+      : undefined;
+    const physics = this.initialPerturbation > 0
+      ? perturbedInitialState(initRng, this.initialPerturbation)
+      : initialState();
+    return {
+      observation: encodeState(physics),
+      state: { physics, stepIdx: 0 },
+    };
+  }
+
+  override decodeAction(
+    creatureOutput: Float32Array,
+    _state: CartPoleEpisodeState,
+  ): CartPoleAction {
+    return creatureOutput[0] >= 0 ? 1 : -1;
+  }
+
+  override step(
+    state: CartPoleEpisodeState,
+    action: CartPoleAction,
+  ): StepResult<Float32Array> & { state: CartPoleEpisodeState } {
+    const newPhysics = step(state.physics, action, this.params, this.wobbleRng);
+    const newStepIdx = state.stepIdx + 1;
+    const terminated = isFailed(newPhysics);
+    // Reward shaping (normalised): zero everywhere except the terminal
+    // step, where we emit `-(MAX_STEPS - stepIdx) / MAX_STEPS` so
+    // `defaultRewardToError` yields `error = 1 - stepsSurvived / MAX_STEPS`.
+    // A clean truncation by the step cap therefore scores `error = 0`,
+    // and `NeatOptions.targetError = 0.04` corresponds to mean steps
+    // ≥ 480 = SOLVED_THRESHOLD.
+    const reward = terminated
+      ? -(this.maxStepsPerEpisode - newStepIdx) / this.maxStepsPerEpisode
+      : 0;
+    return {
+      state: { physics: newPhysics, stepIdx: newStepIdx },
+      observation: encodeState(newPhysics),
+      reward,
+      terminated,
+      truncated: false,
+    };
+  }
 }
 
-/**
- * Build a cart-pole {@link EpisodeAdapter} for the shared rollout helper.
- *
- * The library's default output squash is HARD_TANH (range `[-1, 1]`), so
- * the natural threshold for "push right" is 0. This stays sensible even
- * after structural mutation injects a LOGISTIC hidden layer because the
- * **output** neuron's squash is unchanged.
- */
+/** Adapter for the shared local rollout helper (scoring / replay path). */
 function cartPoleAdapter(
   start: CartPoleState,
   params: CartPoleParams = DEFAULT_PARAMS,
   random?: () => number,
-): EpisodeAdapter<CartPoleState, 1 | -1> {
+): LocalEpisodeAdapter<CartPoleState, CartPoleAction> {
   return {
     initialState: start,
     encode: encodeState,
@@ -458,13 +419,7 @@ function cartPoleAdapter(
   };
 }
 
-/**
- * Build a {@link CartPoleParams} record from a {@link ScoreOptions} so
- * the disturbance settings are plumbed through to the physics step. When
- * no disturbance is configured, returns `DEFAULT_PARAMS` unchanged so
- * the no-disturbance code path stays byte-identical to the textbook
- * cart-pole simulator (issue #159).
- */
+/** Build {@link CartPoleParams} from a {@link ScoreOptions}. */
 function paramsFromOptions(options?: ScoreOptions): CartPoleParams {
   const magnitude = options?.disturbanceMagnitude ?? 0;
   const probability = options?.disturbanceProbability ?? 0;
@@ -476,12 +431,7 @@ function paramsFromOptions(options?: ScoreOptions): CartPoleParams {
   };
 }
 
-/**
- * Build the per-evaluation deterministic disturbance PRNG from a
- * {@link ScoreOptions}. Returns `undefined` when no disturbance is
- * configured so the simulator falls through to the byte-identical
- * textbook path (issue #159).
- */
+/** Build the per-evaluation deterministic disturbance PRNG. */
 function disturbanceRng(options?: ScoreOptions): (() => number) | undefined {
   const magnitude = options?.disturbanceMagnitude ?? 0;
   const probability = options?.disturbanceProbability ?? 0;
@@ -490,17 +440,8 @@ function disturbanceRng(options?: ScoreOptions): (() => number) | undefined {
 }
 
 /**
- * Score a creature by running the cart-pole simulator. By default the
- * controller is evaluated once from the symmetric `(0, 0, 0, 0)` start.
- * Pass `options.trials > 1` together with `options.initialPerturbation > 0`
- * to evaluate the controller across several perturbed initial states
- * and return the **mean** survival count — the honest variant used by
- * the evolver.
- *
- * Because the mean of trials capped at `maxSteps` equals `maxSteps` only
- * when every trial reached the cap, a multi-trial score of `MAX_STEPS`
- * proves the controller solved the task on every initial state in the
- * batch — not just one lucky symmetric launch (issue #143).
+ * Score a creature by running the cart-pole simulator. Used by tests
+ * and the runner's post-evolution replay path.
  */
 export function scoreController(
   creature: Creature,
@@ -522,10 +463,6 @@ export function scoreController(
   let total = 0;
   for (let t = 0; t < trials; t++) {
     const start = perturbation > 0 ? perturbedInitialState(random, perturbation) : initialState();
-    // Issue #160 — derive a different wobble seed for each trial so a
-    // controller cannot win by surviving a single lucky wobble pattern;
-    // it has to handle `trials` different patterns. The seed is still
-    // deterministic across runs and across creatures.
     const wobble = wobbleEnabled
       ? createDeterministicRandom((wobbleBaseSeed + t * 0x9E3779B1) >>> 0)
       : undefined;
@@ -534,10 +471,7 @@ export function scoreController(
   return total / trials;
 }
 
-/**
- * Score a hand-crafted "always push toward the pole's tilt" policy.
- * Used as a sanity check that the simulator is solvable.
- */
+/** Score a hand-crafted "always push toward the pole's tilt" policy. */
 export function scoreTiltDirectionPolicy(maxSteps: number = MAX_STEPS): number {
   let state: CartPoleState = initialState();
   for (let stepIdx = 0; stepIdx < maxSteps; stepIdx++) {
@@ -550,11 +484,7 @@ export function scoreTiltDirectionPolicy(maxSteps: number = MAX_STEPS): number {
   return maxSteps;
 }
 
-/**
- * Replay a creature's run, recording the cart-pole state at every
- * timestep up to and including the failing step (if any). Useful for
- * generating animation frames.
- */
+/** Replay a creature's run for visualisation. */
 export function replayController(
   creature: Creature,
   maxSteps: number = MAX_STEPS,
@@ -565,175 +495,210 @@ export function replayController(
   return runEpisode(creature, cartPoleAdapter(initialState(), params, wobble), { maxSteps }).trace;
 }
 
-interface ScoredMember {
-  json: CreatureExport;
-  score: number;
-  neurons: number;
-  synapses: number;
-}
-
-function topologyCounts(json: CreatureExport): { neurons: number; synapses: number } {
-  // The export omits input neurons (they are implicit in `input`), so we
-  // add them back to report a comparable "total neurons" figure.
-  return {
-    neurons: json.neurons.length + (json.input ?? INPUT_COUNT),
-    synapses: json.synapses.length,
-  };
+/** Per-generation aggregate accumulated from `onEpisodeTrials` events. */
+interface GenerationBucket {
+  meanRewards: number[];
+  bestReward: number;
+  bestNeurons: number;
+  bestSynapses: number;
 }
 
 /**
- * Run a generational evolutionary algorithm over creature genomes. The
- * top half of each generation seeds the next via mutation; the elite is
- * carried over unchanged so the best score is monotonically
- * non-decreasing. Stops as soon as the champion's score reaches
- * `MAX_STEPS * (1 - targetError)` **or** `timeoutMinutes` minutes of
- * wall-clock have elapsed — whichever fires first. The two stop
- * conditions match the standard NEAT-AI `NeatOptions.targetError` /
- * `NeatOptions.timeoutMinutes` fields and were introduced by audit
- * issue #220.
+ * Run NEAT-AI's first-class reinforcement-learning evolution loop
+ * against a {@link CartPoleAdapter}. Mutation, crossover, elitism,
+ * plateau detection, and stop-condition handling are owned by
+ * `Creature.evolveRL()` (issue #236).
+ *
+ * Per-generation telemetry is reconstructed by:
+ *
+ * 1. Accumulating per-creature `meanReward` via `onEpisodeTrials`.
+ * 2. Reading champion topology counts from the optional
+ *    `evolverl_milestone` events when `statistics: true` is enabled.
+ * 3. Firing the caller's `options.onGeneration` callback from each
+ *    `generation_complete` training event with the aggregated data.
+ *
+ * Snapshot capture is reduced to gen-1 (the seed creature) and the
+ * final generation (the champion after `evolveRL` returns) because the
+ * upstream API does not expose mid-run creature exports.
  */
-export function evolveCartPoleController(
+export async function evolveCartPoleController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  const random = createDeterministicRandom(options.seed);
-  const scoreOptions: ScoreOptions = {
-    trials: options.trials,
-    trialSeed: options.trialSeed,
+): Promise<EvolveResult> {
+  const adapter = new CartPoleAdapter({
     initialPerturbation: options.initialPerturbation,
     disturbanceMagnitude: options.disturbanceMagnitude,
     disturbanceProbability: options.disturbanceProbability,
-    disturbanceSeed: options.disturbanceSeed,
-  };
-  const score = (creature: Creature) => scoreController(creature, MAX_STEPS, scoreOptions);
-
-  // Counter for deterministic hidden-neuron UUIDs so the export stream
-  // is reproducible across runs with the same seed.
-  const hiddenCounter = { value: 0 };
-  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
-
-  // Initial population: uniform-random NEAT genomes from the library.
-  // No hand-crafted topology — `new Creature(input, output)` decides the
-  // initial structure, with random weights and a random output bias.
-  const initialExports = buildRandomPopulation(options.seed, options.populationSize);
-  let population: ScoredMember[] = initialExports.map((json) => {
-    const creature = Creature.fromJSON(json);
-    const counts = topologyCounts(json);
-    return { json, score: score(creature), neurons: counts.neurons, synapses: counts.synapses };
+    maxStepsPerEpisode: MAX_STEPS,
   });
 
-  let bestJSON = population[0].json;
-  let bestScore = -Infinity;
-  let solvedAt = -1;
+  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const seedExport = seedCreature.exportJSON();
+  const seedNeurons = seedExport.neurons.length + (seedExport.input ?? INPUT_COUNT);
+  const seedSynapses = seedExport.synapses.length;
 
-  const targetScore = MAX_STEPS * (1 - options.targetError);
-  const timeoutMs = options.timeoutMinutes * 60_000;
-  const iterationsCap = options.iterations ?? Infinity;
-  const loopStart = Date.now();
-  let stopReason: "target" | "timeout" | "iterations" = "timeout";
-  let generation = 0;
-
-  while (true) {
-    // Tie-breaker prefers structurally larger creatures so neutral
-    // structural drift remains visible once score plateaus at the
-    // {@link MAX_STEPS} cap. Without this, the linear seed (which
-    // already balances cart-pole well) would lock in as elite forever
-    // and the captured topology chart would show a flat line — failing
-    // the "neuron/synapse counts genuinely change across generations"
-    // criterion of audit issue #220.
-    population.sort((a, b) => (b.score - a.score) || (b.synapses - a.synapses));
-    const generationBest = population[0];
-    if (generationBest.score > bestScore) {
-      bestScore = generationBest.score;
-      bestJSON = generationBest.json;
-    }
-
-    const meanScore = population.reduce((acc, p) => acc + p.score, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestScore: generationBest.score,
-      meanScore,
-      neurons: generationBest.neurons,
-      synapses: generationBest.synapses,
-    });
-
-    // Capture an evolution snapshot of the running champion at the
-    // configured checkpoints. The helper is a no-op for non-checkpoint
-    // generations.
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestScore);
-      }
-    }
-
-    const targetMet = bestScore >= targetScore;
-    if (targetMet && solvedAt < 0) solvedAt = generation;
-
-    const elapsedMs = Date.now() - loopStart;
-    const timedOut = elapsedMs >= timeoutMs;
-    const reachedIterationsCap = generation + 1 >= iterationsCap;
-
-    if (targetMet) {
-      // When capturing evolution snapshots, keep running until the next
-      // not-yet-fired checkpoint is captured — otherwise the progression
-      // strip would be a single panel.
-      const nextCheckpoint = options.snapshotConfig?.checkpoints
-        .filter((c) => c > generation + 1)
-        .sort((a, b) => a - b)[0];
-      if (nextCheckpoint === undefined) {
-        stopReason = "target";
-        break;
-      }
-    }
-
-    if (timedOut) {
-      stopReason = solvedAt >= 0 ? "target" : "timeout";
-      break;
-    }
-    if (reachedIterationsCap) {
-      stopReason = solvedAt >= 0 ? "target" : "iterations";
-      break;
-    }
-
-    // Truncation selection: keep top 50% as parents (always at least 1).
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
-
-    // Build the next generation: keep elite, fill rest with mutated
-    // offspring from random parents.
-    const nextPopulation: ScoredMember[] = [];
-    nextPopulation.push(parents[0]);
-    while (nextPopulation.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureExport(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-        mutationOpts,
-      );
-      const childCreature = Creature.fromJSON(childJSON);
-      const counts = topologyCounts(childJSON);
-      nextPopulation.push({
-        json: childJSON,
-        score: score(childCreature),
-        neurons: counts.neurons,
-        synapses: counts.synapses,
-      });
-    }
-
-    population = nextPopulation;
-    generation++;
+  // Capture the seed creature as the gen-1 snapshot so the existing
+  // multi-panel SVG renderer still has at least one early-generation
+  // panel to draw alongside the final champion.
+  if (options.snapshotConfig?.checkpoints.includes(1)) {
+    captureSnapshot(options.snapshotConfig, 1, seedExport, 0);
   }
 
-  const champion = Creature.fromJSON(bestJSON);
+  const generationData = new Map<number, GenerationBucket>();
+  let latestBestNeurons = seedNeurons;
+  let latestBestSynapses = seedSynapses;
+  let bestSteps = 0;
+  let lastObservedGeneration = 0;
+  let solvedAtGen = -1;
+
+  // EvolveRL normalised target error — the adapter emits rewards in
+  // `[-1, 0]`, so `defaultRewardToError` produces an error in `[0, 1]`
+  // equal to `1 - meanSteps / MAX_STEPS`. The caller's `targetError`
+  // value already lives in that range, so it passes through unchanged.
+  // Negative values (used by tests to force the wall-clock backstop)
+  // are clamped to `0`, which is the smallest legal value.
+  const absoluteTargetError = Math.max(0, options.targetError);
+
+  const loopStart = Date.now();
+
+  const evolveOptions: EvolveRLOptions = {
+    seed: options.seed >>> 0,
+    populationSize: options.populationSize,
+    mutationRate: options.mutationRate,
+    // NEAT-AI 5.0.0 owns mutation magnitude internally — we no longer
+    // map the historical `mutationStrength` onto `mutationAmount`
+    // (which is an *integer* count of mutations per offspring, not a
+    // perturbation magnitude). The default policy is appropriate for
+    // cart-pole.
+    targetError: absoluteTargetError,
+    timeoutMinutes: options.timeoutMinutes,
+    iterations: options.iterations,
+    episodesPerCreature: options.trials ?? 10,
+    statistics: true,
+    onEpisodeTrials: (event) => {
+      let bucket = generationData.get(event.generation);
+      if (!bucket) {
+        bucket = {
+          meanRewards: [],
+          bestReward: Number.NEGATIVE_INFINITY,
+          bestNeurons: latestBestNeurons,
+          bestSynapses: latestBestSynapses,
+        };
+        generationData.set(event.generation, bucket);
+      }
+      bucket.meanRewards.push(event.meanReward);
+      if (event.meanReward > bucket.bestReward) {
+        bucket.bestReward = event.meanReward;
+      }
+    },
+    onTrainingEvent: (event) => {
+      if (event.kind === "evolverl_milestone") {
+        latestBestNeurons = event.bestNeurons;
+        latestBestSynapses = event.bestSynapses;
+        const bucket = generationData.get(event.generation);
+        if (bucket) {
+          bucket.bestNeurons = event.bestNeurons;
+          bucket.bestSynapses = event.bestSynapses;
+        }
+        return;
+      }
+      if (event.kind !== "generation_complete") return;
+
+      lastObservedGeneration = event.generation;
+      const bucket = generationData.get(event.generation);
+      // Surface generation numbers as zero-based to match the historical
+      // GenerationInfo contract.
+      const generation0 = event.generation - 1;
+      let bestStepsThisGen: number;
+      let meanStepsThisGen: number;
+      let neurons: number;
+      let synapses: number;
+      if (bucket && bucket.meanRewards.length > 0) {
+        const sum = bucket.meanRewards.reduce((a, b) => a + b, 0);
+        const meanReward = sum / bucket.meanRewards.length;
+        // Reward in `[-1, 0]` maps to mean balance steps via
+        // `meanSteps = MAX_STEPS * (1 + meanReward)`.
+        meanStepsThisGen = MAX_STEPS * (1 + meanReward);
+        bestStepsThisGen = MAX_STEPS * (1 + bucket.bestReward);
+        neurons = bucket.bestNeurons;
+        synapses = bucket.bestSynapses;
+      } else {
+        // No data this generation (e.g. every creature was an elite cached
+        // from a previous round). Fall back to the previous champion's
+        // known stats.
+        meanStepsThisGen = bestSteps;
+        bestStepsThisGen = bestSteps;
+        neurons = latestBestNeurons;
+        synapses = latestBestSynapses;
+      }
+      if (bestStepsThisGen > bestSteps) bestSteps = bestStepsThisGen;
+      if (bestStepsThisGen >= SOLVED_THRESHOLD && solvedAtGen < 0) {
+        solvedAtGen = generation0;
+      }
+      options.onGeneration?.({
+        generation: generation0,
+        bestScore: bestStepsThisGen,
+        meanScore: meanStepsThisGen,
+        neurons,
+        synapses,
+      });
+    },
+  };
+
+  const result = await seedCreature.evolveRL(adapter, evolveOptions);
+
+  const wallclockMs = Date.now() - loopStart;
+  const finalGeneration = Math.max(lastObservedGeneration, result.generation);
+
+  // The champion's `bestScore` mirrors evolveRL's own assessment so
+  // that "the champion solved the task" agrees with `result.error <=
+  // targetError`. The error is normalised: `error = 1 - meanSteps /
+  // MAX_STEPS`, so `meanSteps = MAX_STEPS * (1 - error)`. Held-out
+  // generalisation is exercised separately by callers re-running
+  // `scoreController()` on a different seed set.
+  const finalScore = MAX_STEPS * (1 - Math.max(0, Math.min(1, result.error)));
+  if (finalScore > bestSteps) bestSteps = finalScore;
+
+  // Capture the final champion as the last snapshot if the caller asked
+  // for a checkpoint at the final generation (or used the default
+  // checkpoint list that includes the final gen).
+  if (options.snapshotConfig?.checkpoints.includes(finalGeneration)) {
+    captureSnapshot(
+      options.snapshotConfig,
+      finalGeneration,
+      seedCreature.exportJSON(),
+      finalScore,
+    );
+  } else if (options.snapshotConfig) {
+    // Always write a snapshot at the final generation so the multi-panel
+    // SVG has a closing frame even when no exact checkpoint matches.
+    captureSnapshot(
+      { ...options.snapshotConfig, checkpoints: [finalGeneration] },
+      finalGeneration,
+      seedCreature.exportJSON(),
+      finalScore,
+    );
+  }
+
+  const targetScore = MAX_STEPS * (1 - absoluteTargetError);
+  const targetMet = finalScore >= targetScore;
+
+  let stopReason: "target" | "timeout" | "iterations";
+  if (targetMet) {
+    stopReason = "target";
+  } else if (
+    options.iterations !== undefined && finalGeneration >= options.iterations
+  ) {
+    stopReason = "iterations";
+  } else {
+    stopReason = "timeout";
+  }
+
   return {
-    champion,
-    bestScore,
-    generations: generation + 1,
-    solved: bestScore >= targetScore,
-    wallclockMs: Date.now() - loopStart,
+    champion: seedCreature,
+    bestScore: finalScore,
+    generations: finalGeneration,
+    solved: targetMet,
+    wallclockMs,
     stopReason,
   };
 }
@@ -744,13 +709,7 @@ export const SCREENSHOT_PATH = "docs/screenshots/cart_pole.svg";
 /** Number of evenly-spaced keyframes sampled for the SMIL-animated SVG. */
 export const SVG_FRAME_COUNT = 60;
 
-/**
- * Generations at which the runner captures evolution snapshots. The
- * cadence is extended past the previous `[1, 10, 100, 500]` because
- * variable-topology evolution from uniform-random noise typically
- * needs more generations to converge than the old fixed-topology
- * search did.
- */
+/** Generations at which the runner captures evolution snapshots. */
 export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500, 1000];
 
 /** Hidden directory under which snapshot files are written. */
@@ -775,39 +734,21 @@ export const FITNESS_SVG_PATH = "docs/screenshots/cart_pole/fitness.svg";
 /** Neuron / synapse count chart path (audit issue #220). */
 export const TOPOLOGY_SVG_PATH = "docs/screenshots/cart_pole/topology.svg";
 
-/**
- * One row of per-generation evolution telemetry. Captured during a run
- * and serialised to {@link EVOLUTION_CSV_PATH} so downstream tools can
- * inspect how the population's fitness and topology evolved over time.
- */
+/** One row of per-generation evolution telemetry. */
 export interface EvolutionRow {
-  /** Zero-based generation index. */
   generation: number;
-  /** Best mean balance score in this generation. */
   bestFitness: number;
-  /** Population mean score in this generation. */
   meanFitness: number;
-  /** Neuron count of this generation's champion creature. */
   neuronCount: number;
-  /** Synapse count of this generation's champion creature. */
   synapseCount: number;
 }
 
-/**
- * Format a finite number with up to six decimal places, trimming trailing
- * zeros so deterministic inputs produce a single canonical string.
- * Non-finite values become "0" — the CSV must not leak NaN/Infinity.
- */
 function formatCsvNumber(v: number): string {
   if (!Number.isFinite(v)) return "0";
   return Number(v.toFixed(6)).toString();
 }
 
-/**
- * Format an evolution-telemetry table into a CSV string with the exact
- * {@link EVOLUTION_CSV_HEADER} header. Numeric fields use a fixed
- * representation so the file is byte-deterministic for identical inputs.
- */
+/** Format an evolution-telemetry table into a deterministic CSV string. */
 export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
   const lines: string[] = [EVOLUTION_CSV_HEADER];
   for (const r of rows) {
@@ -825,20 +766,12 @@ export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
 }
 
 // ---- Topology chart renderer ------------------------------------------
-// Pairs with the shared `renderFitnessChartSVG` from `common/fitness_chart.ts`
-// — together the two SVGs satisfy the "neuron/synapse" + "best/mean
-// fitness" charts requested by audit issue #220.
 
 const TOPOLOGY_SVG_WIDTH = 720;
 const TOPOLOGY_SVG_HEIGHT = 320;
 const TOPOLOGY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
 
-/**
- * Render the neuron / synapse count chart for the README. Two lines
- * share an X axis; the right Y axis shows synapse counts on a separate
- * scale so the synapse line does not compress the neuron line into
- * invisibility. Throws if `rows` is empty.
- */
+/** Render the neuron / synapse count chart for the README. */
 export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
   if (rows.length === 0) {
     throw new Error("renderTopologyChartSvg requires at least one row");
@@ -933,7 +866,7 @@ if (import.meta.main) {
   const sanityScore = scoreTiltDirectionPolicy();
   console.log(`   Hand-crafted policy survived ${sanityScore} steps.`);
 
-  console.log("\n🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log("\n🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
     `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError.toFixed(2)} ` +
       `(target score ≥ ${(MAX_STEPS * (1 - DEFAULT_EVOLVE_OPTIONS.targetError)).toFixed(0)}), ` +
@@ -946,7 +879,7 @@ if (import.meta.main) {
   const evolutionSamples: EvolutionSample[] = [];
   const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
-  const result = evolveCartPoleController({
+  const result = await evolveCartPoleController({
     ...DEFAULT_EVOLVE_OPTIONS,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
@@ -985,9 +918,7 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Render the SVG strip showing the champion balancing under the
-  // same wobble regime it was trained on, so the screenshot reflects
-  // the actual task the controller solved (issue #160).
+  // Render the SVG strip showing the champion balancing.
   const trace = replayController(result.champion, MAX_STEPS, {
     disturbanceMagnitude: DEFAULT_EVOLVE_OPTIONS.disturbanceMagnitude,
     disturbanceProbability: DEFAULT_EVOLVE_OPTIONS.disturbanceProbability,
@@ -998,7 +929,6 @@ if (import.meta.main) {
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
 
-  // Render the per-generation evolution chart (score / neurons / synapses).
   if (evolutionSamples.length > 0) {
     const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
       title: "Cart-Pole — Evolution",
@@ -1008,10 +938,6 @@ if (import.meta.main) {
     console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
   }
 
-  // Per-generation evolution telemetry (audit issue #220): CSV (source
-  // of truth) + best/mean fitness chart + neuron/synapse topology chart.
-  // All three are emitted on every full run so downstream tools and the
-  // README can reuse the same data.
   if (evolutionRows.length > 0) {
     ensureDirSync("docs/data/cart_pole");
     await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
@@ -1035,8 +961,6 @@ if (import.meta.main) {
     console.log(`📐 Wrote topology chart ${TOPOLOGY_SVG_PATH}`);
   }
 
-  // Render the multi-panel evolution-progression strip from the
-  // checkpoint snapshots captured during the run.
   const snapshots = loadSnapshots(SNAPSHOTS_DIR);
   if (snapshots.length > 0) {
     const progressionSvg = renderEvolutionProgressSvg(snapshots, {
