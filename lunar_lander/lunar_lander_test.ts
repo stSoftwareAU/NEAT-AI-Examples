@@ -152,10 +152,36 @@ Deno.test("mutateCreatureExport with addNeuronRate=1 grows topology", () => {
   Creature.fromJSON(child).validate();
 });
 
-Deno.test("decodeAction thresholds outputs at 0.5", () => {
+Deno.test("decodeAction thresholds main at 0.5 and picks the winning rotation thruster", () => {
+  // Issue #253: rotation is mutually exclusive — left and right can never
+  // both fire on the same step. A naive independent-threshold decoding
+  // let evolution settle on outputs that always exceed 0.5 for both
+  // rotation channels, cancelling the torques while still burning fuel,
+  // which made rotation an ineffective control surface. The new rule:
+  // among `left` (idx 1) and `right` (idx 2), fire the strictly-higher
+  // one only when it is at or above 0.5; otherwise neither rotation
+  // thruster fires.
   assertEquals(decodeAction([0.6, 0.4, 0.55]), { main: true, left: false, right: true });
-  assertEquals(decodeAction([0.5, 0.5, 0.5]), { main: true, left: true, right: true });
+  // Both rotation outputs above threshold but `left` strictly higher → only left fires.
+  assertEquals(decodeAction([0.6, 0.9, 0.6]), { main: true, left: true, right: false });
+  // Tied rotation outputs → no rotation fires (cancellation removed).
+  assertEquals(decodeAction([0.5, 0.5, 0.5]), { main: true, left: false, right: false });
   assertEquals(decodeAction([0, 0, 0]), { main: false, left: false, right: false });
+});
+
+Deno.test("decodeAction never fires both rotation thrusters simultaneously (issue #253)", () => {
+  // Sweep the rotation output space and assert the mutual-exclusion
+  // invariant for every combination — a controller can no longer hide
+  // behind cancelling torques.
+  for (let l = 0; l <= 1; l += 0.1) {
+    for (let r = 0; r <= 1; r += 0.1) {
+      const action = decodeAction([0, l, r]);
+      assert(
+        !(action.left && action.right),
+        `left and right must be mutually exclusive (left=${l}, right=${r})`,
+      );
+    }
+  }
 });
 
 Deno.test("scoreFinalState rewards a clean landing more than a crash", () => {
@@ -217,6 +243,38 @@ Deno.test(
     assertEquals(a.landedRate, b.landedRate);
     assert(Number.isFinite(a.score));
     assertEquals(a.trials.length, 5);
+  },
+);
+
+Deno.test(
+  "scoreController with perturbation varies the pad position across trials (issue #253)",
+  () => {
+    // Issue #253: the README's training-pipeline diagram promises that
+    // perturbedScenario (state + terrain, including padX) drives training,
+    // but the legacy sampler held padX = 0 for every trial. With a moving
+    // pad in training, a controller cannot win by memorising "pad at zero" —
+    // the scoring function must surface terrain variation so different
+    // trials touch down on different pad centres.
+    const pop = buildRandomPopulation(101, 1);
+    const creature = Creature.fromJSON(pop[0]);
+    const result = scoreController(creature, MAX_STEPS, {
+      trials: 20,
+      trialSeed: 7,
+      initialPerturbation: 1.0,
+    });
+    // Distinct pad centres across trials: at least two of the trial final
+    // states must have terminated against measurably different pad-x
+    // geometry. We assert this indirectly via the per-trial finalState
+    // distribution — with a moving pad and perturbed starts, finalState.x
+    // values should span more than the WIDE_RANGES.padX half-range alone
+    // could explain if the pad were fixed.
+    const xs = result.trials.map((t) => t.finalState.x);
+    const xMin = Math.min(...xs);
+    const xMax = Math.max(...xs);
+    assert(
+      xMax - xMin > 5,
+      `expected final-state x to span > 5 m across trials, got [${xMin}, ${xMax}]`,
+    );
   },
 );
 
