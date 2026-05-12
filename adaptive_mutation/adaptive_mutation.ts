@@ -1,5 +1,5 @@
 /**
- * Adaptive Mutation Rate Demo (issue #86, audited under #212).
+ * Adaptive Mutation Rate Demo (issue #86, audited under #212, rewired #263).
  *
  * Demonstrates NEAT-AI's hidden but important **adaptive mutation
  * policy**: tiny seed creatures need new structure (add-neuron,
@@ -8,30 +8,37 @@
  * weight tuning, so the policy automatically shifts away from topology
  * mutations toward weight/bias mutations.
  *
- * The audit (#212) brings this example in line with the minimal-seed +
- * measured-telemetry policy in `AGENTS.md`:
+ * Under issue #263 the synthetic "imitate a hand-shaped target network"
+ * regression framing was replaced with the concrete binary
+ * classification task added in #262 — 4-bit even parity. The example
+ * now demonstrates the library finding a real solution to a common
+ * problem (parity, the textbook XOR generalisation) from a
+ * uniform-random seed, satisfying issue #254's mandate.
+ *
+ * Policy compliance:
  *
  * 1. The creature passed to NEAT-AI is built **only** from
  *    `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — no hidden-layer hint,
- *    no pre-built `network.json` seed, no hand-tuned shape. NEAT-AI
- *    random-initialises the rest.
+ *    no pre-built `network.json` seed, no hand-tuned shape, no warm
+ *    start. NEAT-AI random-initialises the rest.
  * 2. Evolution runs through `Creature.evolveDir(dataDir, neatOptions)`
- *    over a pre-generated binary `.bin` training set — the topology is
- *    learned by NEAT, not bolted on by the example.
+ *    over a pre-generated binary `.bin` classification training set —
+ *    the topology is learned by NEAT, not bolted on by the example.
  * 3. Stop conditions are a per-example `targetError` plus a
  *    `timeoutMinutes: 5` safety backstop.
- * 4. Per-generation telemetry (best/mean fitness, neuron count, synapse
- *    count) is captured during `evolveDir` and written out as CSV plus
- *    two summary SVG charts. The README quotes real measured numbers
- *    from the latest run only.
+ * 4. Per-generation telemetry (best/mean fitness, accuracy, neuron
+ *    count, synapse count) is captured during `evolveDir` and written
+ *    out as CSV plus two summary SVG charts. The README quotes real
+ *    measured numbers from the latest run only.
  *
  * The "adaptive mutation" narrative is preserved by the **measured
- * topology trajectory**: from a minimal direct-only seed, NEAT
- * aggressively adds hidden neurons and synapses in the early
- * generations (high topology-mutation share), then stabilises as the
- * adaptive policy reduces topology probability and weight tuning takes
- * over. The chart of neuron / synapse count vs generation is the
- * adaptive policy in action.
+ * topology trajectory**: from a minimal direct-only seed (which cannot
+ * represent parity at all), NEAT aggressively adds hidden neurons and
+ * synapses in the early generations (high topology-mutation share),
+ * then stabilises as the adaptive policy reduces topology probability
+ * and weight tuning takes over. The chart of neuron / synapse count vs
+ * generation is the adaptive policy in action; accuracy climbs from
+ * near-chance to high values as the topology grows.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -44,10 +51,22 @@ import {
   safeWriteJson,
 } from "@stsoftware/neat-ai";
 
-import { buildLargeCreature } from "../common/large_creature.ts";
-import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import {
+  classifierAccuracy,
+  type DataPoint,
+  generateClassificationDataset,
+  INPUT_COUNT as TASK_INPUT_COUNT,
+  OUTPUT_COUNT as TASK_OUTPUT_COUNT,
+  TASK_NAME,
+  TRUTH_TABLE_SIZE,
+  writeBinaryClassificationDataset,
+} from "./classification_task.ts";
 import { renderAdaptiveMutationSVG, renderFitnessChartSvg, renderTopologyChartSvg } from "./svg.ts";
+
+/** Re-export so downstream callers continue to use a single import surface. */
+export type { DataPoint };
+export { TASK_NAME };
 
 /** Working-directory root for artefacts produced by this demo. */
 export const WORKING_ROOT = ".adaptive-mutation";
@@ -58,12 +77,16 @@ export const SCREENSHOT_PATH = "docs/screenshots/adaptive_mutation.svg";
 /** Mirror copy of the headline SVG under `WORKING_ROOT/output/`. */
 export const WORKING_OUTPUT_PATH = join(WORKING_ROOT, "output", "adaptive_mutation.svg");
 
-/** Per-generation telemetry CSV path (audit #212 schema). */
+/** Per-generation telemetry CSV path (audit #212 schema, extended in #263). */
 export const EVOLUTION_CSV_PATH = "docs/data/adaptive_mutation/evolution.csv";
 
-/** CSV header — matches the schema mandated by issue #212. */
+/**
+ * CSV header — matches the schema mandated by issue #212 plus the
+ * `accuracy` column added under issue #263 so the classification
+ * progress is captured alongside fitness and topology.
+ */
 export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
+  "generation,best_fitness,mean_fitness,accuracy,neuron_count,synapse_count";
 
 /** Best/mean fitness chart path. */
 export const FITNESS_SVG_PATH = "docs/screenshots/adaptive_mutation/fitness.svg";
@@ -72,19 +95,13 @@ export const FITNESS_SVG_PATH = "docs/screenshots/adaptive_mutation/fitness.svg"
 export const TOPOLOGY_SVG_PATH = "docs/screenshots/adaptive_mutation/topology.svg";
 
 /**
- * Number of input neurons fed to the NEAT-AI seed.
- *
- * Four inputs and two outputs make the underlying truth function
- * non-linearly separable: direct input → output synapses cannot fit
- * it, so NEAT must invent hidden neurons (and therefore new
- * inter-layer edges) to drive `bestFitness` above the targetError.
- * That structural growth is the visible signal of the adaptive
- * mutation policy at work.
+ * Number of input neurons fed to the NEAT-AI seed. Sourced from the
+ * classification task primitives (4-bit parity).
  */
-export const INPUT_COUNT = 4;
+export const INPUT_COUNT = TASK_INPUT_COUNT;
 
 /** Number of output neurons fed to the NEAT-AI seed. */
-export const OUTPUT_COUNT = 2;
+export const OUTPUT_COUNT = TASK_OUTPUT_COUNT;
 
 /**
  * Iterations per inner `evolveDir` chunk. Each chunk refreshes the
@@ -98,9 +115,13 @@ const TELEMETRY_CHUNK_ITERATIONS = 50;
 
 /** Configuration for {@link runAdaptiveMutationDemo}. */
 export interface AdaptiveMutationConfig {
-  /** Random seed for target network, dataset, and NEAT mutation. */
+  /** Random seed for the classification dataset and NEAT mutation. */
   seed: number;
-  /** Number of training records written to the binary `.bin` file. */
+  /**
+   * Number of training records written to the binary `.bin` file.
+   * For 4-bit parity, the full truth table is 16 rows; the demo defaults
+   * to the full table so class balance is perfect.
+   */
   trainingSize: number;
   /** Per-example `targetError` driving early exit from evolution. */
   targetError: number;
@@ -112,7 +133,7 @@ export interface AdaptiveMutationConfig {
    * Deno test sanitiser clean.
    */
   timeoutMinutes: number;
-  /** NEAT population size. Small for a fast self-contained demo. */
+  /** NEAT population size. */
   populationSize: number;
   /** Hard iteration cap as a secondary safety net. */
   maxIterations: number;
@@ -120,7 +141,7 @@ export interface AdaptiveMutationConfig {
    * Probability that any given creature is mutated each generation.
    * NEAT-AI's default (0.3) is too conservative for a tiny direct-only
    * seed that needs to grow at least one hidden neuron before it can
-   * fit the task — push the rate up so the early generations exhibit
+   * fit parity — push the rate up so the early generations exhibit
    * visible structural growth (the adaptive policy then naturally
    * tapers it as size grows).
    */
@@ -133,26 +154,21 @@ export interface AdaptiveMutationConfig {
  * Defaults chosen so the demo converges via `targetError` well inside
  * the 5-minute backstop on a developer machine while still showing the
  * adaptive policy in action through visible neuron/synapse growth from
- * the minimal seed.
+ * the minimal seed. The training set is the full 4-bit parity truth
+ * table (16 rows), so class balance is exact.
  */
 export const DEFAULT_ADAPTIVE_MUTATION_CONFIG: AdaptiveMutationConfig = {
   seed: 86086086,
-  trainingSize: 96,
-  targetError: 0.01,
+  trainingSize: TRUTH_TABLE_SIZE,
+  targetError: 0.05,
   timeoutMinutes: 5,
-  populationSize: 24,
-  maxIterations: 250,
-  mutationRate: 0.6,
+  populationSize: 50,
+  maxIterations: 2000,
+  mutationRate: 0.7,
   mutationAmount: 3,
 };
 
-/** A single (input, target) record. */
-export interface DataPoint {
-  inputs: Float32Array;
-  targets: Float32Array;
-}
-
-/** One row of per-generation evolution telemetry (audit #212 schema). */
+/** One row of per-generation evolution telemetry (#212 + #263 schema). */
 export interface EvolutionRow {
   /** 1-based generation index. */
   generation: number;
@@ -160,6 +176,13 @@ export interface EvolutionRow {
   bestFitness: number;
   /** Population mean fitness in this generation. */
   meanFitness: number;
+  /**
+   * Population-best classification accuracy in `[0, 1]` measured against
+   * the training set at the chunk boundary. Within a chunk every row
+   * reports the pre-chunk accuracy; the post-chunk row reports the new
+   * accuracy. NaN where accuracy was not measurable.
+   */
+  accuracy: number;
   /** Neuron count of this generation's champion. */
   neuronCount: number;
   /** Synapse count of this generation's champion. */
@@ -172,7 +195,16 @@ export interface AdaptiveMutationResult {
   champion: Creature;
   /** Per-generation telemetry rows. */
   evolutionRows: EvolutionRow[];
-  /** Held-out score (-MSE — higher is better) of the champion. */
+  /**
+   * Held-out classification accuracy in `[0, 1]` of the champion on a
+   * separate seeded sample of the classification task.
+   */
+  heldOutAccuracy: number;
+  /**
+   * Held-out score (-MSE — higher is better) of the champion against
+   * the held-out classification labels. Retained as a numeric secondary
+   * metric and consumed by the headline SVG caption renderer.
+   */
   heldOutScore: number;
   /** Total wall-clock time of the run, in milliseconds. */
   wallClockMs: number;
@@ -236,77 +268,10 @@ export function topologyProbability(
 }
 
 /**
- * Build the "ground truth" target network the dataset is generated
- * from. The target is **not** the NEAT seed — it just produces labels
- * the evolved creature must learn to reproduce. Hand-shaping the
- * target is fine; only the seed needs to be minimal.
- */
-export function buildTargetNetwork(seed: number): Creature {
-  return buildLargeCreature({
-    inputs: INPUT_COUNT,
-    hidden: 6,
-    outputs: OUTPUT_COUNT,
-    density: 1.0,
-    seed: seed ^ 0x7777_7777,
-  });
-}
-
-/**
- * Generate a deterministic dataset by feeding `size` random inputs
- * through `target`. Inputs are drawn uniformly from `[-1, 1]`.
- */
-export function generateDataset(
-  target: Creature,
-  size: number,
-  seed: number,
-): DataPoint[] {
-  if (size <= 0) {
-    throw new Error(`dataset size must be positive, got ${size}`);
-  }
-  const rng = createDeterministicRandom(seed);
-  const dataset: DataPoint[] = [];
-  for (let i = 0; i < size; i++) {
-    const inputs = new Float32Array(INPUT_COUNT);
-    for (let k = 0; k < INPUT_COUNT; k++) {
-      inputs[k] = rng() * 2 - 1;
-    }
-    target.clearState();
-    const out = target.activate(inputs);
-    const targets = new Float32Array(OUTPUT_COUNT);
-    for (let o = 0; o < OUTPUT_COUNT; o++) {
-      targets[o] = out[o];
-    }
-    dataset.push({ inputs, targets });
-  }
-  return dataset;
-}
-
-/**
- * Write `dataset` as a Float32 binary file the NEAT-AI library can
- * consume via `Creature.evolveDir(dir, ...)`. Each record is laid out
- * as `INPUT_COUNT + OUTPUT_COUNT` little-endian floats.
- */
-export function writeBinaryDataset(dataset: readonly DataPoint[], dataDir: string): string {
-  ensureDirSync(dataDir);
-  const stride = INPUT_COUNT + OUTPUT_COUNT;
-  const buffer = new Float32Array(dataset.length * stride);
-  for (let i = 0; i < dataset.length; i++) {
-    for (let k = 0; k < INPUT_COUNT; k++) {
-      buffer[i * stride + k] = dataset[i].inputs[k];
-    }
-    for (let o = 0; o < OUTPUT_COUNT; o++) {
-      buffer[i * stride + INPUT_COUNT + o] = dataset[i].targets[o];
-    }
-  }
-  const path = join(dataDir, "training.bin");
-  Deno.writeFileSync(path, new Uint8Array(buffer.buffer));
-  return path;
-}
-
-/**
- * Held-out score (-MSE — higher is better) of `creature` against
- * `dataset`. The creature's own `activate(...)` is used so any squash
- * NEAT-AI evolved is evaluated correctly.
+ * MSE-style held-out score (negated so higher is better) of `creature`
+ * against `dataset`. The single-output binary classification target is
+ * treated as a real-valued regression target so the renderer can quote
+ * a continuous secondary metric alongside accuracy.
  */
 export function creatureHeldOutScore(
   creature: Creature,
@@ -328,10 +293,10 @@ export function creatureHeldOutScore(
 /**
  * Run the adaptive-mutation demo end-to-end:
  *
- *   1. Pre-generate a binary `.bin` training set from a hand-shaped
- *      target network.
+ *   1. Pre-generate a binary `.bin` classification training set from
+ *      the 4-bit parity truth table.
  *   2. Seed `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (minimal, no
- *      hidden hint).
+ *      hidden hint, uniform-random weights — NO warm start).
  *   3. evolveDir over the binary training set in chunks, capturing
  *      per-generation telemetry until `targetError` is met or
  *      iterations / timeout are exhausted.
@@ -361,26 +326,25 @@ export async function runAdaptiveMutationDemo(
     Deno.makeTempDirSync({ prefix: "adaptive_mutation_data_" });
 
   try {
-    // Build the target network and synthesise the training and
-    // held-out datasets. The target is purely the source of labels; it
-    // is not the NEAT seed.
-    const target = buildTargetNetwork(config.seed);
-    const trainingSet = generateDataset(
-      target,
-      config.trainingSize,
+    // Synthesise the training and held-out classification datasets.
+    // The training set is the full truth table; the held-out set is a
+    // separate seeded sample so accuracy reporting reflects a distinct
+    // draw (even though for parity the truth table is closed).
+    const trainingSet = generateClassificationDataset(
       config.seed ^ 0x1234_5678,
+      config.trainingSize,
     );
-    const heldOutSet = generateDataset(
-      target,
-      Math.max(32, Math.floor(config.trainingSize / 2)),
+    const heldOutSet = generateClassificationDataset(
       config.seed ^ 0x9abc_def0,
+      Math.max(TRUTH_TABLE_SIZE, config.trainingSize * 2),
     );
 
-    if (ownDataDir) writeBinaryDataset(trainingSet, dataDir);
+    if (ownDataDir) writeBinaryClassificationDataset(trainingSet, dataDir);
 
     // Seed = minimal direct-only creature. NEAT-AI random-initialises
     // weights and bias for direct input → output edges; no hidden
-    // neurons exist yet.
+    // neurons exist yet. This is a uniform-random noise seed — NO
+    // warm start, no hand-crafted topology, no pretrained champion.
     const creature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
 
     const rows: EvolutionRow[] = [];
@@ -389,19 +353,29 @@ export async function runAdaptiveMutationDemo(
     let solved = false;
 
     // Read live `creature.neurons` / `creature.synapses` arrays to
-    // capture mid-run topology growth (matches the pattern used by
-    // synthetic_synapse_example.ts and xor_classification.ts).
+    // capture mid-run topology growth.
     const countTopology = () => ({
       neurons: creature.neurons.length,
       synapses: creature.synapses.length,
     });
 
+    // Accuracy of the live creature against the training set; used at
+    // chunk boundaries so each row carries a measured accuracy.
+    const measureAccuracy = (): number => {
+      try {
+        return classifierAccuracy(creature, trainingSet);
+      } catch {
+        return Number.NaN;
+      }
+    };
+
     while (evolved < config.maxIterations) {
-      // Pre-chunk topology snapshot. NEAT-AI only updates the
-      // passed-in `creature` at the end of each evolveDir call, so the
-      // event handler reports these counts for every event inside the
-      // chunk; the next chunk re-reads after the await resolves.
+      // Pre-chunk topology + accuracy snapshot. NEAT-AI only updates
+      // the passed-in `creature` at the end of each evolveDir call, so
+      // the event handler reports these counts for every event inside
+      // the chunk; the next chunk re-reads after the await resolves.
       const segmentStart = countTopology();
+      const segmentAccuracy = measureAccuracy();
       const remaining = config.maxIterations - evolved;
       const chunkIterations = Math.min(TELEMETRY_CHUNK_ITERATIONS, remaining);
 
@@ -430,6 +404,7 @@ export async function runAdaptiveMutationDemo(
             generation: evolved + event.generation,
             bestFitness: event.bestFitness,
             meanFitness: event.averageFitness,
+            accuracy: segmentAccuracy,
             neuronCount: segmentStart.neurons,
             synapseCount: segmentStart.synapses,
           });
@@ -442,12 +417,16 @@ export async function runAdaptiveMutationDemo(
       lastError = result.error ?? lastError;
 
       // Post-chunk: emit one extra row capturing the **new** topology
-      // counts so the CSV/SVG charts pick up structural growth that
-      // landed during the chunk. Without this row a chunk-internal
-      // ADD_NODE / ADD_CONN would not appear until the next chunk's
-      // events.
+      // counts and the freshly-measured accuracy so the CSV/SVG charts
+      // pick up structural growth and accuracy gains that landed during
+      // the chunk.
       const post = countTopology();
-      if (post.neurons !== segmentStart.neurons || post.synapses !== segmentStart.synapses) {
+      const postAccuracy = measureAccuracy();
+      const grew = post.neurons !== segmentStart.neurons ||
+        post.synapses !== segmentStart.synapses;
+      const accuracyChanged = Number.isFinite(postAccuracy) &&
+        Number.isFinite(segmentAccuracy) && postAccuracy !== segmentAccuracy;
+      if (grew || accuracyChanged) {
         rows.push({
           generation: evolved,
           bestFitness: Number.isFinite(result.score)
@@ -456,6 +435,7 @@ export async function runAdaptiveMutationDemo(
           // No explicit mean-fitness available outside event payloads
           // — flag with NaN so renderers can skip cleanly.
           meanFitness: Number.NaN,
+          accuracy: postAccuracy,
           neuronCount: post.neurons,
           synapseCount: post.synapses,
         });
@@ -473,6 +453,7 @@ export async function runAdaptiveMutationDemo(
     return {
       champion: creature,
       evolutionRows: rows,
+      heldOutAccuracy: classifierAccuracy(creature, heldOutSet),
       heldOutScore: creatureHeldOutScore(creature, heldOutSet),
       wallClockMs: Date.now() - start,
       solved,
@@ -507,6 +488,7 @@ export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
         r.generation,
         formatCsvNumber(r.bestFitness),
         formatCsvNumber(r.meanFitness),
+        formatCsvNumber(r.accuracy),
         r.neuronCount,
         r.synapseCount,
       ].join(","),
@@ -518,7 +500,8 @@ export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🧬 Adaptive Mutation Rate Demo (issue #86, audited #212)");
+  console.log("🧬 Adaptive Mutation Rate Demo (issue #86, audited #212, rewired #263)");
+  console.log(`📚 Task: ${TASK_NAME}`);
   console.log("");
 
   const { dataDir, creaturesDir } = setupWorkingDirs(WORKING_ROOT);
@@ -527,14 +510,16 @@ if (import.meta.main) {
     "🌱 Building minimal NEAT-AI seed: " +
       `new Creature(${INPUT_COUNT}, ${OUTPUT_COUNT}) — no hidden hint, no warm start.`,
   );
-  console.log("📊 Generating synthetic dataset and writing binary .bin training set...");
+  console.log("📊 Generating classification dataset and writing binary .bin training set...");
 
   const config = DEFAULT_ADAPTIVE_MUTATION_CONFIG;
   // Pre-generate the binary dataset so the demo + downstream artefacts
   // share one file location.
-  const target = buildTargetNetwork(config.seed);
-  const trainingSet = generateDataset(target, config.trainingSize, config.seed ^ 0x1234_5678);
-  writeBinaryDataset(trainingSet, dataDir);
+  const trainingSet = generateClassificationDataset(
+    config.seed ^ 0x1234_5678,
+    config.trainingSize,
+  );
+  writeBinaryClassificationDataset(trainingSet, dataDir);
 
   console.log(
     `🧪 Running evolution from minimal seed ` +
@@ -549,6 +534,8 @@ if (import.meta.main) {
   );
   console.log(`   neurons (final): ${result.champion.neurons.length}`);
   console.log(`   synapses (final): ${result.champion.synapses.length}`);
+  console.log(`   training acc   : ${classifierAccuracy(result.champion, trainingSet).toFixed(4)}`);
+  console.log(`   held-out acc   : ${result.heldOutAccuracy.toFixed(4)}`);
   console.log(`   held-out score : ${result.heldOutScore.toPrecision(6)}`);
 
   // Headline SVG: combined topology + analytic policy curve.
@@ -593,6 +580,7 @@ if (import.meta.main) {
     console.log(
       `\n🏁 Final generation ${finalRow.generation}: ` +
         `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
+        `accuracy=${finalRow.accuracy.toFixed(4)}  ` +
         `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
     );
   }
