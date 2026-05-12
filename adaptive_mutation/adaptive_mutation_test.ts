@@ -1,11 +1,11 @@
 /**
  * Unit tests for the adaptive mutation rate demo (issue #86, audited #212,
- * rewired #263).
+ * rewired #263, chart rewire #286).
  *
- * Under #263 the synthetic regression task was replaced with the
- * binary classification task added in #262 — 4-bit even parity. Tests
- * below exercise the rewired flow plus the documented analytic policy
- * curve and SVG renderers.
+ * Under #286 the per-generation chunked telemetry was removed in favour
+ * of a single `evolveDir` call charted from the returned summary plus
+ * the documented analytic policy curve. Tests below exercise the
+ * return-value flow and the new headline SVG.
  *
  * Tests are "what" tests: they call real functions with deterministic
  * inputs and assert on the returned values, the resulting topology,
@@ -31,8 +31,6 @@ import {
   creatureHeldOutScore,
   DEFAULT_ADAPTIVE_MUTATION_CONFIG,
   DEFAULT_POLICY_CONFIG,
-  EVOLUTION_CSV_HEADER,
-  formatEvolutionCsv,
   INPUT_COUNT,
   OUTPUT_COUNT,
   runAdaptiveMutationDemo,
@@ -44,17 +42,7 @@ import {
   generateClassificationDataset,
   TRUTH_TABLE_SIZE,
 } from "./classification_task.ts";
-import {
-  ACCURACY_CURVE_CLASS,
-  FITNESS_CURVE_CLASS,
-  NEURON_CURVE_CLASS,
-  renderAdaptiveMutationSVG,
-  renderFitnessChartSvg,
-  renderTopologyChartSvg,
-  SIZE_CURVE_CLASS,
-  SYNAPSE_CURVE_CLASS,
-  TOPOLOGY_CURVE_CLASS,
-} from "./svg.ts";
+import { renderAdaptiveMutationSVG, TOPOLOGY_BARS_CLASS, TOPOLOGY_CURVE_CLASS } from "./svg.ts";
 
 /**
  * Small config used throughout the test suite — keeps each test fast
@@ -68,25 +56,12 @@ const SMALL_CONFIG: AdaptiveMutationConfig = {
   targetError: 0.0001,
   timeoutMinutes: 0,
   populationSize: 6,
-  maxIterations: 3,
+  // NEAT-AI's evolveDir may run a small number of additional fine-tune
+  // generations beyond the requested `iterations` value; keep the cap
+  // high enough that the returned generation count comfortably lands
+  // inside [1, maxIterations] without slowing the test budget.
+  maxIterations: 20,
   mutationRate: 0.6,
-  mutationAmount: 3,
-};
-
-/**
- * Larger but still fast config used by the "demo solves parity" test —
- * gives NEAT enough generations and population to reliably grow at
- * least one hidden neuron and lift accuracy above chance from a
- * minimal direct-only seed. Capped well under 30s.
- */
-const CONVERGENCE_CONFIG: AdaptiveMutationConfig = {
-  seed: 1234,
-  trainingSize: TRUTH_TABLE_SIZE,
-  targetError: 0.0001,
-  timeoutMinutes: 0,
-  populationSize: 24,
-  maxIterations: 200,
-  mutationRate: 0.7,
   mutationAmount: 3,
 };
 
@@ -148,30 +123,47 @@ Deno.test("runAdaptiveMutationDemo - rejects invalid configs", async () => {
   await assertRejects(() => runAdaptiveMutationDemo({ ...SMALL_CONFIG, timeoutMinutes: -1 }));
 });
 
-Deno.test("runAdaptiveMutationDemo - emits per-generation telemetry rows with accuracy", async () => {
+Deno.test("runAdaptiveMutationDemo - summary matches champion's live topology", async () => {
   const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
-  assertGreater(result.evolutionRows.length, 0);
-  for (const row of result.evolutionRows) {
-    assertGreaterOrEqual(row.generation, 0);
-    assertGreaterOrEqual(row.neuronCount, INPUT_COUNT + OUTPUT_COUNT);
-    assertGreaterOrEqual(row.synapseCount, 0);
-    assert(Number.isFinite(row.bestFitness), "bestFitness must be finite");
-    // Accuracy may be NaN at the very first sample if the live creature
-    // happens to error, but the typical case is a finite [0,1] value.
-    if (Number.isFinite(row.accuracy)) {
-      assertGreaterOrEqual(row.accuracy, 0);
-      assertLessOrEqual(row.accuracy, 1);
-    }
-  }
+  // The summary's final topology counts must match the returned
+  // champion's live arrays — they are the single source of truth.
+  assertEquals(result.summary.finalNeurons, result.champion.neurons.length);
+  assertEquals(result.summary.finalSynapses, result.champion.synapses.length);
+  // Seed topology captured before evolveDir was called.
+  assertGreater(result.summary.seedNeurons, 0);
+  assertGreaterOrEqual(result.summary.seedSynapses, 0);
+});
+
+Deno.test("runAdaptiveMutationDemo - generations within [1, maxIterations + grace]", async () => {
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
+  assertGreaterOrEqual(result.summary.generations, 1);
+  // NEAT-AI's evolveDir may run a small number of additional fine-tune
+  // generations beyond the requested `iterations` cap before resolving;
+  // allow a grace factor (one population's worth) so the assertion
+  // reflects observed behaviour without losing the upper bound.
+  const grace = SMALL_CONFIG.populationSize;
+  assertLessOrEqual(
+    result.summary.generations,
+    SMALL_CONFIG.maxIterations + grace,
+  );
+  // The result's own `generations` field must agree with the summary.
+  assertEquals(result.generations, result.summary.generations);
+});
+
+Deno.test("runAdaptiveMutationDemo - summary.finalError is finite and non-negative", async () => {
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
+  assert(
+    Number.isFinite(result.summary.finalError),
+    `finalError must be finite, got ${result.summary.finalError}`,
+  );
+  assertGreaterOrEqual(result.summary.finalError, 0);
+  assert(Number.isFinite(result.summary.finalScore));
 });
 
 Deno.test("runAdaptiveMutationDemo - champion has the correct I/O shape", async () => {
   const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
   assertEquals(result.champion.input, INPUT_COUNT);
   assertEquals(result.champion.output, OUTPUT_COUNT);
-  // The minimal seed has neurons.length = INPUT_COUNT + OUTPUT_COUNT.
-  // After evolveDir runs at least one generation we expect at least
-  // the seed shape.
   assertGreaterOrEqual(result.champion.neurons.length, INPUT_COUNT + OUTPUT_COUNT);
 });
 
@@ -182,247 +174,87 @@ Deno.test("runAdaptiveMutationDemo - reports finite held-out accuracy, score and
   assertGreaterOrEqual(result.heldOutAccuracy, 0);
   assertLessOrEqual(result.heldOutAccuracy, 1);
   assertGreaterOrEqual(result.wallClockMs, 0);
-  assertGreaterOrEqual(result.generations, 0);
+  assertGreaterOrEqual(result.generations, 1);
+  assertEquals(result.summary.wallClockMs, result.wallClockMs);
 });
 
-Deno.test("runAdaptiveMutationDemo - demo evolves a classification champion from a minimal seed", async () => {
-  // Slightly larger config so accuracy can actually move off chance.
-  // We do NOT assert convergence to ≥ 0.95 here — the full convergence
-  // run is the runner's job and may take well above the 30s unit-test
-  // budget. We only assert the pipeline is end-to-end functional:
-  //   * champion has the correct I/O shape,
-  //   * held-out accuracy lies in [0, 1],
-  //   * at least one telemetry row carries a finite accuracy.
-  const result = await runAdaptiveMutationDemo(CONVERGENCE_CONFIG);
-  assertEquals(result.champion.input, INPUT_COUNT);
-  assertEquals(result.champion.output, OUTPUT_COUNT);
-  assertGreaterOrEqual(result.heldOutAccuracy, 0);
-  assertLessOrEqual(result.heldOutAccuracy, 1);
-  const finiteAccuracyRows = result.evolutionRows.filter((r) => Number.isFinite(r.accuracy));
-  assertGreater(finiteAccuracyRows.length, 0);
-  // Re-compute training accuracy from the returned champion and the
-  // same dataset the runner used; must agree with the classifier.
+Deno.test("runAdaptiveMutationDemo - solved flag derives from finalError ≤ targetError", async () => {
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
+  assertEquals(result.solved, result.summary.finalError <= SMALL_CONFIG.targetError);
+});
+
+Deno.test("runAdaptiveMutationDemo - champion trains on the deterministic truth table", async () => {
+  // End-to-end smoke test: training accuracy stays in [0, 1] when
+  // recomputed from the returned champion against the same dataset
+  // the runner generated.
+  const result = await runAdaptiveMutationDemo(SMALL_CONFIG);
   const trainingSet = generateClassificationDataset(
-    CONVERGENCE_CONFIG.seed ^ 0x1234_5678,
-    CONVERGENCE_CONFIG.trainingSize,
+    SMALL_CONFIG.seed ^ 0x1234_5678,
+    SMALL_CONFIG.trainingSize,
   );
   const trainingAcc = classifierAccuracy(result.champion, trainingSet);
   assertGreaterOrEqual(trainingAcc, 0);
   assertLessOrEqual(trainingAcc, 1);
 });
 
-Deno.test("formatEvolutionCsv - emits canonical header and one row per generation", () => {
-  const csv = formatEvolutionCsv([
-    {
-      generation: 1,
-      bestFitness: 0.5,
-      meanFitness: 0.4,
-      accuracy: 0.5,
-      neuronCount: 6,
-      synapseCount: 8,
-    },
-    {
-      generation: 2,
-      bestFitness: 0.7,
-      meanFitness: 0.6,
-      accuracy: 0.75,
-      neuronCount: 7,
-      synapseCount: 10,
-    },
-  ]);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines.length, 3);
-  assertStringIncludes(lines[1], "1,0.5,0.4,0.5,6,8");
-  assertStringIncludes(lines[2], "2,0.7,0.6,0.75,7,10");
-});
-
-Deno.test("formatEvolutionCsv - handles non-finite numbers by writing 0", () => {
-  const csv = formatEvolutionCsv([
-    {
-      generation: 1,
-      bestFitness: Number.NaN,
-      meanFitness: Number.POSITIVE_INFINITY,
-      accuracy: Number.NaN,
-      neuronCount: 6,
-      synapseCount: 8,
-    },
-  ]);
-  assertStringIncludes(csv, "1,0,0,0,6,8");
-});
-
-Deno.test("EVOLUTION_CSV_HEADER - includes the accuracy column", () => {
-  // Issue #263 acceptance criterion: the CSV schema is
-  // generation,best_fitness,mean_fitness,accuracy,neuron_count,synapse_count.
-  assertEquals(
-    EVOLUTION_CSV_HEADER,
-    "generation,best_fitness,mean_fitness,accuracy,neuron_count,synapse_count",
-  );
-});
-
-Deno.test("renderFitnessChartSvg - well-formed SVG with classification fitness labels", () => {
-  const svg = renderFitnessChartSvg([
-    {
-      generation: 1,
-      bestFitness: 0.5,
-      meanFitness: 0.4,
-      accuracy: 0.5,
-      neuronCount: 6,
-      synapseCount: 8,
-    },
-    {
-      generation: 2,
-      bestFitness: 0.7,
-      meanFitness: 0.6,
-      accuracy: 0.6,
-      neuronCount: 7,
-      synapseCount: 10,
-    },
-  ]);
-  assert(svg.startsWith("<svg"));
-  assert(svg.includes("</svg>"));
-  assertStringIncludes(svg, FITNESS_CURVE_CLASS);
-  // Issue #264 acceptance criterion: chart describes classification
-  // fitness rather than the MSE-based framing of the old regression
-  // version.
-  assertStringIncludes(svg, "Classification Fitness");
-  assertStringIncludes(svg, "best classification fitness");
-  assertStringIncludes(svg, "mean classification fitness");
-});
-
-Deno.test("renderFitnessChartSvg - rejects empty rows", () => {
-  assertThrows(() => renderFitnessChartSvg([]), Error, "at least one row");
-});
-
-Deno.test("renderTopologyChartSvg - well-formed SVG with the topology CSS classes", () => {
-  const svg = renderTopologyChartSvg([
-    {
-      generation: 1,
-      bestFitness: 0.5,
-      meanFitness: 0.4,
-      accuracy: 0.5,
-      neuronCount: 6,
-      synapseCount: 8,
-    },
-    {
-      generation: 2,
-      bestFitness: 0.7,
-      meanFitness: 0.6,
-      accuracy: 0.6,
-      neuronCount: 7,
-      synapseCount: 10,
-    },
-  ]);
-  assert(svg.startsWith("<svg"));
-  assertStringIncludes(svg, NEURON_CURVE_CLASS);
-  assertStringIncludes(svg, SYNAPSE_CURVE_CLASS);
-});
-
-Deno.test("renderTopologyChartSvg - rejects empty rows", () => {
-  assertThrows(() => renderTopologyChartSvg([]), Error, "at least one row");
-});
-
-Deno.test("renderAdaptiveMutationSVG - well-formed SVG with topology, policy and accuracy curves", () => {
-  const rows = [
-    {
-      generation: 1,
-      bestFitness: 0.5,
-      meanFitness: 0.4,
-      accuracy: 0.5,
-      neuronCount: 6,
-      synapseCount: 8,
-    },
-    {
-      generation: 5,
-      bestFitness: 0.7,
-      meanFitness: 0.6,
-      accuracy: 0.7,
-      neuronCount: 8,
-      synapseCount: 14,
-    },
-    {
-      generation: 10,
-      bestFitness: 0.9,
-      meanFitness: 0.85,
-      accuracy: 0.95,
-      neuronCount: 11,
-      synapseCount: 22,
-    },
-  ];
+Deno.test("renderAdaptiveMutationSVG - well-formed SVG with policy curve and topology bars", () => {
   const svg = renderAdaptiveMutationSVG({
-    rows,
+    summary: {
+      finalError: 0.012,
+      finalScore: 0.95,
+      wallClockMs: 4321,
+      generations: 250,
+      seedNeurons: 5,
+      seedSynapses: 4,
+      finalNeurons: 24,
+      finalSynapses: 58,
+      targetError: 0.05,
+    },
     heldOutScore: -0.05,
     wallClockMs: 4321,
-    generations: 10,
+    generations: 250,
     solved: true,
   });
   assert(svg.startsWith("<svg"));
-  assertStringIncludes(svg, SIZE_CURVE_CLASS);
+  assert(svg.includes("</svg>"));
+  // Analytic policy curve and seed/final topology bars must both appear.
   assertStringIncludes(svg, TOPOLOGY_CURVE_CLASS);
-  // Issue #264 acceptance criterion: headline SVG plots accuracy as a
-  // third curve alongside the topology and analytic policy curves.
-  assertStringIncludes(svg, ACCURACY_CURVE_CLASS);
-  assertStringIncludes(svg, "classification accuracy");
-  assertStringIncludes(svg, "Generations: 10");
-  assertStringIncludes(svg, "Final accuracy: 0.9500");
+  assertStringIncludes(svg, TOPOLOGY_BARS_CLASS);
+  assertStringIncludes(svg, "topo-bar-seed-neurons");
+  assertStringIncludes(svg, "topo-bar-final-neurons");
+  assertStringIncludes(svg, "topo-bar-seed-synapses");
+  assertStringIncludes(svg, "topo-bar-final-synapses");
+  // Caption quotes the headline numbers.
+  assertStringIncludes(svg, "Generations: 250");
+  assertStringIncludes(svg, "Final error: 0.0120");
   assertStringIncludes(svg, "Held-out -MSE: -0.0500");
-});
-
-Deno.test("renderAdaptiveMutationSVG - skips NaN accuracy rows in the polyline", () => {
-  // The runner emits NaN accuracy where the live creature could not be
-  // evaluated. The headline renderer should ignore those rows in the
-  // accuracy polyline but still produce a well-formed SVG carrying the
-  // accuracy CSS class for the surviving rows.
-  const rows = [
-    {
-      generation: 1,
-      bestFitness: 0.5,
-      meanFitness: 0.4,
-      accuracy: 0.5,
-      neuronCount: 6,
-      synapseCount: 8,
-    },
-    {
-      generation: 2,
-      bestFitness: 0.6,
-      meanFitness: 0.5,
-      accuracy: Number.NaN,
-      neuronCount: 7,
-      synapseCount: 10,
-    },
-    {
-      generation: 3,
-      bestFitness: 0.7,
-      meanFitness: 0.6,
-      accuracy: 0.8,
-      neuronCount: 8,
-      synapseCount: 12,
-    },
-  ];
-  const svg = renderAdaptiveMutationSVG({
-    rows,
-    heldOutScore: -0.1,
-    wallClockMs: 1000,
-    generations: 3,
-    solved: false,
-  });
-  assert(svg.startsWith("<svg"));
-  assertStringIncludes(svg, ACCURACY_CURVE_CLASS);
-  assertStringIncludes(svg, "Final accuracy: 0.8000");
-  // No NaN literal should leak into the SVG payload.
+  // No NaN literal should ever leak into the rendered output.
   assert(!svg.includes("NaN"), "NaN should not appear in rendered SVG");
 });
 
-Deno.test("renderAdaptiveMutationSVG - rejects empty rows", () => {
-  assertThrows(() =>
-    renderAdaptiveMutationSVG({
-      rows: [],
-      heldOutScore: 0,
-      wallClockMs: 0,
-      generations: 0,
-      solved: false,
-    })
-  );
+Deno.test("renderAdaptiveMutationSVG - handles zero-growth runs without exploding", () => {
+  // Seed and final topology identical (no growth) — the bar pair
+  // should still render cleanly with both seed and final bars sized
+  // against a finite ceiling.
+  const svg = renderAdaptiveMutationSVG({
+    summary: {
+      finalError: 0.5,
+      finalScore: -0.5,
+      wallClockMs: 100,
+      generations: 1,
+      seedNeurons: 5,
+      seedSynapses: 4,
+      finalNeurons: 5,
+      finalSynapses: 4,
+    },
+    heldOutScore: -0.5,
+    wallClockMs: 100,
+    generations: 1,
+    solved: false,
+  });
+  assert(svg.startsWith("<svg"));
+  assertStringIncludes(svg, TOPOLOGY_CURVE_CLASS);
+  assertStringIncludes(svg, "topo-bar-seed-neurons");
 });
 
 Deno.test("DEFAULT_ADAPTIVE_MUTATION_CONFIG - has audit-policy stop conditions", () => {

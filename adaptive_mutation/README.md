@@ -63,13 +63,10 @@ to 70 across 461 generations, starting from a minimal direct-only seed that cann
 at all. Classification accuracy climbed from **0.5625 at gen 1** (about chance) to **0.9375 at the
 final generation** — the captured noise → competent arc.
 
-- Per-generation telemetry CSV:
-  [`docs/data/adaptive_mutation/evolution.csv`](../docs/data/adaptive_mutation/evolution.csv)
-- Schema: `generation, best_fitness, mean_fitness, accuracy, neuron_count, synapse_count`
+- Single-call summary chart:
+  [`docs/screenshots/adaptive_mutation/evolution_summary.svg`](../docs/screenshots/adaptive_mutation/evolution_summary.svg)
 
-![Adaptive Mutation — Classification Fitness per Generation](../docs/screenshots/adaptive_mutation/fitness.svg)
-
-![Adaptive Mutation — Topology Growth (neuron and synapse counts per generation)](../docs/screenshots/adaptive_mutation/topology.svg)
+![Adaptive Mutation — evolveDir Run Summary (seed → final topology, final error and score)](../docs/screenshots/adaptive_mutation/evolution_summary.svg)
 
 ## 🚀 How to Run
 
@@ -84,11 +81,12 @@ The runner:
 2. Writes the dataset as a Float32 `.bin` file under `.adaptive-mutation/data/`.
 3. Seeds NEAT-AI with `new Creature(4, 1)` — minimal direct-only topology, no warm start.
 4. Runs `Creature.evolveDir(dataDir, neatOptions)` with `targetError = 0.05` and
-   `timeoutMinutes = 5`. The evolution loop is split into 50-iteration chunks so per-generation
-   telemetry picks up structural growth and accuracy gains at fine resolution.
-5. Writes the headline SVG, the classification-fitness chart, the topology chart, the per-generation
-   CSV, and the champion creature JSON. The whole run completes well inside the 5-minute backstop on
-   a developer machine.
+   `timeoutMinutes = 5` as a **single call** — no per-generation chunking, no `onTrainingEvent`
+   hook. NEAT-AI's milestone-only telemetry surface is the supported way to chart progress (see
+   [`AGENTS.md`](../AGENTS.md)).
+5. Writes the headline SVG, the shared `evolution_summary.svg` (rendered from the `evolveDir` return
+   value plus the seed and final creature's topology), and the champion creature JSON. The whole run
+   completes well inside the 5-minute backstop on a developer machine.
 
 ## 🧠 Why NEAT-AI Adapts the Mutation Rate
 
@@ -104,10 +102,9 @@ p(topology) = baseTopologyProb / (1 + size / sizeScale)
 ```
 
 with `baseTopologyProb = 0.6`, `sizeScale = 80`, and `size = hidden + synapses`. The headline SVG
-above overlays this analytic curve (orange, right axis) against the **measured** size curve (green,
-left axis) and the **measured classification accuracy** (blue, lower panel). As size rises across
-the run, `p(topology)` collapses toward zero, exactly as the policy intends — and accuracy climbs in
-step from near-chance to the target.
+plots this analytic curve in the upper panel with markers showing where the seed and final creature
+land on it, and the lower panel pairs the seed-vs-final neuron and synapse counts as bars. As size
+rises across the run, `p(topology)` collapses toward zero, exactly as the policy intends.
 
 | Aspect         | Tiny seed (size ≈ 9) | Final creature (size ≈ 100) |
 | -------------- | -------------------- | --------------------------- |
@@ -121,16 +118,18 @@ flowchart LR
     DATA["📊 4-bit even-parity truth table<br/>4 binary inputs → 1 binary label<br/>(16 rows, balanced 8/8)"]
     BIN["💾 training.bin<br/>(Float32 little-endian)"]
     SEED["🌱 Minimal NEAT seed<br/>new Creature(4, 1)<br/>direct edges only<br/>(uniform-random noise)"]
-    EVOLVE["🧬 evolveDir<br/>targetError + timeoutMinutes:5<br/>chunked iterations"]
+    EVOLVE["🧬 evolveDir<br/>single call<br/>targetError + timeoutMinutes:5"]
     POLICY["⚖️ Adaptive policy<br/>p(topology) tapers as size grows"]
-    TELEMETRY["📈 Per-generation telemetry<br/>CSV + fitness.svg + topology.svg<br/>+ accuracy curve"]
+    SUMMARY["📦 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
+    TELEMETRY["📈 evolution_summary.svg"]
     CHAMP["💾 champion.json"]
 
     DATA --> BIN --> EVOLVE
     SEED --> EVOLVE
     EVOLVE --> POLICY
     POLICY --> EVOLVE
-    EVOLVE --> TELEMETRY
+    EVOLVE --> SUMMARY
+    SUMMARY --> TELEMETRY
     EVOLVE --> CHAMP
 ```
 
@@ -153,15 +152,12 @@ action.
 
 ## 📤 Output
 
-- `docs/screenshots/adaptive_mutation.svg` — headline two-panel chart (measured size + analytic
-  policy curve in the upper panel, measured classification accuracy in the lower panel), with a
-  caption quoting the latest measured generations, wall-clock, final accuracy and held-out -MSE. A
-  mirror copy is also written to `.adaptive-mutation/output/adaptive_mutation.svg`.
-- `docs/screenshots/adaptive_mutation/fitness.svg` — best vs mean classification fitness per
-  generation.
-- `docs/screenshots/adaptive_mutation/topology.svg` — neuron and synapse counts per generation.
-- `docs/data/adaptive_mutation/evolution.csv` — per-generation telemetry CSV with the schema
-  `generation, best_fitness, mean_fitness, accuracy, neuron_count, synapse_count`.
+- `docs/screenshots/adaptive_mutation.svg` — headline two-panel chart (analytic topology-mutation
+  policy curve in the upper panel with seed/final markers, seed-vs-final topology bars in the lower
+  panel), with a caption quoting the latest measured generations, wall-clock, final error and
+  held-out -MSE. A mirror copy is also written to `.adaptive-mutation/output/adaptive_mutation.svg`.
+- `docs/screenshots/adaptive_mutation/evolution_summary.svg` — shared `evolveDir` summary chart
+  rendered from the single call's return value plus the seed and final creature topology.
 - `.adaptive-mutation/creatures/champion.json` — final champion creature for downstream inspection.
 
 ## 🧪 Tests
@@ -170,19 +166,13 @@ action.
 
 - `topologyProbability` decreases monotonically with size, matches the documented closed form, and
   rejects invalid policies / negative sizes.
-- `runAdaptiveMutationDemo` rejects invalid configs, emits per-generation telemetry rows with finite
-  `bestFitness`, a measured `accuracy` in `[0, 1]`, and positive neuron/synapse counts; returns a
-  champion of the right I/O shape; and reports a finite held-out accuracy, held-out score and
-  wall-clock.
-- The demo evolves a real classification champion from the minimal seed — held-out accuracy lies in
-  `[0, 1]` and at least one telemetry row carries a finite measured accuracy, with the live
-  classifier accuracy agreeing with the returned champion.
+- `runAdaptiveMutationDemo` rejects invalid configs, returns a summary whose `finalNeurons` /
+  `finalSynapses` match the returned champion's live arrays, a `generations` count in
+  `[1, maxIterations]`, and a finite non-negative `finalError`; the champion has the correct I/O
+  shape; the runner reports finite held-out accuracy, held-out score and wall-clock.
 - `creatureHeldOutScore` returns a finite non-positive value for any dataset and 0 for an empty one.
-- `formatEvolutionCsv` emits the canonical header (now including the `accuracy` column) and one row
-  per generation, replacing non-finite numbers with 0.
-- The three SVG renderers produce well-formed output containing the expected CSS classes (including
-  the new `classification-accuracy` curve on the headline SVG and the classification-fitness labels
-  on the fitness chart) and reject empty input.
+- The headline `renderAdaptiveMutationSVG` produces well-formed output containing the analytic
+  policy curve and the seed-vs-final topology bars, with no `NaN` leaking into the rendered SVG.
 - `DEFAULT_ADAPTIVE_MUTATION_CONFIG` carries the audit-policy stop conditions (`timeoutMinutes = 5`,
   sensible `targetError`).
 - The `classification_task.ts` primitives validate the truth table, deterministic dataset

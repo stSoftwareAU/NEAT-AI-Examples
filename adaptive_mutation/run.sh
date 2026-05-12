@@ -35,11 +35,8 @@ deno run \
 if [[ -f "docs/screenshots/adaptive_mutation.svg" ]]; then
   deno fmt docs/screenshots/adaptive_mutation.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/adaptive_mutation/fitness.svg" ]]; then
-  deno fmt docs/screenshots/adaptive_mutation/fitness.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/adaptive_mutation/topology.svg" ]]; then
-  deno fmt docs/screenshots/adaptive_mutation/topology.svg > /dev/null
+if [[ -f "docs/screenshots/adaptive_mutation/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/adaptive_mutation/evolution_summary.svg > /dev/null
 fi
 if [[ -f ".adaptive-mutation/output/adaptive_mutation.svg" ]]; then
   deno fmt .adaptive-mutation/output/adaptive_mutation.svg > /dev/null
