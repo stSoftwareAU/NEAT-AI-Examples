@@ -159,6 +159,7 @@ reinventing equivalent logic in a new example.
 | `common/large_creature.ts`         | Deterministic large creatures (~10k synapses) for size demos. |
 | `common/episode_runner.ts`         | Shared per-episode rollout loop for agent examples.           |
 | `common/outcome_bar_chart.ts`      | Per-scenario outcome bar chart (count panel + cell strip).    |
+| `common/milestone_chart.ts`        | Dual-axis SVG renderer for `evolveRL()` milestone statistics. |
 
 ### `common/data_cache.ts`
 
@@ -260,6 +261,8 @@ common/
   episode_runner_test.ts           — Unit tests for the episode runner helper
   outcome_bar_chart.ts             — Per-scenario outcome bar chart (count panel + cell strip)
   outcome_bar_chart_test.ts        — Unit tests for the outcome bar chart renderer
+  milestone_chart.ts               — Dual-axis SVG renderer for evolveRL() milestone statistics
+  milestone_chart_test.ts          — Unit tests for the milestone chart renderer
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
