@@ -30,9 +30,10 @@ unchanged. They add maintenance cost without catching real bugs.
 ## 🌱 No warm starts — evolution must start from random noise
 
 Every in-scope example in this repository starts evolution from **uniform-random noise**. That is
-the whole point of these demos: gen 1 is barely better than chance, and the captured checkpoint
-snapshots show the network climbing from there to a competent solution. Telling the noise →
-competent story is non-negotiable for an in-scope example — without it the demo loses its narrative.
+the whole point of these demos: gen 1 is barely better than chance, and the captured milestones
+(typically generations 1, 10, 100, 1000, and 10000) show the network climbing from there to a
+competent solution. Telling the noise → competent story is non-negotiable for an in-scope example —
+without it the demo loses its narrative.
 
 ### What counts as a warm start
 
@@ -48,7 +49,10 @@ Any of the following disqualifies the first generation as "random noise":
 
 Gen 1 is little better than noise; the example evolves to a competent solution from there. The
 captured milestones (typically generations 1, 10, 100, 1000, and 10000) are the demo — they show the
-network growing structure and finding weights as evolution progresses.
+network growing structure and finding weights as evolution progresses. Milestones — surfaced via the
+return value of `evolveDir` and the `evolverl_milestone` events emitted by `evolveRL` / `evolveEnv`
+— are the supported telemetry surface; see
+[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the decision record.
 
 ### In-scope examples (must start from random noise)
 
@@ -147,19 +151,17 @@ programs. See [README.md](README.md#-quality-check) for full details.
 The `common/` directory holds helpers that every example may reuse. Reach for these before
 reinventing equivalent logic in a new example.
 
-| Module                             | Purpose                                                       |
-| ---------------------------------- | ------------------------------------------------------------- |
-| `common/deterministic_random.ts`   | Seeded PRNG for reproducible data generation.                 |
-| `common/synthetic_data.ts`         | Synthetic dataset generation and scoring.                     |
-| `common/working_dirs.ts`           | Standard hidden working-directory layout for examples.        |
-| `common/data_cache.ts`             | Download datasets into hidden directories with on-disk cache. |
-| `common/evolution_chart.ts`        | Dual-axis SVG renderer for NEAT evolution histories.          |
-| `common/evolution_snapshot.ts`     | Capture creature state at checkpoint generations.             |
-| `common/evolution_progress_svg.ts` | Multi-panel animated SVG strip rendered from snapshots.       |
-| `common/large_creature.ts`         | Deterministic large creatures (~10k synapses) for size demos. |
-| `common/episode_runner.ts`         | Shared per-episode rollout loop for agent examples.           |
-| `common/outcome_bar_chart.ts`      | Per-scenario outcome bar chart (count panel + cell strip).    |
-| `common/milestone_chart.ts`        | Dual-axis SVG renderer for `evolveRL()` milestone statistics. |
+| Module                           | Purpose                                                                                                                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common/deterministic_random.ts` | Seeded PRNG for reproducible data generation.                                                                                                                             |
+| `common/synthetic_data.ts`       | Synthetic dataset generation and scoring.                                                                                                                                 |
+| `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.                                                                                                                    |
+| `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache.                                                                                                             |
+| `common/evolve_dir_summary.ts`   | Summarise the milestone stats returned by `evolveDir` (from [#284](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/284)).                                         |
+| `common/large_creature.ts`       | Deterministic large creatures (~10k synapses) for size demos.                                                                                                             |
+| `common/episode_runner.ts`       | Shared per-episode rollout loop for agent examples.                                                                                                                       |
+| `common/outcome_bar_chart.ts`    | Per-scenario outcome bar chart (count panel + cell strip).                                                                                                                |
+| `common/milestone_chart.ts`      | Dual-axis SVG renderer for milestone statistics from `evolveDir` and `evolveRL` / `evolveEnv` (from [#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)). |
 
 ### `common/data_cache.ts`
 
@@ -191,51 +193,23 @@ Behaviour:
 
 The helper relies on Deno's built-in `fetch` and `crypto.subtle` — no extra dependencies are added.
 
-### `common/evolution_snapshot.ts`
+### Milestone telemetry helpers
 
-`captureSnapshot(config, generation, creature, score, sampleOutputs?)` writes a snapshot file when
-`generation` matches one of `config.checkpoints` (default `[1, 10, 100, 1000, 10000]`).
-`loadSnapshots(outputDir)` reads them back, sorted by generation. Snapshots are byte-deterministic —
-no timestamps, no run-specific paths — so reruns with the same seed produce identical files.
+NEAT-AI does not expose telemetry on every generation — examples chart only the milestone statistics
+returned by `evolveDir` or emitted by `evolveRL` / `evolveEnv`. Reach for these helpers when an
+example needs to report or visualise progress:
 
-```ts
-import { captureSnapshot, DEFAULT_CHECKPOINTS } from "../common/evolution_snapshot.ts";
+- [`common/evolve_dir_summary.ts`](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/284) —
+  summarise the milestone stats returned by `evolveDir` (final score, milestone generations,
+  wall-clock time) into a deterministic JSON record an example can write next to its other
+  artefacts.
+- [`common/milestone_chart.ts`](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287) —
+  dual-axis SVG renderer for the same milestone stream (left axis: best score, mean episode steps;
+  right axis: best-creature neuron and synapse counts), with an optional log-X mapping for the wide
+  dynamic range typical of evolutionary runs.
 
-const config = {
-  checkpoints: [...DEFAULT_CHECKPOINTS],
-  outputDir: ".synthetic-xor/snapshots",
-};
-
-for (let gen = 1; gen <= 10000; gen++) {
-  captureSnapshot(config, gen, champion.exportJSON(), score, samples);
-}
-```
-
-### `common/evolution_progress_svg.ts`
-
-`renderEvolutionProgressSvg(snapshots, opts?)` consumes the snapshots loaded via
-`loadSnapshots(...)` and returns a single multi-panel animated SVG string showing how the network
-and its score evolved across the captured generations. Each panel displays a small topology diagram,
-the generation label (e.g. "Gen 1", "Gen 10000"), and the score formatted to a configurable
-precision (default three decimals). A score-progression polyline links the panels, and SMIL
-`<animate>` elements pulse each panel's background colour in sequence so the eye is led from the
-first generation through to the last. Output is byte-deterministic for identical inputs — no
-external dependencies are added.
-
-```ts
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
-
-const snaps = loadSnapshots(".synthetic-xor/snapshots");
-const svg = renderEvolutionProgressSvg(snaps, {
-  caption: {
-    finalScore: snaps[snaps.length - 1].score,
-    totalGenerations: 10000,
-    wallClockMs: 65_000,
-  },
-});
-await Deno.writeTextFile(".synthetic-xor/evolution_progress.svg", svg);
-```
+See [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the canonical decision
+record on the milestone-only telemetry surface.
 
 ## 📂 Project Structure
 
@@ -249,12 +223,6 @@ common/
   working_dirs_test.ts             — Unit tests for directory setup
   data_cache.ts                    — Hidden-directory dataset download with on-disk cache
   data_cache_test.ts               — Unit tests for the dataset cache
-  evolution_chart.ts               — Dual-axis SVG renderer for NEAT evolution histories
-  evolution_chart_test.ts          — Unit tests for the evolution chart renderer
-  evolution_snapshot.ts            — Capture creature state at checkpoint generations
-  evolution_snapshot_test.ts       — Unit tests for the evolution snapshot helper
-  evolution_progress_svg.ts        — Multi-panel animated SVG strip rendered from snapshots
-  evolution_progress_svg_test.ts   — Unit tests for the evolution-progress renderer
   large_creature.ts                — Deterministic large creature builder for size-adaptive demos
   large_creature_test.ts           — Unit tests for the large creature builder
   episode_runner.ts                — Shared per-episode rollout loop for agent examples
