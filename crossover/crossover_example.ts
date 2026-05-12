@@ -1,12 +1,15 @@
 /**
- * Crossover (Breeding) Example — minimal-seed evolution + measured telemetry (issue #213).
+ * Crossover (Breeding) Example — minimal-seed evolution + milestone summary
+ * (issue #213, telemetry simplified under #302).
  *
  * The original demo bred two hand-crafted parents into an offspring and then
- * "evolved" the offspring for a handful of generations. The audit (#213)
- * keeps the parent-based crossover demo (parents are exempt hand-crafted
- * state under `AGENTS.md` — they are the demo's whole point), but replaces
- * the post-crossover evolution with a **minimal-seed** `evolveDir` run so
- * the published evolution genuinely *learns* the network structure.
+ * "evolved" the offspring for a handful of generations. Under #213 the
+ * post-crossover evolution was replaced by a minimal-seed `evolveDir`
+ * run; under #302 the per-generation telemetry hook was removed in
+ * favour of NEAT-AI's supported milestone-only telemetry surface. The
+ * demo now makes a single `Creature.evolveDir(...)` call and charts the
+ * run from its return value plus the final creature's topology via the
+ * shared {@link renderEvolveDirSummarySvg} helper.
  *
  *   1. Hand-crafted parent A and parent B remain — that is the breeding
  *      demo. Parent A also acts as the **label oracle** for the binary
@@ -21,10 +24,8 @@
  *      `Creature.evolveDir(dataDir, options)` over the binary `.bin`
  *      training set in forward-only mode until either the per-example
  *      `targetError` is reached or the `timeoutMinutes: 5` backstop fires.
- *   4. Per-generation telemetry (best/mean fitness + neuron / synapse
- *      counts) is captured via `onTrainingEvent` and emitted as a CSV plus
- *      two SVG charts so the README can quote the *measured* numbers from
- *      the latest run only.
+ *   4. The run is summarised via a single milestone SVG sourced from the
+ *      `evolveDir` return value plus the seed / final creature topology.
  */
 
 import { format } from "@std/fmt/duration";
@@ -33,8 +34,7 @@ import { join } from "@std/path";
 import { Creature, CreatureUtil, type NeatOptions, safeWriteJson } from "@stsoftware/neat-ai";
 import { addTag } from "@stsoftware/tags/mod";
 
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
   generateSyntheticData,
   scoreCreature,
@@ -64,18 +64,8 @@ export const INPUT_COUNT = 3;
 /** Number of output neurons fed to the NEAT-AI seed (matches both parents). */
 export const OUTPUT_COUNT = 1;
 
-/** Per-generation evolution-telemetry CSV path. */
-export const EVOLUTION_CSV_PATH = "docs/data/crossover/evolution.csv";
-
-/** CSV header — schema mandated by issue #213. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path. */
-export const FITNESS_SVG_PATH = "docs/screenshots/crossover/fitness.svg";
-
-/** Neuron / synapse count chart path. */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/crossover/topology.svg";
+/** Milestone summary SVG path — sourced from the `evolveDir` return value. */
+export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/crossover/evolution_summary.svg";
 
 /** Configuration for the synthetic training-data generation. */
 export const SYNTHETIC_CONFIG: SyntheticConfig = {
@@ -106,8 +96,7 @@ export interface CrossoverEvolutionConfig {
  * `targetError` is deliberately tighter than what a direct-input → output
  * seed can reach for parent A's nonlinear sigmoid-of-sigmoids function,
  * so NEAT-AI is forced to grow hidden structure to satisfy the stop
- * condition — otherwise the topology chart would flatline (acceptance
- * criterion in issue #213).
+ * condition.
  */
 export const DEFAULT_CROSSOVER_EVOLUTION_CONFIG: CrossoverEvolutionConfig = {
   targetError: 0.02,
@@ -117,26 +106,12 @@ export const DEFAULT_CROSSOVER_EVOLUTION_CONFIG: CrossoverEvolutionConfig = {
   seed: 213213,
 };
 
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  /** 1-based generation index across the run. */
-  generation: number;
-  /** Best fitness observed in this generation. */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
-}
-
 /** Result of {@link runMinimalSeedEvolution}. */
 export interface CrossoverEvolutionResult {
   /** The best creature found by `evolveDir`. */
   champion: Creature;
-  /** Per-generation telemetry rows captured during the run. */
-  rows: EvolutionRow[];
+  /** Milestone summary captured from the single `evolveDir` call. */
+  summary: EvolveDirSummary;
   /** Total wall-clock time of the evolution call, in milliseconds. */
   wallClockMs: number;
   /** Final per-record error returned by `evolveDir`. */
@@ -147,6 +122,8 @@ export interface CrossoverEvolutionResult {
   seedNeuronCount: number;
   /** Initial synapse count of the minimal seed (before evolution). */
   seedSynapseCount: number;
+  /** True when the run reached `targetError`. */
+  solved: boolean;
 }
 
 /**
@@ -171,7 +148,7 @@ export function createParentA(): Creature {
       // this makes the resulting function non-approximable by a single
       // direct input → output sigmoid, which forces NEAT-AI's
       // minimal-seed evolution to add hidden structure to fit the
-      // labels (audit #213 acceptance criterion).
+      // labels.
       {
         type: "hidden",
         squash: "TANH",
@@ -479,41 +456,10 @@ export function performCrossover(
   }
 }
 
-/** Format a finite number for CSV emission with trimmed trailing zeros. */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry rows as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-/**
- * Iterations per `evolveDir` chunk. Chunking the run keeps the
- * per-generation telemetry chart in step with topology mutations: the
- * passed-in `creature` reference is only updated at the end of each
- * `evolveDir` call, so smaller chunks make the neuron / synapse line
- * climb in visible step changes rather than as a single jump at the end.
- */
-const PHASE_CHUNK_ITERATIONS = 25;
-
 /**
  * Run minimal-seed `evolveDir` against the binary `.bin` training set in
- * `dataDir`, capturing per-generation telemetry for the README.
+ * `dataDir`, returning a milestone summary captured from `evolveDir`'s
+ * return value plus the seed and final creature's topology.
  *
  * The seed passed in must be `new Creature(INPUT_COUNT, OUTPUT_COUNT)` —
  * this function deliberately does not construct the seed itself so the
@@ -532,109 +478,62 @@ export async function runMinimalSeedEvolution(
   const seedNeuronCount = seed.neurons.length;
   const seedSynapseCount = seed.synapses.length;
 
-  const rows: EvolutionRow[] = [];
   const start = Date.now();
-  const budgetMs = config.timeoutMinutes * 60_000;
 
-  let evolved = 0;
-  let finalError = Number.POSITIVE_INFINITY;
+  const neatOptions: NeatOptions = {
+    seed: config.seed,
+    populationSize: config.populationSize,
+    iterations: config.maxIterations,
+    targetError: config.targetError,
+    timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+    // No feedbackLoop key → engine treats the run as forward-only.
+    costOfGrowth: 0,
+    // Push NEAT toward structural growth so the example genuinely
+    // adds hidden neurons / inter-layer synapses from the minimal seed.
+    mutationRate: 0.6,
+    mutationAmount: 3,
+    verbose: false,
+    log: 0,
+    threads: 1,
+  };
 
-  while (evolved < config.maxIterations) {
-    // The creature reference is updated by `evolveDir` at the end of
-    // each call. Re-read its topology *before* the next chunk so the
-    // event handler reports the latest neuron / synapse counts for
-    // every generation inside the chunk.
-    const segmentStartNeurons = seed.neurons.length;
-    const segmentStartSynapses = seed.synapses.length;
+  const result = await seed.evolveDir(dataDir, neatOptions);
+  const wallClockMs = Date.now() - start;
 
-    const elapsedMs = Date.now() - start;
-    if (elapsedMs >= budgetMs) break;
+  const finalError = Number.isFinite(result.error) ? result.error : 0;
+  const finalScore = Number.isFinite(result.score) ? result.score : 0;
+  const generations = Math.max(1, result.generation ?? 1);
+  const solved = finalError <= config.targetError;
 
-    const remaining = config.maxIterations - evolved;
-    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remaining);
-
-    const neatOptions: NeatOptions = {
-      seed: config.seed + evolved,
-      populationSize: config.populationSize,
-      iterations: chunkIterations,
-      targetError: config.targetError,
-      timeoutMinutes: config.timeoutMinutes,
-      // No feedbackLoop key → engine treats the run as forward-only.
-      costOfGrowth: 0,
-      // Push NEAT toward structural growth so the example genuinely
-      // adds hidden neurons / inter-layer synapses from the minimal seed
-      // — required by the audit's "neuron and synapse counts genuinely
-      // change" acceptance criterion.
-      mutationRate: 0.6,
-      mutationAmount: 3,
-      verbose: false,
-      log: 0,
-      threads: 1,
-      onTrainingEvent: (event) => {
-        if (event.kind !== "generation_complete") return;
-        rows.push({
-          generation: evolved + event.generation,
-          bestFitness: event.bestFitness,
-          meanFitness: event.averageFitness,
-          neuronCount: segmentStartNeurons,
-          synapseCount: segmentStartSynapses,
-        });
-      },
-    };
-
-    const result = await seed.evolveDir(dataDir, neatOptions);
-    const completed = result.generation ?? chunkIterations;
-    evolved += completed;
-    finalError = result.error ?? finalError;
-
-    if (finalError <= config.targetError) break;
-    if (completed < chunkIterations) break;
-  }
-
-  // Patch the final row so the chart shows the post-evolution topology
-  // — `evolveDir` updates the creature reference *after* the last event
-  // fires inside the chunk, so without this fix-up the last row still
-  // reports the pre-chunk counts.
-  if (rows.length > 0) {
-    const last = rows[rows.length - 1];
-    last.neuronCount = seed.neurons.length;
-    last.synapseCount = seed.synapses.length;
-  }
+  const summary: EvolveDirSummary = {
+    finalError,
+    finalScore,
+    wallClockMs,
+    generations,
+    seedNeurons: seedNeuronCount,
+    seedSynapses: seedSynapseCount,
+    finalNeurons: seed.neurons.length,
+    finalSynapses: seed.synapses.length,
+    targetError: config.targetError,
+    timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+  };
 
   return {
     champion: seed,
-    rows,
-    wallClockMs: Date.now() - start,
+    summary,
+    wallClockMs,
     finalError,
-    generations: evolved,
+    generations,
     seedNeuronCount,
     seedSynapseCount,
+    solved,
   };
-}
-
-/** Convert telemetry rows into the shape expected by the shared chart helpers. */
-export function rowsToFitnessSamples(rows: readonly EvolutionRow[]): FitnessSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    bestFitness: r.bestFitness,
-    avgFitness: r.meanFitness,
-  }));
-}
-
-/** Convert telemetry rows into the shape expected by the evolution chart helper. */
-export function rowsToEvolutionSamples(rows: readonly EvolutionRow[]): EvolutionSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    score: r.bestFitness,
-    neurons: r.neuronCount,
-    synapses: r.synapseCount,
-  }));
 }
 
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🧬 Crossover (Breeding) Example — minimal-seed audit (#213)");
+  console.log("🧬 Crossover (Breeding) Example — minimal-seed evolution (#213, #302)");
   console.log("");
 
   // Set up directories (all under a hidden, gitignored folder)
@@ -710,7 +609,7 @@ if (import.meta.main) {
   }
 
   // Step 5: Minimal-seed evolution — the headline audit-mandated stage.
-  console.log("\n🌱 Step 5: Minimal-seed evolution (audit #213)");
+  console.log("\n🌱 Step 5: Minimal-seed evolution (single evolveDir call)");
   console.log(
     `   Seed: new Creature(${INPUT_COUNT}, ${OUTPUT_COUNT}) — no hidden hint, no warm start.`,
   );
@@ -722,24 +621,21 @@ if (import.meta.main) {
   const evolutionConfig = DEFAULT_CROSSOVER_EVOLUTION_CONFIG;
   console.log(
     `   Stop conditions: targetError=${evolutionConfig.targetError}, ` +
-      `timeoutMinutes=${evolutionConfig.timeoutMinutes} (issue #213 backstop)`,
+      `timeoutMinutes=${evolutionConfig.timeoutMinutes}`,
   );
 
   const evolutionResult = await runMinimalSeedEvolution(seed, dataDir, evolutionConfig);
-  const finalRow = evolutionResult.rows[evolutionResult.rows.length - 1];
   console.log(
     `   Completed ${evolutionResult.generations} generations in ` +
       `${(evolutionResult.wallClockMs / 1000).toFixed(1)}s (final error ${
         Number.isFinite(evolutionResult.finalError) ? evolutionResult.finalError.toFixed(4) : "n/a"
       })`,
   );
-  if (finalRow) {
-    console.log(
-      `   Champion topology: ${finalRow.neuronCount} neurons, ` +
-        `${finalRow.synapseCount} synapses ` +
-        `(seed had ${evolutionResult.seedNeuronCount} / ${evolutionResult.seedSynapseCount})`,
-    );
-  }
+  console.log(
+    `   Champion topology: ${evolutionResult.summary.finalNeurons} neurons, ` +
+      `${evolutionResult.summary.finalSynapses} synapses ` +
+      `(seed had ${evolutionResult.seedNeuronCount} / ${evolutionResult.seedSynapseCount})`,
+  );
 
   const championPath = join(creaturesDir, "evolved.json");
   await safeWriteJson(championPath, evolutionResult.champion.exportJSON());
@@ -750,30 +646,14 @@ if (import.meta.main) {
   const evolvedScore = await scoreCreature(evolutionResult.champion, dataDir);
   console.log(`   Evolved champion score: ${evolvedScore.toPrecision(6)}`);
 
-  // Step 6: Emit per-generation telemetry artefacts.
-  console.log("\n📈 Step 6: Writing per-generation telemetry (CSV + 2 SVGs)");
-  if (evolutionResult.rows.length === 0) {
-    console.log("   ⚠️  No per-generation events captured — telemetry skipped.");
-  } else {
-    ensureDirSync("docs/data/crossover");
-    ensureDirSync("docs/screenshots/crossover");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionResult.rows));
-    console.log(
-      `   🗒️  Wrote ${EVOLUTION_CSV_PATH} (${evolutionResult.rows.length} rows)`,
-    );
-
-    const fitnessSvg = renderFitnessChartSVG(rowsToFitnessSamples(evolutionResult.rows), {
-      title: "Crossover — Best vs Mean Fitness",
-    });
-    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
-    console.log(`   📈 Wrote ${FITNESS_SVG_PATH}`);
-
-    const topologySvg = renderEvolutionChartSVG(rowsToEvolutionSamples(evolutionResult.rows), {
-      title: "Crossover — Score, Neurons, Synapses per Generation",
-    });
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, topologySvg);
-    console.log(`   📈 Wrote ${TOPOLOGY_SVG_PATH}`);
-  }
+  // Step 6: Emit the milestone summary SVG.
+  console.log("\n📈 Step 6: Writing milestone summary SVG");
+  ensureDirSync("docs/screenshots/crossover");
+  const summarySvg = renderEvolveDirSummarySvg(evolutionResult.summary, {
+    title: "Crossover — evolveDir Run Summary",
+  });
+  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+  console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
   // Final summary so the README can quote real measured numbers.
   console.log("\n📋 Comparison:");

@@ -11,18 +11,15 @@ import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
 
+import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
   createParentA,
   createParentB,
   DEFAULT_CROSSOVER_EVOLUTION_CONFIG,
-  EVOLUTION_CSV_HEADER,
-  formatEvolutionCsv,
   generateSyntheticData,
   INPUT_COUNT,
   OUTPUT_COUNT,
   performCrossover,
-  rowsToEvolutionSamples,
-  rowsToFitnessSamples,
   runMinimalSeedEvolution,
   scoreCreature,
   SYNTHETIC_CONFIG,
@@ -356,7 +353,7 @@ Deno.test("performCrossover offspring can be scored against data", async () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  Minimal-seed evolution (audit #213)                                */
+/*  Minimal-seed evolution (audit #213, telemetry rewire #302)         */
 /* ------------------------------------------------------------------ */
 
 Deno.test("INPUT_COUNT and OUTPUT_COUNT match parent dimensions", () => {
@@ -374,7 +371,7 @@ Deno.test("DEFAULT_CROSSOVER_EVOLUTION_CONFIG has audit-compliant defaults", () 
 });
 
 Deno.test(
-  "runMinimalSeedEvolution evolves from new Creature(input, output) and captures telemetry",
+  "runMinimalSeedEvolution evolves from new Creature(input, output) and returns a summary",
   async () => {
     const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
     const dataDir = join(tmpDir, "data");
@@ -402,7 +399,6 @@ Deno.test(
       });
 
       assertGreater(result.generations, 0, "should evolve at least one generation");
-      assertGreater(result.rows.length, 0, "should capture per-generation telemetry");
       assertEquals(result.seedNeuronCount, seedNeurons, "seedNeuronCount should match the seed");
       assertEquals(
         result.seedSynapseCount,
@@ -411,12 +407,15 @@ Deno.test(
       );
       // Champion is the same reference as the seed, mutated in place.
       assertEquals(result.champion, seed, "champion should be the same reference as the seed");
-      // Every row has finite numeric counts.
-      for (const r of result.rows) {
-        assertEquals(typeof r.bestFitness, "number");
-        assertGreater(r.neuronCount, 0);
-        assertGreater(r.synapseCount, 0);
-      }
+
+      // Summary contract — all numeric fields finite, topology matches champion.
+      assertEquals(Number.isFinite(result.summary.finalError), true);
+      assertEquals(Number.isFinite(result.summary.finalScore), true);
+      assertEquals(result.summary.seedNeurons, seedNeurons);
+      assertEquals(result.summary.seedSynapses, seedSynapses);
+      assertEquals(result.summary.finalNeurons, seed.neurons.length);
+      assertEquals(result.summary.finalSynapses, seed.synapses.length);
+      assertGreater(result.summary.generations, 0);
     } finally {
       Deno.removeSync(tmpDir, { recursive: true });
     }
@@ -450,47 +449,44 @@ Deno.test("runMinimalSeedEvolution rejects non-positive config values", async ()
 });
 
 /* ------------------------------------------------------------------ */
-/*  CSV + sample helpers                                               */
+/*  Milestone summary SVG                                              */
 /* ------------------------------------------------------------------ */
 
-Deno.test("formatEvolutionCsv emits the audit-mandated header", () => {
-  const csv = formatEvolutionCsv([]);
-  const firstLine = csv.split("\n")[0];
-  assertEquals(firstLine, EVOLUTION_CSV_HEADER, "first CSV line must be the audit header");
-  assertEquals(
-    EVOLUTION_CSV_HEADER,
-    "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
-  );
-});
+Deno.test("renderEvolveDirSummarySvg renders a summary derived from runMinimalSeedEvolution", async () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    const parentA = createParentA();
+    generateSyntheticData(parentA, dataDir, {
+      totalRecords: 64,
+      recordsPerFile: 64,
+      seed: 99,
+    });
 
-Deno.test("formatEvolutionCsv emits one row per telemetry row with stable formatting", () => {
-  const csv = formatEvolutionCsv([
-    { generation: 1, bestFitness: 0.1, meanFitness: -0.5, neuronCount: 4, synapseCount: 3 },
-    { generation: 7, bestFitness: 0.999, meanFitness: 0.5, neuronCount: 6, synapseCount: 12 },
-  ]);
-  const lines = csv.trimEnd().split("\n");
-  assertEquals(lines.length, 3, "header + 2 data rows");
-  assertEquals(lines[1], "1,0.1,-0.5,4,3");
-  assertEquals(lines[2], "7,0.999,0.5,6,12");
-});
+    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const result = await runMinimalSeedEvolution(seed, dataDir, {
+      targetError: 0.5,
+      timeoutMinutes: 1,
+      populationSize: 4,
+      maxIterations: 3,
+      seed: 7,
+    });
 
-Deno.test("rowsToFitnessSamples maps the field names expected by the chart helper", () => {
-  const samples = rowsToFitnessSamples([
-    { generation: 2, bestFitness: 0.7, meanFitness: 0.3, neuronCount: 5, synapseCount: 9 },
-  ]);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 2);
-  assertEquals(samples[0].bestFitness, 0.7);
-  assertEquals(samples[0].avgFitness, 0.3);
-});
-
-Deno.test("rowsToEvolutionSamples maps the field names expected by the topology chart helper", () => {
-  const samples = rowsToEvolutionSamples([
-    { generation: 3, bestFitness: 0.8, meanFitness: 0.2, neuronCount: 6, synapseCount: 11 },
-  ]);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 3);
-  assertEquals(samples[0].score, 0.8);
-  assertEquals(samples[0].neurons, 6);
-  assertEquals(samples[0].synapses, 11);
+    const svg = renderEvolveDirSummarySvg(result.summary, {
+      title: "Crossover — evolveDir Run Summary",
+    });
+    assert(svg.startsWith("<svg"));
+    assert(svg.includes("</svg>"));
+    // Numeric callouts for the four summary rows are present.
+    assert(svg.includes("final error"));
+    assert(svg.includes("final score"));
+    assert(svg.includes("generations"));
+    assert(svg.includes("wall clock"));
+    // Topology counts appear as bar labels.
+    assert(svg.includes(String(result.summary.seedNeurons)));
+    assert(svg.includes(String(result.summary.finalNeurons)));
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
 });

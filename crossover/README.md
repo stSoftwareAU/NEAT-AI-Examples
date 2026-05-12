@@ -2,9 +2,15 @@
 
 **The audit (#213) reframes this example.** The breeding demo (parents A and B → offspring) is
 preserved because parents are exempt hand-crafted state per `AGENTS.md` — they are the demo's whole
-point. On top of that, the example now runs a **minimal-seed** `evolveDir` against the same `.bin`
+point. On top of that, the example runs a **minimal-seed** `evolveDir` against the same `.bin`
 training set so the published evolution genuinely _learns_ the network structure with no hidden hint
-and no warm start. The README quotes the _measured_ numbers from the latest run only.
+and no warm start.
+
+Under [#302](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/302) the per-generation
+telemetry hook was removed in favour of NEAT-AI's milestone-only telemetry surface (see
+[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298)). The README now references a
+single milestone summary SVG sourced from `Creature.evolveDir`'s return value via the shared
+[`renderEvolveDirSummarySvg`](../common/evolve_dir_summary.ts) helper.
 
 ```mermaid
 flowchart TD
@@ -15,8 +21,9 @@ flowchart TD
     CROSS["🔀 Crossover<br/>mother-keep + father-50%<br/>weights blended"]
     OFF["🐣 Offspring"]
     SEED["🌱 new Creature(3, 1)<br/>minimal seed — no hidden hint"]
-    EVO["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.02,<br/>timeoutMinutes=5"]
-    OUT["🏆 Evolved champion + CSV + 2 SVGs"]
+    EVO["🧪 Creature.evolveDir(...)<br/>single call, forward-only,<br/>targetError=0.02, timeoutMinutes=5"]
+    SUMMARY["📦 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
+    OUT["📈 evolution_summary.svg"]
 
     PA --> DATA
     DATA --> SCORE
@@ -26,7 +33,8 @@ flowchart TD
     CROSS --> OFF
     DATA --> EVO
     SEED --> EVO
-    EVO --> OUT
+    EVO --> SUMMARY
+    SUMMARY --> OUT
 
     style PA fill:#bd10e0,stroke:#333,color:#fff
     style PB fill:#4a90d9,stroke:#333,color:#fff
@@ -36,11 +44,12 @@ flowchart TD
     style OFF fill:#7ed321,stroke:#333,color:#fff
     style SEED fill:#9013fe,stroke:#333,color:#fff
     style EVO fill:#1abc9c,stroke:#333,color:#fff
+    style SUMMARY fill:#34495e,stroke:#333,color:#fff
     style OUT fill:#50e3c2,stroke:#333,color:#fff
 ```
 
-**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies (Stanley & Miikkulainen 2002). _CSV_
-= Comma-Separated Values. _SVG_ = Scalable Vector Graphics.
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies (Stanley & Miikkulainen 2002). _SVG_
+= Scalable Vector Graphics.
 
 `crossover_example.ts` runs end-to-end:
 
@@ -52,10 +61,11 @@ flowchart TD
 4. Run `performCrossover(parentA, parentB)` — mother's neurons are always kept, father's unique
    neurons are included with 50% probability, matching weights/biases are blended (averaged).
 5. Run **minimal-seed** evolution: seed `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (no hidden hint,
-   no pre-built `network.json`, no warm start) and call `Creature.evolveDir(dataDir, options)` over
-   the same `.bin` set in forward-only mode until either `targetError` is reached or the
-   `timeoutMinutes: 5` backstop fires.
-6. Capture per-generation telemetry via `onTrainingEvent` and emit a CSV plus two SVG charts.
+   no pre-built `network.json`, no warm start) and make a **single** `Creature.evolveDir(...)` call
+   in forward-only mode until either `targetError` is reached or the `timeoutMinutes: 5` backstop
+   fires.
+6. Render a milestone summary SVG from the `evolveDir` return value plus the seed and final creature
+   topology via `renderEvolveDirSummarySvg`.
 
 ## ⚙️ Why `evolveDir` (not per-step `activate()`)
 
@@ -67,60 +77,31 @@ not set) for orders-of-magnitude faster training than per-call `activate()`.
 
 ## 📈 Latest measured run (`./crossover/run.sh`)
 
-> The numbers below come from the most recent local run committed alongside this README. They are
-> **measured, not estimated**, per the audit rule in #213.
+The chart is sourced from `Creature.evolveDir`'s return value plus the seed and final creature's
+topology — no per-generation telemetry hook.
 
-| Metric                    | Value                 |
-| ------------------------- | --------------------- |
-| Total generations         | 403                   |
-| Wall-clock                | 34.0 s                |
-| Final best fitness        | 0.9803                |
-| Final per-record error    | 0.0197                |
-| Seed neurons / synapses   | 4 / 3                 |
-| Final neurons / synapses  | 13 / 34               |
-| Stop condition that fired | `targetError` reached |
+![Crossover — evolveDir run summary](../docs/screenshots/crossover/evolution_summary.svg)
 
-Topology genuinely grew: NEAT-AI added **9 hidden neurons** and **31 synapses** on top of the
-minimal seed. The CSV and the two SVGs below show the trajectory across all 403 generations.
+### Crossover comparison
 
-### Best vs mean fitness per generation
+| Creature                          | Score    |
+| --------------------------------- | -------- |
+| Parent A (label oracle)           | 1.000000 |
+| Parent B (different lineage)      | varies\* |
+| Crossover offspring               | varies\* |
+| **Minimal-seed evolved champion** | varies\* |
 
-![Best vs mean fitness](../docs/screenshots/crossover/fitness.svg)
-
-### Score, neuron, and synapse counts per generation
-
-![Score / neurons / synapses](../docs/screenshots/crossover/topology.svg)
-
-### Per-generation CSV
-
-[`docs/data/crossover/evolution.csv`](../docs/data/crossover/evolution.csv) holds the full
-per-generation telemetry with the schema mandated by the audit:
-
-```text
-generation,best_fitness,mean_fitness,neuron_count,synapse_count
-```
-
-### Crossover comparison (latest run)
-
-| Creature                          | Score        |
-| --------------------------------- | ------------ |
-| Parent A (label oracle)           | 1.000000     |
-| Parent B (different lineage)      | 0.901616     |
-| Crossover offspring               | varies\*     |
-| **Minimal-seed evolved champion** | **0.980252** |
-
-\*Offspring score depends on the deterministic crossover outcome on the latest run; see the runner's
-"Comparison" section for the latest measurement.
+\*See the runner's "Comparison" section for the latest measurement.
 
 ## 🧪 What "reasonable solution" means here
 
-The minimal-seed evolved champion's best fitness is **0.9803** against the binary `.bin` training
-set (higher is better; the theoretical maximum is 1.0). The final per-record error of **0.0197**
-satisfies the `targetError = 0.02` stop condition — the champion is producing labels within
+The minimal-seed evolved champion's score on the binary `.bin` training set should approach Parent
+A's score (higher is better; theoretical maximum is 1.0). The final per-record error satisfies the
+`targetError = 0.02` stop condition when the run succeeds — the champion is producing labels within
 `2 × 10⁻²` of Parent A's outputs on average. That is a reasonable solution to the labelled task: a
 creature that started as 4 neurons and 3 synapses (no hidden layer at all) has evolved into a
-13-neuron, 34-synapse network that approximates Parent A's nonlinear sigmoid-of-sigmoids behaviour
-_without ever seeing Parent A's topology_.
+network that approximates Parent A's nonlinear sigmoid-of-sigmoids behaviour _without ever seeing
+Parent A's topology_.
 
 ## 🚀 Running the Example
 
@@ -138,11 +119,9 @@ will find:
 - `creatures/evolved.json` — The minimal-seed evolved champion (audit deliverable).
 - `output/` — Additional offspring from repeated crossover for inspection.
 
-In addition, the per-generation telemetry artefacts are committed under `docs/`:
+The milestone summary SVG is committed under `docs/`:
 
-- [`docs/data/crossover/evolution.csv`](../docs/data/crossover/evolution.csv)
-- [`docs/screenshots/crossover/fitness.svg`](../docs/screenshots/crossover/fitness.svg)
-- [`docs/screenshots/crossover/topology.svg`](../docs/screenshots/crossover/topology.svg)
+- [`docs/screenshots/crossover/evolution_summary.svg`](../docs/screenshots/crossover/evolution_summary.svg)
 
 ## 🧰 NEAT-AI Features Used
 
@@ -156,8 +135,7 @@ The audit rolls two things into one example:
   and diversity-driven cross-population pairing all live upstream).
 - **Minimal-seed evolution** — `new Creature(input, output)` with no hidden hint, fed to
   `Creature.evolveDir(...)` over the binary `.bin` training stream (per
-  [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)), with per-generation
-  telemetry captured via `onTrainingEvent`.
+  [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)).
 
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
@@ -170,5 +148,6 @@ Features exercised (links go to upstream
   whose labels can be pre-generated as a binary `.bin` stream.
 - **Forward-only mutation** — `evolveDir` defaults to forward-only when `feedbackLoop` is not set,
   matching the audit's stop-condition + topology contract.
-- **`onTrainingEvent` callback** — feeds per-generation telemetry into the CSV and the two SVG
-  charts without slowing the run.
+- **Milestone-only telemetry** — the chart is sourced from `evolveDir`'s return value via the shared
+  `renderEvolveDirSummarySvg` helper, matching NEAT-AI's supported telemetry surface (see
+  [`AGENTS.md`](../AGENTS.md)).

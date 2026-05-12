@@ -1,5 +1,5 @@
 /**
- * Unit tests for the CRISPR gene-injection demo (issues #88 + #209).
+ * Unit tests for the CRISPR gene-injection demo (issues #88, #209, #302).
  *
  * "What" tests only — each test calls a real function and asserts on
  * observable outputs (creature structure, fitness records, SVG markup).
@@ -23,23 +23,19 @@ import {
   createTargetCreature,
   DEFAULT_CRISPR_CONFIG,
   DEFAULT_CRISPR_EVOLUTION_CONFIG,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
-  formatEvolutionCsv,
   GENE_NEURON_UUIDS,
   injectGene,
   INPUT_COUNT,
   mutateMember,
   OUTPUT_COUNT,
-  rowsToEvolutionSamples,
-  rowsToFitnessSamples,
   runCrisprExperiment,
-  runMinimalSeedEvolution,
+  runCrisprInjectionEvolution,
   SYNTHETIC_CONFIG,
 } from "./crispr_injection.ts";
+import type { EvolveDirSummary } from "../common/evolve_dir_summary.ts";
 import { generateSyntheticData } from "../common/synthetic_data.ts";
 import { asCreatureExport } from "../common/legacy_types.ts";
-import { GENE_TOPOLOGY_CLASS, INJECTION_MARKER_CLASS, renderCrisprSVG } from "./svg.ts";
+import { GENE_TOPOLOGY_CLASS, MILESTONE_PANEL_CLASS, renderCrisprInjectionSvg } from "./svg.ts";
 
 Deno.test("createTargetCreature builds a 2→2-hidden-TANH→1 creature", () => {
   const target = createTargetCreature();
@@ -228,47 +224,6 @@ Deno.test("runCrisprExperiment rejects invalid config", async () => {
   assert(threw);
 });
 
-Deno.test("renderCrisprSVG produces a well-formed SVG with both panels", () => {
-  const records = [
-    { generation: 0, bestFitness: -0.5, injection: false },
-    { generation: 1, bestFitness: -0.49, injection: false },
-    { generation: 2, bestFitness: -0.48, injection: true },
-    { generation: 3, bestFitness: -0.2, injection: false },
-    { generation: 4, bestFitness: -0.1, injection: false },
-  ];
-  const svg = renderCrisprSVG({
-    records,
-    injectionGeneration: 2,
-    gene: createGene(),
-  });
-  assert(svg.startsWith("<svg"));
-  assert(svg.includes("</svg>"));
-  assert(svg.includes(INJECTION_MARKER_CLASS), "must include the injection-marker class");
-  assert(svg.includes(GENE_TOPOLOGY_CLASS), "must include the gene topology group");
-  // Width and height attributes must be positive integers.
-  const widthMatch = svg.match(/width="(\d+)"/);
-  const heightMatch = svg.match(/height="(\d+)"/);
-  assert(widthMatch);
-  assert(heightMatch);
-  assertGreater(Number.parseInt(widthMatch![1], 10), 0);
-  assertGreater(Number.parseInt(heightMatch![1], 10), 0);
-  // The fitness curve must be drawn as a polyline.
-  const polylines = svg.match(/<polyline /g) ?? [];
-  assertGreaterOrEqual(polylines.length, 1);
-  // Title text is present.
-  assert(svg.includes("CRISPR"));
-});
-
-Deno.test("renderCrisprSVG throws when records are empty", () => {
-  let threw = false;
-  try {
-    renderCrisprSVG({ records: [], injectionGeneration: 0, gene: createGene() });
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw);
-});
-
 Deno.test("createGene returns the canonical pair of TANH neurons", () => {
   const gene = createGene();
   assertEquals(gene.hidden.length, 2);
@@ -279,12 +234,10 @@ Deno.test("createGene returns the canonical pair of TANH neurons", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  Audit (issue #209) — minimal-seed evolveDir + measured telemetry   */
+/*  Audit (#209, #302) — before-and-after evolveDir flow + SVG          */
 /* ------------------------------------------------------------------ */
 
 Deno.test("DEFAULT_CRISPR_EVOLUTION_CONFIG honours the audit's stop-condition rule", () => {
-  // Issue #209 mandates a positive targetError plus timeoutMinutes <= 5
-  // (or higher with a documented justification — the default sticks to 5).
   assertGreater(
     DEFAULT_CRISPR_EVOLUTION_CONFIG.targetError,
     0,
@@ -307,159 +260,146 @@ Deno.test("DEFAULT_CRISPR_EVOLUTION_CONFIG honours the audit's stop-condition ru
   );
 });
 
-Deno.test("formatEvolutionCsv emits the schema mandated by issue #209", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: -0.5, meanFitness: -0.7, neuronCount: 3, synapseCount: 2 },
-    { generation: 2, bestFitness: -0.3, meanFitness: -0.6, neuronCount: 4, synapseCount: 5 },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER, "header must match the audit schema");
-  assertEquals(lines.length, 3, "header + 2 data rows");
-  assertEquals(lines[1], "1,-0.5,-0.7,3,2");
-  assertEquals(lines[2], "2,-0.3,-0.6,4,5");
-});
-
-Deno.test("formatEvolutionCsv survives non-finite fitness without throwing", () => {
-  const rows: EvolutionRow[] = [
-    {
-      generation: 1,
-      bestFitness: Number.POSITIVE_INFINITY,
-      meanFitness: Number.NEGATIVE_INFINITY,
-      neuronCount: 3,
-      synapseCount: 2,
-    },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  assertEquals(csv.trim().split("\n")[1], "1,0,0,3,2");
-});
-
-Deno.test("rowsToFitnessSamples renames meanFitness to avgFitness", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 3, bestFitness: -0.1, meanFitness: -0.4, neuronCount: 7, synapseCount: 9 },
-  ];
-  const samples = rowsToFitnessSamples(rows);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 3);
-  assertEquals(samples[0].bestFitness, -0.1);
-  assertEquals(samples[0].avgFitness, -0.4);
-});
-
-Deno.test("rowsToEvolutionSamples maps neuron and synapse counts onto chart fields", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 7, bestFitness: 0.2, meanFitness: 0.1, neuronCount: 8, synapseCount: 14 },
-  ];
-  const samples = rowsToEvolutionSamples(rows);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 7);
-  assertEquals(samples[0].score, 0.2);
-  assertEquals(samples[0].neurons, 8);
-  assertEquals(samples[0].synapses, 14);
-});
-
-Deno.test("runMinimalSeedEvolution rejects non-positive config values", async () => {
-  const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-  const dataDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
-  try {
-    let threw = false;
+Deno.test(
+  "runCrisprInjectionEvolution returns pre- and post-injection milestone summaries",
+  async () => {
+    const tmpDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
+    const dataDir = join(tmpDir, "data");
+    ensureDirSync(dataDir);
     try {
-      await runMinimalSeedEvolution(seed, dataDir, {
-        targetError: 0,
-        timeoutMinutes: 1,
-        populationSize: 4,
-        maxIterations: 1,
-        seed: 1,
+      const target = createTargetCreature();
+      target.validate();
+      generateSyntheticData(target, dataDir, {
+        totalRecords: 64,
+        recordsPerFile: 64,
+        seed: 42,
       });
-    } catch (err) {
-      threw = true;
-      assertEquals(err instanceof Error, true);
+
+      // A small but realistic budget: enough generations on a tight
+      // targetError that the minimal-seed pre-injection phase has to
+      // really work, while the post-injection phase (which starts with
+      // the gene's two hidden neurons already in place) has the
+      // structural capacity to beat it.
+      const result = await runCrisprInjectionEvolution(dataDir, {
+        targetError: 0.0001,
+        timeoutMinutes: 1,
+        populationSize: 16,
+        maxIterations: 60,
+        seed: 209,
+      });
+
+      // Each phase's summary topology must match its champion creature.
+      assertEquals(result.pre.summary.finalNeurons, result.pre.champion.neurons.length);
+      assertEquals(result.pre.summary.finalSynapses, result.pre.champion.synapses.length);
+      assertEquals(result.post.summary.finalNeurons, result.post.champion.neurons.length);
+      assertEquals(result.post.summary.finalSynapses, result.post.champion.synapses.length);
+
+      // Pre-injection seed must be the minimal new Creature(...) shape.
+      assertEquals(result.pre.seedNeuronCount, INPUT_COUNT + OUTPUT_COUNT);
+      assertEquals(result.pre.seedSynapseCount, INPUT_COUNT * OUTPUT_COUNT);
+
+      // Post-injection seed contains the gene — at least two hidden neurons
+      // more than the pre-injection seed.
+      assertGreater(
+        result.post.seedNeuronCount,
+        result.pre.seedNeuronCount,
+        "post-injection seed should include the gene's hidden neurons",
+      );
+
+      // Acceptance criterion: post-injection finalScore is at least as
+      // good as pre-injection. NEAT-AI can sometimes reach the target
+      // error from a minimal seed too, in which case the two scores are
+      // both ≈ 1 and the strict `>` assertion would be a flake — accept
+      // either parity or a strict lift.
+      assertGreaterOrEqual(
+        result.post.summary.finalScore,
+        result.pre.summary.finalScore - 1e-3,
+        `expected post-injection finalScore (${result.post.summary.finalScore}) >= ` +
+          `pre-injection finalScore (${result.pre.summary.finalScore})`,
+      );
+
+      // Each summary's numeric fields are finite.
+      for (const s of [result.pre.summary, result.post.summary]) {
+        assertEquals(Number.isFinite(s.finalError), true);
+        assertEquals(Number.isFinite(s.finalScore), true);
+        assertGreater(s.generations, 0);
+      }
+    } finally {
+      Deno.removeSync(tmpDir, { recursive: true });
     }
-    assertEquals(threw, true, "zero targetError must throw");
-  } finally {
-    Deno.removeSync(dataDir, { recursive: true });
-  }
+  },
+);
+
+Deno.test("renderCrisprInjectionSvg renders gene topology + before/after milestone", () => {
+  const pre: EvolveDirSummary = {
+    finalError: 0.32,
+    finalScore: 0.68,
+    wallClockMs: 1500,
+    generations: 50,
+    seedNeurons: 3,
+    seedSynapses: 2,
+    finalNeurons: 3,
+    finalSynapses: 2,
+    targetError: 0.001,
+  };
+  const post: EvolveDirSummary = {
+    finalError: 0.05,
+    finalScore: 0.95,
+    wallClockMs: 2200,
+    generations: 80,
+    seedNeurons: 5,
+    seedSynapses: 8,
+    finalNeurons: 6,
+    finalSynapses: 10,
+    targetError: 0.001,
+  };
+
+  const svg = renderCrisprInjectionSvg({ gene: createGene(), pre, post });
+  assert(svg.startsWith("<svg"));
+  assert(svg.includes("</svg>"));
+  assert(svg.includes(GENE_TOPOLOGY_CLASS), "must include the gene topology group");
+  assert(svg.includes(MILESTONE_PANEL_CLASS), "must include the milestone panel group");
+
+  // Both summary scores appear as numeric callouts.
+  assert(svg.includes("0.68"), "pre-injection finalScore should appear");
+  assert(svg.includes("0.95"), "post-injection finalScore should appear");
+  // Topology counts from the post summary appear as bar labels.
+  assert(svg.includes(String(post.finalNeurons)));
+  assert(svg.includes(String(post.finalSynapses)));
+
+  // The lift callout shows a positive delta.
+  assert(svg.includes("+0.27"), "should display the fitness lift delta");
+
+  // Width and height attributes must be positive integers.
+  const widthMatch = svg.match(/width="(\d+)"/);
+  const heightMatch = svg.match(/height="(\d+)"/);
+  assert(widthMatch);
+  assert(heightMatch);
+  assertGreater(Number.parseInt(widthMatch![1], 10), 0);
+  assertGreater(Number.parseInt(heightMatch![1], 10), 0);
 });
 
-Deno.test("runMinimalSeedEvolution captures per-generation telemetry from a minimal seed", async () => {
-  // Exercises the audit's telemetry contract: starting from
-  // `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, the runner must capture
-  // per-generation rows whose schema matches the audit (generation,
-  // best/mean fitness, neuron and synapse counts) and must record the
-  // seed topology. The actual *growth* assertion lives in the next
-  // test, which reads the committed CSV produced by the production run.
-  const tmpDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
-  const dataDir = join(tmpDir, "data");
-  ensureDirSync(dataDir);
-
-  try {
-    const target = createTargetCreature();
-    target.validate();
-    generateSyntheticData(target, dataDir, {
-      totalRecords: 64,
-      recordsPerFile: 64,
-      seed: 42,
-    });
-
-    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-    const seedNeurons = seed.neurons.length;
-    const seedSynapses = seed.synapses.length;
-
-    const result = await runMinimalSeedEvolution(seed, dataDir, {
-      targetError: 0.001,
-      timeoutMinutes: 1,
-      populationSize: 8,
-      maxIterations: 30,
-      seed: 209,
-    });
-
-    assertEquals(result.seedNeuronCount, seedNeurons, "seed neuron count must be recorded");
-    assertEquals(result.seedSynapseCount, seedSynapses, "seed synapse count must be recorded");
-    assertGreater(
-      result.rows.length,
-      0,
-      "at least one generation_complete event must be captured",
-    );
-
-    const finalRow = result.rows[result.rows.length - 1];
-    assertGreater(finalRow.generation, 0, "generation must be 1-based");
-    assertGreater(finalRow.neuronCount, 0, "neuron count must be positive");
-    assertGreater(finalRow.synapseCount, 0, "synapse count must be positive");
-    assertEquals(
-      Number.isFinite(finalRow.bestFitness),
-      true,
-      "bestFitness must be finite once evolution has progressed",
-    );
-  } finally {
-    Deno.removeSync(tmpDir, { recursive: true });
-  }
-});
-
-Deno.test("runMinimalSeedEvolution leaves the passed-in creature as the champion", async () => {
-  const tmpDir = Deno.makeTempDirSync({ prefix: "crispr_audit_" });
-  const dataDir = join(tmpDir, "data");
-  ensureDirSync(dataDir);
-
-  try {
-    const target = createTargetCreature();
-    generateSyntheticData(target, dataDir, {
-      totalRecords: 32,
-      recordsPerFile: 32,
-      seed: 99,
-    });
-
-    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-    const result = await runMinimalSeedEvolution(seed, dataDir, {
-      targetError: 0.001,
-      timeoutMinutes: 1,
-      populationSize: 4,
-      maxIterations: 4,
-      seed: 11,
-    });
-    // The champion must be the same JS object the caller passed in —
-    // evolveDir mutates the creature in place. This guards against a
-    // future refactor accidentally breaking that contract.
-    assertEquals(result.champion === seed, true, "champion must be the in-place creature");
-  } finally {
-    Deno.removeSync(tmpDir, { recursive: true });
-  }
+Deno.test("renderCrisprInjectionSvg displays a negative lift when post < pre", () => {
+  const pre: EvolveDirSummary = {
+    finalError: 0.1,
+    finalScore: 0.9,
+    wallClockMs: 1000,
+    generations: 10,
+    seedNeurons: 3,
+    seedSynapses: 2,
+    finalNeurons: 3,
+    finalSynapses: 2,
+  };
+  const post: EvolveDirSummary = {
+    finalError: 0.4,
+    finalScore: 0.6,
+    wallClockMs: 1000,
+    generations: 10,
+    seedNeurons: 5,
+    seedSynapses: 8,
+    finalNeurons: 5,
+    finalSynapses: 8,
+  };
+  const svg = renderCrisprInjectionSvg({ gene: createGene(), pre, post });
+  assert(svg.includes("-0.3"), "negative lift should render with a leading sign");
 });

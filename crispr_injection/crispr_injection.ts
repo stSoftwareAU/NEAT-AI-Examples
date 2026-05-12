@@ -1,6 +1,6 @@
 /**
- * CRISPR Gene Injection Example — minimal-seed evolution + measured
- * telemetry (audit issue #209, parent audit #203).
+ * CRISPR Gene Injection Example — minimal-seed evolution + before/after
+ * milestone summary (audit issue #209, telemetry simplified under #302).
  *
  * The original demo built a baseline population with no hidden neurons,
  * ran a deterministic perturb-and-keep loop until fitness plateaued,
@@ -11,24 +11,15 @@
  * (`injectGene`, `mutateMember`, `createGene`, `createBaselineJSON`,
  * `createTargetCreature`) keeps its contract.
  *
- * The audit (#209) repurposes the runner so the published evolution
- * genuinely *learns* the network structure from a minimal NEAT-AI seed:
- *
- *   1. The hand-crafted target creature is still hand-crafted, but it
- *      is used **only** as the ground-truth that synthesises labels for
- *      the binary `.bin` training set. NEAT-AI never sees the target —
- *      it is not the seed.
- *   2. The seed passed to NEAT-AI is `new Creature(INPUT_COUNT,
- *      OUTPUT_COUNT)` — no hidden-layer hint, no pre-built
- *      `network.json` seed, no hand-tuned shape.
- *   3. `Creature.evolveDir(dataDir, options)` runs forward-only over
- *      the pre-generated `.bin` training set (per #190) until either
- *      the per-example `targetError` threshold is reached or the
- *      `timeoutMinutes: 5` backstop fires.
- *   4. Per-generation telemetry (best/mean fitness + neuron / synapse
- *      counts) is captured via `onTrainingEvent` and emitted as a CSV
- *      plus two SVG charts so the README can quote the *measured*
- *      numbers from the latest run only.
+ * Under #209 the runner was rewired so the published evolution genuinely
+ * *learns* the network structure from a minimal NEAT-AI seed; under
+ * #302 the per-generation telemetry hook was removed in favour of
+ * NEAT-AI's milestone-only telemetry surface. The runner now makes two
+ * `Creature.evolveDir(...)` calls — one before injection from a minimal
+ * seed, and a second after injecting the hand-crafted gene into the
+ * pre-injection champion. The "fitness lift" narrative is preserved
+ * from the post-vs-pre {@link EvolveDirSummary} deltas, not from
+ * per-generation rows.
  *
  * Usage:
  *   ./crispr_injection/run.sh
@@ -45,8 +36,7 @@ import {
   safeWriteJson,
 } from "@stsoftware/neat-ai";
 
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { type EvolveDirSummary } from "../common/evolve_dir_summary.ts";
 import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -66,20 +56,7 @@ export const INPUT_COUNT = 2;
 /** Number of output neurons fed to the NEAT-AI seed. Matches the target creature. */
 export const OUTPUT_COUNT = 1;
 
-/** Per-generation evolution-telemetry CSV path. */
-export const EVOLUTION_CSV_PATH = "docs/data/crispr_injection/evolution.csv";
-
-/** CSV header — schema mandated by issue #209. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path. */
-export const FITNESS_SVG_PATH = "docs/screenshots/crispr_injection/fitness.svg";
-
-/** Neuron / synapse count chart path. */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/crispr_injection/topology.svg";
-
-/** Path to the legacy gene-topology + fitness-curve SVG kept for the README. */
+/** Combined gene-topology + before/after milestone SVG path. */
 export const SCREENSHOT_PATH = "docs/screenshots/crispr_injection.svg";
 
 /** Configuration for the synthetic training set (inputs only — labels come from the target). */
@@ -176,18 +153,9 @@ export interface CrisprEvolutionConfig {
 }
 
 /**
- * Defaults tuned so the demo converges via `targetError` well inside the
- * 5-minute backstop on a developer machine while still showing visible
- * neuron / synapse growth from the minimal seed.
- *
- * The target creature's hidden neurons saturate two TANH cells, so the
- * direct-only seed (no hidden) cannot fit the function. We pick a tight
- * `targetError` so NEAT-AI is genuinely forced to grow hidden structure
- * to satisfy the stop condition — otherwise the topology chart would
- * flatline (acceptance criterion in issue #209). The 2-input task can
- * be fit to ~0.98 by a linear baseline, so we use a slightly larger
- * population and more iterations than the 4-input discovery demo to
- * give ADD_NODE / ADD_CONN mutations enough generations to take hold.
+ * Defaults tuned so each evolution phase converges via `targetError`
+ * well inside the 5-minute backstop on a developer machine while still
+ * showing visible neuron / synapse growth from the minimal seed.
  */
 export const DEFAULT_CRISPR_EVOLUTION_CONFIG: CrisprEvolutionConfig = {
   targetError: 0.000001,
@@ -197,43 +165,40 @@ export const DEFAULT_CRISPR_EVOLUTION_CONFIG: CrisprEvolutionConfig = {
   seed: 209209,
 };
 
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  /** 1-based generation index across the run. */
-  generation: number;
-  /** Best fitness observed in this generation. */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
-}
-
-/** Result of {@link runMinimalSeedEvolution}. */
-export interface CrisprEvolutionResult {
-  /** The best creature found by `evolveDir` (the in-place seed reference). */
+/** Result of a single phase of {@link runCrisprInjectionEvolution}. */
+export interface CrisprPhaseResult {
+  /** The creature mutated in place by `evolveDir`. */
   champion: Creature;
-  /** Per-generation telemetry rows captured during the run. */
-  rows: EvolutionRow[];
-  /** Total wall-clock time of the evolution call, in milliseconds. */
+  /** Milestone summary captured from the `evolveDir` call. */
+  summary: EvolveDirSummary;
+  /** Total wall-clock time of this phase, in milliseconds. */
   wallClockMs: number;
   /** Final per-record error returned by `evolveDir`. */
   finalError: number;
-  /** Total generations completed. */
+  /** Generations completed in this phase. */
   generations: number;
-  /** Initial neuron count of the minimal seed (before evolution). */
+  /** Initial neuron count of this phase's seed (before evolution). */
   seedNeuronCount: number;
-  /** Initial synapse count of the minimal seed (before evolution). */
+  /** Initial synapse count of this phase's seed (before evolution). */
   seedSynapseCount: number;
+  /** True when the phase ended because `targetError` was reached. */
+  solved: boolean;
+}
+
+/** Combined result of the before-and-after CRISPR injection demo. */
+export interface CrisprInjectionResult {
+  /** Pre-injection phase, evolved from a minimal seed. */
+  pre: CrisprPhaseResult;
+  /** Post-injection phase, evolved after splicing the gene in. */
+  post: CrisprPhaseResult;
+  /** The post-injection champion creature. */
+  champion: Creature;
 }
 
 /**
  * Builds the target creature whose two TANH hidden neurons together
  * compute a non-linear function the baseline (no hidden) cannot match.
- * Synthetic training data is generated from this creature's outputs;
- * the audit-compliant runner uses it only as the label oracle.
+ * Synthetic training data is generated from this creature's outputs.
  */
 export function createTargetCreature(): Creature {
   const json: LegacyCreatureJSON = {
@@ -241,10 +206,7 @@ export function createTargetCreature(): Creature {
       { type: "input", squash: "LOGISTIC", index: 0, uuid: "input-0" },
       { type: "input", squash: "LOGISTIC", index: 1, uuid: "input-1" },
 
-      // The "gene" — hidden neurons we will later inject into a baseline.
-      // Big weights push the TANH neurons into saturation, so the target
-      // output behaves like an XOR-flavoured discriminator the baseline
-      // cannot mimic with a pair of linear input→output synapses.
+      // The "gene" — hidden neurons we later inject into a host.
       {
         type: "hidden",
         squash: "TANH",
@@ -338,11 +300,6 @@ export function createGene(): InjectedGene {
  * Splices the gene's hidden neurons and synapses into the host JSON.
  *
  * Returns a new {@link LegacyCreatureJSON} — the input is not mutated.
- * The gene's neurons are inserted between the host's inputs and outputs;
- * indices are recomputed so `Creature.fromJSON` accepts the result.
- *
- * If a gene UUID already exists in the host (idempotent re-injection)
- * the duplicate is skipped so injection can safely run twice.
  */
 export function injectGene(host: LegacyCreatureJSON, gene: InjectedGene): LegacyCreatureJSON {
   const existingUUIDs = new Set(host.neurons.map((n) => n.uuid));
@@ -426,8 +383,7 @@ function gaussian(random: () => number): number {
 
 /**
  * Returns a clone of {@link member} with each synapse weight perturbed by a
- * Gaussian draw of standard deviation {@link mutationStrength}. The host JSON
- * is not modified.
+ * Gaussian draw of standard deviation {@link mutationStrength}.
  */
 export function mutateMember(
   member: LegacyCreatureJSON,
@@ -446,8 +402,6 @@ export function mutateMember(
 
 /**
  * Score a JSON creature against the supplied training directory.
- * Constructs a fresh {@link Creature} so weights from {@link mutateMember}
- * propagate through to the scorer.
  */
 export async function scoreMember(member: LegacyCreatureJSON, dataDir: string): Promise<number> {
   const creature = Creature.fromJSON(asCreatureExport(member));
@@ -483,13 +437,6 @@ async function evolveOneGeneration(
 
 /**
  * Legacy CRISPR experiment helper retained for backwards compatibility.
- *
- * Runs the original perturb-and-keep evolution loop, splices the
- * hand-crafted gene into the top members at a fixed generation, and
- * resumes the loop. The audit (#209) replaced this helper with the
- * minimal-seed `evolveDir` flow in {@link runMinimalSeedEvolution}, but
- * the test suite still uses this function to verify the gene-injection
- * primitives.
  */
 export async function runCrisprExperiment(
   config: CrisprConfig,
@@ -588,54 +535,19 @@ export async function runCrisprExperiment(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Audit-compliant minimal-seed evolution                             */
+/*  Audit-compliant before/after evolveDir flow                        */
 /* ------------------------------------------------------------------ */
 
-/** Format a finite number for CSV emission with trimmed trailing zeros. */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry rows as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
 /**
- * Iterations per `evolveDir` chunk. Chunking the run keeps the
- * per-generation telemetry chart in step with topology mutations: the
- * passed-in `creature` reference is only updated at the end of each
- * `evolveDir` call, so smaller chunks make the neuron / synapse line
- * climb in visible step changes rather than as a single jump at the end.
+ * Run a single phase of NEAT-AI evolution from `seed` against `dataDir`
+ * and return a milestone summary. The seed is mutated in place.
  */
-const PHASE_CHUNK_ITERATIONS = 25;
-
-/**
- * Run minimal-seed `evolveDir` against the binary `.bin` training set in
- * `dataDir`, capturing per-generation telemetry for the README.
- *
- * The seed passed in must be `new Creature(INPUT_COUNT, OUTPUT_COUNT)` —
- * this function deliberately does not construct the seed itself so the
- * caller (and the tests) can prove no hidden-layer hint leaks in.
- */
-export async function runMinimalSeedEvolution(
+async function runEvolveDirPhase(
   seed: Creature,
   dataDir: string,
-  config: CrisprEvolutionConfig = DEFAULT_CRISPR_EVOLUTION_CONFIG,
-): Promise<CrisprEvolutionResult> {
+  config: CrisprEvolutionConfig,
+  seedOffset = 0,
+): Promise<CrisprPhaseResult> {
   if (config.targetError <= 0) throw new Error("targetError must be positive");
   if (config.timeoutMinutes <= 0) throw new Error("timeoutMinutes must be positive");
   if (config.populationSize <= 0) throw new Error("populationSize must be positive");
@@ -643,104 +555,114 @@ export async function runMinimalSeedEvolution(
 
   const seedNeuronCount = seed.neurons.length;
   const seedSynapseCount = seed.synapses.length;
-
-  const rows: EvolutionRow[] = [];
   const start = Date.now();
-  const budgetMs = config.timeoutMinutes * 60_000;
 
-  let evolved = 0;
-  let finalError = Number.POSITIVE_INFINITY;
+  const neatOptions: NeatOptions = {
+    seed: config.seed + seedOffset,
+    populationSize: config.populationSize,
+    iterations: config.maxIterations,
+    targetError: config.targetError,
+    timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+    // No feedbackLoop key → engine treats the run as forward-only.
+    costOfGrowth: 0,
+    mutationRate: 0.6,
+    mutationAmount: 3,
+    verbose: false,
+    log: 0,
+    threads: 1,
+  };
 
-  while (evolved < config.maxIterations) {
-    // The creature reference is updated by `evolveDir` at the end of
-    // each call. Re-read its topology *before* the next chunk so the
-    // event handler reports the latest neuron / synapse counts for
-    // every generation inside the chunk.
-    const segmentStartNeurons = seed.neurons.length;
-    const segmentStartSynapses = seed.synapses.length;
+  const result = await seed.evolveDir(dataDir, neatOptions);
+  const wallClockMs = Date.now() - start;
 
-    const elapsedMs = Date.now() - start;
-    if (elapsedMs >= budgetMs) break;
+  const finalError = Number.isFinite(result.error) ? result.error : 0;
+  const finalScore = Number.isFinite(result.score) ? result.score : 0;
+  const generations = Math.max(1, result.generation ?? 1);
+  const solved = finalError <= config.targetError;
 
-    const remaining = config.maxIterations - evolved;
-    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remaining);
-
-    const neatOptions: NeatOptions = {
-      seed: config.seed + evolved,
-      populationSize: config.populationSize,
-      iterations: chunkIterations,
-      targetError: config.targetError,
-      timeoutMinutes: config.timeoutMinutes,
-      // No feedbackLoop key → engine treats the run as forward-only.
-      costOfGrowth: 0,
-      // Push NEAT toward structural growth so the example genuinely
-      // adds hidden neurons / inter-layer synapses from the minimal seed
-      // — required by the audit's "neuron and synapse counts genuinely
-      // change" acceptance criterion.
-      mutationRate: 0.6,
-      mutationAmount: 3,
-      verbose: false,
-      log: 0,
-      threads: 1,
-      onTrainingEvent: (event) => {
-        if (event.kind !== "generation_complete") return;
-        rows.push({
-          generation: evolved + event.generation,
-          bestFitness: event.bestFitness,
-          meanFitness: event.averageFitness,
-          neuronCount: segmentStartNeurons,
-          synapseCount: segmentStartSynapses,
-        });
-      },
-    };
-
-    const result = await seed.evolveDir(dataDir, neatOptions);
-    const completed = result.generation ?? chunkIterations;
-    evolved += completed;
-    finalError = result.error ?? finalError;
-
-    if (finalError <= config.targetError) break;
-    if (completed < chunkIterations) break;
-  }
-
-  // Patch the final row so the chart shows the post-evolution topology
-  // — `evolveDir` updates the creature reference *after* the last event
-  // fires inside the chunk, so without this fix-up the last row still
-  // reports the pre-chunk counts.
-  if (rows.length > 0) {
-    const last = rows[rows.length - 1];
-    last.neuronCount = seed.neurons.length;
-    last.synapseCount = seed.synapses.length;
-  }
+  const summary: EvolveDirSummary = {
+    finalError,
+    finalScore,
+    wallClockMs,
+    generations,
+    seedNeurons: seedNeuronCount,
+    seedSynapses: seedSynapseCount,
+    finalNeurons: seed.neurons.length,
+    finalSynapses: seed.synapses.length,
+    targetError: config.targetError,
+    timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+  };
 
   return {
     champion: seed,
-    rows,
-    wallClockMs: Date.now() - start,
+    summary,
+    wallClockMs,
     finalError,
-    generations: evolved,
+    generations,
     seedNeuronCount,
     seedSynapseCount,
+    solved,
   };
 }
 
-/** Convert telemetry rows into the shape expected by the shared chart helpers. */
-export function rowsToFitnessSamples(rows: readonly EvolutionRow[]): FitnessSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    bestFitness: r.bestFitness,
-    avgFitness: r.meanFitness,
-  }));
+/**
+ * Run the CRISPR injection demo end-to-end:
+ *
+ *   1. Phase 1 — evolve a minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`
+ *      seed via `evolveDir` until either `targetError` is reached or
+ *      `maxIterations` is exhausted (no gene yet).
+ *   2. Splice the hand-crafted edit gene into a JSON snapshot of the
+ *      pre-injection champion.
+ *   3. Phase 2 — evolve the spliced creature with a second `evolveDir`
+ *      call. The post-injection summary's `finalScore` should exceed
+ *      the pre-injection summary's, demonstrating the "fitness lift"
+ *      the example is built around.
+ */
+export async function runCrisprInjectionEvolution(
+  dataDir: string,
+  config: CrisprEvolutionConfig = DEFAULT_CRISPR_EVOLUTION_CONFIG,
+): Promise<CrisprInjectionResult> {
+  const preSeed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const pre = await runEvolveDirPhase(preSeed, dataDir, config, 0);
+
+  // Splice the gene into the pre-injection champion (via its JSON form
+  // so the gene's UUID-keyed primitives keep their contract) and feed
+  // the result back into a fresh `Creature` for the second phase.
+  const preChampionJSON = legacyJSONFromCreature(pre.champion);
+  const injectedJSON = injectGene(preChampionJSON, createGene());
+  const injectedCreature = Creature.fromJSON(asCreatureExport(injectedJSON));
+  injectedCreature.validate();
+
+  const post = await runEvolveDirPhase(injectedCreature, dataDir, config, 1);
+
+  return { pre, post, champion: post.champion };
 }
 
-/** Convert telemetry rows into the shape expected by the evolution chart helper. */
-export function rowsToEvolutionSamples(rows: readonly EvolutionRow[]): EvolutionSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    score: r.bestFitness,
-    neurons: r.neuronCount,
-    synapses: r.synapseCount,
+/**
+ * Best-effort projection of a live {@link Creature} into the
+ * {@link LegacyCreatureJSON} shape consumed by {@link injectGene}.
+ * Uses the creature's neuron/synapse arrays so weights / squashes /
+ * biases / UUIDs survive the round-trip.
+ */
+function legacyJSONFromCreature(creature: Creature): LegacyCreatureJSON {
+  const neurons: LegacyNeuron[] = creature.neurons.map((n, i) => ({
+    type: n.type as LegacyNeuron["type"],
+    squash: n.squash,
+    index: i,
+    bias: n.bias,
+    uuid: n.uuid ?? `auto-${i}`,
   }));
+  const synapses: LegacySynapse[] = creature.synapses.map((s) => ({
+    from: s.from,
+    to: s.to,
+    weight: s.weight,
+  }));
+  return {
+    neurons,
+    synapses,
+    input: creature.input,
+    output: creature.output,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -767,108 +689,66 @@ async function runCrisprExample(): Promise<void> {
   );
   generateSyntheticData(target, dataDir, SYNTHETIC_CONFIG);
 
-  // Stage 2: Build the minimal seed and run evolveDir.
-  stage("Stage 2/3: Evolving from a minimal NEAT-AI seed");
-  console.log(
-    `   Seed: new Creature(${INPUT_COUNT}, ${OUTPUT_COUNT}) — no hidden hint, no warm start.`,
-  );
-  const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-  console.log(
-    `   Seed topology: ${seed.neurons.length} neurons, ${seed.synapses.length} synapses`,
-  );
-
+  // Stage 2: Run before/after evolveDir phases.
+  stage("Stage 2/3: Evolving before and after gene injection");
   const config = DEFAULT_CRISPR_EVOLUTION_CONFIG;
   console.log(
     `   Stop conditions: targetError=${config.targetError}, ` +
-      `timeoutMinutes=${config.timeoutMinutes} (issue #209 backstop)`,
+      `timeoutMinutes=${config.timeoutMinutes}`,
   );
-
-  const result = await runMinimalSeedEvolution(seed, dataDir, config);
-  const finalRow = result.rows[result.rows.length - 1];
+  const result = await runCrisprInjectionEvolution(dataDir, config);
   console.log(
-    `   Completed ${result.generations} generations in ` +
-      `${(result.wallClockMs / 1000).toFixed(1)}s (final error ${
-        Number.isFinite(result.finalError) ? result.finalError.toFixed(4) : "n/a"
-      })`,
+    `   Pre-injection : generations=${result.pre.generations}  ` +
+      `wallClock=${(result.pre.wallClockMs / 1000).toFixed(1)}s  ` +
+      `score=${result.pre.summary.finalScore.toFixed(4)}  ` +
+      `error=${result.pre.summary.finalError.toFixed(4)}  ` +
+      `neurons=${result.pre.summary.finalNeurons}  synapses=${result.pre.summary.finalSynapses}`,
   );
-  if (finalRow) {
-    console.log(
-      `   Champion topology: ${finalRow.neuronCount} neurons, ` +
-        `${finalRow.synapseCount} synapses ` +
-        `(seed had ${result.seedNeuronCount} / ${result.seedSynapseCount})`,
-    );
-  }
+  console.log(
+    `   Post-injection: generations=${result.post.generations}  ` +
+      `wallClock=${(result.post.wallClockMs / 1000).toFixed(1)}s  ` +
+      `score=${result.post.summary.finalScore.toFixed(4)}  ` +
+      `error=${result.post.summary.finalError.toFixed(4)}  ` +
+      `neurons=${result.post.summary.finalNeurons}  synapses=${result.post.summary.finalSynapses}`,
+  );
 
-  // Save the evolved champion + a reference baseline-with-gene creature
-  // so reviewers can inspect the pre-audit splicing primitive too.
+  // Save the post-injection champion + a reference baseline-with-gene
+  // creature so reviewers can inspect the splicing primitive too.
   const championPath = join(creaturesDir, "best.json");
   await safeWriteJson(championPath, result.champion.exportJSON());
   const geneCreatureJSON = injectGene(createBaselineJSON(0), createGene());
   await safeWriteJson(join(creaturesDir, "gene.json"), geneCreatureJSON);
   console.log(`   Saved evolved champion to ${championPath}`);
 
-  // Stage 3: Emit the per-generation telemetry artefacts.
-  stage("Stage 3/3: Writing per-generation telemetry (CSV + 2 SVGs)");
-  if (result.rows.length === 0) {
-    console.log("   ⚠️  No per-generation events captured — telemetry skipped.");
-  } else {
-    ensureDirSync("docs/data/crispr_injection");
-    ensureDirSync("docs/screenshots/crispr_injection");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(result.rows));
-    console.log(`   🗒️  Wrote ${EVOLUTION_CSV_PATH} (${result.rows.length} rows)`);
-
-    const fitnessSvg = renderFitnessChartSVG(rowsToFitnessSamples(result.rows), {
-      title: "CRISPR Injection — Best vs Mean Fitness",
-    });
-    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
-    console.log(`   📈 Wrote ${FITNESS_SVG_PATH}`);
-
-    const topologySvg = renderEvolutionChartSVG(rowsToEvolutionSamples(result.rows), {
-      title: "CRISPR Injection — Score, Neurons, Synapses per Generation",
-    });
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, topologySvg);
-    console.log(`   📈 Wrote ${TOPOLOGY_SVG_PATH}`);
-  }
-
-  // Render the legacy gene-topology + fitness-curve SVG so older tests
-  // and the historical screenshot path stay populated.
-  const { renderCrisprSVG } = await import("./svg.ts");
-  const legacyRecords: FitnessRecord[] = result.rows.map((r, i) => ({
-    generation: i,
-    bestFitness: r.bestFitness,
-    injection: false,
-  }));
-  if (legacyRecords.length > 0) {
-    const legacySvg = renderCrisprSVG({
-      records: legacyRecords,
-      // Mark the midpoint as a "structural lift" — the audit's runner
-      // does not splice the gene mid-flight, but the legacy SVG layout
-      // expects an injection marker, so we anchor it at the midpoint.
-      injectionGeneration: Math.floor(legacyRecords.length / 2),
-      gene: createGene(),
-    });
-    const legacyOutputPath = join(outputDir, "crispr_injection.svg");
-    await Deno.writeTextFile(legacyOutputPath, legacySvg);
-    ensureDirSync("docs/screenshots");
-    await Deno.writeTextFile(SCREENSHOT_PATH, legacySvg);
-    console.log(`   🖼️  Wrote ${legacyOutputPath} and ${SCREENSHOT_PATH}`);
-  }
+  // Stage 3: Render the combined gene-topology + before/after milestone SVG.
+  stage("Stage 3/3: Writing combined gene-topology + before/after milestone SVG");
+  const { renderCrisprInjectionSvg } = await import("./svg.ts");
+  const combinedSvg = renderCrisprInjectionSvg({
+    gene: createGene(),
+    pre: result.pre.summary,
+    post: result.post.summary,
+  });
+  ensureDirSync("docs/screenshots");
+  await Deno.writeTextFile(SCREENSHOT_PATH, combinedSvg);
+  await Deno.writeTextFile(join(outputDir, "crispr_injection.svg"), combinedSvg);
+  console.log(`   🖼️  Wrote ${SCREENSHOT_PATH}`);
 
   // Summary line — quoted in the README so reviewers can see the
   // measured numbers from the latest run.
+  const lift = result.post.summary.finalScore - result.pre.summary.finalScore;
   console.log("\n== Summary ==");
   console.log(`   Target creature:     ${join(creaturesDir, "target.json")}`);
   console.log(`   Evolved champion:    ${championPath}`);
-  if (finalRow) {
-    console.log(
-      `   Final generation ${finalRow.generation}: ` +
-        `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
-        `meanFitness=${finalRow.meanFitness.toFixed(4)}  ` +
-        `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
-    );
-  }
-  console.log(`   Wall-clock: ${(result.wallClockMs / 1000).toFixed(1)}s`);
-  console.log(`\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`);
+  console.log(
+    `   Fitness lift (post - pre): ${lift >= 0 ? "+" : ""}${lift.toFixed(4)}`,
+  );
+  console.log(
+    `   Topology change: ${result.pre.summary.finalNeurons}/${result.pre.summary.finalSynapses} ` +
+      `→ ${result.post.summary.finalNeurons}/${result.post.summary.finalSynapses}`,
+  );
+  console.log(
+    `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,
+  );
 }
 
 if (import.meta.main) {
