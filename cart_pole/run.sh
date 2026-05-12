@@ -34,15 +34,6 @@ deno run \
 if [[ -f "docs/screenshots/cart_pole.svg" ]]; then
   deno fmt docs/screenshots/cart_pole.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/cart_pole_evolution.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole_evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/cart_pole/evolution.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole/evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/cart_pole/fitness.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole/fitness.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/cart_pole/topology.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole/topology.svg > /dev/null
+if [[ -f "docs/screenshots/cart_pole_milestones.svg" ]]; then
+  deno fmt docs/screenshots/cart_pole_milestones.svg > /dev/null
 fi

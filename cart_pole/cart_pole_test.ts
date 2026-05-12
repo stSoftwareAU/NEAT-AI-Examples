@@ -4,12 +4,16 @@
  * asserts on the observable outputs (scores, file contents, SVG
  * structure).
  *
- * Migration note (issue #236): the controller now evolves through
- * `Creature.evolveRL()`, so the tests for the removed
- * `buildRandomPopulation` and `mutateCreatureExport` internal helpers
- * have been dropped in favour of direct adapter and controller tests.
- * The remaining tests still assert on public behaviour rather than
- * implementation choices.
+ * Migration notes:
+ * - Issue #236 — the controller now evolves through
+ *   `Creature.evolveRL()`, so the tests for the removed
+ *   `buildRandomPopulation` and `mutateCreatureExport` internal helpers
+ *   have been dropped in favour of direct adapter and controller tests.
+ * - Issue #288 — per-generation telemetry, snapshot capture, and the
+ *   evolution / fitness / topology charts have been replaced by the
+ *   milestone-statistics chart from #287. Tests covering the removed
+ *   surfaces have been deleted; a new test asserts the milestone-chart
+ *   SVG round-trip via `evolveRL` + `renderMilestoneChartSVG`.
  */
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
@@ -20,15 +24,11 @@ import {
   CartPoleAdapter,
   type CartPoleEpisodeState,
   DEFAULT_EVOLVE_OPTIONS,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
   evolveCartPoleController,
-  formatEvolutionCsv,
-  type GenerationInfo,
   INPUT_COUNT,
   MAX_STEPS,
+  MILESTONE_SVG_PATH,
   OUTPUT_COUNT,
-  renderTopologyChartSvg,
   replayController,
   scoreController,
   scoreTiltDirectionPolicy,
@@ -36,8 +36,7 @@ import {
   SVG_FRAME_COUNT,
 } from "./cart_pole.ts";
 import { renderRunSVG } from "./svg.ts";
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 
 Deno.test("CartPoleAdapter advertises 4 inputs and the default 500-step cap", () => {
   const adapter = new CartPoleAdapter();
@@ -148,7 +147,7 @@ Deno.test(
 );
 
 Deno.test({
-  name: "evolveCartPoleController generation-1 telemetry sits well below the threshold",
+  name: "evolveCartPoleController gen-1 milestone sits well below the threshold",
   // NEAT-AI 5.0.0 loads a Rust/WASM FFI library + Metal accelerator that
   // do not unload before the test ends — disable the sanitisers for the
   // evolve-driven tests.
@@ -157,28 +156,32 @@ Deno.test({
   fn: async () => {
     // Gen 1 must be noise: a fresh `new Creature(input, output)` seed
     // and the library's uniform-random structural mutations cannot solve
-    // cart-pole under the default wobble regime.
-    let firstGenMean = Number.POSITIVE_INFINITY;
-    let firstGenBest = Number.POSITIVE_INFINITY;
-    await evolveCartPoleController({
+    // cart-pole under the default wobble regime. Per #298 the only
+    // available telemetry is the milestone payload at generation 1.
+    const result = await evolveCartPoleController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
-      onGeneration: (info) => {
-        if (info.generation === 0 && firstGenMean === Number.POSITIVE_INFINITY) {
-          firstGenMean = info.meanScore;
-          firstGenBest = info.bestScore;
-        }
-      },
     });
-    assert(
-      firstGenMean < SOLVED_THRESHOLD / 2,
-      `expected gen-1 population mean to be below half the threshold ` +
-        `(${SOLVED_THRESHOLD / 2}), got ${firstGenMean}`,
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least the gen-1 milestone to be collected",
+    );
+    const first = result.milestones[0];
+    assertEquals(
+      first.generation,
+      1,
+      `expected the first milestone to live at generation 1, got ${first.generation}`,
     );
     assert(
-      firstGenBest < SOLVED_THRESHOLD,
-      `expected gen-1 best to sit below SOLVED_THRESHOLD=${SOLVED_THRESHOLD} ` +
-        `under the wobble regime, got ${firstGenBest}`,
+      first.meanEpisodeSteps < SOLVED_THRESHOLD / 2,
+      `expected the gen-1 mean episode steps to sit below half the threshold ` +
+        `(${SOLVED_THRESHOLD / 2}), got ${first.meanEpisodeSteps}`,
+    );
+    assert(
+      first.bestScore < SOLVED_THRESHOLD,
+      `expected the gen-1 best score to sit below SOLVED_THRESHOLD=${SOLVED_THRESHOLD} ` +
+        `under the wobble regime, got ${first.bestScore}`,
     );
   },
 });
@@ -309,162 +312,73 @@ Deno.test("renderRunSVG repeats the animation indefinitely", () => {
 });
 
 Deno.test({
-  name: "evolveCartPoleController gen-1 and gen-final snapshots differ in score or topology",
+  name: "evolveCartPoleController collects milestone samples and the chart SVG round-trips",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // Issue #236 — under the new `evolveRL`-driven loop the snapshot
-    // contract is reduced to the seed creature (gen 1) plus the trained
-    // champion at the final generation, because the upstream API does
-    // not expose mid-run creature exports. We still assert the two
-    // snapshots are not byte-identical, which is what the historical
-    // regression cover (issue #160) really cares about.
-    const tmp = Deno.makeTempDirSync({ prefix: "cart_pole_snap_diff_" });
-    try {
-      const result = await evolveCartPoleController({
-        ...DEFAULT_EVOLVE_OPTIONS,
-        iterations: 12,
-        snapshotConfig: { checkpoints: [1], outputDir: tmp },
-      });
-      const snapshots = loadSnapshots(tmp);
-      assertGreaterOrEqual(
-        snapshots.length,
-        2,
-        `expected at least seed + final snapshots, got ${snapshots.length}`,
-      );
-      const first = snapshots[0];
-      const last = snapshots[snapshots.length - 1];
-      const firstSerialised = JSON.stringify(first.creature);
-      const lastSerialised = JSON.stringify(last.creature);
-      const differ = first.score !== last.score ||
-        firstSerialised !== lastSerialised;
-      assert(
-        differ,
-        `expected gen-${first.generation} and gen-${last.generation} snapshots ` +
-          `to differ in score or topology, but they are byte-identical at score ` +
-          `${first.score}. Final generation was ${result.generations}.`,
-      );
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
-  },
-});
-
-Deno.test({
-  name: "evolveCartPoleController writes snapshots and the strip SVG embeds one panel per snapshot",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "cart_pole_snapshots_test_" });
-    try {
-      // Capture both ends of the run so the multi-panel SVG has at
-      // least two frames to render. Mid-run checkpoints are no longer
-      // captured under the evolveRL API.
-      await evolveCartPoleController({
-        seed: 1,
-        populationSize: 3,
-        targetError: 0,
-        timeoutMinutes: 5,
-        iterations: 3,
-        mutationStrength: 0.05,
-        mutationRate: 0.05,
-        trials: 2,
-        trialSeed: 1,
-        initialPerturbation: 0.05,
-        snapshotConfig: { checkpoints: [1], outputDir: tmp },
-      });
-
-      const snapshots = loadSnapshots(tmp);
-      assertGreaterOrEqual(snapshots.length, 2);
-
-      const svg = renderEvolutionProgressSvg(snapshots, {
-        title: "Cart-Pole — Evolution Progress",
-      });
-      assert(svg.startsWith("<svg"), "must start with <svg>");
-      assert(svg.length > 0, "SVG must be non-empty");
-      const panels = svg.match(/<g class="panel"/g) ?? [];
-      assertEquals(panels.length, snapshots.length);
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
-  },
-});
-
-Deno.test({
-  name: "evolveCartPoleController emits GenerationInfo with sensible neuron and synapse counts",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    const samples: GenerationInfo[] = [];
-    await evolveCartPoleController({
-      seed: 1,
-      populationSize: 3,
-      targetError: -1,
-      timeoutMinutes: 1,
-      iterations: 3,
-      mutationStrength: 0.05,
-      mutationRate: 0.05,
-      trials: 2,
-      trialSeed: 1,
-      initialPerturbation: 0.05,
-      onGeneration: (info) => samples.push(info),
+    // Per #287/#288 the milestone chart is the only fitness-progression
+    // artefact the cart-pole example emits. The first milestone fires at
+    // generation 1, so even a single-iteration run must collect at least
+    // one sample, and the chart must render to a well-formed SVG.
+    const result = await evolveCartPoleController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
     });
-    assertGreater(samples.length, 0, "expected at least one onGeneration call");
-    for (const info of samples) {
-      // The minimal seed is `INPUT_COUNT + OUTPUT_COUNT` neurons with
-      // `INPUT_COUNT` direct synapses. The first generation reports at
-      // least the seed counts; later generations may grow.
-      assertGreaterOrEqual(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
-      assertGreaterOrEqual(info.synapses, INPUT_COUNT);
-      assertGreaterOrEqual(info.bestScore, 0);
-      assertGreaterOrEqual(info.meanScore, 0);
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least one milestone sample after iterations=1",
+    );
+    for (const m of result.milestones) {
+      assertGreater(m.generation, 0);
+      assertGreaterOrEqual(m.bestNeurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertGreaterOrEqual(m.bestSynapses, 1);
+      assertGreaterOrEqual(m.meanEpisodeSteps, 0);
+      assertGreaterOrEqual(m.generationWallClockMs, 0);
+    }
+
+    const tmp = await Deno.makeTempDir({ prefix: "cart_pole_milestone_" });
+    try {
+      const svg = renderMilestoneChartSVG(result.milestones, {
+        title: "Cart-Pole — evolveRL Milestones",
+        logX: true,
+        caption: true,
+      });
+      const path = join(tmp, "cart_pole_milestones.svg");
+      await Deno.writeTextFile(path, svg);
+      const written = await Deno.readTextFile(path);
+      assert(written.startsWith("<svg"), "must start with <svg>");
+      assert(written.includes("</svg>"), "must contain </svg>");
+      assert(
+        written.includes("Cart-Pole &#x2014; evolveRL Milestones") ||
+          written.includes("Cart-Pole — evolveRL Milestones"),
+        "expected the chart title to appear in the SVG",
+      );
+      // The chart should reference each milestone series.
+      assert(
+        written.includes("best-score-line"),
+        "expected the best-score series",
+      );
+      assert(
+        written.includes("mean-steps-line"),
+        "expected the mean-steps series",
+      );
+      assert(
+        written.includes("neurons-line"),
+        "expected the neurons series",
+      );
+      assert(
+        written.includes("synapses-line"),
+        "expected the synapses series",
+      );
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
     }
   },
 });
 
-Deno.test(
-  "formatEvolutionCsv emits the audit-mandated header and one row per record",
-  () => {
-    const rows: EvolutionRow[] = [
-      { generation: 0, bestFitness: 12.5, meanFitness: 8.2, neuronCount: 5, synapseCount: 4 },
-      { generation: 1, bestFitness: 200, meanFitness: 80, neuronCount: 6, synapseCount: 5 },
-    ];
-    const csv = formatEvolutionCsv(rows);
-    const lines = csv.trim().split("\n");
-    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-    assertEquals(
-      EVOLUTION_CSV_HEADER,
-      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
-    );
-    assertEquals(lines.length, rows.length + 1);
-    assertEquals(lines[1], "0,12.5,8.2,5,4");
-    assertEquals(lines[2], "1,200,80,6,5");
-    assertEquals(formatEvolutionCsv(rows), csv);
-  },
-);
-
-Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 0, bestFitness: 50, meanFitness: 20, neuronCount: 5, synapseCount: 4 },
-    { generation: 5, bestFitness: 200, meanFitness: 100, neuronCount: 6, synapseCount: 5 },
-    { generation: 10, bestFitness: 480, meanFitness: 320, neuronCount: 7, synapseCount: 6 },
-  ];
-  const svg = renderTopologyChartSvg(rows);
-  assert(svg.startsWith("<svg"), "must start with <svg>");
-  assert(svg.includes("</svg>"), "must contain </svg>");
-  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
-  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
-  assert(svg.includes("Cart Pole — Topology Growth"));
-});
-
-Deno.test("renderTopologyChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderTopologyChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assertEquals(threw, true, "expected empty input to throw");
+Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
+  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/cart_pole_milestones.svg");
 });
 
 Deno.test({
