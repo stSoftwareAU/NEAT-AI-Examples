@@ -231,6 +231,8 @@ common/
   outcome_bar_chart_test.ts        — Unit tests for the outcome bar chart renderer
   milestone_chart.ts               — Dual-axis SVG renderer for evolveRL() milestone statistics
   milestone_chart_test.ts          — Unit tests for the milestone chart renderer
+  evolve_dir_summary.ts            — SVG summary chart for evolveDir() return values
+  evolve_dir_summary_test.ts       — Unit tests for the evolveDir summary renderer
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
