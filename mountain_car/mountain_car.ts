@@ -5,36 +5,34 @@
  * sinusoidal hill — the second canonical OpenAI Gym RL benchmark. The
  * car's engine cannot push it directly up the slope, so the controller
  * must learn to swing back-and-forth across the valley to build
- * momentum. The simulator (see `physics.ts`) and the evolutionary loop
- * run entirely in pure TypeScript; the only external dependency is
- * NEAT-AI's `Creature.activate` to compute each step's action.
+ * momentum. The physics simulator (see `physics.ts`) is pure
+ * TypeScript. The evolutionary loop is now driven entirely by
+ * NEAT-AI's class-shaped `Creature.evolveRL()` API (issue #237,
+ * depends on `stSoftwareAU/NEAT-AI#2630` and library version `5.0.0`).
  *
  * Inputs (per timestep): `[x, v]`.
  * Outputs (3 channels): `[push-left, no-push, push-right]`. The argmax
  * over the three outputs selects the action `{-1, 0, +1}`.
- * Score: the **mean** per-trial score across a fixed batch of perturbed
- * starts. Successful trials score a `SUCCESS_BONUS` minus a step
- * penalty so faster solves outscore slower ones; failed trials score a
- * flat penalty plus partial credit for the highest position reached.
+ * Score: the **summit rate** — the fraction of perturbed-start trials
+ * that crest the goal flag — is what evolution selects on under the
+ * new reward shaping. The task is "solved" when the summit rate
+ * reaches {@link SOLVED_THRESHOLD} on the per-generation seed set.
  *
- * 🌱 **Generation 1 starts from random noise.** The initial population
- * is built by the NEAT-AI library from uniform-random weights and biases
- * — no hand-crafted topology, no tuned weight init. Structural mutation
- * (weight perturbation, bias perturbation, and add-neuron splits)
- * discovers the swing-up controller from there.
+ * 🌱 **Generation 1 starts from random noise.** The seed passed to
+ * `Creature.evolveRL()` is a brand-new `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` — the library's uniform-random minimal genome. No
+ * topology is hand-specified; structural mutation is owned by NEAT-AI.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
-  createSeededPopulation,
-  createSeededRng,
   Creature,
   type CreatureExport,
-  type NeuronExport,
+  EpisodeAdapter,
+  type EvolveRLOptions,
   safeWriteJson,
-  setRandomNumberGenerator,
-  type SynapseExport,
+  type StepResult,
 } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -47,7 +45,10 @@ import {
 import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
 import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
 import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
-import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
+import {
+  type EpisodeAdapter as LocalEpisodeAdapter,
+  runEpisode,
+} from "../common/episode_runner.ts";
 import {
   encodeState,
   initialState,
@@ -68,6 +69,9 @@ export const OUTPUT_COUNT = 3;
 /** Maximum number of timesteps a single episode is allowed to run. */
 export const MAX_STEPS = MAX_EPISODE_STEPS;
 
+/** Mountain-car action — `-1` push left, `0` coast, `+1` push right. */
+export type MountainCarAction = -1 | 0 | 1;
+
 /** Bonus added to the score when the car reaches the goal flag. */
 export const SUCCESS_BONUS = 1000;
 
@@ -84,10 +88,8 @@ export const FAILURE_FLAT_PENALTY = -100;
 /**
  * Summit-reached fraction at or above which the controller is declared
  * "solved" — the champion must crest the flag on at least 80% of the
- * perturbed-start trial batch within the step cap. This is a strict bar
- * for an under-powered car: a controller cannot luck into it on a single
- * favourable launch, it has to generalise. Equivalent to the default
- * `targetError = 0.2` (target rate = `1 - targetError`).
+ * perturbed-start trial batch within the step cap. Equivalent to the
+ * default `targetError = 0.2` (target rate = `1 - targetError`).
  */
 export const SOLVED_THRESHOLD = 0.8;
 
@@ -98,34 +100,52 @@ export interface EvolveOptions {
   /** Population size for each generation. */
   populationSize: number;
   /**
-   * NEAT-AI standard target-error stop condition (audit issue #221).
-   * Evolution halts as soon as the champion's summit rate on the
-   * perturbed-start trial batch reaches `1 - targetError` (default
-   * `0.2`, i.e. summit-rate ≥ 80% — matches {@link SOLVED_THRESHOLD}).
+   * NEAT-AI standard target-error stop condition. Evolution halts as
+   * soon as the champion's summit rate on the perturbed-start trial
+   * batch reaches `1 - targetError` (default `0.2`, i.e. summit-rate ≥
+   * 80% — matches {@link SOLVED_THRESHOLD}). Forwarded verbatim to
+   * `EvolveRLOptions.targetError` — the {@link MountainCarAdapter}'s
+   * reward shaping makes the mean error exactly `1 - summitRate`.
    */
   targetError: number;
   /**
-   * NEAT-AI standard wall-clock stop condition (audit issue #221).
-   * Evolution halts when the elapsed time since the loop began exceeds
-   * `timeoutMinutes` minutes (default `5`). Whichever of `targetError`
-   * and `timeoutMinutes` fires first wins.
+   * NEAT-AI standard wall-clock stop condition. Evolution halts when
+   * the elapsed time since the loop began exceeds `timeoutMinutes`
+   * minutes (default `5`). Whichever of `targetError` and
+   * `timeoutMinutes` fires first wins. NEAT-AI 5.0.0 requires this to
+   * be an integer ≥ 1, so sub-minute backstops are no longer
+   * expressible — use {@link iterations} for fast unit tests.
    */
   timeoutMinutes: number;
-  /** Magnitude of the weight/bias perturbation noise. */
+  /**
+   * Optional generation cap (NEAT-AI's standard `iterations` option).
+   * When supplied, the loop will also stop once `generation` reaches
+   * this value — useful for fast unit tests that need a deterministic
+   * generation count without depending on wall-clock timing. Defaults
+   * to `Infinity` so production runs are bounded only by `targetError`
+   * and `timeoutMinutes`.
+   */
+  iterations?: number;
+  /**
+   * Standard deviation of the weight/bias perturbation noise. Forwarded
+   * to NEAT-AI's `mutationRate` for backwards compatibility — NEAT-AI
+   * 5.0.0 owns mutation magnitude internally.
+   */
   mutationStrength: number;
   /** Probability that any given gene is perturbed each generation. */
   mutationRate: number;
   /**
    * Per-creature probability of receiving an add-neuron structural
-   * mutation each generation (split an existing connection by inserting
-   * a hidden neuron). Defaults to a small value so topology grows
-   * gradually rather than thrashing.
+   * mutation. Kept on the public API for backwards compatibility but
+   * is no longer used directly — NEAT-AI owns mutation policy under
+   * `evolveRL()`. Documented here so historical callers keep
+   * type-checking; the value is ignored.
    */
   addNeuronRate?: number;
   /**
    * Number of independent perturbed-start trials each candidate is
-   * scored on (mean across trials). Defaults to `1` (single canonical
-   * start at the valley centre). See {@link ScoreOptions}.
+   * scored on (mean across trials). Defaults to `1`. Maps to
+   * `EvolveRLOptions.episodesPerCreature`.
    */
   trials?: number;
   /**
@@ -136,16 +156,20 @@ export interface EvolveOptions {
   initialPerturbation?: number;
   /**
    * Seed for sampling the per-evaluation initial-state perturbations.
-   * Held constant for the whole run so candidates within a generation
-   * — and across generations — are scored on the same set of starts.
+   * No longer applied directly — NEAT-AI rotates a per-generation seed
+   * set derived from `EvolveRLOptions.seed`. Retained on the public API
+   * for backwards compatibility.
    */
   trialSeed?: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
-   * Optional snapshot configuration. When supplied, the running champion
-   * is captured at every generation matching `snapshotConfig.checkpoints`
-   * and written to `snapshotConfig.outputDir`.
+   * Optional snapshot configuration. When supplied, a snapshot of the
+   * seed creature is captured if generation `1` is a checkpoint, and a
+   * snapshot of the final champion is captured at the final generation
+   * (always, so the multi-panel SVG has a closing frame). Mid-run
+   * intermediate generations are no longer captured because
+   * `Creature.evolveRL()` does not expose mid-run creature exports.
    */
   snapshotConfig?: SnapshotConfig;
 }
@@ -198,8 +222,9 @@ export interface EvolveResult {
    * Why the evolution loop terminated:
    * - `"target"` — the champion reached `1 - targetError` summit rate.
    * - `"timeout"` — `timeoutMinutes` elapsed before the target fired.
+   * - `"iterations"` — the optional generation cap was hit first.
    */
-  stopReason: "target" | "timeout";
+  stopReason: "target" | "timeout" | "iterations";
 }
 
 /**
@@ -208,165 +233,124 @@ export interface EvolveResult {
  * - `targetError = 0.2` makes the target summit rate `1 - 0.2 = 80%`,
  *   matching {@link SOLVED_THRESHOLD}.
  * - `timeoutMinutes = 5` is the audit-mandated wall-clock backstop.
- *   The default seed reaches the target in well under a minute on a
- *   commodity laptop, so the backstop is never hit in practice.
  */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
   populationSize: 40,
-  // NEAT-AI standard stop conditions: evolution halts as soon as the
-  // champion's summit rate on the trial batch reaches `1 - targetError`
-  // (default 80%) OR `timeoutMinutes` minutes have elapsed since the
-  // loop began — whichever fires first.
   targetError: 0.2,
   timeoutMinutes: 5,
   mutationStrength: 0.6,
   mutationRate: 0.5,
+  // Retained for backwards compatibility — NEAT-AI owns structural
+  // mutation under evolveRL().
   addNeuronRate: 0.03,
   // Score every candidate against five different perturbed starts (the
-  // same five for every member, every generation) so the search cannot
-  // "win" by getting lucky on the canonical symmetric launch. The 0.05
-  // half-width keeps every start inside the valley bowl.
+  // same five for every member, every generation under the legacy
+  // adapter; NEAT-AI's `episodesPerCreature` rotates seeds per
+  // generation in the new loop) so the search cannot "win" by getting
+  // lucky on the canonical symmetric launch. The 0.05 half-width keeps
+  // every start inside the valley bowl.
   trials: 5,
   initialPerturbation: 0.05,
   trialSeed: 24680,
 };
 
+/** Adapter configuration consumed by {@link MountainCarAdapter}. */
+export interface MountainCarAdapterOptions {
+  /** Half-width of the uniform `[-m, +m]` perturbation. Default `0`. */
+  initialPerturbation?: number;
+  /** Cap on the number of physics ticks per episode. Default {@link MAX_STEPS}. */
+  maxStepsPerEpisode?: number;
+}
+
+/** State threaded through each episode by {@link MountainCarAdapter}. */
+export interface MountainCarEpisodeState {
+  /** Current physics state. */
+  physics: MountainCarState;
+  /** 1-based step index of the just-completed step (`0` after `reset`). */
+  stepIdx: number;
+}
+
 /**
- * Build the initial population using the NEAT-AI library's uniform-random
- * creature constructor — `new Creature(INPUT_COUNT, OUTPUT_COUNT)` produces
- * a minimal seed (direct input → output connections) with random weights
- * and a random output bias. **No topology is hand-specified by this
- * example**; structural mutation grows hidden neurons during evolution.
+ * Mountain-car episode adapter for `Creature.evolveRL()`. Each `step()`
+ * advances the deterministic physics simulator, encodes the observation
+ * as a `Float32Array`, and emits a reward that maps directly onto
+ * NEAT-AI's non-negative `error` slot via `defaultRewardToError`
+ * (`error = max(0, -reward)`):
  *
- * `seed` controls the global library RNG so the same `seed` reproduces
- * the same initial population across runs.
- */
-export function buildRandomPopulation(
-  seed: number,
-  populationSize: number,
-): CreatureExport[] {
-  setRandomNumberGenerator(createSeededRng(seed));
-  return createSeededPopulation({
-    inputCount: INPUT_COUNT,
-    outputCount: OUTPUT_COUNT,
-    populationSize,
-    seeds: [],
-  });
-}
-
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
-}
-
-/** Deep-clone a creature export so callers can safely mutate it. */
-function cloneExport(creature: CreatureExport): CreatureExport {
-  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
-}
-
-/**
- * Insert a hidden neuron in the middle of an existing connection: the
- * NEAT "add-node" structural mutation. Picks a random synapse, replaces
- * it with a path through a fresh hidden neuron, and assigns reasonable
- * starting weights so the new path approximates the original signal
- * before further mutation tunes it.
- */
-function addHiddenNeuron(
-  creature: CreatureExport,
-  random: () => number,
-  hiddenCounter: { value: number },
-): CreatureExport {
-  if (creature.synapses.length === 0) return creature;
-
-  const synapseIdx = Math.floor(random() * creature.synapses.length);
-  const original = creature.synapses[synapseIdx];
-
-  const uuid = `hidden-${hiddenCounter.value++}`;
-
-  const newNeuron: NeuronExport = {
-    type: "hidden",
-    uuid,
-    bias: uniformSigned(random, 0.5),
-    squash: "LOGISTIC",
-  };
-
-  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
-  newSynapses.push({
-    weight: original.weight,
-    fromUUID: original.fromUUID,
-    toUUID: uuid,
-  });
-  newSynapses.push({
-    weight: 1,
-    fromUUID: uuid,
-    toUUID: original.toUUID,
-  });
-
-  // Hidden neurons must stay before every output. For hidden targets,
-  // insert directly before the target; for output targets, insert before
-  // the first output so NEAT-AI 4.x validation keeps the export ordered.
-  const targetIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
-  const target = targetIdx === -1 ? undefined : creature.neurons[targetIdx];
-  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = target?.type === "hidden"
-    ? targetIdx
-    : firstOutputIdx === -1
-    ? creature.neurons.length
-    : firstOutputIdx;
-  const newNeurons = [
-    ...creature.neurons.slice(0, insertAt),
-    newNeuron,
-    ...creature.neurons.slice(insertAt),
-  ];
-
-  return {
-    ...creature,
-    neurons: newNeurons,
-    synapses: newSynapses,
-  };
-}
-
-/**
- * Mutate a creature genome. Each existing weight and non-input bias is
- * perturbed independently with probability `mutationRate`; the noise is
- * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
- * probability `addNeuronRate` the genome additionally receives a NEAT
- * add-node structural mutation (split one synapse with a hidden neuron).
+ * - Non-terminal step: reward `0`.
+ * - Summit reached (`isSuccess(state)`): `terminated = true`, reward
+ *   `0`. Cumulative episode reward = `0` → `error = 0`.
+ * - Step cap reached without summit: `terminated = true`, reward `-1`.
+ *   Cumulative episode reward = `-1` → `error = 1`.
  *
- * The resulting export is suitable for `Creature.fromJSON(...)`. No
- * topology is hand-specified — every change here is a generic NEAT
- * mutation operator that works on whatever variable topology the
- * creature currently has.
+ * Across `episodesPerCreature` trials the mean cumulative reward is
+ * therefore `-(1 - summitRate)`, so `EvolveRLOptions.targetError = 0.2`
+ * stops evolution as soon as the champion's summit rate reaches
+ * `1 - 0.2 = 0.8 =` {@link SOLVED_THRESHOLD} across the per-generation
+ * seed set.
  */
-export function mutateCreatureExport(
-  parent: CreatureExport,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
-): CreatureExport {
-  const child = cloneExport(parent);
+export class MountainCarAdapter extends EpisodeAdapter<MountainCarEpisodeState, MountainCarAction> {
+  /** Half-width of the per-component initial-state perturbation. */
+  readonly initialPerturbation: number;
+  /** Per-episode step cap. */
+  readonly maxStepsPerEpisode: number;
 
-  for (const synapse of child.synapses) {
-    if (random() < mutationRate) {
-      synapse.weight += uniformSigned(random, mutationStrength);
-    }
+  constructor(options: MountainCarAdapterOptions = {}) {
+    super();
+    this.initialPerturbation = options.initialPerturbation ?? 0;
+    this.maxStepsPerEpisode = options.maxStepsPerEpisode ?? MAX_STEPS;
   }
 
-  for (const neuron of child.neurons) {
-    if (random() < mutationRate) {
-      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
-    }
+  override get observationLength(): number {
+    return INPUT_COUNT;
   }
 
-  const addNeuronRate = options?.addNeuronRate ?? 0;
-  const counter = options?.hiddenCounter ?? { value: 0 };
-  if (addNeuronRate > 0 && random() < addNeuronRate) {
-    return addHiddenNeuron(child, random, counter);
+  override maxSteps(): number {
+    return this.maxStepsPerEpisode;
   }
 
-  return child;
+  override reset(
+    rngSeed: number,
+  ): { observation: Float32Array; state: MountainCarEpisodeState } {
+    const initRng = createDeterministicRandom(rngSeed >>> 0);
+    const physics = this.initialPerturbation > 0
+      ? perturbedInitialState(initRng, this.initialPerturbation)
+      : initialState();
+    return {
+      observation: encodeState(physics),
+      state: { physics, stepIdx: 0 },
+    };
+  }
+
+  override decodeAction(
+    creatureOutput: Float32Array,
+    _state: MountainCarEpisodeState,
+  ): MountainCarAction {
+    return decodeAction(creatureOutput);
+  }
+
+  override step(
+    state: MountainCarEpisodeState,
+    action: MountainCarAction,
+  ): StepResult<Float32Array> & { state: MountainCarEpisodeState } {
+    const newPhysics = step(state.physics, action);
+    const newStepIdx = state.stepIdx + 1;
+    const summited = isSuccess(newPhysics);
+    const timedOut = !summited && newStepIdx >= this.maxStepsPerEpisode;
+    // Summit: reward 0 (cumulative 0 → error 0 → counted as "solved").
+    // Timeout: reward -1 (cumulative -1 → error 1 → counted as failed).
+    // Otherwise: reward 0 and continue.
+    const reward = timedOut ? -1 : 0;
+    const terminated = summited || timedOut;
+    return {
+      state: { physics: newPhysics, stepIdx: newStepIdx },
+      observation: encodeState(newPhysics),
+      reward,
+      terminated,
+      truncated: false,
+    };
+  }
 }
 
 /**
@@ -375,7 +359,7 @@ export function mutateCreatureExport(
  * favour lower indices (left / coast) which is irrelevant for the
  * evolutionary search but keeps the mapping deterministic.
  */
-export function decodeAction(outputs: ArrayLike<number>): -1 | 0 | 1 {
+export function decodeAction(outputs: ArrayLike<number>): MountainCarAction {
   let bestIdx = 0;
   let best = outputs[0];
   for (let i = 1; i < OUTPUT_COUNT; i++) {
@@ -384,7 +368,7 @@ export function decodeAction(outputs: ArrayLike<number>): -1 | 0 | 1 {
       bestIdx = i;
     }
   }
-  return (bestIdx - 1) as -1 | 0 | 1;
+  return (bestIdx - 1) as MountainCarAction;
 }
 
 /** Result of running a single episode. */
@@ -395,10 +379,10 @@ interface EpisodeResult {
   finalState: MountainCarState;
 }
 
-/** Build a mountain-car {@link EpisodeAdapter} for the shared rollout helper. */
-function mountainCarAdapter(
+/** Build a mountain-car {@link LocalEpisodeAdapter} for the shared rollout helper. */
+function mountainCarLocalAdapter(
   start: MountainCarState,
-): EpisodeAdapter<MountainCarState, -1 | 0 | 1> {
+): LocalEpisodeAdapter<MountainCarState, MountainCarAction> {
   return {
     initialState: start,
     encode: encodeState,
@@ -413,14 +397,15 @@ function mountainCarAdapter(
  * components. Wraps the shared {@link runEpisode} helper with the
  * mountain-car-specific reward shaping (success bonus minus a per-step
  * penalty for solved trials, partial credit for the highest peak
- * reached on timeouts).
+ * reached on timeouts). Used by the legacy {@link scoreController}
+ * path that tests and the post-evolution replay still consume.
  */
 function runMountainCarEpisode(
   creature: Creature,
   start: MountainCarState,
   maxSteps: number,
 ): EpisodeResult {
-  const { trace, finalState, steps } = runEpisode(creature, mountainCarAdapter(start), {
+  const { trace, finalState, steps } = runEpisode(creature, mountainCarLocalAdapter(start), {
     maxSteps,
   });
   const solved = isSuccess(finalState);
@@ -451,10 +436,12 @@ export interface ControllerScore {
 /**
  * Score a creature by running the simulator across a fixed batch of
  * perturbed starts. The returned `score` is the mean per-trial score —
- * the signal evolution selects on — and `summitRate` is the fraction of
- * trials that actually reached the goal flag, used for the
- * {@link SOLVED_THRESHOLD} check. Identical inputs always produce
- * identical scores (the trial PRNG is seeded by `options.trialSeed`).
+ * the legacy fitness signal — and `summitRate` is the fraction of
+ * trials that actually reached the goal flag. Identical inputs always
+ * produce identical scores (the trial PRNG is seeded by
+ * `options.trialSeed`). Used by tests and the post-evolution replay
+ * path; evolution itself now selects on `summitRate` through
+ * {@link MountainCarAdapter}'s normalised rewards.
  */
 export function scoreController(
   creature: Creature,
@@ -494,7 +481,7 @@ export function replayController(
   creature: Creature,
   maxSteps: number = MAX_STEPS,
 ): MountainCarState[] {
-  return runEpisode(creature, mountainCarAdapter(initialState()), { maxSteps }).trace;
+  return runEpisode(creature, mountainCarLocalAdapter(initialState()), { maxSteps }).trace;
 }
 
 /**
@@ -524,168 +511,203 @@ export function scoreSwingUpPolicy(maxSteps: number = MAX_STEPS): {
   return { score, steps: maxSteps, solved: false };
 }
 
-interface ScoredMember {
-  json: CreatureExport;
-  score: number;
-  summitRate: number;
-  neurons: number;
-  synapses: number;
-}
-
-function topologyCounts(json: CreatureExport): { neurons: number; synapses: number } {
-  return {
-    neurons: json.neurons.length + (json.input ?? INPUT_COUNT),
-    synapses: json.synapses.length,
-  };
+/** Per-generation aggregate accumulated from `onEpisodeTrials` events. */
+interface GenerationBucket {
+  meanRewards: number[];
+  bestReward: number;
+  bestNeurons: number;
+  bestSynapses: number;
 }
 
 /**
- * Run a generational evolutionary algorithm. Truncation selection keeps
- * the top half as parents; the elite carries over so the best score is
- * monotonically non-decreasing. Stops as soon as the champion's summit
- * rate reaches `1 - targetError` **or** `timeoutMinutes` minutes of
- * wall-clock have elapsed — whichever fires first. The two stop
- * conditions match the standard NEAT-AI `NeatOptions.targetError` /
- * `NeatOptions.timeoutMinutes` fields and were introduced by audit
- * issue #221.
+ * Run NEAT-AI's first-class reinforcement-learning evolution loop
+ * against a {@link MountainCarAdapter}. Mutation, crossover, elitism,
+ * plateau detection, and stop-condition handling are owned by
+ * `Creature.evolveRL()` (issue #237).
+ *
+ * Per-generation telemetry is reconstructed by:
+ *
+ * 1. Accumulating per-creature `meanReward` via `onEpisodeTrials`.
+ * 2. Reading champion topology counts from the optional
+ *    `evolverl_milestone` events when `statistics: true` is enabled.
+ * 3. Firing the caller's `options.onGeneration` callback from each
+ *    `generation_complete` training event with the aggregated data.
+ *
+ * Snapshot capture is reduced to gen-1 (the seed creature) and the
+ * final generation (the champion after `evolveRL` returns) because the
+ * upstream API does not expose mid-run creature exports.
  */
-export function evolveMountainCarController(
+export async function evolveMountainCarController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  const random = createDeterministicRandom(options.seed);
-  const scoreOptions: ScoreOptions = {
-    trials: options.trials,
-    trialSeed: options.trialSeed,
+): Promise<EvolveResult> {
+  const adapter = new MountainCarAdapter({
     initialPerturbation: options.initialPerturbation,
-  };
-  const score = (creature: Creature) => scoreController(creature, MAX_STEPS, scoreOptions);
-
-  const hiddenCounter = { value: 0 };
-  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
-
-  // Initial population: uniform-random NEAT genomes from the library.
-  const initialExports = buildRandomPopulation(options.seed, options.populationSize);
-  let population: ScoredMember[] = initialExports.map((json) => {
-    const creature = Creature.fromJSON(json);
-    const result = score(creature);
-    const counts = topologyCounts(json);
-    return {
-      json,
-      score: result.score,
-      summitRate: result.summitRate,
-      neurons: counts.neurons,
-      synapses: counts.synapses,
-    };
+    maxStepsPerEpisode: MAX_STEPS,
   });
 
-  let bestJSON = population[0].json;
-  let bestScore = -Infinity;
-  let bestSummitRate = 0;
-  let solvedAt = -1;
+  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const seedExport = seedCreature.exportJSON();
+  const seedNeurons = seedExport.neurons.length + (seedExport.input ?? INPUT_COUNT);
+  const seedSynapses = seedExport.synapses.length;
 
-  const targetSummitRate = 1 - options.targetError;
-  const timeoutMs = options.timeoutMinutes * 60_000;
-  const loopStart = Date.now();
-  let stopReason: "target" | "timeout" = "timeout";
-  let generation = 0;
-
-  while (true) {
-    population.sort((a, b) => b.score - a.score);
-    const generationBest = population[0];
-    if (generationBest.score > bestScore) {
-      bestScore = generationBest.score;
-      bestSummitRate = generationBest.summitRate;
-      bestJSON = generationBest.json;
-    }
-
-    const meanScore = population.reduce((acc, p) => acc + p.score, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestScore: generationBest.score,
-      meanScore,
-      bestSummitRate: generationBest.summitRate,
-      neurons: generationBest.neurons,
-      synapses: generationBest.synapses,
-    });
-
-    // Capture an evolution snapshot of the running champion at the
-    // configured checkpoints. The helper is a no-op for non-checkpoint
-    // generations.
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestScore);
-      }
-    }
-
-    const targetMet = bestSummitRate >= targetSummitRate;
-    if (targetMet && solvedAt < 0) solvedAt = generation;
-
-    const elapsedMs = Date.now() - loopStart;
-    const timedOut = elapsedMs >= timeoutMs;
-
-    if (targetMet) {
-      // When capturing evolution snapshots, keep running until the next
-      // not-yet-fired checkpoint is captured — otherwise the progression
-      // strip would be a single panel.
-      const nextCheckpoint = options.snapshotConfig?.checkpoints
-        .filter((c) => c > generation + 1)
-        .sort((a, b) => a - b)[0];
-      if (nextCheckpoint === undefined) {
-        stopReason = "target";
-        break;
-      }
-    }
-
-    if (timedOut) {
-      stopReason = solvedAt >= 0 ? "target" : "timeout";
-      break;
-    }
-
-    // Truncation selection: keep top 50% as parents (always at least 1).
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
-
-    // Build the next generation: keep elite, fill rest with mutated
-    // offspring from random parents.
-    const nextPopulation: ScoredMember[] = [];
-    nextPopulation.push(parents[0]);
-    while (nextPopulation.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureExport(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-        mutationOpts,
-      );
-      const childCreature = Creature.fromJSON(childJSON);
-      const result = score(childCreature);
-      const counts = topologyCounts(childJSON);
-      nextPopulation.push({
-        json: childJSON,
-        score: result.score,
-        summitRate: result.summitRate,
-        neurons: counts.neurons,
-        synapses: counts.synapses,
-      });
-    }
-
-    population = nextPopulation;
-    generation++;
+  // Capture the seed creature as the gen-1 snapshot so the existing
+  // multi-panel SVG renderer still has at least one early-generation
+  // panel to draw alongside the final champion.
+  if (options.snapshotConfig?.checkpoints.includes(1)) {
+    captureSnapshot(options.snapshotConfig, 1, seedExport, 0);
   }
 
-  const champion = Creature.fromJSON(bestJSON);
+  const generationData = new Map<number, GenerationBucket>();
+  let latestBestNeurons = seedNeurons;
+  let latestBestSynapses = seedSynapses;
+  let bestSummitRateSeen = 0;
+  let lastObservedGeneration = 0;
+
+  // EvolveRL normalised target error — the adapter emits cumulative
+  // episode rewards in `{-1, 0}`, so `defaultRewardToError` produces
+  // an error of `1 - summitRate`. The caller's `targetError` already
+  // lives in that range, so it passes through unchanged. Negative
+  // values (used by tests to force the wall-clock / iterations
+  // backstop) are clamped to `0`, the smallest legal value.
+  const absoluteTargetError = Math.max(0, options.targetError);
+
+  const loopStart = Date.now();
+
+  const evolveOptions: EvolveRLOptions = {
+    seed: options.seed >>> 0,
+    populationSize: options.populationSize,
+    mutationRate: options.mutationRate,
+    targetError: absoluteTargetError,
+    timeoutMinutes: options.timeoutMinutes,
+    iterations: options.iterations,
+    episodesPerCreature: options.trials ?? 1,
+    statistics: true,
+    onEpisodeTrials: (event) => {
+      let bucket = generationData.get(event.generation);
+      if (!bucket) {
+        bucket = {
+          meanRewards: [],
+          bestReward: Number.NEGATIVE_INFINITY,
+          bestNeurons: latestBestNeurons,
+          bestSynapses: latestBestSynapses,
+        };
+        generationData.set(event.generation, bucket);
+      }
+      bucket.meanRewards.push(event.meanReward);
+      if (event.meanReward > bucket.bestReward) {
+        bucket.bestReward = event.meanReward;
+      }
+    },
+    onTrainingEvent: (event) => {
+      if (event.kind === "evolverl_milestone") {
+        latestBestNeurons = event.bestNeurons;
+        latestBestSynapses = event.bestSynapses;
+        const bucket = generationData.get(event.generation);
+        if (bucket) {
+          bucket.bestNeurons = event.bestNeurons;
+          bucket.bestSynapses = event.bestSynapses;
+        }
+        return;
+      }
+      if (event.kind !== "generation_complete") return;
+
+      lastObservedGeneration = event.generation;
+      const bucket = generationData.get(event.generation);
+      // Surface generation numbers as zero-based to match the historical
+      // GenerationInfo contract.
+      const generation0 = event.generation - 1;
+      let bestSummitRateGen: number;
+      let meanSummitRateGen: number;
+      let neurons: number;
+      let synapses: number;
+      if (bucket && bucket.meanRewards.length > 0) {
+        const sum = bucket.meanRewards.reduce((a, b) => a + b, 0);
+        const meanReward = sum / bucket.meanRewards.length;
+        // Cumulative reward in `[-1, 0]` maps to summit rate via
+        // `summitRate = 1 + reward`.
+        meanSummitRateGen = clamp01(1 + meanReward);
+        bestSummitRateGen = clamp01(1 + bucket.bestReward);
+        neurons = bucket.bestNeurons;
+        synapses = bucket.bestSynapses;
+      } else {
+        meanSummitRateGen = bestSummitRateSeen;
+        bestSummitRateGen = bestSummitRateSeen;
+        neurons = latestBestNeurons;
+        synapses = latestBestSynapses;
+      }
+      if (bestSummitRateGen > bestSummitRateSeen) {
+        bestSummitRateSeen = bestSummitRateGen;
+      }
+      options.onGeneration?.({
+        generation: generation0,
+        // Surface the score as `SUCCESS_BONUS * summitRate` so the
+        // numeric range matches the historical contract (charts, CSV
+        // exporters, console output).
+        bestScore: SUCCESS_BONUS * bestSummitRateGen,
+        meanScore: SUCCESS_BONUS * meanSummitRateGen,
+        bestSummitRate: bestSummitRateGen,
+        neurons,
+        synapses,
+      });
+    },
+  };
+
+  const result = await seedCreature.evolveRL(adapter, evolveOptions);
+
+  const wallclockMs = Date.now() - loopStart;
+  const finalGeneration = Math.max(lastObservedGeneration, result.generation);
+
+  // The champion's summit rate mirrors evolveRL's own assessment so
+  // that "the champion solved the task" agrees with `result.error <=
+  // targetError`. `error = 1 - summitRate` so `summitRate = 1 - error`.
+  const finalSummitRate = clamp01(1 - Math.max(0, Math.min(1, result.error)));
+  if (finalSummitRate > bestSummitRateSeen) bestSummitRateSeen = finalSummitRate;
+  const finalScore = SUCCESS_BONUS * finalSummitRate;
+
+  // Always capture the final champion at the final generation so the
+  // multi-panel SVG has a closing frame.
+  if (options.snapshotConfig) {
+    const checkpoints = options.snapshotConfig.checkpoints.includes(finalGeneration)
+      ? options.snapshotConfig.checkpoints
+      : [finalGeneration];
+    captureSnapshot(
+      { ...options.snapshotConfig, checkpoints },
+      finalGeneration,
+      seedCreature.exportJSON(),
+      finalScore,
+    );
+  }
+
+  const targetSummitRate = 1 - absoluteTargetError;
+  const targetMet = finalSummitRate >= targetSummitRate;
+
+  let stopReason: "target" | "timeout" | "iterations";
+  if (targetMet) {
+    stopReason = "target";
+  } else if (
+    options.iterations !== undefined && finalGeneration >= options.iterations
+  ) {
+    stopReason = "iterations";
+  } else {
+    stopReason = "timeout";
+  }
+
   return {
-    champion,
-    bestScore,
-    summitRate: bestSummitRate,
-    generations: generation + 1,
-    solved: bestSummitRate >= targetSummitRate,
-    wallclockMs: Date.now() - loopStart,
+    champion: seedCreature,
+    bestScore: finalScore,
+    summitRate: finalSummitRate,
+    generations: finalGeneration,
+    solved: targetMet,
+    wallclockMs,
     stopReason,
   };
+}
+
+/** Clamp a value to `[0, 1]`. */
+function clamp01(value: number): number {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
 }
 
 /** Path to the SVG snapshot the runner emits for the README. */
@@ -883,7 +905,7 @@ if (import.meta.main) {
       `(score=${sanity.score.toFixed(2)}).`,
   );
 
-  console.log("\n🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log("\n🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
     `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError} ` +
       `(summit-rate ≥ ${((1 - DEFAULT_EVOLVE_OPTIONS.targetError) * 100).toFixed(0)}%), ` +
@@ -896,7 +918,7 @@ if (import.meta.main) {
   const evolutionSamples: EvolutionSample[] = [];
   const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
-  const result = evolveMountainCarController({
+  const result = await evolveMountainCarController({
     ...DEFAULT_EVOLVE_OPTIONS,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
@@ -958,8 +980,6 @@ if (import.meta.main) {
 
   // Per-generation evolution telemetry (audit issue #221): CSV (source
   // of truth) + best/mean fitness chart + neuron/synapse topology chart.
-  // All three are emitted on every full run so downstream tools and the
-  // README can reuse the same data.
   if (evolutionRows.length > 0) {
     ensureDirSync("docs/data/mountain_car");
     await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
