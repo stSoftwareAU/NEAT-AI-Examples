@@ -62,6 +62,8 @@ These examples exist to demonstrate evolution from noise → competent and must 
 - `lunar_lander`
 - `mountain_car`
 - `maze_navigation`
+- `adaptive_mutation` — evolves a 4-bit even-parity classifier from a minimal `new Creature(4, 1)`
+  seed; the noise → competent classification arc is the demo (rewired under #263 / #264).
 
 ### Exempt examples (hand-crafted state IS the demo)
 
@@ -88,10 +90,6 @@ entire point of the demo, so the no-warm-start policy does not apply:
   NEAT-AI evolution loop, even though the audited second stage seeds NEAT-AI from
   `new Creature(input, output)`.
 - `synthetic_synapse` — densify-train-prune on an evolved sparse creature.
-- `adaptive_mutation` — demonstrates NEAT-AI's adaptive mutation policy via measured topology growth
-  from a minimal seed (audited under #212); the example is listed here because its narrative is
-  policy demonstration rather than the noise → competent classification arc, even though gen 1 is
-  initialised from `new Creature(input, output)`.
 - `evolution_showcase` — long-form flagship run (still seeded minimally; see its README).
 
 ### Enforcement

@@ -45,6 +45,7 @@ import {
   TRUTH_TABLE_SIZE,
 } from "./classification_task.ts";
 import {
+  ACCURACY_CURVE_CLASS,
   FITNESS_CURVE_CLASS,
   NEURON_CURVE_CLASS,
   renderAdaptiveMutationSVG,
@@ -259,7 +260,7 @@ Deno.test("EVOLUTION_CSV_HEADER - includes the accuracy column", () => {
   );
 });
 
-Deno.test("renderFitnessChartSvg - well-formed SVG with the fitness CSS class", () => {
+Deno.test("renderFitnessChartSvg - well-formed SVG with classification fitness labels", () => {
   const svg = renderFitnessChartSvg([
     {
       generation: 1,
@@ -281,6 +282,12 @@ Deno.test("renderFitnessChartSvg - well-formed SVG with the fitness CSS class", 
   assert(svg.startsWith("<svg"));
   assert(svg.includes("</svg>"));
   assertStringIncludes(svg, FITNESS_CURVE_CLASS);
+  // Issue #264 acceptance criterion: chart describes classification
+  // fitness rather than the MSE-based framing of the old regression
+  // version.
+  assertStringIncludes(svg, "Classification Fitness");
+  assertStringIncludes(svg, "best classification fitness");
+  assertStringIncludes(svg, "mean classification fitness");
 });
 
 Deno.test("renderFitnessChartSvg - rejects empty rows", () => {
@@ -315,7 +322,7 @@ Deno.test("renderTopologyChartSvg - rejects empty rows", () => {
   assertThrows(() => renderTopologyChartSvg([]), Error, "at least one row");
 });
 
-Deno.test("renderAdaptiveMutationSVG - well-formed SVG with both panel curves", () => {
+Deno.test("renderAdaptiveMutationSVG - well-formed SVG with topology, policy and accuracy curves", () => {
   const rows = [
     {
       generation: 1,
@@ -352,8 +359,58 @@ Deno.test("renderAdaptiveMutationSVG - well-formed SVG with both panel curves", 
   assert(svg.startsWith("<svg"));
   assertStringIncludes(svg, SIZE_CURVE_CLASS);
   assertStringIncludes(svg, TOPOLOGY_CURVE_CLASS);
+  // Issue #264 acceptance criterion: headline SVG plots accuracy as a
+  // third curve alongside the topology and analytic policy curves.
+  assertStringIncludes(svg, ACCURACY_CURVE_CLASS);
+  assertStringIncludes(svg, "classification accuracy");
   assertStringIncludes(svg, "Generations: 10");
+  assertStringIncludes(svg, "Final accuracy: 0.9500");
   assertStringIncludes(svg, "Held-out -MSE: -0.0500");
+});
+
+Deno.test("renderAdaptiveMutationSVG - skips NaN accuracy rows in the polyline", () => {
+  // The runner emits NaN accuracy where the live creature could not be
+  // evaluated. The headline renderer should ignore those rows in the
+  // accuracy polyline but still produce a well-formed SVG carrying the
+  // accuracy CSS class for the surviving rows.
+  const rows = [
+    {
+      generation: 1,
+      bestFitness: 0.5,
+      meanFitness: 0.4,
+      accuracy: 0.5,
+      neuronCount: 6,
+      synapseCount: 8,
+    },
+    {
+      generation: 2,
+      bestFitness: 0.6,
+      meanFitness: 0.5,
+      accuracy: Number.NaN,
+      neuronCount: 7,
+      synapseCount: 10,
+    },
+    {
+      generation: 3,
+      bestFitness: 0.7,
+      meanFitness: 0.6,
+      accuracy: 0.8,
+      neuronCount: 8,
+      synapseCount: 12,
+    },
+  ];
+  const svg = renderAdaptiveMutationSVG({
+    rows,
+    heldOutScore: -0.1,
+    wallClockMs: 1000,
+    generations: 3,
+    solved: false,
+  });
+  assert(svg.startsWith("<svg"));
+  assertStringIncludes(svg, ACCURACY_CURVE_CLASS);
+  assertStringIncludes(svg, "Final accuracy: 0.8000");
+  // No NaN literal should leak into the SVG payload.
+  assert(!svg.includes("NaN"), "NaN should not appear in rendered SVG");
 });
 
 Deno.test("renderAdaptiveMutationSVG - rejects empty rows", () => {
