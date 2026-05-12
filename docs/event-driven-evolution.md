@@ -79,11 +79,18 @@ Practical consequences:
 ## 🚀 What `evolveEnv()` provides
 
 This page is just the navigation entry point for Examples readers. The full API spec — argument
-shape, termination guards, telemetry hooks, exception contracts, and worked migration examples —
-lives upstream in
+shape, termination guards, exception contracts, and worked migration examples — lives upstream in
 [`stSoftwareAU/NEAT-AI`'s `docs/event-driven-evolution.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/docs/event-driven-evolution.md).
 Read that doc when you are migrating an event-driven example off its hand-rolled generation loop and
 onto the first-class API.
+
+**Telemetry is milestone-only.** `evolveEnv()` emits an `evolverl_milestone` event at each milestone
+generation (typically 1, 10, 100, 1000, 10000) with the best score and topology stats for that
+milestone, and returns the same milestone summary when the run completes. There is no per-generation
+hook — examples chart these milestones directly via
+[`common/milestone_chart.ts`](../common/milestone_chart.ts). See
+[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the canonical decision
+record on why every-generation telemetry was retired in favour of milestone-only.
 
 The five reinforcement / event-driven examples in this repository will migrate one-by-one as the
 upstream API stabilises; the per-example sub-issues below track the actual code changes.
@@ -91,13 +98,16 @@ upstream API stabilises; the per-example sub-issues below track the actual code 
 ## ✅ Migration status
 
 The five event-driven examples each have their own migration sub-issue. The list below is the
-at-a-glance scoreboard — tick a box when the corresponding sub-issue closes.
+at-a-glance scoreboard — tick a box when the corresponding sub-issue closes. Each migration target
+is `evolveEnv()` with milestone-only telemetry (`evolverl_milestone` events plus the milestone
+summary returned by the call); see
+[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the decision record.
 
-- [ ] [`cart_pole` → `evolveEnv()` — #236](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/236)
-- [ ] [`mountain_car` → `evolveEnv()` — #237](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/237)
-- [ ] [`snake_game` → `evolveEnv()` — #238](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/238)
-- [ ] [`maze_navigation` → `evolveEnv()` — #239](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/239)
-- [ ] [`lunar_lander` → `evolveEnv()` — #240](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/240)
+- [ ] [`cart_pole` → `evolveEnv()` (milestone telemetry) — #236](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/236)
+- [ ] [`mountain_car` → `evolveEnv()` (milestone telemetry) — #237](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/237)
+- [ ] [`snake_game` → `evolveEnv()` (milestone telemetry) — #238](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/238)
+- [ ] [`maze_navigation` → `evolveEnv()` (milestone telemetry) — #239](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/239)
+- [ ] [`lunar_lander` → `evolveEnv()` (milestone telemetry) — #240](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/240)
       (run last)
 
 When every box is ticked, the repository is fully migrated and the per-example hand-rolled evolution
