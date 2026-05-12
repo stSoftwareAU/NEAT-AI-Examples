@@ -1,14 +1,13 @@
 /**
- * Unit tests for the neuron-pruning demo (audit #217).
+ * Unit tests for the neuron-pruning demo (audit #217, telemetry rewire #303).
  *
  * The demo was reworked under issue #217 so the seed passed to NEAT-AI
  * is minimal (`new Creature(INPUT_COUNT, OUTPUT_COUNT)`) and evolution
  * runs through `Creature.evolveDir(...)` over a binary `.bin` training
- * set. After evolution the example injects deliberately constant-output
- * hidden neurons into the evolved champion (this is the demo's
- * hand-crafted state — exempt per `AGENTS.md`) and then prunes them
- * with the analytical bias-fold helpers retained from the previous
- * design.
+ * set. Under #303 the per-generation telemetry hook was removed in
+ * favour of NEAT-AI's milestone-only telemetry surface — the runner now
+ * makes a single `evolveDir` call and captures an
+ * `EvolveDirSummary` from its return value.
  *
  * Tests are "what" tests: they call real functions with deterministic
  * inputs and assert on the returned values, the resulting topology,
@@ -32,8 +31,6 @@ import {
   cloneNetwork,
   DEFAULT_NEURON_PRUNING_CONFIG,
   detectConstantNeurons,
-  EVOLUTION_CSV_HEADER,
-  formatEvolutionCsv,
   forward,
   generateDataset,
   heldOutScore,
@@ -43,12 +40,11 @@ import {
   type NeuronPruningConfig,
   OUTPUT_COUNT,
   pruneConstantNeurons,
-  renderFitnessChartSvg,
-  renderTopologyChartSvg,
   runNeuronPruningDemo,
   writeBinaryDataset,
 } from "./neuron_pruning.ts";
 import { renderNeuronPruningSVG } from "./svg.ts";
+import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { buildLargeCreature } from "../common/large_creature.ts";
 
 /**
@@ -145,8 +141,6 @@ Deno.test(
   "detectConstantNeurons - flags zero-input hidden neurons as constant",
   () => {
     const network = buildDemoNetwork(SMALL_CONFIG);
-    // Build the dataset off the unmodified target creature so that the
-    // injected neurons are objectively dead weight on the held-out task.
     const target = networkFromCreature(
       buildLargeCreature({
         inputs: SMALL_CONFIG.inputs,
@@ -158,10 +152,6 @@ Deno.test(
     );
     const dataset = generateDataset(target, SMALL_CONFIG.heldOutSize, 99);
     const constants = detectConstantNeurons(network, dataset, SMALL_CONFIG.varianceThreshold);
-    // We injected exactly `constantNeurons` zero-input hidden neurons, so
-    // the detector must find at least that many constant neurons. (It may
-    // legitimately find more if a hidden neuron's incoming weights happen
-    // to cancel out across the dataset — that is also a valid prune.)
     assertGreaterOrEqual(constants.length, SMALL_CONFIG.constantNeurons);
   },
 );
@@ -241,12 +231,9 @@ Deno.test("pruneConstantNeurons - records bias-fold targets per pruned neuron", 
   const dataset = generateDataset(target, 16, 7);
   const constants = detectConstantNeurons(network, dataset, SMALL_CONFIG.varianceThreshold);
   const records = pruneConstantNeurons(network, constants);
-  // Every record references the original neuron index plus the targets
-  // that absorbed its constant contribution.
   for (const rec of records) {
     assertEquals(typeof rec.neuronIndex, "number");
     assert(Number.isFinite(rec.constantOutput));
-    // bias-fold targets are sorted ascending and contain no duplicates.
     for (let i = 1; i < rec.biasFoldTargets.length; i++) {
       assertGreater(rec.biasFoldTargets[i], rec.biasFoldTargets[i - 1]);
     }
@@ -286,10 +273,6 @@ Deno.test(
   "runNeuronPruningDemo - removes neurons and does not regress score",
   async () => {
     const result = await runNeuronPruningDemo(SMALL_CONFIG);
-    // Pruning must not increase the neuron count, and held-out score
-    // must not regress beyond a tiny float tolerance — the pruned
-    // neurons were truly constant on every dataset record, so the
-    // pruned creature is mathematically equivalent on the same data.
     assertGreaterOrEqual(result.preNeuronCount, result.postNeuronCount);
     const tolerance = 1e-4;
     assert(
@@ -300,19 +283,19 @@ Deno.test(
 );
 
 Deno.test(
-  "runNeuronPruningDemo - emits per-generation telemetry rows",
+  "runNeuronPruningDemo - returns a milestone summary from a single evolveDir call",
   async () => {
     const result = await runNeuronPruningDemo(SMALL_CONFIG);
-    // evolveDir runs at least one generation, plus the post-prune
-    // endpoint row appended by the demo. So at least 2 rows.
-    assertGreater(result.evolutionRows.length, 0);
-    for (const r of result.evolutionRows) {
-      assertGreaterOrEqual(r.generation, 1);
-      assert(Number.isFinite(r.bestFitness), `gen ${r.generation} bestFitness not finite`);
-      assertEquals(typeof r.meanFitness, "number");
-      assertGreater(r.neuronCount, 0);
-      assertGreaterOrEqual(r.synapseCount, 0);
-    }
+    const summary = result.evolutionSummary;
+    assert(Number.isFinite(summary.finalError));
+    assert(Number.isFinite(summary.finalScore));
+    assertGreater(summary.generations, 0);
+    // Seed counts match a minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`.
+    assertEquals(summary.seedNeurons, INPUT_COUNT + OUTPUT_COUNT);
+    // Final topology counts match the post-prune state on the result.
+    assertEquals(summary.finalNeurons, result.postNeuronCount);
+    assertEquals(summary.finalSynapses, result.postSynapseCount);
+    assertGreaterOrEqual(summary.wallClockMs, 0);
   },
 );
 
@@ -405,7 +388,6 @@ Deno.test(
     assertStringIncludes(svg, "Summary");
     assertStringIncludes(svg, "neuron-kept");
     assertStringIncludes(svg, "edge-original");
-    // The SVG embeds the legend.
     assertStringIncludes(svg, "constant activation");
   },
 );
@@ -427,45 +409,23 @@ Deno.test("renderNeuronPruningSVG - rejects inconsistent topology", async () => 
   );
 });
 
-Deno.test("formatEvolutionCsv - emits the canonical header and one row per gen", () => {
-  const csv = formatEvolutionCsv([
-    { generation: 1, bestFitness: 0.5, meanFitness: 0.25, neuronCount: 4, synapseCount: 7 },
-    { generation: 2, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 5, synapseCount: 9 },
-  ]);
-  const lines = csv.split("\n").filter((l) => l.length > 0);
-  assertEquals(lines.length, 3);
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "1,0.5,0.25,4,7");
-  assertEquals(lines[2], "2,0.6,0.3,5,9");
-});
-
-Deno.test("renderFitnessChartSvg - emits a well-formed SVG with both fitness lines", () => {
-  const svg = renderFitnessChartSvg([
-    { generation: 1, bestFitness: 0.4, meanFitness: 0.2, neuronCount: 4, synapseCount: 7 },
-    { generation: 5, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 6, synapseCount: 11 },
-  ]);
-  assertStringIncludes(svg, "<svg");
-  assertStringIncludes(svg, "best-fitness");
-  assertStringIncludes(svg, "mean-fitness");
-});
-
-Deno.test("renderFitnessChartSvg - rejects empty input", () => {
-  assertThrows(() => renderFitnessChartSvg([]), Error, "at least one row");
-});
-
-Deno.test("renderTopologyChartSvg - emits a well-formed SVG with both topology lines", () => {
-  const svg = renderTopologyChartSvg([
-    { generation: 1, bestFitness: 0.4, meanFitness: 0.2, neuronCount: 4, synapseCount: 7 },
-    { generation: 5, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 9, synapseCount: 22 },
-  ]);
-  assertStringIncludes(svg, "<svg");
-  assertStringIncludes(svg, "neuron-count");
-  assertStringIncludes(svg, "synapse-count");
-});
-
-Deno.test("renderTopologyChartSvg - rejects empty input", () => {
-  assertThrows(() => renderTopologyChartSvg([]), Error, "at least one row");
-});
+Deno.test(
+  "renderEvolveDirSummarySvg renders the milestone summary derived from runNeuronPruningDemo",
+  async () => {
+    const result = await runNeuronPruningDemo(SMALL_CONFIG);
+    const svg = renderEvolveDirSummarySvg(result.evolutionSummary, {
+      title: "Neuron Pruning — evolveDir Run Summary",
+    });
+    assert(svg.startsWith("<svg"));
+    assert(svg.includes("</svg>"));
+    assert(svg.includes("final error"));
+    assert(svg.includes("final score"));
+    assert(svg.includes("generations"));
+    assert(svg.includes("wall clock"));
+    assert(svg.includes(String(result.evolutionSummary.seedNeurons)));
+    assert(svg.includes(String(result.evolutionSummary.finalNeurons)));
+  },
+);
 
 Deno.test("DEFAULT_NEURON_PRUNING_CONFIG - has positive sizes and counts", () => {
   const c = DEFAULT_NEURON_PRUNING_CONFIG;

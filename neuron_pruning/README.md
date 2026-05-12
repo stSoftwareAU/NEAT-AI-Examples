@@ -3,7 +3,7 @@
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _SGD_ = stochastic gradient descent
 (backpropagation that updates weights from a small mini-batch each step). _WASM_ = WebAssembly (the
 sandboxed binary instruction format NEAT-AI uses to run activation functions natively in the browser
-or Deno). _CSV_ = comma-separated values. _MSE_ = mean-squared error.
+or Deno). _MSE_ = mean-squared error.
 
 `neuron_pruning.ts` demonstrates one of NEAT-AI's simplest, most effective tricks for keeping
 creatures lean: removing hidden neurons whose activations don't vary across the held-out dataset and
@@ -13,8 +13,10 @@ the score does not regress, but the neuron count drops and the network gets smal
 
 Per the audit in [issue #217](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/217), the seed
 passed to NEAT-AI is **minimal** — only `new Creature(INPUT_COUNT, OUTPUT_COUNT)` with no
-hidden-layer hint, no pre-built `network.json`, no hand-tuned topology. NEAT-AI random-initialises
-the rest, and `Creature.evolveDir(...)` over a binary `.bin` training set learns the structure. The
+hidden-layer hint, no pre-built `network.json`, no hand-tuned topology. Under telemetry rewire
+[issue #303](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/303) the per-generation
+`onTrainingEvent` hook was removed; the run is now summarised via a single milestone SVG sourced
+from `evolveDir`'s return value (the canonical milestone-only telemetry surface — see #298). The
 deliberately constant-output neurons that pruning removes are injected **after** evolution so the
 demo has something concrete to act on; per `AGENTS.md` this hand-crafted constant-neuron injection
 is exempt from the no-warm-start policy because the demo's whole point is the prune operation — the
@@ -22,17 +24,21 @@ seed itself is still the minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`.
 
 ![Neuron pruning — pruned neurons greyed out, bias-fold arrows in coral](../docs/screenshots/neuron_pruning.svg)
 
+The headline topology before/after panel above is unchanged in shape. Its held-out score callouts
+are now sourced from the milestone summary path below.
+
+![evolveDir milestone summary](../docs/screenshots/neuron_pruning/evolution_summary.svg)
+
 ## 🚀 How to Run
 
 ```bash
 ./neuron_pruning/run.sh
 ```
 
-The runner prints per-generation evolution telemetry and pre/post pruning statistics, lists every
-pruned neuron with its constant output value and the downstream neurons that absorbed its bias-fold
-contribution, writes the topology SVG to `docs/screenshots/neuron_pruning.svg`, and emits
-per-generation telemetry to `docs/data/neuron_pruning/evolution.csv` plus two summary charts in
-`docs/screenshots/neuron_pruning/`.
+The runner prints pre/post pruning statistics, lists every pruned neuron with its constant output
+value and the downstream neurons that absorbed its bias-fold contribution, writes the topology SVG
+to `docs/screenshots/neuron_pruning.svg`, and writes the milestone summary SVG to
+`docs/screenshots/neuron_pruning/evolution_summary.svg`.
 
 ## 🧠 Why does NEAT-AI need this?
 
@@ -53,7 +59,8 @@ every record. Constant-activation removal is the cheapest possible fix:
 ```mermaid
 flowchart TD
     SEED["🌱 Minimal seed<br/>new Creature(INPUT, OUTPUT)<br/>no hidden hint"]
-    EVOLVE["🧬 evolveDir on .bin training set<br/>(NEAT learns structure)"]
+    EVOLVE["🧬 single evolveDir call on .bin training set<br/>(NEAT learns structure)"]
+    SUM["📈 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
     INJECT["💀 Inject constant-output neurons<br/>(zero incoming weights, non-zero bias)"]
     SCORE1["📏 Score on held-out set"]
     DETECT["🔍 Detect constant neurons<br/>(activation variance &lt; threshold)"]
@@ -62,6 +69,7 @@ flowchart TD
     SCORE2["📏 Score on held-out set<br/>(must match pre-prune within tolerance)"]
 
     SEED --> EVOLVE
+    EVOLVE --> SUM
     EVOLVE --> INJECT
     INJECT --> SCORE1
     SCORE1 --> DETECT
@@ -112,83 +120,30 @@ training pipeline to do here. The example evaluates the held-out score with stra
 math directly on the synapse array (after remapping any non-supported squash to TANH), which keeps
 the bias-fold path self-contained and byte-deterministic.
 
-## 📊 Measured Telemetry (latest run)
+## 📊 Milestone Telemetry
 
-The numbers below are quoted **directly** from the latest local run of `./neuron_pruning/run.sh` (no
-estimates):
+The single `evolveDir` call's return value is captured as an `EvolveDirSummary` and exposed on the
+demo's result (`evolutionSummary`). The headline summary panel quotes:
 
-| Metric                                  | Value       |
-| --------------------------------------- | ----------- |
-| Total generations evolved               | 400         |
-| Wall-clock time                         | 24.3 s      |
-| Final best fitness (training, gen 400)  | 0.9947      |
-| Seed-creature neurons (gen 1)           | 6           |
-| Seed-creature synapses (gen 1)          | 8           |
-| Evolved peak neurons (gen 400)          | 9           |
-| Evolved peak synapses (gen 400)         | 18          |
-| Evolved + injected neurons (pre-prune)  | 9           |
-| Evolved + injected synapses (pre-prune) | 9           |
-| Pruned creature neurons (post-prune)    | 6           |
-| Pruned creature synapses (post-prune)   | 8           |
-| Constant neurons detected and folded    | 3           |
-| Held-out score pre-prune (-MSE)         | −1.9229     |
-| Held-out score post-prune (-MSE)        | **−1.9229** |
-| Score regression (post − pre)           | 0.0000      |
+- `finalError` / `finalScore` reached by NEAT-AI.
+- `generations` completed before the run stopped.
+- `wallClockMs` — total time the evolveDir call took.
+- `seedNeurons`/`seedSynapses` vs `finalNeurons`/`finalSynapses` — the bar pair on the topology side
+  of the milestone SVG.
 
-**Topology genuinely changed across generations.** From the minimal seed (6 neurons, 8 synapses)
-NEAT grew the evolved champion to 9 neurons / 18 synapses by generation 400, hitting a training best
-fitness of **0.9947**. Injecting three deliberately constant-output hidden neurons reduced the
-synapse count to 9 by zeroing every incoming synapse on the chosen neurons. Pruning then folded
-those three neurons' constant contributions into their downstream neighbours' biases and removed the
-neurons + their synapses, leaving a 6-neuron / 8-synapse pruned champion — the same input-and-output
-count as the original minimal seed.
-
-The pre-prune and post-prune held-out scores are identical (−1.9229) because bias-folding is
-mathematically exact for genuinely constant neurons — the network's behaviour on every sampled
-record is unchanged. The poor absolute score is _intentional_: the held-out score is measured after
-injection has nullified the chosen hidden neurons, so it reflects a deliberately broken network that
-pruning makes leaner without making it any better. The evolved-creature quality before injection is
-captured by the **0.9947 training fitness** at generation 400, demonstrating that NEAT-AI from a
-minimal seed produces a reasonable solution on this task before pruning is applied.
-
-### Per-generation evolution CSV
-
-[`docs/data/neuron_pruning/evolution.csv`](../docs/data/neuron_pruning/evolution.csv) — one row per
-generation with `generation, best_fitness, mean_fitness, neuron_count, synapse_count`. The final row
-(generation 401) records the post-prune endpoint: same fitness, fewer neurons and synapses, showing
-the prune as a single step on the topology line.
-
-### Best/mean fitness vs generation
-
-![Best/mean fitness chart](../docs/screenshots/neuron_pruning/fitness.svg)
-
-The best-fitness line climbs from ~0.21 at generation 1 to ~0.995 by generation 400 then plateaus.
-NEAT-AI's `averageFitness` is reported as 0 by the chunked evolveDir pipeline used here, so the mean
-line sits at zero — the headline trajectory is the best-fitness climb.
-
-### Neuron / synapse count vs generation
-
-![Neuron and synapse count chart](../docs/screenshots/neuron_pruning/topology.svg)
-
-The neuron line rises from 6 (the minimal seed) to 9 over the course of evolution; the synapse line
-climbs from 8 to 18. The final point (generation 401) drops to 6 neurons / 8 synapses — the
-post-prune endpoint — which is the **expected shape** for this demo: pruning legitimately reduces
-neuron and synapse counts without regressing the score, so the chart's "start ≠ end" rule is
-satisfied by a downward step at the end of an otherwise rising trajectory.
+Held-out score callouts on the topology panel (pre-prune / post-prune scores) are computed locally
+against the held-out dataset and surfaced alongside the milestone summary so the bias-fold step's
+"no regression" guarantee is visible at a glance.
 
 ## 📤 Output
 
-- `docs/screenshots/neuron_pruning.svg` — a single panel showing the pre-prune topology (inputs on
-  the left, hidden in the middle, outputs on the right) with pruned neurons greyed out and dashed,
-  their incident edges dimmed, and bias-fold arrows drawn in coral from each pruned neuron to every
-  downstream neighbour whose bias absorbed its contribution. A summary panel beside the topology
-  records pre/post neuron counts, pre/post scores, and lists each pruned neuron with its
-  constant-output value and bias-fold targets. A mirror copy is also written to
-  `.neuron-pruning/output/neuron_pruning.svg`.
-- `docs/data/neuron_pruning/evolution.csv` — per-generation telemetry with the schema above.
-- `docs/screenshots/neuron_pruning/fitness.svg` — best vs mean fitness across all generations.
-- `docs/screenshots/neuron_pruning/topology.svg` — neuron and synapse counts across all generations
-  (separate axes — synapses on the right).
+- `docs/screenshots/neuron_pruning.svg` — topology before/after panel: inputs on the left, hidden in
+  the middle, outputs on the right, pruned neurons greyed out and dashed, their incident edges
+  dimmed, bias-fold arrows in coral. A summary panel beside the topology records pre/post neuron
+  counts, pre/post held-out scores, and lists each pruned neuron with its constant-output value and
+  bias-fold targets. A mirror copy is also written to `.neuron-pruning/output/neuron_pruning.svg`.
+- `docs/screenshots/neuron_pruning/evolution_summary.svg` — milestone summary SVG sourced from the
+  single `evolveDir` call's return value.
 - `.neuron-pruning/creatures/champion.json` — the final pruned champion creature.
 
 ## 🧪 Tests
@@ -205,16 +160,16 @@ satisfied by a downward step at the end of an otherwise rising trajectory.
   neuron in ascending order.
 - `generateDataset` is deterministic for a given seed and rejects non-positive sizes.
 - `writeBinaryDataset` emits a Float32 `.bin` of the expected size.
-- The end-to-end `runNeuronPruningDemo` reduces the neuron count and the post-prune held-out score
-  does not regress versus the pre-prune score, returns a Creature champion with finite scores, and
-  rejects invalid config values.
-- `runNeuronPruningDemo` emits per-generation telemetry rows with finite fitness and positive neuron
-  / synapse counts (plus a final post-prune endpoint row).
-- The CSV formatter emits the canonical header and one row per generation.
-- `renderFitnessChartSvg` and `renderTopologyChartSvg` produce well-formed SVGs with the expected
-  CSS classes and reject empty input.
+- `runNeuronPruningDemo` reduces the neuron count and the post-prune held-out score does not regress
+  versus the pre-prune score, returns a Creature champion with finite scores, and rejects invalid
+  config values.
+- `runNeuronPruningDemo` returns a milestone summary (`evolutionSummary`) from a single `evolveDir`
+  call — seed counts match the minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, final topology
+  counts match the post-prune state on the result, and numeric summary fields are finite.
 - `renderNeuronPruningSVG` is well-formed, embeds the topology / summary / legend panels, and
   references the pruned-neuron and bias-fold CSS classes.
+- `renderEvolveDirSummarySvg` renders the milestone summary derived from `runNeuronPruningDemo`,
+  carrying the four callout labels and the topology counts.
 
 ## 🧰 NEAT-AI Features Used
 
@@ -233,3 +188,5 @@ Features exercised (links go to upstream
 - **[Backpropagation](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
   — gradient-based weight tuning runs alongside structural mutation during evolveDir; the evolved
   champion's weights are gradient-fitted, not just evolved.
+- **Milestone-only telemetry** — the run's `EvolveDirSummary` is captured from the `evolveDir`
+  return value; no per-generation hook is used (#303).

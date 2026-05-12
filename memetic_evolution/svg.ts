@@ -1,27 +1,15 @@
 /**
- * SVG rendering helpers for the memetic evolution demo.
+ * SVG rendering helpers for the memetic evolution demo (rewired under
+ * issue #303 to render from two {@link EvolveDirSummary} records).
  *
- * Produces a single-axis line chart with two fitness curves overlaid:
- *
- * - **Blue** memetic fitness curve.
- * - **Grey** control fitness curve.
- * - **Green** vertical markers at the generations where memetic seeds
- *   were applied.
- *
- * The X axis is the generation number; the Y axis is the best
- * **true** fitness across the population (full-dataset MSE rather
- * than the noisy mini-batch).
+ * The headline chart is a milestone comparison panel: two
+ * `EvolveDirSummary` columns side by side (memetic vs control), each
+ * with a seeding-event annotation strip across the top so the reader
+ * can still see *when* the memetic algorithm re-seeded its population
+ * without a per-generation curve. Numeric callouts compare final
+ * score, final error, generations and topology counts.
  */
-import type { EvolutionRow, FitnessRecord } from "./memetic_evolution.ts";
-
-/** CSS class assigned to the best-fitness polyline in the fitness chart. */
-export const FITNESS_CURVE_CLASS = "best-fitness";
-
-/** CSS class assigned to the neuron-count polyline in the topology chart. */
-export const NEURON_CURVE_CLASS = "neuron-count";
-
-/** CSS class assigned to the synapse-count polyline in the topology chart. */
-export const SYNAPSE_CURVE_CLASS = "synapse-count";
+import type { EvolveDirSummary } from "../common/evolve_dir_summary.ts";
 
 /** Width (in SVG user units) of the rendered chart. */
 export const PLOT_WIDTH = 880;
@@ -29,376 +17,203 @@ export const PLOT_WIDTH = 880;
 /** Height (in SVG user units) of the rendered chart. */
 export const PLOT_HEIGHT = 440;
 
-/** CSS class assigned to each memetic seeding marker line. */
-export const SEEDING_MARKER_CLASS = "seeding-marker";
+/** CSS class assigned to the milestone-comparison panel group. */
+export const MILESTONE_PANEL_CLASS = "memetic-milestone-panel";
 
-/** CSS class assigned to the memetic fitness polyline. */
-export const MEMETIC_CURVE_CLASS = "memetic-curve";
+/** CSS class assigned to the memetic column (the "with seeding" run). */
+export const MEMETIC_COLUMN_CLASS = "memetic-column";
 
-/** CSS class assigned to the control fitness polyline. */
-export const CONTROL_CURVE_CLASS = "control-curve";
+/** CSS class assigned to the control column (the "no seeding" run). */
+export const CONTROL_COLUMN_CLASS = "control-column";
 
-const MARGIN_TOP = 56;
-const MARGIN_BOTTOM = 64;
-const MARGIN_LEFT = 80;
+/** CSS class assigned to the seeding-event annotation strip. */
+export const SEEDING_ANNOTATION_CLASS = "seeding-annotation";
+
+const MARGIN_LEFT = 60;
 const MARGIN_RIGHT = 32;
-const INNER_WIDTH = PLOT_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
-const INNER_HEIGHT = PLOT_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
+const MARGIN_TOP = 56;
+const MARGIN_BOTTOM = 44;
 
 /** Inputs to {@link renderMemeticSVG}. */
 export interface RenderMemeticOptions {
-  /** Memetic fitness records (one per generation). */
-  memetic: readonly FitnessRecord[];
-  /** Control fitness records (one per generation, same length as memetic). */
-  control: readonly FitnessRecord[];
-  /** Generations at which memetic seeding was applied. */
-  seedingGenerations: readonly number[];
+  /** Milestone summary from the memetic (with-seeding) `evolveDir` run. */
+  memetic: EvolveDirSummary;
+  /** Milestone summary from the control (no-seeding) `evolveDir` run. */
+  control: EvolveDirSummary;
+  /**
+   * Human-readable description of the seeding event the memetic column
+   * received (e.g. `"archive seed @ gen 30"`). Rendered as a small
+   * annotation strip across the top of the memetic column so the
+   * seeding narrative remains visible without a per-generation curve.
+   */
+  memeticSeedingEvent: string;
+  /**
+   * Optional human-readable description of the control column's
+   * (non-)seeding event — defaults to `"no seeding (control)"`. Kept
+   * separate so the reader can see the deliberate contrast.
+   */
+  controlSeedingEvent?: string;
 }
 
 /**
- * Render the dual-curve fitness comparison as an SVG string. The
- * memetic curve is drawn on top so it remains visible when the two
- * curves overlap.
+ * Render the memetic-vs-control milestone comparison as an SVG string.
+ *
+ * The "fitness lift" narrative is driven by the deltas between the
+ * supplied memetic and control summaries — no per-generation rows are
+ * required.
  */
 export function renderMemeticSVG(options: RenderMemeticOptions): string {
-  const { memetic, control, seedingGenerations } = options;
-  if (memetic.length === 0 || control.length === 0) {
-    throw new Error("memetic and control records must be non-empty");
-  }
-  if (memetic.length !== control.length) {
-    throw new Error(
-      `memetic (${memetic.length}) and control (${control.length}) must have equal length`,
-    );
-  }
+  const { memetic, control, memeticSeedingEvent } = options;
+  const controlSeedingEvent = options.controlSeedingEvent ?? "no seeding (control)";
 
-  const totalGenerations = memetic.length;
-  const xScale = (gen: number) =>
-    MARGIN_LEFT + (gen / Math.max(1, totalGenerations - 1)) * INNER_WIDTH;
+  const panelTop = MARGIN_TOP;
+  const panelHeight = PLOT_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
+  const innerWidth = PLOT_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+  const colW = (innerWidth - 20) / 2;
+  const memeticX = MARGIN_LEFT;
+  const controlX = MARGIN_LEFT + colW + 20;
 
-  const allFitness = [...memetic, ...control].map((r) => r.bestFitness);
-  const yMinRaw = Math.min(...allFitness);
-  const yMaxRaw = Math.max(...allFitness);
-  const span = yMaxRaw - yMinRaw || 1;
-  const yMin = yMinRaw - span * 0.05;
-  const yMax = yMaxRaw + span * 0.05;
-  const ySpan = yMax - yMin || 1;
-  const yScale = (fitness: number) => {
-    const norm = (fitness - yMin) / ySpan;
-    return MARGIN_TOP + (1 - norm) * INNER_HEIGHT;
-  };
-
-  const memeticPoints = memetic
-    .map((r) => `${xScale(r.generation).toFixed(2)},${yScale(r.bestFitness).toFixed(2)}`)
-    .join(" ");
-  const controlPoints = control
-    .map((r) => `${xScale(r.generation).toFixed(2)},${yScale(r.bestFitness).toFixed(2)}`)
-    .join(" ");
-
-  const seedingMarkers = seedingGenerations
-    .map((gen) => {
-      const x = xScale(gen);
-      return [
-        `    <line class="${SEEDING_MARKER_CLASS}" x1="${x.toFixed(2)}" ` +
-        `y1="${MARGIN_TOP.toFixed(2)}" x2="${x.toFixed(2)}" ` +
-        `y2="${(MARGIN_TOP + INNER_HEIGHT).toFixed(2)}" ` +
-        `stroke="#16a085" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>`,
-      ].join("\n");
-    })
-    .join("\n");
+  const lift = memetic.finalScore - control.finalScore;
+  const liftColour = lift >= 0 ? "#27ae60" : "#e74c3c";
+  const liftSign = lift >= 0 ? "+" : "";
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}" ` +
     `width="${PLOT_WIDTH}" height="${PLOT_HEIGHT}" role="img" ` +
-    `aria-label="Memetic vs control fitness curves">`,
+    `aria-label="Memetic vs control milestone summary">`,
     `  <title>Memetic Evolution — Seeding From the Fittest Archive</title>`,
     `  <rect width="${PLOT_WIDTH}" height="${PLOT_HEIGHT}" fill="#fafafa"/>`,
     `  <text x="${PLOT_WIDTH / 2}" y="28" text-anchor="middle" ` +
     `font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">` +
     `Memetic Evolution — Seeding From the Fittest Archive</text>`,
-    `  <g class="plot-frame" font-family="sans-serif">`,
-    `    <rect x="${MARGIN_LEFT}" y="${MARGIN_TOP}" width="${INNER_WIDTH}" ` +
-    `height="${INNER_HEIGHT}" fill="#ffffff" stroke="#333" stroke-width="1"/>`,
+    `  <g class="${MILESTONE_PANEL_CLASS}" font-family="sans-serif">`,
+    `    <text x="${MARGIN_LEFT}" y="${(panelTop - 8).toFixed(2)}" font-size="13" ` +
+    `font-weight="bold" fill="#222">Memetic (with seeding) vs control (no seeding)</text>`,
+    renderColumn(
+      memeticX,
+      panelTop,
+      colW,
+      panelHeight,
+      "memetic (with seeding)",
+      memetic,
+      "#1f77b4",
+      memeticSeedingEvent,
+      MEMETIC_COLUMN_CLASS,
+    ),
+    renderColumn(
+      controlX,
+      panelTop,
+      colW,
+      panelHeight,
+      "control (no seeding)",
+      control,
+      "#7f8c8d",
+      controlSeedingEvent,
+      CONTROL_COLUMN_CLASS,
+    ),
+    // Lift callout between the two columns.
+    `    <text x="${(MARGIN_LEFT + colW + 10).toFixed(2)}" y="${
+      (panelTop + panelHeight / 2 - 8).toFixed(2)
+    }" text-anchor="middle" font-size="10" fill="#555">fitness lift</text>`,
+    `    <text x="${(MARGIN_LEFT + colW + 10).toFixed(2)}" y="${
+      (panelTop + panelHeight / 2 + 10).toFixed(2)
+    }" text-anchor="middle" font-size="14" font-weight="bold" fill="${liftColour}">` +
+    `${liftSign}${formatScore(lift)}</text>`,
     `  </g>`,
-    renderYTicks(yMin, yMax),
-    renderXTicks(totalGenerations, xScale),
-    seedingMarkers,
-    `  <polyline class="${CONTROL_CURVE_CLASS}" fill="none" stroke="#7f8c8d" ` +
-    `stroke-width="1.6" points="${controlPoints}"/>`,
-    `  <polyline class="${MEMETIC_CURVE_CLASS}" fill="none" stroke="#2e86de" ` +
-    `stroke-width="2" points="${memeticPoints}"/>`,
-    renderAxisLabels(),
-    renderLegend(),
     `</svg>`,
     "",
   ].join("\n");
 }
 
-function renderYTicks(yMin: number, yMax: number): string {
-  const ticks = 5;
-  const lines: string[] = [`  <g class="ticks-y" font-family="sans-serif">`];
-  for (let i = 0; i < ticks; i++) {
-    const t = i / (ticks - 1);
-    const fitness = yMin + t * (yMax - yMin);
-    const norm = (fitness - yMin) / (yMax - yMin || 1);
-    const y = MARGIN_TOP + (1 - norm) * INNER_HEIGHT;
-    lines.push(
-      `    <line x1="${MARGIN_LEFT.toFixed(2)}" y1="${y.toFixed(2)}" ` +
-        `x2="${(MARGIN_LEFT - 5).toFixed(2)}" y2="${y.toFixed(2)}" ` +
-        `stroke="#333" stroke-width="1"/>`,
-    );
-    lines.push(
-      `    <text x="${(MARGIN_LEFT - 8).toFixed(2)}" y="${(y + 4).toFixed(2)}" ` +
-        `text-anchor="end" font-size="11" fill="#333">${fitness.toFixed(3)}</text>`,
-    );
-  }
-  lines.push(`  </g>`);
-  return lines.join("\n");
-}
+function renderColumn(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  summary: EvolveDirSummary,
+  accent: string,
+  seedingEvent: string,
+  columnClass: string,
+): string {
+  const headerH = 28;
+  const annotationH = 28;
+  const annotationY = y + headerH;
+  const rowsY = annotationY + annotationH;
+  const rowsHeight = h - headerH - annotationH - 8;
+  const rows: Array<[string, string]> = [
+    ["final score", formatScore(summary.finalScore)],
+    ["final error", formatScore(summary.finalError)],
+    ["generations", String(Math.round(summary.generations))],
+    ["seed → final neurons", `${summary.seedNeurons} → ${summary.finalNeurons}`],
+    ["seed → final synapses", `${summary.seedSynapses} → ${summary.finalSynapses}`],
+    ["wall clock", formatDuration(summary.wallClockMs)],
+  ];
+  const rowH = Math.max(18, rowsHeight / rows.length);
 
-function renderXTicks(totalGenerations: number, xScale: (gen: number) => number): string {
-  const ticks = 6;
-  const lines: string[] = [`  <g class="ticks-x" font-family="sans-serif">`];
-  for (let i = 0; i < ticks; i++) {
-    const t = i / (ticks - 1);
-    const gen = Math.round(t * (totalGenerations - 1));
-    const x = xScale(gen);
-    lines.push(
-      `    <line x1="${x.toFixed(2)}" y1="${(MARGIN_TOP + INNER_HEIGHT).toFixed(2)}" ` +
-        `x2="${x.toFixed(2)}" y2="${(MARGIN_TOP + INNER_HEIGHT + 5).toFixed(2)}" ` +
-        `stroke="#333" stroke-width="1"/>`,
-    );
-    lines.push(
-      `    <text x="${x.toFixed(2)}" y="${(MARGIN_TOP + INNER_HEIGHT + 20).toFixed(2)}" ` +
-        `text-anchor="middle" font-size="11" fill="#333">${gen}</text>`,
-    );
-  }
-  lines.push(`  </g>`);
-  return lines.join("\n");
-}
-
-function renderAxisLabels(): string {
-  const baseY = MARGIN_TOP + INNER_HEIGHT;
-  const xMid = MARGIN_LEFT + INNER_WIDTH / 2;
-  return [
-    `  <g class="axis-labels" font-family="sans-serif" font-size="12" fill="#333">`,
-    `    <text x="${xMid}" y="${baseY + 44}" text-anchor="middle">generation</text>`,
-    `    <text x="${MARGIN_LEFT - 56}" y="${MARGIN_TOP + INNER_HEIGHT / 2}" ` +
-    `text-anchor="middle" dominant-baseline="middle" ` +
-    `transform="rotate(-90 ${MARGIN_LEFT - 56} ${MARGIN_TOP + INNER_HEIGHT / 2})">` +
-    `best true fitness (-MSE)</text>`,
-    `  </g>`,
-  ].join("\n");
-}
-
-function renderLegend(): string {
-  const x = MARGIN_LEFT + INNER_WIDTH - 240;
-  const y = MARGIN_TOP + 12;
-  return [
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#333">`,
-    `    <rect x="${x - 6}" y="${y - 12}" width="232" height="60" ` +
-    `fill="#ffffff" fill-opacity="0.9" stroke="#cccccc" stroke-width="0.5"/>`,
-    `    <line x1="${x}" y1="${y}" x2="${x + 22}" y2="${y}" stroke="#2e86de" stroke-width="2"/>`,
-    `    <text x="${x + 28}" y="${y + 4}">memetic (with archive seeding)</text>`,
-    `    <line x1="${x}" y1="${y + 16}" x2="${x + 22}" y2="${y + 16}" ` +
-    `stroke="#7f8c8d" stroke-width="1.6"/>`,
-    `    <text x="${x + 28}" y="${y + 20}">control (no seeding)</text>`,
-    `    <line x1="${x}" y1="${y + 32}" x2="${x + 22}" y2="${y + 32}" ` +
-    `stroke="#16a085" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>`,
-    `    <text x="${x + 28}" y="${y + 36}">memetic seeding generation</text>`,
-    `  </g>`,
-  ].join("\n");
-}
-
-const TELEMETRY_SVG_WIDTH = 720;
-const TELEMETRY_SVG_HEIGHT = 320;
-const TELEMETRY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
-
-interface ChartPoint {
-  x: number;
-  y: number;
-}
-
-function buildChartPolyline(points: readonly ChartPoint[]): string {
-  return points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
-}
-
-/**
- * Render a two-line chart: best fitness (blue) and mean fitness
- * (orange) versus generation. Throws if `rows` is empty.
- */
-export function renderFitnessChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderFitnessChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const allFitness = rows.flatMap((r) => [r.bestFitness, r.meanFitness]).filter(
-    Number.isFinite,
+  const out: string[] = [];
+  out.push(`    <g class="${columnClass}">`);
+  // Column frame + header bar.
+  out.push(
+    `      <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" ` +
+      `height="${h.toFixed(2)}" fill="#ffffff" stroke="#333" stroke-width="1"/>`,
+    `      <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" ` +
+      `height="${headerH.toFixed(2)}" fill="${accent}"/>`,
+    `      <text x="${(x + w / 2).toFixed(2)}" y="${
+      (y + 18).toFixed(2)
+    }" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">` +
+      `${escapeXml(label)}</text>`,
   );
-  const minF = allFitness.length > 0 ? Math.min(...allFitness) : 0;
-  const maxF = allFitness.length > 0 ? Math.max(...allFitness) : 1;
-  const fSpan = (maxF - minF) || 1;
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const yScale = (f: number) => innerY + innerH - ((f - minF) / fSpan) * innerH;
-  const safeY = (f: number): number => Number.isFinite(f) ? yScale(f) : (innerY + innerH);
-
-  const bestPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: safeY(r.bestFitness),
-  }));
-  const meanPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: safeY(r.meanFitness),
-  }));
-
-  const yTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const v = minF + t * fSpan;
-    const ty = innerY + innerH - t * innerH;
-    yTicks.push(
-      `    <line x1="${innerX.toFixed(2)}" y1="${ty.toFixed(2)}" ` +
-        `x2="${(innerX + innerW).toFixed(2)}" y2="${ty.toFixed(2)}" ` +
-        `stroke="#eeeeee" stroke-width="0.6"/>`,
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ty + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#444">` +
-        `${v.toFixed(3)}</text>`,
+  // Seeding-event annotation strip.
+  out.push(
+    `      <rect class="${SEEDING_ANNOTATION_CLASS}" x="${x.toFixed(2)}" y="${
+      annotationY.toFixed(2)
+    }" width="${w.toFixed(2)}" height="${annotationH.toFixed(2)}" fill="#f4f6f8" ` +
+      `stroke="#ddd" stroke-width="0.5"/>`,
+    `      <text x="${(x + w / 2).toFixed(2)}" y="${
+      (annotationY + 18).toFixed(2)
+    }" text-anchor="middle" font-size="11" fill="#444" font-style="italic">` +
+      `${escapeXml(seedingEvent)}</text>`,
+  );
+  // Numeric callouts.
+  for (let i = 0; i < rows.length; i++) {
+    const [k, v] = rows[i];
+    const rowY = rowsY + i * rowH + rowH / 2;
+    out.push(
+      `      <text x="${(x + 10).toFixed(2)}" y="${rowY.toFixed(2)}" ` +
+        `dominant-baseline="middle" font-size="11" fill="#333">${escapeXml(k)}</text>`,
+      `      <text x="${(x + w - 10).toFixed(2)}" y="${rowY.toFixed(2)}" text-anchor="end" ` +
+        `dominant-baseline="middle" font-size="11" font-weight="bold" ` +
+        `fill="#222">${escapeXml(v)}</text>`,
     );
   }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Memetic evolution — best vs mean fitness per generation">`,
-    `  <title>Memetic Evolution — Best vs Mean Fitness</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Memetic Evolution — Best vs Mean Fitness</text>`,
-    yTicks.join("\n"),
-    `  <polyline class="${FITNESS_CURVE_CLASS}" fill="none" stroke="#1f77b4" stroke-width="2" ` +
-    `points="${buildChartPolyline(bestPts)}"/>`,
-    `  <polyline class="mean-fitness" fill="none" stroke="#ff7f0e" stroke-width="1.4" ` +
-    `stroke-dasharray="4 3" points="${buildChartPolyline(meanPts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 178).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="172" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#1f77b4" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `best fitness</text>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#ff7f0e" stroke-width="1.4" stroke-dasharray="4 3"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `mean fitness</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
+  out.push(`    </g>`);
+  return out.join("\n");
 }
 
-/**
- * Render the neuron / synapse count chart for the README. Two lines
- * share an X axis; the right Y axis shows synapse counts on a separate
- * scale so the synapse line does not compress the neuron line into
- * invisibility.
- */
-export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderTopologyChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
+function formatScore(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  return (Math.round(v * 1000) / 1000).toString();
+}
 
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
+function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "0ms";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const totalSeconds = Math.floor(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (totalMinutes < 60) return `${totalMinutes}m ${seconds}s`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
 
-  const neurons = rows.map((r) => r.neuronCount);
-  const synapses = rows.map((r) => r.synapseCount);
-  const maxNeurons = Math.max(...neurons, 1);
-  const maxSynapses = Math.max(...synapses, 1);
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
-  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
-
-  const neuronPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: neuronY(r.neuronCount),
-  }));
-  const synapsePts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: synapseY(r.synapseCount),
-  }));
-
-  const leftTicks: string[] = [];
-  const rightTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const ly = innerY + innerH - t * innerH;
-    leftTicks.push(
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
-        `${(t * maxNeurons).toFixed(0)}</text>`,
-    );
-    rightTicks.push(
-      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
-        `${(t * maxSynapses).toFixed(0)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Memetic evolution — neuron and synapse counts per generation">`,
-    `  <title>Memetic Evolution — Topology Growth</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Memetic Evolution — Topology Growth</text>`,
-    leftTicks.join("\n"),
-    rightTicks.join("\n"),
-    `  <polyline class="${NEURON_CURVE_CLASS}" fill="none" stroke="#2ca02c" stroke-width="2" ` +
-    `points="${buildChartPolyline(neuronPts)}"/>`,
-    `  <polyline class="${SYNAPSE_CURVE_CLASS}" fill="none" stroke="#d62728" stroke-width="2" ` +
-    `stroke-dasharray="6 3" points="${buildChartPolyline(synapsePts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#2ca02c" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `neurons (left axis)</text>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `synapses (right axis)</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
+function escapeXml(s: string): string {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }

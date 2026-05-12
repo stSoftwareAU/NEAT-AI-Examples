@@ -1,5 +1,6 @@
 /**
- * MCMC Mutation-Acceptance Demo (issue #89) + minimal-seed audit (#215).
+ * MCMC Mutation-Acceptance Demo (issue #89) + minimal-seed audit (#215),
+ * telemetry simplified under #303.
  *
  * Two stages run end-to-end:
  *
@@ -12,21 +13,23 @@
  *      optimum from Roberts/Gelman/Gilks (1997). This is the historical
  *      MH-only demo from issue #89 — listed as exempt under the
  *      no-warm-start policy because it is a pure sampler, not an
- *      evolution example.
+ *      evolution example. **The acceptance-rate cooling chart is driven
+ *      entirely by this analytical sampler — not by NEAT-AI per-generation
+ *      telemetry — and is preserved unchanged.**
  *
  *   2. **Minimal-seed NEAT-AI evolution.** Per audit #215, the published
  *      example must also genuinely *learn* a network structure from a
- *      minimal NEAT-AI seed and emit measured per-generation telemetry.
- *      A small hand-crafted oracle creature labels a binary `.bin`
- *      training set; NEAT-AI is then seeded with
+ *      minimal NEAT-AI seed. A small hand-crafted oracle creature labels
+ *      a binary `.bin` training set; NEAT-AI is then seeded with
  *      `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (no hidden hint, no
  *      pre-built `network.json`, no warm start) and runs
  *      `Creature.evolveDir(dataDir, options)` over the `.bin` set in
  *      forward-only mode until either the per-example `targetError` is
- *      reached or the `timeoutMinutes: 5` backstop fires. NEAT-AI's own
- *      mutation acceptance uses the Metropolis-Hastings rule the
- *      analytical stage explains — so the second stage is the same
- *      acceptance dynamic in action on a real evolution problem.
+ *      reached or the `timeoutMinutes: 5` backstop fires. Under #303 the
+ *      per-generation `onTrainingEvent` hook was removed in favour of
+ *      NEAT-AI's supported milestone-only telemetry surface — the run is
+ *      summarised via a single milestone SVG sourced from `evolveDir`'s
+ *      return value plus the seed / final creature topology.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -35,8 +38,7 @@ import { Creature, CreatureUtil, type NeatOptions, safeWriteJson } from "@stsoft
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
 import { renderAcceptanceSVG } from "./svg.ts";
@@ -113,6 +115,9 @@ export const DEFAULT_MCMC_OPTIONS: MCMCOptions = {
 /** Path to the analytical MH SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/mcmc_acceptance.svg";
 
+/** Milestone summary SVG path — sourced from the `evolveDir` return value. */
+export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/mcmc_acceptance/evolution_summary.svg";
+
 /** Working-directory root for artefacts produced by this demo. */
 export const WORKING_ROOT = ".synthetic-mcmc";
 
@@ -121,19 +126,6 @@ export const INPUT_COUNT = 3;
 
 /** Number of output neurons fed to the NEAT-AI seed (matches the oracle). */
 export const OUTPUT_COUNT = 1;
-
-/** Per-generation evolution-telemetry CSV path. */
-export const EVOLUTION_CSV_PATH = "docs/data/mcmc_acceptance/evolution.csv";
-
-/** CSV header — schema mandated by issue #215. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path. */
-export const FITNESS_SVG_PATH = "docs/screenshots/mcmc_acceptance/fitness.svg";
-
-/** Neuron / synapse count chart path. */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/mcmc_acceptance/topology.svg";
 
 /** Configuration for the synthetic training-data generation. */
 export const SYNTHETIC_CONFIG: SyntheticConfig = {
@@ -163,14 +155,9 @@ export interface MCMCEvolutionConfig {
  *
  * `targetError` is deliberately tighter than what a direct-input → output
  * seed can reach for the oracle's nonlinear function, so NEAT-AI is
- * forced to grow hidden structure to satisfy the stop condition —
- * otherwise the topology chart would flatline (acceptance criterion in
- * issue #215).
+ * forced to grow hidden structure to satisfy the stop condition.
  */
 export const DEFAULT_MCMC_EVOLUTION_CONFIG: MCMCEvolutionConfig = {
-  // Tighter than what a direct-only seed can reach against the
-  // amplified oracle below, but loose enough to be reached via real
-  // structural growth in seconds on a developer machine.
   targetError: 0.02,
   timeoutMinutes: 5,
   populationSize: 24,
@@ -178,26 +165,12 @@ export const DEFAULT_MCMC_EVOLUTION_CONFIG: MCMCEvolutionConfig = {
   seed: 215215,
 };
 
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  /** 1-based generation index across the run. */
-  generation: number;
-  /** Best fitness observed in this generation. */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
-}
-
 /** Result of {@link runMinimalSeedEvolution}. */
 export interface MCMCEvolutionResult {
   /** The best creature found by `evolveDir`. */
   champion: Creature;
-  /** Per-generation telemetry rows captured during the run. */
-  rows: EvolutionRow[];
+  /** Milestone summary captured from the single `evolveDir` call. */
+  summary: EvolveDirSummary;
   /** Total wall-clock time of the evolution call, in milliseconds. */
   wallClockMs: number;
   /** Final per-record error returned by `evolveDir`. */
@@ -208,6 +181,8 @@ export interface MCMCEvolutionResult {
   seedNeuronCount: number;
   /** Initial synapse count of the minimal seed (before evolution). */
   seedSynapseCount: number;
+  /** True when the run reached `targetError`. */
+  solved: boolean;
 }
 
 /**
@@ -368,10 +343,8 @@ export function windowedAcceptanceRates(
  * to reproduce.
  *
  * The function is non-trivially nonlinear (TANH and LOGISTIC hidden
- * neurons in saturation) so a direct-only seed cannot fit it to
- * `targetError = 5e-4` — NEAT-AI is forced to grow hidden structure,
- * which the README's topology chart then shows as a measured
- * neuron / synapse trajectory.
+ * neurons in saturation) so a direct-only seed cannot fit it tightly —
+ * NEAT-AI is forced to grow hidden structure to reach `targetError`.
  */
 export function createOracleCreature(): LegacyCreatureJSON {
   return {
@@ -408,41 +381,10 @@ export function createOracleCreature(): LegacyCreatureJSON {
   };
 }
 
-/** Format a finite number for CSV emission with trimmed trailing zeros. */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry rows as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-/**
- * Iterations per `evolveDir` chunk. Chunking the run keeps the
- * per-generation telemetry chart in step with topology mutations: the
- * passed-in `creature` reference is only updated at the end of each
- * `evolveDir` call, so smaller chunks make the neuron / synapse line
- * climb in visible step changes rather than as a single jump at the end.
- */
-const PHASE_CHUNK_ITERATIONS = 25;
-
 /**
  * Run minimal-seed `evolveDir` against the binary `.bin` training set in
- * `dataDir`, capturing per-generation telemetry for the README.
+ * `dataDir`, returning a milestone summary captured from `evolveDir`'s
+ * return value plus the seed and final creature's topology.
  *
  * The seed passed in must be `new Creature(INPUT_COUNT, OUTPUT_COUNT)` —
  * this function deliberately does not construct the seed itself so the
@@ -461,103 +403,56 @@ export async function runMinimalSeedEvolution(
   const seedNeuronCount = seed.neurons.length;
   const seedSynapseCount = seed.synapses.length;
 
-  const rows: EvolutionRow[] = [];
   const start = Date.now();
-  const budgetMs = config.timeoutMinutes * 60_000;
 
-  let evolved = 0;
-  let finalError = Number.POSITIVE_INFINITY;
+  const neatOptions: NeatOptions = {
+    seed: config.seed,
+    populationSize: config.populationSize,
+    iterations: config.maxIterations,
+    targetError: config.targetError,
+    timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+    // No feedbackLoop key → engine treats the run as forward-only.
+    costOfGrowth: 0,
+    // Push NEAT toward structural growth so the example genuinely
+    // adds hidden neurons / inter-layer synapses from the minimal seed.
+    mutationRate: 0.6,
+    mutationAmount: 3,
+    verbose: false,
+    log: 0,
+    threads: 1,
+  };
 
-  while (evolved < config.maxIterations) {
-    // The creature reference is updated by `evolveDir` at the end of
-    // each call. Re-read its topology *before* the next chunk so the
-    // event handler reports the latest neuron / synapse counts for
-    // every generation inside the chunk.
-    const segmentStartNeurons = seed.neurons.length;
-    const segmentStartSynapses = seed.synapses.length;
+  const result = await seed.evolveDir(dataDir, neatOptions);
+  const wallClockMs = Date.now() - start;
 
-    const elapsedMs = Date.now() - start;
-    if (elapsedMs >= budgetMs) break;
+  const finalError = Number.isFinite(result.error) ? result.error : 0;
+  const finalScore = Number.isFinite(result.score) ? result.score : 0;
+  const generations = Math.max(1, result.generation ?? 1);
+  const solved = finalError <= config.targetError;
 
-    const remaining = config.maxIterations - evolved;
-    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remaining);
-
-    const neatOptions: NeatOptions = {
-      seed: config.seed + evolved,
-      populationSize: config.populationSize,
-      iterations: chunkIterations,
-      targetError: config.targetError,
-      timeoutMinutes: config.timeoutMinutes,
-      // No feedbackLoop key → engine treats the run as forward-only.
-      costOfGrowth: 0,
-      // Push NEAT toward structural growth so the example genuinely
-      // adds hidden neurons / inter-layer synapses from the minimal seed
-      // — required by the audit's "neuron and synapse counts genuinely
-      // change" acceptance criterion.
-      mutationRate: 0.6,
-      mutationAmount: 3,
-      verbose: false,
-      log: 0,
-      threads: 1,
-      onTrainingEvent: (event) => {
-        if (event.kind !== "generation_complete") return;
-        rows.push({
-          generation: evolved + event.generation,
-          bestFitness: event.bestFitness,
-          meanFitness: event.averageFitness,
-          neuronCount: segmentStartNeurons,
-          synapseCount: segmentStartSynapses,
-        });
-      },
-    };
-
-    const result = await seed.evolveDir(dataDir, neatOptions);
-    const completed = result.generation ?? chunkIterations;
-    evolved += completed;
-    finalError = result.error ?? finalError;
-
-    if (finalError <= config.targetError) break;
-    if (completed < chunkIterations) break;
-  }
-
-  // Patch the final row so the chart shows the post-evolution topology
-  // — `evolveDir` updates the creature reference *after* the last event
-  // fires inside the chunk, so without this fix-up the last row still
-  // reports the pre-chunk counts.
-  if (rows.length > 0) {
-    const last = rows[rows.length - 1];
-    last.neuronCount = seed.neurons.length;
-    last.synapseCount = seed.synapses.length;
-  }
+  const summary: EvolveDirSummary = {
+    finalError,
+    finalScore,
+    wallClockMs,
+    generations,
+    seedNeurons: seedNeuronCount,
+    seedSynapses: seedSynapseCount,
+    finalNeurons: seed.neurons.length,
+    finalSynapses: seed.synapses.length,
+    targetError: config.targetError,
+    timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+  };
 
   return {
     champion: seed,
-    rows,
-    wallClockMs: Date.now() - start,
+    summary,
+    wallClockMs,
     finalError,
-    generations: evolved,
+    generations,
     seedNeuronCount,
     seedSynapseCount,
+    solved,
   };
-}
-
-/** Convert telemetry rows into the shape expected by the shared chart helpers. */
-export function rowsToFitnessSamples(rows: readonly EvolutionRow[]): FitnessSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    bestFitness: r.bestFitness,
-    avgFitness: r.meanFitness,
-  }));
-}
-
-/** Convert telemetry rows into the shape expected by the evolution chart helper. */
-export function rowsToEvolutionSamples(rows: readonly EvolutionRow[]): EvolutionSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    score: r.bestFitness,
-    neurons: r.neuronCount,
-    synapses: r.synapseCount,
-  }));
 }
 
 if (import.meta.main) {
@@ -590,7 +485,9 @@ if (import.meta.main) {
     }`,
   );
 
-  // Render the dual-axis acceptance / temperature chart.
+  // Render the dual-axis acceptance / temperature chart. This chart is
+  // sourced from the analytical MH sampler — not NEAT-AI per-generation
+  // telemetry — and is preserved unchanged.
   const svg = renderAcceptanceSVG({
     proposals: result.proposals,
     movingAcceptance: result.movingAcceptance,
@@ -601,7 +498,7 @@ if (import.meta.main) {
   console.log(`   🖼️  Wrote ${SCREENSHOT_PATH}`);
 
   // ----- Stage 2: Minimal-seed NEAT-AI evolution (audit #215) ---------------
-  console.log("\n🌱 Stage 2/2: Minimal-seed evolution (audit #215)");
+  console.log("\n🌱 Stage 2/2: Minimal-seed evolution (audit #215, telemetry rewire #303)");
 
   // Build the oracle creature and synthesise the .bin training set.
   const oracleJSON = createOracleCreature();
@@ -634,20 +531,17 @@ if (import.meta.main) {
   );
 
   const evolutionResult = await runMinimalSeedEvolution(seed, dataDir, evolutionConfig);
-  const finalRow = evolutionResult.rows[evolutionResult.rows.length - 1];
   console.log(
     `   Completed ${evolutionResult.generations} generations in ` +
       `${(evolutionResult.wallClockMs / 1000).toFixed(1)}s (final error ${
         Number.isFinite(evolutionResult.finalError) ? evolutionResult.finalError.toFixed(4) : "n/a"
       })`,
   );
-  if (finalRow) {
-    console.log(
-      `   Champion topology: ${finalRow.neuronCount} neurons, ` +
-        `${finalRow.synapseCount} synapses ` +
-        `(seed had ${evolutionResult.seedNeuronCount} / ${evolutionResult.seedSynapseCount})`,
-    );
-  }
+  console.log(
+    `   Champion topology: ${evolutionResult.summary.finalNeurons} neurons, ` +
+      `${evolutionResult.summary.finalSynapses} synapses ` +
+      `(seed had ${evolutionResult.seedNeuronCount} / ${evolutionResult.seedSynapseCount})`,
+  );
 
   const championPath = join(creaturesDir, "evolved.json");
   await safeWriteJson(championPath, evolutionResult.champion.exportJSON());
@@ -658,28 +552,14 @@ if (import.meta.main) {
   const championScore = await evolutionResult.champion.scoreDir(dataDir, {});
   console.log(`   Evolved champion score: ${championScore.score.toPrecision(6)}`);
 
-  // Emit the per-generation telemetry artefacts.
-  console.log("\n📈 Writing per-generation telemetry (CSV + 2 SVGs)");
-  if (evolutionResult.rows.length === 0) {
-    console.log("   ⚠️  No per-generation events captured — telemetry skipped.");
-  } else {
-    ensureDirSync("docs/data/mcmc_acceptance");
-    ensureDirSync("docs/screenshots/mcmc_acceptance");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionResult.rows));
-    console.log(`   🗒️  Wrote ${EVOLUTION_CSV_PATH} (${evolutionResult.rows.length} rows)`);
-
-    const fitnessSvg = renderFitnessChartSVG(rowsToFitnessSamples(evolutionResult.rows), {
-      title: "MCMC Acceptance — Best vs Mean Fitness",
-    });
-    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
-    console.log(`   📈 Wrote ${FITNESS_SVG_PATH}`);
-
-    const topologySvg = renderEvolutionChartSVG(rowsToEvolutionSamples(evolutionResult.rows), {
-      title: "MCMC Acceptance — Score, Neurons, Synapses per Generation",
-    });
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, topologySvg);
-    console.log(`   📈 Wrote ${TOPOLOGY_SVG_PATH}`);
-  }
+  // Emit the milestone summary SVG.
+  console.log("\n📈 Writing milestone summary SVG");
+  ensureDirSync("docs/screenshots/mcmc_acceptance");
+  const summarySvg = renderEvolveDirSummarySvg(evolutionResult.summary, {
+    title: "MCMC Acceptance — evolveDir Run Summary",
+  });
+  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+  console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
   console.log(
     `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,

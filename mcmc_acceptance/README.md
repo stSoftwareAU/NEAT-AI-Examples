@@ -3,8 +3,8 @@
 **Acronyms.** _MCMC_ = Markov chain Monte Carlo — a family of sampling algorithms that explore a
 target distribution by walking a probability-weighted chain of proposals. _MH_ = Metropolis-Hastings
 — the canonical MCMC accept/reject rule, defined inline below. _NEAT_ = NeuroEvolution of Augmenting
-Topologies (the algorithm whose mutation operator borrows this acceptance pattern). _CSV_ =
-Comma-Separated Values. _SVG_ = Scalable Vector Graphics.
+Topologies (the algorithm whose mutation operator borrows this acceptance pattern). _SVG_ = Scalable
+Vector Graphics.
 
 `mcmc_acceptance.ts` runs end-to-end in two stages:
 
@@ -12,10 +12,10 @@ Comma-Separated Values. _SVG_ = Scalable Vector Graphics.
    so the temperature controller's "cooling toward 23.4%" trajectory can be visualised on its own.
    This is the historical demo from issue #89.
 2. **Minimal-seed NEAT-AI evolution** — per audit #215, an oracle-labelled `.bin` regression task
-   evolved by `Creature.evolveDir(...)` from a minimal `new Creature(3, 1)` seed, with measured
-   per-generation telemetry. NEAT-AI's own mutation acceptance uses the Metropolis-Hastings rule the
-   first stage explains, so this is the same acceptance dynamic in action on a real evolution
-   problem.
+   evolved by `Creature.evolveDir(...)` from a minimal `new Creature(3, 1)` seed. Under telemetry
+   rewire #303 the per-generation `onTrainingEvent` hook was removed; the run is now summarised via
+   a single milestone SVG sourced from `evolveDir`'s return value (the canonical milestone-only
+   telemetry surface — see issue #298).
 
 ## 🔬 Stage 1 — Analytical MH sampler
 
@@ -23,6 +23,9 @@ The temperature is updated after every proposal so that the empirical acceptance
 the canonical **23.4%** optimum from Roberts, Gelman & Gilks (1997).
 
 ![MCMC acceptance cooling toward 23.4%](../docs/screenshots/mcmc_acceptance.svg)
+
+This chart is driven by the analytical Metropolis-Hastings sampler — **not** by NEAT-AI
+per-generation telemetry — so it survives the #303 telemetry rewire unchanged.
 
 ### 🧠 Why 23.4%?
 
@@ -90,12 +93,7 @@ Higher `T` makes worsening proposals more likely to be accepted, so the controll
 the realised acceptance rate equals the target, so this is a stochastic-approximation solution to
 the equation `E[A] = 0.234`.
 
-### Synthetic landscape
-
-The example walks a quadratic fitness surface `f(x) = -‖x‖²` in 10 dimensions. The exact landscape
-is unimportant — the same acceptance dynamics apply to any target distribution.
-
-## 🌱 Stage 2 — Minimal-seed NEAT-AI evolution (audit #215)
+## 🌱 Stage 2 — Minimal-seed NEAT-AI evolution (audit #215, telemetry rewire #303)
 
 ```mermaid
 flowchart LR
@@ -103,78 +101,28 @@ flowchart LR
     DATA["📦 Binary .bin training set<br/>3-input → 1-output (256 records)"]
     SEED["🌱 new Creature(3, 1)<br/>minimal seed — no hidden hint"]
     EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.02,<br/>timeoutMinutes=5"]
-    OUT["🏆 Evolved champion + CSV + 2 SVGs"]
+    SUM["📈 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
+    SVG["renderEvolveDirSummarySvg<br/>→ evolution_summary.svg"]
     ORACLE --> DATA
     DATA --> EVOLVE
     SEED --> EVOLVE
-    EVOLVE --> OUT
-    style ORACLE fill:#7ed321,stroke:#333,color:#fff
-    style DATA fill:#4a90d9,stroke:#333,color:#fff
-    style SEED fill:#bd10e0,stroke:#333,color:#fff
-    style EVOLVE fill:#f5a623,stroke:#333,color:#fff
-    style OUT fill:#50e3c2,stroke:#333,color:#fff
+    EVOLVE --> SUM
+    SUM --> SVG
 ```
 
 The audit replaces the previous "no NEAT-AI evolution at all" framing with a minimal-seed
-`evolveDir` run on top of the analytical demo. The oracle creature has amplified hidden-layer
-weights so its sigmoid-of-sigmoids function is genuinely non-approximable by a single direct input →
-output sigmoid — NEAT-AI is forced to grow hidden structure to satisfy the stop condition.
+`evolveDir` run on top of the analytical demo. Under #303 the per-generation `onTrainingEvent` hook
+was removed; the run is summarised via a single milestone SVG sourced from `evolveDir`'s return
+value plus the seed and final creature's topology.
+
+![evolveDir milestone summary](../docs/screenshots/mcmc_acceptance/evolution_summary.svg)
 
 ### Why `evolveDir` rather than per-step `activate()`?
 
 The training task is a pre-generated binary `(input, target)` regression set — the canonical
 "binary-data + `evolveDir`" categorisation from the parent audit (#203). `evolveDir` exercises
-NEAT-AI's full feature set (back-propagation, structure discovery, WebAssembly (WASM) /
-single-instruction-multiple-data (SIMD) / GPU parallelism) and is orders of magnitude faster than
-per-call `activate()` for supervised regression. Per-step `activate()` is reserved for interactive
-simulations and reinforcement learning (RL) agents.
-
-### 📈 Latest measured run (`./mcmc_acceptance/run.sh`)
-
-> The numbers below come from the most recent local run committed alongside this README. They are
-> **measured, not estimated**, per the audit rule in #215.
-
-| Metric                    | Value                 |
-| ------------------------- | --------------------- |
-| Total generations         | 453                   |
-| Wall-clock                | 20.3 s                |
-| Final best fitness        | 0.9802                |
-| Final per-record error    | 0.0198 (target met)   |
-| Evolved champion score    | 0.980178 (`scoreDir`) |
-| Seed neurons / synapses   | 4 / 3                 |
-| Final neurons / synapses  | 8 / 21                |
-| Stop condition that fired | `targetError` reached |
-| `targetError`             | 0.02                  |
-| `timeoutMinutes` (safety) | 5                     |
-
-Topology genuinely grew: NEAT-AI added **4 hidden neurons** and **18 synapses** on top of the
-minimal direct-only seed, exactly the kind of structural exploration the MH acceptance rule enables.
-
-#### Best vs mean fitness per generation
-
-![Best vs mean fitness](../docs/screenshots/mcmc_acceptance/fitness.svg)
-
-#### Score, neuron, and synapse counts per generation
-
-![Score / neurons / synapses](../docs/screenshots/mcmc_acceptance/topology.svg)
-
-#### Per-generation CSV
-
-[`docs/data/mcmc_acceptance/evolution.csv`](../docs/data/mcmc_acceptance/evolution.csv) holds the
-full per-generation telemetry with the schema mandated by the audit:
-
-```text
-generation,best_fitness,mean_fitness,neuron_count,synapse_count
-```
-
-### 🧪 What "reasonable solution" means here
-
-The evolved champion's best fitness is **0.9802** against the binary `.bin` training set (higher is
-better; the theoretical maximum is 1.0). The final per-record error of **0.0198** crossed the
-`targetError = 0.02` threshold, so evolution stopped because the champion is producing labels within
-about 2% of the oracle's outputs on average. That is a reasonable solution to the labelled task: the
-evolved creature has reproduced the input → output behaviour of the hand-crafted oracle _without
-ever seeing its topology_.
+NEAT-AI's full feature set (back-propagation, structure discovery, WASM / SIMD / GPU parallelism)
+and is orders of magnitude faster than per-call `activate()` for supervised regression.
 
 ## 🚀 How to Run
 
@@ -184,10 +132,9 @@ ever seeing its topology_.
 
 The runner prints summary statistics for both stages and writes:
 
-- `docs/screenshots/mcmc_acceptance.svg` — Stage 1's analytical dual-axis chart.
-- `docs/screenshots/mcmc_acceptance/fitness.svg` — Stage 2's best vs mean fitness chart.
-- `docs/screenshots/mcmc_acceptance/topology.svg` — Stage 2's neuron / synapse + score chart.
-- `docs/data/mcmc_acceptance/evolution.csv` — Stage 2's per-generation telemetry CSV.
+- `docs/screenshots/mcmc_acceptance.svg` — Stage 1's analytical dual-axis acceptance chart.
+- `docs/screenshots/mcmc_acceptance/evolution_summary.svg` — Stage 2's milestone summary SVG sourced
+  from the single `evolveDir` call.
 - `.synthetic-mcmc/creatures/oracle.json` — The hand-crafted oracle creature (label oracle only).
 - `.synthetic-mcmc/creatures/evolved.json` — The evolved champion produced from the minimal seed.
 
@@ -209,11 +156,11 @@ The runner prints summary statistics for both stages and writes:
   schedule actually pulls the chain toward the target).
 - The same seed produces identical proposals (determinism).
 - The rendered SVG is well-formed and embeds the 23.4% target line.
-- The minimal-seed evolution helpers (`createOracleCreature`, `runMinimalSeedEvolution`,
-  `formatEvolutionCsv`, `rowsToFitnessSamples`, `rowsToEvolutionSamples`) reject invalid configs and
-  produce telemetry with the audit's schema.
-- The committed `docs/data/mcmc_acceptance/evolution.csv` shows the topology genuinely changing
-  between generation 1 and the final generation (acceptance criterion in #215).
+- `createOracleCreature` returns a valid 3-input / 1-output topology.
+- `runMinimalSeedEvolution` evolves from a minimal `new Creature(input, output)` seed and returns a
+  milestone `EvolveDirSummary` with finite finalError / finalScore and finalNeurons / finalSynapses
+  matching the in-place creature.
+- `renderEvolveDirSummarySvg` renders the milestone summary derived from `runMinimalSeedEvolution`.
 
 ## 🧰 NEAT-AI Features Used
 
@@ -226,8 +173,9 @@ The runner prints summary statistics for both stages and writes:
   faster than per-call `activate()`.
 - **Forward-only mutation** — `evolveDir` defaults to forward-only when `feedbackLoop` is not set,
   matching the audit's stop-condition + topology contract.
-- **`onTrainingEvent` callback** — feeds per-generation telemetry into the CSV and the two SVG
-  charts without slowing the run.
+- **Milestone-only telemetry** — the run's `EvolveDirSummary` (final error / score, generations,
+  wall-clock plus seed/final topology) is captured from the call's return value; no per-generation
+  hook is used (#303).
 
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):

@@ -34,6 +34,6 @@ deno run \
 if [[ -f "docs/screenshots/mcmc_acceptance.svg" ]]; then
   deno fmt docs/screenshots/mcmc_acceptance.svg > /dev/null
 fi
-if [[ -d "docs/screenshots/mcmc_acceptance" ]]; then
-  deno fmt docs/screenshots/mcmc_acceptance/*.svg > /dev/null || true
+if [[ -f "docs/screenshots/mcmc_acceptance/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/mcmc_acceptance/evolution_summary.svg > /dev/null
 fi
