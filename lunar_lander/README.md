@@ -1,9 +1,9 @@
 # 🚀 Lunar Lander — Descending onto a Flat Pad
 
-> 🌱 **Generation 1 starts from random noise** — uniform-random NEAT genomes built by
-> `createSeededPopulation`, with no hand-crafted topology. The captured milestones show the
-> controller evolving from chaotic crashes into a network that throttles, orients, and lands softly
-> on the pad.
+> 🌱 **Generation 1 starts from random noise** — a fresh `new Creature(INPUT_COUNT, OUTPUT_COUNT)`
+> seed handed to `Creature.evolveRL()`, with no hand-crafted topology. The captured milestones show
+> the controller evolving from chaotic crashes into a network that throttles, orients, and lands
+> softly on the pad.
 
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _RCS_ = reaction control system
 (small attitude-control thrusters that apply torque without changing translation). _CTRNN_ =
@@ -343,24 +343,23 @@ A few things that are not obvious from the code alone:
   seed the same champion is produced on every run.
 - **No hand-crafted topology.** Issue
   [#153](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/153) replaced the original
-  hand-specified 7-input → 3-output dense layer with a uniform-random NEAT initial population. The
-  library's `createSeededPopulation` decides the gen-1 structure (direct input → output connections,
-  random weights, random output biases); the add-neuron structural mutation grows hidden topology
-  during evolution. There is no "warm start" — gen 1 is genuine noise.
+  hand-specified 7-input → 3-output dense layer with a uniform-random NEAT initial population. Under
+  the [#240](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/240) migration, the seed is now
+  a fresh `new Creature(INPUT_COUNT, OUTPUT_COUNT)` handed to `Creature.evolveRL()` (direct input →
+  output connections, random weights, random output biases); NEAT-AI's own structural mutation
+  operators grow hidden topology during evolution. There is no "warm start" — gen 1 is genuine
+  noise.
 - **Minimal-seed audit.** Issue [#224](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/224)
   re-confirmed the audit guarantees against the merged
   [#195](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/195) /
   [#196](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/196) /
   [#198](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/198)–[#202](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/202)
-  pipeline: only `INPUT_COUNT` and `OUTPUT_COUNT` are passed to NEAT-AI's `createSeededPopulation`
-  (no `hiddenLayers`, no `nodes`, no pre-built `network.json`); the per-step `activate()` call is
-  justified by the interactive reinforcement learning (RL) environment; stop conditions are the
-  standard `targetError` + `timeoutMinutes` pair; and the gen-0 champion's topology is the bare
-  10-neuron / 21-synapse seed, growing to 11 neurons / 22 synapses by the final generation on the
-  captured 135-generation run. The unit test
-  `evolveLanderController gen-0 champion uses NEAT-AI's
-  minimal seed` enforces the seed shape, and
-  the per-generation neuron/synapse chart embedded above shows the growth visually.
+  pipeline: only `INPUT_COUNT` and `OUTPUT_COUNT` are passed to the library (no `hiddenLayers`, no
+  `nodes`, no pre-built `network.json`); the per-step `activate()` call is justified by the
+  interactive reinforcement learning (RL) environment; stop conditions are the standard
+  `targetError` + `timeoutMinutes` pair on `EvolveRLOptions`; and the gen-0 champion's topology is
+  the bare 10-neuron / 21-synapse seed, growing as the run progresses. The per-generation
+  neuron/synapse chart embedded above shows the growth visually.
 
 ## 🧰 NEAT-AI Features Used
 

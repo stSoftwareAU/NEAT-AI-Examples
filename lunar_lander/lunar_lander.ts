@@ -2,34 +2,34 @@
  * Lunar Lander Descent Example
  *
  * Evolves a NEAT-AI creature to land a simplified 2D lunar lander on a
- * flat pad. The simulator (see `physics.ts`) and the evolutionary loop
- * run entirely in pure TypeScript; the only external dependency is
- * NEAT-AI's `Creature.activate` to compute each step's thruster
- * commands.
+ * flat pad. The simulator (`physics.ts`) is pure TypeScript; the
+ * evolutionary loop is now driven entirely by NEAT-AI's class-shaped
+ * `Creature.evolveRL()` API (issue #240, depends on
+ * `stSoftwareAU/NEAT-AI#2630` and library version `5.0.0`).
  *
  * Inputs (per timestep): `[x, y, vx, vy, angle, angularV, fuel]`.
  * Outputs (3, thresholded at 0.5): `[main, left, right]`.
  * Score: a hand-tuned function rewarding gentle pad-centred landings
  * and remaining fuel, penalising crashes and out-of-bounds drift.
  *
- * 🌱 **Generation 1 starts from random noise.** The initial population
- * is built by the NEAT-AI library from uniform-random weights and
- * biases — no hand-crafted topology, no tuned weight init. Structural
- * mutation (weight perturbation, bias perturbation, and add-neuron
- * splits) discovers the controller from there.
+ * 🌱 **Generation 1 starts from random noise.** The seed handed to
+ * `Creature.evolveRL()` is a fresh `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` — the library's uniform-random minimal genome with
+ * direct input → output connections, random weights, and a random
+ * output bias. **No hand-crafted topology, no tuned weight init.**
+ * Hidden neurons emerge only when NEAT-AI's structural mutation
+ * operators (owned by the library) split an existing connection.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
-  createSeededPopulation,
-  createSeededRng,
   Creature,
   type CreatureExport,
-  type NeuronExport,
+  EpisodeAdapter,
+  type EvolveRLOptions,
   safeWriteJson,
-  setRandomNumberGenerator,
-  type SynapseExport,
+  type StepResult,
 } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -100,32 +100,49 @@ export interface EvolveOptions {
   populationSize: number;
   /**
    * NEAT-AI standard target-error stop condition. Evolution halts as
-   * soon as the champion's landed rate on the training trial batch
-   * reaches `1 - targetError` (default `0.01`, i.e. landed-rate ≥ 99%).
+   * soon as the champion's normalised error reaches `targetError`. The
+   * adapter emits a terminal reward of `0` when the lander lands safely
+   * and `-1` otherwise, so the cumulative reward sits in `[-1, 0]` and
+   * `defaultRewardToError` yields an `error` equal to `1 - landedRate`
+   * across the per-creature episode batch. The historical
+   * `1 - targetLandedRate` semantics therefore pass straight through:
+   * `targetError = 0.01` corresponds to a 99% landed rate.
    */
   targetError: number;
   /**
    * NEAT-AI standard wall-clock stop condition. Evolution halts when
    * the elapsed time since the loop began exceeds `timeoutMinutes`
    * minutes (default `2`). Whichever of `targetError` and
-   * `timeoutMinutes` fires first wins.
+   * `timeoutMinutes` fires first wins. NEAT-AI 5.0.0 requires this to
+   * be an integer ≥ 1 — sub-minute budgets are no longer expressible;
+   * use `iterations` instead for fast unit tests.
    */
   timeoutMinutes: number;
+  /**
+   * Optional generation cap (NEAT-AI's standard `iterations` option).
+   * When supplied, the loop also stops once the next-to-be-run
+   * generation reaches this value — useful for fast unit tests that
+   * need a deterministic generation count without depending on
+   * wall-clock timing. Defaults to `Infinity` so production runs are
+   * bounded only by `targetError` and `timeoutMinutes`.
+   */
+  iterations?: number;
   /** Standard deviation of the weight/bias perturbation noise. */
   mutationStrength: number;
   /** Probability that any given gene is perturbed each generation. */
   mutationRate: number;
   /**
    * Per-creature probability of receiving an add-neuron structural
-   * mutation each generation (split an existing connection by inserting
-   * a hidden neuron). Defaults to a small value so topology grows
-   * gradually rather than thrashing.
+   * mutation. Kept on the public API for backwards compatibility but is
+   * no longer used directly — NEAT-AI owns mutation policy under
+   * `evolveRL()`. The value is silently ignored.
    */
   addNeuronRate?: number;
   /**
    * Number of independent perturbed-start trials each candidate is
-   * scored on (mean across trials). Defaults to `1` (legacy single
-   * canonical launch). See {@link ScoreOptions}.
+   * scored on (mean across trials). Defaults to `1`. Maps to
+   * `EvolveRLOptions.episodesPerCreature` — the upstream replacement
+   * for the legacy `trialsPerScore`.
    */
   trials?: number;
   /**
@@ -135,17 +152,21 @@ export interface EvolveOptions {
    */
   initialPerturbation?: number;
   /**
-   * Seed for sampling per-evaluation initial-state perturbations. Held
-   * constant for the whole run so candidates within a generation —
-   * and across generations — are scored on the same set of starts.
+   * Seed for sampling per-evaluation initial-state perturbations. No
+   * longer applied directly — NEAT-AI rotates a per-generation seed
+   * set derived from `EvolveRLOptions.seed`. Retained on the public API
+   * for backwards compatibility.
    */
   trialSeed?: number;
   /** Optional callback invoked once per generation with progress info. */
   onGeneration?: (info: GenerationInfo) => void;
   /**
-   * Optional snapshot configuration. When supplied, the running champion
-   * is captured at every generation matching `snapshotConfig.checkpoints`
-   * and written to `snapshotConfig.outputDir`.
+   * Optional snapshot configuration. When supplied, a snapshot of the
+   * seed creature is captured if generation `1` is a checkpoint, and a
+   * snapshot of the final champion is captured at the final
+   * generation. Mid-run intermediate generations are no longer captured
+   * because `Creature.evolveRL()` does not expose mid-run creature
+   * exports — see issue #240 for the migration trade-offs.
    */
   snapshotConfig?: SnapshotConfig;
 }
@@ -214,7 +235,7 @@ export interface EvolveResult {
   generations: number;
   /**
    * True when the champion reached the configured target landed rate
-   * (`>= 1 - targetError`) at any point during the run.
+   * (`>= 1 - targetError`).
    */
   solved: boolean;
   /** Champion's measured landed rate across the perturbed-start batch. */
@@ -229,8 +250,9 @@ export interface EvolveResult {
    * Why the evolution loop terminated:
    * - `"target"` — the champion reached `1 - targetError` landed rate.
    * - `"timeout"` — `timeoutMinutes` elapsed before the target fired.
+   * - `"iterations"` — the optional generation cap was hit first.
    */
-  stopReason: "target" | "timeout";
+  stopReason: "target" | "timeout" | "iterations";
 }
 
 /** Sensible defaults for the demonstration runner. */
@@ -254,152 +276,120 @@ export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   trialSeed: 24680,
 };
 
-/**
- * Build the initial population using the NEAT-AI library's uniform-random
- * creature constructor. Every member has the requested number of inputs
- * and outputs with random weights and a random output bias — **no
- * topology is hand-specified by this example**; structural mutation
- * grows hidden neurons during evolution.
- *
- * `seed` controls the global library RNG so the same `seed` reproduces
- * the same initial population across runs.
- */
-export function buildRandomPopulation(
-  seed: number,
-  populationSize: number,
-): CreatureExport[] {
-  setRandomNumberGenerator(createSeededRng(seed));
-  return createSeededPopulation({
-    inputCount: INPUT_COUNT,
-    outputCount: OUTPUT_COUNT,
-    populationSize,
-    seeds: [],
-  });
-}
-
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
-}
-
-/** Deep-clone a creature export so callers can safely mutate it. */
-function cloneExport(creature: CreatureExport): CreatureExport {
-  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
+/** Adapter configuration consumed by {@link LanderAdapter}. */
+export interface LanderAdapterOptions {
+  /**
+   * Scaling factor for the per-component perturbation applied to each
+   * episode's initial state. Default `0` (no perturbation — every
+   * episode starts from the canonical {@link initialState}).
+   */
+  initialPerturbation?: number;
+  /** Cap on the number of physics ticks per episode. Default {@link MAX_STEPS}. */
+  maxStepsPerEpisode?: number;
 }
 
 /**
- * Insert a hidden neuron in the middle of an existing connection: the
- * NEAT "add-node" structural mutation. Picks a random synapse, replaces
- * it with a path through a fresh hidden neuron, and assigns reasonable
- * starting weights so the new path approximates the original signal
- * before further mutation tunes it.
+ * Lunar-lander episode adapter for `Creature.evolveRL()`. Each `step()`
+ * advances the deterministic physics simulator, encodes the observation
+ * as a `Float32Array`, and emits a reward that maps directly onto
+ * NEAT-AI's non-negative `error` slot via `defaultRewardToError`:
  *
- * The new neuron uses LOGISTIC activation — a smooth squash that lets
- * gradients flow during weight perturbation without the saturating
- * plateau of HARD_TANH at the edges of its range.
- */
-function addHiddenNeuron(
-  creature: CreatureExport,
-  random: () => number,
-  hiddenCounter: { value: number },
-): CreatureExport {
-  if (creature.synapses.length === 0) return creature;
-
-  const synapseIdx = Math.floor(random() * creature.synapses.length);
-  const original = creature.synapses[synapseIdx];
-
-  // Issue a deterministic UUID so the export is reproducible across runs
-  // with the same seed. The library treats this string as opaque.
-  const uuid = `hidden-${hiddenCounter.value++}`;
-
-  const newNeuron: NeuronExport = {
-    type: "hidden",
-    uuid,
-    bias: uniformSigned(random, 0.5),
-    squash: "LOGISTIC",
-  };
-
-  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
-  // input → hidden: keep the original weight so the path through the new
-  // neuron starts close to the original signal.
-  newSynapses.push({
-    weight: original.weight,
-    fromUUID: original.fromUUID,
-    toUUID: uuid,
-  });
-  // hidden → output: weight 1 so the LOGISTIC pass-through is roughly
-  // identity at the operating point, again preserving the original
-  // signal until further mutation refines it.
-  newSynapses.push({
-    weight: 1,
-    fromUUID: uuid,
-    toUUID: original.toUUID,
-  });
-
-  // Hidden neurons must stay before every output. For hidden targets,
-  // insert directly before the target; for output targets, insert before
-  // the first output so NEAT-AI 4.x validation keeps the export ordered.
-  const targetIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
-  const target = targetIdx === -1 ? undefined : creature.neurons[targetIdx];
-  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = target?.type === "hidden"
-    ? targetIdx
-    : firstOutputIdx === -1
-    ? creature.neurons.length
-    : firstOutputIdx;
-  const newNeurons = [
-    ...creature.neurons.slice(0, insertAt),
-    newNeuron,
-    ...creature.neurons.slice(insertAt),
-  ];
-
-  return {
-    ...creature,
-    neurons: newNeurons,
-    synapses: newSynapses,
-  };
-}
-
-/**
- * Mutate a creature genome. Each existing weight and non-input bias is
- * perturbed independently with probability `mutationRate`; the noise is
- * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
- * probability `addNeuronRate` the genome additionally receives a NEAT
- * add-node structural mutation (split one synapse with a hidden neuron).
+ * - Non-terminal step: reward `0`.
+ * - Terminal step where the lander landed safely: reward `0`.
+ * - Terminal step where the lander crashed, flew off, or timed out:
+ *   reward `-1`.
  *
- * The resulting export is suitable for `Creature.fromJSON(...)`. No
- * topology is hand-specified — every change here is a generic NEAT
- * mutation operator that works on whatever variable topology the
- * creature currently has.
+ * Across `episodesPerCreature` trials the mean cumulative reward is
+ * therefore `-(1 - landedRate)`, so `defaultRewardToError` yields
+ * `error = 1 - landedRate` and `EvolveRLOptions.targetError = 0.01`
+ * stops evolution as soon as the champion's landed rate on the
+ * per-generation seed set reaches 99%. The historical
+ * `1 - targetLandedRate` semantics carried by the example's caller
+ * therefore pass straight through to the upstream API.
+ *
+ * Per-episode initial-state perturbation is owned by the adapter: each
+ * `reset(rngSeed)` draws a fresh perturbed {@link LanderScenario}
+ * (state + terrain `padX`) from a deterministic PRNG seeded by
+ * `rngSeed`. NEAT-AI rotates that seed across the
+ * `episodesPerCreature` trials so a population member is scored
+ * against the same seed set every generation.
  */
-export function mutateCreatureExport(
-  parent: CreatureExport,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
-): CreatureExport {
-  const child = cloneExport(parent);
+export class LanderAdapter extends EpisodeAdapter<LanderState, LanderAction> {
+  /** Half-width of the per-component initial-state perturbation. */
+  readonly initialPerturbation: number;
+  /** Per-episode step cap. */
+  readonly maxStepsPerEpisode: number;
+  /** Terrain (notably `padX`) sampled for the current episode. */
+  private terrain: LanderTerrain = DEFAULT_TERRAIN;
+  /** 1-based step index of the just-completed step (`0` after `reset`). */
+  private stepIdx = 0;
 
-  for (const synapse of child.synapses) {
-    if (random() < mutationRate) {
-      synapse.weight += uniformSigned(random, mutationStrength);
+  constructor(options: LanderAdapterOptions = {}) {
+    super();
+    this.initialPerturbation = options.initialPerturbation ?? 0;
+    this.maxStepsPerEpisode = options.maxStepsPerEpisode ?? MAX_STEPS;
+  }
+
+  override get observationLength(): number {
+    return INPUT_COUNT;
+  }
+
+  override maxSteps(): number {
+    return this.maxStepsPerEpisode;
+  }
+
+  /** Terrain selected for the most recently `reset()` episode. */
+  get currentTerrain(): LanderTerrain {
+    return this.terrain;
+  }
+
+  override reset(rngSeed: number): { observation: Float32Array; state: LanderState } {
+    this.stepIdx = 0;
+    if (this.initialPerturbation > 0) {
+      const rng = createDeterministicRandom(rngSeed >>> 0);
+      const scenario = perturbedScenario(rng, this.initialPerturbation);
+      this.terrain = scenario.terrain;
+      return { observation: encodeState(scenario.state), state: scenario.state };
     }
+    this.terrain = DEFAULT_TERRAIN;
+    const state = initialState();
+    return { observation: encodeState(state), state };
   }
 
-  for (const neuron of child.neurons) {
-    if (random() < mutationRate) {
-      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
+  override decodeAction(
+    creatureOutput: Float32Array,
+    _state: LanderState,
+  ): LanderAction {
+    return decodeAction(creatureOutput);
+  }
+
+  override step(
+    state: LanderState,
+    action: LanderAction,
+  ): StepResult<Float32Array> & { state: LanderState } {
+    const newState = step(state, action);
+    this.stepIdx += 1;
+    const terminalByPhysics = isTerminal(newState, this.terrain);
+    const atCap = this.stepIdx >= this.maxStepsPerEpisode;
+    const terminated = terminalByPhysics || atCap;
+    // Binary terminal reward: `0` for landed, `-1` for anything else
+    // (crashed, out-of-bounds, or step-cap reached while still flying).
+    // `defaultRewardToError` yields error = 0 for landed and 1 otherwise,
+    // so the mean across `episodesPerCreature` trials is exactly
+    // `1 - landedRate`.
+    let reward = 0;
+    if (terminated) {
+      const outcome = classifyOutcome(newState, this.terrain);
+      reward = outcome === "landed" ? 0 : -1;
     }
+    return {
+      state: newState,
+      observation: encodeState(newState),
+      reward,
+      terminated,
+      truncated: false,
+    };
   }
-
-  const addNeuronRate = options?.addNeuronRate ?? 0;
-  const counter = options?.hiddenCounter ?? { value: 0 };
-  if (addNeuronRate > 0 && random() < addNeuronRate) {
-    return addHiddenNeuron(child, random, counter);
-  }
-
-  return child;
 }
 
 /**
@@ -522,12 +512,6 @@ export function scoreController(
   let total = 0;
   let landed = 0;
   for (let t = 0; t < trials; t++) {
-    // Issue #253: training trials now also vary the pad's horizontal
-    // centre (`padX`) — not just the lander's start state — so a
-    // controller cannot "memorise" pad-at-zero. This brings training
-    // into line with the validation pipeline (and the README's
-    // perturbedScenario diagram), forcing evolution to find a policy
-    // that aims at whatever pad the scenario gives it.
     const scenario = perturbation > 0
       ? perturbedScenario(random, perturbation)
       : { state: initialState(), terrain: DEFAULT_TERRAIN };
@@ -698,175 +682,231 @@ export function freeFallBaselineScore(maxSteps: number = MAX_STEPS): number {
   return scoreFinalState(state, classifyOutcome(state));
 }
 
-interface ScoredMember {
-  json: CreatureExport;
-  score: number;
-  outcome: LanderOutcome;
-  landedRate: number;
-  neurons: number;
-  synapses: number;
-}
-
-function topologyCounts(json: CreatureExport): { neurons: number; synapses: number } {
-  // The export omits input neurons (they are implicit in `input`), so
-  // we add them back to report a comparable "total neurons" figure.
-  return {
-    neurons: json.neurons.length + (json.input ?? INPUT_COUNT),
-    synapses: json.synapses.length,
-  };
+/** Per-generation aggregate accumulated from `onEpisodeTrials` events. */
+interface GenerationBucket {
+  /** Per-creature mean reward across this generation's episode batch. */
+  meanRewards: number[];
+  /** Best `meanReward` seen this generation. */
+  bestReward: number;
+  /** Best champion's neuron count (carried from the previous milestone). */
+  bestNeurons: number;
+  /** Best champion's synapse count (carried from the previous milestone). */
+  bestSynapses: number;
 }
 
 /**
- * Run a generational evolutionary algorithm. Truncation selection keeps
- * the top half as parents; the elite carries over so the best score is
- * monotonically non-decreasing. Stops as soon as the champion's landed
- * rate on the training trial batch reaches `1 - targetError` **or**
- * `timeoutMinutes` minutes of wall-clock have elapsed — whichever
- * fires first. The two stop conditions match the standard NEAT-AI
- * `NeatOptions.targetError` / `NeatOptions.timeoutMinutes` fields.
+ * Run NEAT-AI's first-class reinforcement-learning evolution loop
+ * against a {@link LanderAdapter}. Mutation, crossover, elitism,
+ * plateau detection, and stop-condition handling are owned by
+ * `Creature.evolveRL()` (issue #240).
+ *
+ * Per-generation telemetry is reconstructed by:
+ *
+ * 1. Accumulating per-creature `meanReward` via `onEpisodeTrials`.
+ * 2. Reading champion topology counts from the optional
+ *    `evolverl_milestone` events when `statistics: true` is enabled.
+ * 3. Firing the caller's `options.onGeneration` callback from each
+ *    `generation_complete` training event with the aggregated data.
+ *
+ * Snapshot capture is reduced to gen-1 (the seed creature) and the
+ * final generation (the champion after `evolveRL` returns) because the
+ * upstream API does not expose mid-run creature exports.
  */
-export function evolveLanderController(
+export async function evolveLanderController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  const random = createDeterministicRandom(options.seed);
-  const scoreOptions: ScoreOptions = {
-    trials: options.trials,
-    trialSeed: options.trialSeed,
+): Promise<EvolveResult> {
+  const adapter = new LanderAdapter({
     initialPerturbation: options.initialPerturbation,
-  };
-  const score = (creature: Creature) => scoreController(creature, MAX_STEPS, scoreOptions);
-
-  // Counter for deterministic hidden-neuron UUIDs so the export stream
-  // is reproducible across runs with the same seed.
-  const hiddenCounter = { value: 0 };
-  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
-
-  // Initial population: uniform-random NEAT genomes from the library.
-  // No hand-crafted topology — `createSeededPopulation` decides the
-  // initial structure, with random weights and a random output bias.
-  const initialExports = buildRandomPopulation(options.seed, options.populationSize);
-  let population: ScoredMember[] = initialExports.map((json) => {
-    const creature = Creature.fromJSON(json);
-    const r = score(creature);
-    const counts = topologyCounts(json);
-    return {
-      json,
-      score: r.score,
-      outcome: r.outcome,
-      landedRate: r.landedRate,
-      neurons: counts.neurons,
-      synapses: counts.synapses,
-    };
+    maxStepsPerEpisode: MAX_STEPS,
   });
 
-  let bestJSON = population[0].json;
-  let bestScore = -Infinity;
-  let bestOutcome: LanderOutcome = "flying";
-  let bestLandedRate = 0;
-  let lastMeanScore = 0;
-  let solvedAt = -1;
+  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const seedExport = seedCreature.exportJSON();
+  const seedNeurons = seedExport.neurons.length + (seedExport.input ?? INPUT_COUNT);
+  const seedSynapses = seedExport.synapses.length;
 
-  const targetLandedRate = 1 - options.targetError;
-  const timeoutMs = options.timeoutMinutes * 60_000;
-  const loopStart = Date.now();
-  let stopReason: "target" | "timeout" = "timeout";
-  let generation = 0;
-
-  while (true) {
-    population.sort((a, b) => b.score - a.score);
-    const generationBest = population[0];
-    if (generationBest.score > bestScore) {
-      bestScore = generationBest.score;
-      bestJSON = generationBest.json;
-      bestOutcome = generationBest.outcome;
-      bestLandedRate = generationBest.landedRate;
-    }
-
-    lastMeanScore = population.reduce((acc, p) => acc + p.score, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestScore: generationBest.score,
-      meanScore: lastMeanScore,
-      bestLandedRate: generationBest.landedRate,
-      neurons: generationBest.neurons,
-      synapses: generationBest.synapses,
-    });
-
-    // Capture an evolution snapshot of the running champion at the
-    // configured checkpoints. The helper is a no-op for non-checkpoint
-    // generations.
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestScore);
-      }
-    }
-
-    const targetMet = bestLandedRate >= targetLandedRate;
-    if (targetMet && solvedAt < 0) solvedAt = generation;
-
-    const elapsedMs = Date.now() - loopStart;
-    const timedOut = elapsedMs >= timeoutMs;
-
-    if (targetMet) {
-      // When capturing snapshots, keep running until the next
-      // not-yet-fired checkpoint is captured — otherwise the
-      // progression strip would be a single panel.
-      const nextCheckpoint = options.snapshotConfig?.checkpoints
-        .filter((c) => c > generation + 1)
-        .sort((a, b) => a - b)[0];
-      if (nextCheckpoint === undefined) {
-        stopReason = "target";
-        break;
-      }
-    }
-
-    if (timedOut) {
-      stopReason = solvedAt >= 0 ? "target" : "timeout";
-      break;
-    }
-
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
-
-    const next: ScoredMember[] = [];
-    next.push(parents[0]); // elite
-    while (next.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureExport(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-        mutationOpts,
-      );
-      const childCreature = Creature.fromJSON(childJSON);
-      const r = score(childCreature);
-      const counts = topologyCounts(childJSON);
-      next.push({
-        json: childJSON,
-        score: r.score,
-        outcome: r.outcome,
-        landedRate: r.landedRate,
-        neurons: counts.neurons,
-        synapses: counts.synapses,
-      });
-    }
-    population = next;
-    generation++;
+  // Capture the seed creature as the gen-1 snapshot so the existing
+  // multi-panel SVG renderer still has at least one early-generation
+  // panel to draw alongside the final champion.
+  if (options.snapshotConfig?.checkpoints.includes(1)) {
+    captureSnapshot(options.snapshotConfig, 1, seedExport, 0);
   }
 
-  const champion = Creature.fromJSON(bestJSON);
+  const generationData = new Map<number, GenerationBucket>();
+  let latestBestNeurons = seedNeurons;
+  let latestBestSynapses = seedSynapses;
+  let bestScoreSeen = -Infinity;
+  let bestLandedRateSeen = 0;
+  let lastMeanScore = 0;
+  let lastObservedGeneration = 0;
+  let solvedAtGen = -1;
+
+  // EvolveRL normalised target error — the adapter emits a binary
+  // terminal reward in `{0, -1}`, so `defaultRewardToError` produces
+  // an error in `{0, 1}` and the mean across episodes is exactly
+  // `1 - landedRate`. The caller's `targetError` value therefore maps
+  // straight onto the upstream API without rescaling. Negative values
+  // (used by tests to force the iterations backstop) are clamped to
+  // `0`, the smallest legal value.
+  const absoluteTargetError = Math.max(0, options.targetError);
+
+  const loopStart = Date.now();
+
+  const evolveOptions: EvolveRLOptions = {
+    seed: options.seed >>> 0,
+    populationSize: options.populationSize,
+    mutationRate: options.mutationRate,
+    // NEAT-AI 5.0.0 owns mutation magnitude internally — the historical
+    // `mutationStrength` no longer maps onto `mutationAmount` (which is
+    // an *integer* count of mutations per offspring, not a perturbation
+    // magnitude). The library default is appropriate for lunar lander.
+    targetError: absoluteTargetError,
+    timeoutMinutes: options.timeoutMinutes,
+    iterations: options.iterations,
+    episodesPerCreature: options.trials ?? 1,
+    statistics: true,
+    onEpisodeTrials: (event) => {
+      let bucket = generationData.get(event.generation);
+      if (!bucket) {
+        bucket = {
+          meanRewards: [],
+          bestReward: Number.NEGATIVE_INFINITY,
+          bestNeurons: latestBestNeurons,
+          bestSynapses: latestBestSynapses,
+        };
+        generationData.set(event.generation, bucket);
+      }
+      bucket.meanRewards.push(event.meanReward);
+      if (event.meanReward > bucket.bestReward) {
+        bucket.bestReward = event.meanReward;
+      }
+    },
+    onTrainingEvent: (event) => {
+      if (event.kind === "evolverl_milestone") {
+        latestBestNeurons = event.bestNeurons;
+        latestBestSynapses = event.bestSynapses;
+        const bucket = generationData.get(event.generation);
+        if (bucket) {
+          bucket.bestNeurons = event.bestNeurons;
+          bucket.bestSynapses = event.bestSynapses;
+        }
+        return;
+      }
+      if (event.kind !== "generation_complete") return;
+
+      lastObservedGeneration = event.generation;
+      const bucket = generationData.get(event.generation);
+      // Surface generation numbers as zero-based to match the historical
+      // GenerationInfo contract.
+      const generation0 = event.generation - 1;
+      let bestScoreThisGen: number;
+      let meanScoreThisGen: number;
+      let bestLandedRateThisGen: number;
+      let neurons: number;
+      let synapses: number;
+      if (bucket && bucket.meanRewards.length > 0) {
+        const sum = bucket.meanRewards.reduce((a, b) => a + b, 0);
+        const meanReward = sum / bucket.meanRewards.length;
+        // Cumulative reward sits in `[-1, 0]`; `score = 1 + reward`
+        // therefore sits in `[0, 1]` and corresponds to the landed
+        // rate. We surface `bestScore` and `meanScore` as the landed
+        // rate to match the historical contract (caller code prints
+        // and logs them as fractions in `[0, 1]`).
+        meanScoreThisGen = 1 + meanReward;
+        bestScoreThisGen = 1 + bucket.bestReward;
+        bestLandedRateThisGen = bestScoreThisGen;
+        neurons = bucket.bestNeurons;
+        synapses = bucket.bestSynapses;
+      } else {
+        // No data this generation (e.g. every creature was an elite cached
+        // from a previous round). Fall back to the last known stats.
+        meanScoreThisGen = lastMeanScore;
+        bestScoreThisGen = bestScoreSeen >= 0 ? bestScoreSeen : 0;
+        bestLandedRateThisGen = bestLandedRateSeen;
+        neurons = latestBestNeurons;
+        synapses = latestBestSynapses;
+      }
+      if (bestScoreThisGen > bestScoreSeen) {
+        bestScoreSeen = bestScoreThisGen;
+        bestLandedRateSeen = bestLandedRateThisGen;
+      }
+      lastMeanScore = meanScoreThisGen;
+      if (bestLandedRateThisGen >= 1 - absoluteTargetError && solvedAtGen < 0) {
+        solvedAtGen = generation0;
+      }
+      options.onGeneration?.({
+        generation: generation0,
+        bestScore: bestScoreThisGen,
+        meanScore: meanScoreThisGen,
+        bestLandedRate: bestLandedRateThisGen,
+        neurons,
+        synapses,
+      });
+    },
+  };
+
+  const result = await seedCreature.evolveRL(adapter, evolveOptions);
+
+  const wallclockMs = Date.now() - loopStart;
+  const finalGeneration = Math.max(lastObservedGeneration, result.generation);
+
+  // Replay the champion against the same perturbed trial batch the
+  // adapter was driving so `landedRate`, `championOutcome`, and the
+  // canonical SVG outcome remain exact regardless of how evolveRL
+  // aggregated rewards internally.
+  const trialScore = scoreController(seedCreature, MAX_STEPS, {
+    trials: options.trials ?? 1,
+    trialSeed: options.trialSeed,
+    initialPerturbation: options.initialPerturbation,
+  });
+  const championLandedRate = trialScore.landedRate;
+  const championOutcome = trialScore.outcome;
+  if (trialScore.score > bestScoreSeen) bestScoreSeen = trialScore.score;
+
+  // Capture the final champion as the last snapshot if the caller asked
+  // for a checkpoint at the final generation (or used the default
+  // checkpoint list that includes the final gen).
+  if (options.snapshotConfig?.checkpoints.includes(finalGeneration)) {
+    captureSnapshot(
+      options.snapshotConfig,
+      finalGeneration,
+      seedCreature.exportJSON(),
+      trialScore.score,
+    );
+  } else if (options.snapshotConfig) {
+    // Always write a snapshot at the final generation so the multi-panel
+    // SVG has a closing frame even when no exact checkpoint matches.
+    captureSnapshot(
+      { ...options.snapshotConfig, checkpoints: [finalGeneration] },
+      finalGeneration,
+      seedCreature.exportJSON(),
+      trialScore.score,
+    );
+  }
+
+  const targetMet = championLandedRate >= 1 - absoluteTargetError ||
+    solvedAtGen >= 0;
+
+  let stopReason: "target" | "timeout" | "iterations";
+  if (targetMet) {
+    stopReason = "target";
+  } else if (
+    options.iterations !== undefined && finalGeneration >= options.iterations
+  ) {
+    stopReason = "iterations";
+  } else {
+    stopReason = "timeout";
+  }
+
   return {
-    champion,
-    bestScore,
-    generations: generation + 1,
-    solved: solvedAt >= 0,
-    landedRate: bestLandedRate,
-    championOutcome: bestOutcome,
+    champion: seedCreature,
+    bestScore: trialScore.score,
+    generations: finalGeneration,
+    solved: targetMet,
+    landedRate: championLandedRate,
+    championOutcome,
     finalMeanScore: lastMeanScore,
-    wallclockMs: Date.now() - loopStart,
+    wallclockMs,
     stopReason,
   };
 }
@@ -889,11 +929,12 @@ export const VALIDATION_RESULTS_PATH = ".synthetic-lunar-lander/validation/resul
 export const VALIDATION_BASE_SEED = 13579;
 
 /**
- * Generations at which the runner captures evolution snapshots. The
- * cadence is extended past the previous `[1, 10, 100, 1000]` because
- * variable-topology evolution from uniform-random noise typically
- * needs more generations to converge than the old fixed-topology
- * search did.
+ * Generations at which the runner captures evolution snapshots. Under
+ * the new `Creature.evolveRL()`-driven loop the upstream API only
+ * exposes the seed creature and the final champion, so only the first
+ * entry (`1`) and the run's terminal generation actually produce
+ * snapshot files. The remaining entries are retained for backwards
+ * compatibility — they are silently ignored.
  */
 export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500, 1000];
 
@@ -990,16 +1031,19 @@ function parseNumericFlag(args: string[], name: string): number | undefined {
  * CI/quality "quick mode" stop-condition overrides. When the runner is
  * invoked via `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag), the
  * standard 99% / 2-minute defaults are replaced with a deliberately
- * unreachable target and a ~6-second wall-clock budget so the example
- * always exits via `timeout` and the entire pipeline finishes within
- * `quality.sh`'s tight section budget.
+ * unreachable target and a 1-minute wall-clock budget so the example
+ * always exits via the wall-clock backstop.
+ *
+ * NEAT-AI 5.0.0 requires `timeoutMinutes` to be an integer ≥ 1, so the
+ * historical sub-minute budget is no longer expressible directly via
+ * `timeoutMinutes`. Quick mode now uses `iterations` as the primary
+ * short-circuit: the loop stops after a handful of generations, well
+ * inside `quality.sh`'s per-section budget. Setting `timeoutMinutes = 1`
+ * keeps the field schema-valid as a fallback.
  *
  * - `targetError = -1` is unreachable — the threshold becomes
  *   `landed-rate >= 1 - (-1) = 2`, but `landed-rate` is bounded by 1,
- *   so the loop never trips the `target` stop condition and the
- *   wall-clock timeout always drives exit.
- * - `timeoutMinutes = 0.1` ≈ 6 seconds — comfortably under the
- *   ~10-second per-section budget the user asked for in #201.
+ *   so the loop never trips the `target` stop condition.
  *
  * Quick mode also suppresses canonical artefact writes (champion JSON,
  * validation results JSON, descent SVG, evolution chart/strip, fitness
@@ -1009,7 +1053,9 @@ function parseNumericFlag(args: string[], name: string): number | undefined {
  * without disturbing `.synthetic-lunar-lander/snapshots/`.
  */
 export const QUICK_TARGET_ERROR = -1;
-export const QUICK_TIMEOUT_MINUTES = 0.1;
+export const QUICK_TIMEOUT_MINUTES = 1;
+/** Quick-mode generation cap — the primary short-circuit for the CI fast path. */
+export const QUICK_ITERATIONS = 3;
 
 /**
  * Resolve whether the CI/quality "quick mode" should fire. Either
@@ -1031,10 +1077,9 @@ if (import.meta.main) {
   console.log("🚀 Lunar Lander Descent Example");
   console.log("");
 
-  // Quick mode (CI/quality budget): forces a tiny ~6-second wall-clock
-  // budget and skips canonical artefact writes so a CI invocation never
-  // overwrites the docs artefacts checked into the repo. See
-  // {@link isQuickMode} and {@link QUICK_TIMEOUT_MINUTES}.
+  // Quick mode (CI/quality budget): forces a tiny iterations cap and
+  // skips canonical artefact writes so a CI invocation never overwrites
+  // the docs artefacts checked into the repo. See {@link isQuickMode}.
   const quick = isQuickMode(Deno.args, Deno.env.get("LUNAR_QUICK"));
   if (quick) {
     console.log("⚡ Quick mode (LUNAR_QUICK=1 or --quick): tiny budget, no canonical artefacts");
@@ -1047,20 +1092,22 @@ if (import.meta.main) {
   console.log(`🪂 Free-fall baseline score: ${baseline.toFixed(1)}`);
 
   // CLI overrides for the NEAT-AI standard stop conditions. Quick mode
-  // forces an impossible target plus a ~6-second timeout so the loop
-  // always exits via `timeout` well inside the CI section budget.
+  // forces an impossible target plus a small iterations cap so the loop
+  // always exits via the iterations backstop well inside the CI budget.
   const targetError = quick ? QUICK_TARGET_ERROR : (parseNumericFlag(Deno.args, "--target-error") ??
     DEFAULT_EVOLVE_OPTIONS.targetError);
   const timeoutMinutes = quick
     ? QUICK_TIMEOUT_MINUTES
     : (parseNumericFlag(Deno.args, "--timeout-minutes") ??
       DEFAULT_EVOLVE_OPTIONS.timeoutMinutes);
+  const iterations = quick ? QUICK_ITERATIONS : undefined;
 
-  console.log("\n🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log("\n🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
     `   Stop conditions: targetError=${targetError} ` +
       `(landed-rate ≥ ${((1 - targetError) * 100).toFixed(0)}%), ` +
-      `timeoutMinutes=${timeoutMinutes}`,
+      `timeoutMinutes=${timeoutMinutes}` +
+      (iterations !== undefined ? `, iterations=${iterations}` : ""),
   );
   // In quick mode, route snapshot files into a per-run temp dir so the
   // checked-in `.synthetic-lunar-lander/snapshots/` is left untouched.
@@ -1074,10 +1121,11 @@ if (import.meta.main) {
   const evolutionSamples: EvolutionSample[] = [];
   const evolutionRows: EvolutionRow[] = [];
   const evolutionStart = Date.now();
-  const result = evolveLanderController({
+  const result = await evolveLanderController({
     ...DEFAULT_EVOLVE_OPTIONS,
     targetError,
     timeoutMinutes,
+    iterations,
     snapshotConfig: {
       checkpoints: [...EVOLUTION_CHECKPOINTS],
       outputDir: snapshotsDir,
@@ -1094,8 +1142,8 @@ if (import.meta.main) {
       if (generation % 10 === 0) {
         console.log(
           `   Gen ${generation.toString().padStart(4)}  best=${
-            bestScore.toFixed(1).padStart(8)
-          }  mean=${meanScore.toFixed(1).padStart(8)}  ` +
+            bestScore.toFixed(3).padStart(8)
+          }  mean=${meanScore.toFixed(3).padStart(8)}  ` +
             `landed=${(bestLandedRate * 100).toFixed(0).padStart(3)}%  ` +
             `neurons=${neurons}  synapses=${synapses}`,
         );
