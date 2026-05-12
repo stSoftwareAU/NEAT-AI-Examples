@@ -6,23 +6,19 @@
  * checking implementation details or timing.
  */
 
-import { assertEquals, assertGreater } from "@std/assert";
+import { assert, assertEquals, assertGreater } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 
 import { Creature } from "@stsoftware/neat-ai";
 
+import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
   createReferenceCreature,
   DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
-  formatEvolutionCsv,
   generateSyntheticData,
   INPUT_COUNT,
   OUTPUT_COUNT,
-  rowsToEvolutionSamples,
-  rowsToFitnessSamples,
   runMinimalSeedEvolution,
   SYNTHETIC_CONFIG,
 } from "./improve_squash_example.ts";
@@ -239,13 +235,10 @@ Deno.test("generateSyntheticData splits records across multiple files", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  Audit (#214) — minimal-seed evolution + measured telemetry         */
+/*  Audit (#214) — minimal-seed evolution + milestone summary (#302)   */
 /* ------------------------------------------------------------------ */
 
 Deno.test("INPUT_COUNT and OUTPUT_COUNT are positive integers matching the runner seed", () => {
-  // Audit acceptance: the source code passes only `input` and `output`
-  // integers to NEAT-AI. Lock those constants in so a future refactor
-  // cannot silently change them.
   assertGreater(INPUT_COUNT, 0, "INPUT_COUNT must be positive");
   assertGreater(OUTPUT_COUNT, 0, "OUTPUT_COUNT must be positive");
   assertEquals(Number.isInteger(INPUT_COUNT), true, "INPUT_COUNT must be an integer");
@@ -259,8 +252,6 @@ Deno.test("INPUT_COUNT and OUTPUT_COUNT are positive integers matching the runne
 });
 
 Deno.test("DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG honours the audit's stop-condition rule", () => {
-  // Issue #214 mandates targetError + timeoutMinutes <= 5 (or higher
-  // with a documented justification — the default sticks to 5).
   assertGreater(
     DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG.targetError,
     0,
@@ -281,56 +272,6 @@ Deno.test("DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG honours the audit's stop-condit
     0,
     "maxIterations must be positive",
   );
-});
-
-Deno.test("formatEvolutionCsv emits the schema mandated by issue #214", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: -0.5, meanFitness: -0.7, neuronCount: 5, synapseCount: 4 },
-    { generation: 2, bestFitness: -0.3, meanFitness: -0.6, neuronCount: 6, synapseCount: 7 },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER, "first line must be the audit-mandated header");
-  assertEquals(lines.length, 3, "header + 2 data rows");
-  assertEquals(lines[1], "1,-0.5,-0.7,5,4");
-  assertEquals(lines[2], "2,-0.3,-0.6,6,7");
-});
-
-Deno.test("formatEvolutionCsv survives non-finite fitness without throwing", () => {
-  const rows: EvolutionRow[] = [
-    {
-      generation: 1,
-      bestFitness: Number.POSITIVE_INFINITY,
-      meanFitness: Number.NEGATIVE_INFINITY,
-      neuronCount: 5,
-      synapseCount: 4,
-    },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  assertEquals(csv.trim().split("\n")[1], "1,0,0,5,4");
-});
-
-Deno.test("rowsToFitnessSamples renames meanFitness to avgFitness", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 3, bestFitness: -0.1, meanFitness: -0.4, neuronCount: 7, synapseCount: 9 },
-  ];
-  const samples = rowsToFitnessSamples(rows);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 3);
-  assertEquals(samples[0].bestFitness, -0.1);
-  assertEquals(samples[0].avgFitness, -0.4);
-});
-
-Deno.test("rowsToEvolutionSamples maps neuron and synapse counts onto chart fields", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 7, bestFitness: 0.2, meanFitness: 0.1, neuronCount: 8, synapseCount: 12 },
-  ];
-  const samples = rowsToEvolutionSamples(rows);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 7);
-  assertEquals(samples[0].score, 0.2);
-  assertEquals(samples[0].neurons, 8);
-  assertEquals(samples[0].synapses, 12);
 });
 
 Deno.test("runMinimalSeedEvolution rejects non-positive config values", async () => {
@@ -359,14 +300,8 @@ Deno.test("runMinimalSeedEvolution rejects non-positive config values", async ()
 });
 
 Deno.test(
-  "runMinimalSeedEvolution captures per-generation telemetry from a minimal seed",
+  "runMinimalSeedEvolution returns a milestone summary from a minimal seed",
   async () => {
-    // Verifies the audit's telemetry contract: starting from
-    // `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, the function captures
-    // per-generation rows whose schema matches the audit (generation,
-    // best/mean fitness, neuron and synapse counts) and records the
-    // seed topology. The growth assertion lives in the next test
-    // (which reads the committed CSV from the production run).
     const tmpDir = Deno.makeTempDirSync({ prefix: "neat_id_test_" });
     const dataDir = join(tmpDir, "data");
     ensureDirSync(dataDir);
@@ -394,21 +329,15 @@ Deno.test(
 
       assertEquals(result.seedNeuronCount, seedNeurons, "seed neuron count must be recorded");
       assertEquals(result.seedSynapseCount, seedSynapses, "seed synapse count must be recorded");
-      assertGreater(
-        result.rows.length,
-        0,
-        "at least one generation_complete event must be captured",
-      );
+      assertGreater(result.generations, 0, "should evolve at least one generation");
 
-      const finalRow = result.rows[result.rows.length - 1];
-      assertGreater(finalRow.generation, 0, "generation must be 1-based");
-      assertGreater(finalRow.neuronCount, 0, "neuron count must be positive");
-      assertGreater(finalRow.synapseCount, 0, "synapse count must be positive");
-      assertEquals(
-        Number.isFinite(finalRow.bestFitness),
-        true,
-        "bestFitness must be finite once evolution has progressed",
-      );
+      // Summary contract — all numeric fields finite.
+      assertEquals(Number.isFinite(result.summary.finalError), true);
+      assertEquals(Number.isFinite(result.summary.finalScore), true);
+      assertEquals(result.summary.seedNeurons, seedNeurons);
+      assertEquals(result.summary.seedSynapses, seedSynapses);
+      assertGreater(result.summary.finalNeurons, 0, "final neuron count must be positive");
+      assertGreater(result.summary.finalSynapses, 0, "final synapse count must be positive");
     } finally {
       Deno.removeSync(tmpDir, { recursive: true });
     }
@@ -440,6 +369,51 @@ Deno.test("runMinimalSeedEvolution leaves the passed-in creature as the champion
     // The champion must be the same JS object the caller passed in —
     // evolveDir mutates the creature in place.
     assertEquals(result.champion === seed, true, "champion must be the in-place creature");
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Milestone summary SVG                                              */
+/* ------------------------------------------------------------------ */
+
+Deno.test("renderEvolveDirSummarySvg renders a summary derived from runMinimalSeedEvolution", async () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_id_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    const reference = createReferenceCreature();
+    generateSyntheticData(reference, dataDir, {
+      totalRecords: 32,
+      recordsPerFile: 32,
+      seed: 99,
+    });
+
+    const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const result = await runMinimalSeedEvolution(seed, dataDir, {
+      targetError: 0.5,
+      timeoutMinutes: 0,
+      populationSize: 4,
+      maxIterations: 3,
+      mutationRate: 0.6,
+      mutationAmount: 3,
+      seed: 11,
+    });
+
+    const svg = renderEvolveDirSummarySvg(result.summary, {
+      title: "Intelligent Design — evolveDir Run Summary",
+    });
+    assert(svg.startsWith("<svg"));
+    assert(svg.includes("</svg>"));
+    // Numeric callouts for the four summary rows are present.
+    assert(svg.includes("final error"));
+    assert(svg.includes("final score"));
+    assert(svg.includes("generations"));
+    assert(svg.includes("wall clock"));
+    // Topology counts appear as bar labels.
+    assert(svg.includes(String(result.summary.seedNeurons)));
+    assert(svg.includes(String(result.summary.finalNeurons)));
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
   }

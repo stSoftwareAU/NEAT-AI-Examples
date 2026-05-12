@@ -3,11 +3,10 @@ set -euo pipefail
 
 # CRISPR Gene Injection Example Runner
 #
-# Builds a baseline population on a synthetic two-input task, evolves it
-# until fitness plateaus, splices a hand-crafted "edit gene" (two TANH
-# hidden neurons + their synapses) into the top members, and continues
-# evolving. Renders a single SVG with the gene topology in the top panel
-# and the fitness-vs-generation curve (with an injection marker) below.
+# Builds a binary training set from a hand-crafted target, runs two
+# minimal-seed `Creature.evolveDir` phases (before and after splicing
+# the hand-crafted gene), and renders a single SVG with the gene
+# topology on top and a before-vs-after milestone summary panel below.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"

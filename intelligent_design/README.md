@@ -1,10 +1,16 @@
 # 🧬 Intelligent Design — Minimal Seed + Squash Improvement Scan
 
-**The audit (#214) reframes this example.** The published evolution now genuinely _learns_ the
-network structure from a minimal NEAT-AI seed — no hand-tuned topology, no pre-built `network.json`.
-The original "intelligent design" framing is preserved by running the squash improvement scan on the
+**The audit (#214) reframes this example.** The published evolution genuinely _learns_ the network
+structure from a minimal NEAT-AI seed — no hand-tuned topology, no pre-built `network.json`. The
+original "intelligent design" framing is preserved by running the squash improvement scan on the
 **evolved** champion: even after evolution, NEAT-AI can suggest activation function substitutions
-that improve the score. The README quotes _measured_ numbers from the latest local run.
+that improve the score.
+
+Under [#302](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/302) the per-generation
+telemetry hook was removed in favour of NEAT-AI's milestone-only telemetry surface (see
+[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298)). The README now references a
+single milestone summary SVG sourced from `Creature.evolveDir`'s return value via the shared
+[`renderEvolveDirSummarySvg`](../common/evolve_dir_summary.ts) helper.
 
 ## 🔧 How It Works
 
@@ -13,24 +19,28 @@ flowchart TD
     REF["🧬 Hand-crafted reference creature<br/>(label oracle only — NEAT-AI never sees it)"]
     DATA["📦 Binary .bin training set"]
     SEED["🌱 new Creature(4, 1)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.005,<br/>timeoutMinutes=5"]
+    EVOLVE["🧪 Creature.evolveDir(...)<br/>single call, forward-only,<br/>targetError=0.0001, timeoutMinutes=5"]
+    SUMMARY["📦 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
     SCAN["🔬 Scan evolved champion<br/>for squash improvements"]
-    OUT["🏆 Improved creature + CSV + 2 SVGs"]
+    OUT["📈 evolution_summary.svg + improved creature"]
     REF --> DATA
     DATA --> EVOLVE
     SEED --> EVOLVE
+    EVOLVE --> SUMMARY
     EVOLVE --> SCAN
+    SUMMARY --> OUT
     SCAN --> OUT
     style REF fill:#7ed321,stroke:#333,color:#fff
     style DATA fill:#4a90d9,stroke:#333,color:#fff
     style SEED fill:#bd10e0,stroke:#333,color:#fff
     style EVOLVE fill:#f5a623,stroke:#333,color:#fff
+    style SUMMARY fill:#34495e,stroke:#333,color:#fff
     style SCAN fill:#e74c3c,stroke:#333,color:#fff
     style OUT fill:#50e3c2,stroke:#333,color:#fff
 ```
 
-**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _CSV_ = Comma-Separated Values.
-_SVG_ = Scalable Vector Graphics. _GELU_ = Gaussian Error Linear Unit.
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _SVG_ = Scalable Vector Graphics.
+_GELU_ = Gaussian Error Linear Unit.
 
 `improve_squash_example.ts` runs end-to-end:
 
@@ -39,70 +49,34 @@ _SVG_ = Scalable Vector Graphics. _GELU_ = Gaussian Error Linear Unit.
    oracle_ — NEAT-AI never sees it.
 2. Seed evolution with `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — four inputs, one output, no
    hidden neurons, no warm start.
-3. Call `Creature.evolveDir(dataDir, options)` over the `.bin` directory in forward-only mode until
-   either the per-example `targetError` is reached or the `timeoutMinutes: 5` backstop fires (issue
-   #214 stop-condition rule). Capture per-generation telemetry via `onTrainingEvent`.
+3. Make a **single** `Creature.evolveDir(dataDir, options)` call over the `.bin` directory in
+   forward-only mode until either the per-example `targetError` is reached or the
+   `timeoutMinutes: 5` backstop fires.
 4. Run `scanForSquashImprovements` on the evolved champion to systematically test alternative
    activation functions. This is the original "intelligent design" demo, now operating on the
    genuinely-evolved creature.
-5. Emit a CSV plus two SVG charts so the README can quote the measured numbers from the latest run.
+5. Render a milestone summary SVG from the `evolveDir` return value plus the seed and final creature
+   topology via `renderEvolveDirSummarySvg`.
 
 ## 📈 Latest measured run (`./intelligent_design/run.sh`)
 
-> The numbers below come from the most recent local run committed alongside this README. They are
-> **measured, not estimated**, per the audit rule in #214.
+The chart is sourced from `Creature.evolveDir`'s return value plus the seed and final creature's
+topology — no per-generation telemetry hook.
 
-| Metric                    | Value                           |
-| ------------------------- | ------------------------------- |
-| Total generations         | 32                              |
-| Evolution wall-clock      | 1.1 s                           |
-| Final best fitness        | 0.9973                          |
-| Final per-record error    | 0.0027 (target met)             |
-| Seed neurons / synapses   | 5 / 4                           |
-| Final neurons / synapses  | 6 / 9                           |
-| Stop condition that fired | `targetError` reached           |
-| Squash scan (GELU)        | 1 neuron tested, 0 improvements |
-
-Topology genuinely grew: NEAT-AI added **1 hidden neuron** and **5 synapses** on top of the minimal
-direct-only seed. The CSV and the two SVGs below show the trajectory across all 32 generations.
-
-### Best vs mean fitness per generation
-
-![Best vs mean fitness](../docs/screenshots/intelligent_design/fitness.svg)
-
-> Mean fitness reads as zero in the chart because NEAT-AI's `generation_complete` event reports a
-> population mean of zero on this small population/short run. The `best_fitness` column is the
-> measured per-generation champion score and is the meaningful signal.
-
-### Score, neuron, and synapse counts per generation
-
-![Score / neurons / synapses](../docs/screenshots/intelligent_design/topology.svg)
-
-### Per-generation CSV
-
-[`docs/data/intelligent_design/evolution.csv`](../docs/data/intelligent_design/evolution.csv) holds
-the full per-generation telemetry with the schema mandated by the audit:
-
-```text
-generation,best_fitness,mean_fitness,neuron_count,synapse_count
-```
+![Intelligent Design — evolveDir run summary](../docs/screenshots/intelligent_design/evolution_summary.svg)
 
 ## 🧪 What "reasonable solution" means here
 
-The evolved champion's best fitness is **0.9973** against the binary `.bin` training set (higher is
-better; the theoretical maximum is 1.0). The final per-record error of **0.0027** is below the
-`targetError` stop condition — evolution stopped because the champion is producing labels within
-`5 × 10⁻³` of the hand-crafted reference creature's outputs on average. That is a reasonable
-solution to the labelled task: a 5-neuron / 4-synapse direct-only seed has been grown into a
-6-neuron / 9-synapse champion that reproduces the input → output behaviour of a 10-neuron /
-18-synapse reference _without ever seeing its topology_.
+The evolved champion's final score on the binary `.bin` training set should approach the theoretical
+maximum of 1.0. When the final per-record error falls below `targetError`, evolution stops because
+the champion is producing labels close to the hand-crafted reference creature's outputs on average.
+That is a reasonable solution to the labelled task: a 5-neuron / 4-synapse direct-only seed has been
+grown into a champion that reproduces the input → output behaviour of a 10-neuron / 18-synapse
+reference _without ever seeing its topology_.
 
 The squash improvement scan then tests alternative activation functions on each hidden neuron of the
-**evolved** champion. On the latest run, GELU produced no improvement on the single hidden neuron
-NEAT-AI grew — which is itself a meaningful result: the score is already close to the theoretical
-maximum, so the activation function NEAT-AI selected is hard to improve. Try a different target
-squash (e.g. `Swish` or `LeakyReLU`) to see the scan substitute it onto the evolved creature when it
-does help.
+**evolved** champion. Try different target squashes (e.g. `Swish` or `LeakyReLU`) to see the scan
+substitute one onto the evolved creature.
 
 ## 🚀 Running the example
 
@@ -129,11 +103,9 @@ You will find:
 - `creatures/improved.json` – The improved creature when the squash scan finds substitutions.
 - `output/` – Individual improved creatures for each neuron the scanner tried.
 
-In addition, the per-generation telemetry artefacts are committed under `docs/`:
+The milestone summary SVG is committed under `docs/`:
 
-- [`docs/data/intelligent_design/evolution.csv`](../docs/data/intelligent_design/evolution.csv)
-- [`docs/screenshots/intelligent_design/fitness.svg`](../docs/screenshots/intelligent_design/fitness.svg)
-- [`docs/screenshots/intelligent_design/topology.svg`](../docs/screenshots/intelligent_design/topology.svg)
+- [`docs/screenshots/intelligent_design/evolution_summary.svg`](../docs/screenshots/intelligent_design/evolution_summary.svg)
 
 > ⚡ **Speed note:** this example writes its training data in NEAT-AI's binary format — see
 > [`docs/binary_training_stream.md`](../docs/binary_training_stream.md).
@@ -156,8 +128,9 @@ to quickly reapply known-good squash substitutions without rescanning.
   faster than per-call `activate()`.
 - **Forward-only mutation** — `evolveDir` defaults to forward-only when `feedbackLoop` is not set,
   matching the audit's stop-condition + topology contract.
-- **`onTrainingEvent` callback** — feeds per-generation telemetry into the CSV and the two SVG
-  charts without slowing the run.
+- **Milestone-only telemetry** — the chart is sourced from `evolveDir`'s return value via the shared
+  `renderEvolveDirSummarySvg` helper, matching NEAT-AI's supported telemetry surface (see
+  [`AGENTS.md`](../AGENTS.md)).
 - **Unique Activation Functions (IF, MAX, MIN, …)** — the squash scan explores NEAT-AI's extended
   activation set on the evolved champion (see upstream
   [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)).
