@@ -15,8 +15,16 @@ Per the audit in [issue #206](https://github.com/stSoftwareAU/NEAT-AI-Examples/i
 passed to NEAT-AI is **minimal** — only `new Creature(INPUT_COUNT, OUTPUT_COUNT)` with no
 hidden-layer hint, no pre-built `network.json`, no hand-tuned topology. NEAT-AI random-initialises
 the rest, and `Creature.evolveDir(...)` over a binary `.bin` training set learns the structure.
+Under telemetry rewire [issue #303](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/303) the
+per-generation `onTrainingEvent` hook was removed; both `evolveDir` phases now return milestone
+summaries from their return values (the canonical milestone-only telemetry surface — see #298).
 
 ![Synthetic synapse training — sparse, densified, pruned](../docs/screenshots/synthetic_synapse.svg)
+
+The headline topology before/after panel above is unchanged in shape. Its held-out score callouts
+are now sourced from the milestone summary path below.
+
+![evolveDir refine-phase milestone summary](../docs/screenshots/synthetic_synapse/evolution_summary.svg)
 
 ## 🚀 How to Run
 
@@ -25,9 +33,8 @@ the rest, and `Creature.evolveDir(...)` over a binary `.bin` training set learns
 ```
 
 The runner prints per-phase statistics, writes the topology / bar-chart SVG to
-`docs/screenshots/synthetic_synapse.svg`, and emits per-generation evolution telemetry to
-`docs/data/synthetic_synapse/evolution.csv` plus two summary charts in
-`docs/screenshots/synthetic_synapse/`.
+`docs/screenshots/synthetic_synapse.svg`, and writes the refine-phase milestone summary SVG to
+`docs/screenshots/synthetic_synapse/evolution_summary.svg`.
 
 ## 🧠 Why does NEAT-AI need this?
 
@@ -125,61 +132,28 @@ backstop expires (issue #206 mandates a 5-minute upper bound). The example's def
 `targetError: 0.005` and `timeoutMinutes: 5` — the per-phase wall-clock budget is half this so the
 two-phase total respects the safety net.
 
-## 📊 Measured Telemetry (latest run)
+## 📊 Milestone Telemetry
 
-The numbers below are quoted **directly** from the latest local run of `./synthetic_synapse/run.sh`
-(no estimates):
+Each `evolveDir` phase's return value is captured as an `EvolveDirSummary` and exposed on the demo's
+result (`sparseSummary`, `refineSummary`). The headline summary panel quotes:
 
-| Metric                         | Value        |
-| ------------------------------ | ------------ |
-| Total generations              | 68           |
-| Wall-clock time                | 7.8 s        |
-| Final best fitness (training)  | 0.9955       |
-| Sparse-phase synapse count     | 34           |
-| Densified-phase synapse count  | 88           |
-| Pruned-phase synapse count     | 35           |
-| Sparse-phase held-out score    | −0.00913     |
-| Densified-phase held-out score | −0.00913     |
-| Pruned-phase held-out score    | **−0.00908** |
-| Seed-creature neurons (start)  | 7            |
-| Final-creature neurons         | 17           |
-| Seed-creature synapses (start) | 10           |
-| Final-creature synapses        | 35           |
+- `finalError` / `finalScore` reached by NEAT-AI in the refine phase.
+- `generations` completed across the phase.
+- `wallClockMs` — total time the refine `evolveDir` call took.
+- `seedNeurons`/`seedSynapses` vs `finalNeurons`/`finalSynapses` — the bar pair on the topology side
+  of the milestone SVG.
 
-**Topology genuinely changed across generations** — NEAT added 10 hidden neurons (7 → 17) and grew
-the sparse synapse count from 10 to 34 during the sparse phase. Densification then added 54
-synthetic synapses (34 → 88), the refine phase tuned them, and pruning removed every synthetic edge
-whose weight stayed below `pruneThreshold` while keeping one whose weight survived the cut (final
-synapse count 35).
-
-The held-out score (−MSE) of the pruned creature improves over the sparse champion (−0.00908 vs
-−0.00913): weight optimisation on the densified topology found a synthetic edge worth keeping. With
-a final training-set best fitness of **0.9955** and held-out MSE of **0.00908** the champion
-reproduces the target function to within 0.9% mean-squared error — a reasonable solution for an
-evolved creature seeded only with input/output counts.
-
-### Per-generation evolution CSV
-
-[`docs/data/synthetic_synapse/evolution.csv`](../docs/data/synthetic_synapse/evolution.csv) — one
-row per generation with `generation, best_fitness, mean_fitness, neuron_count, synapse_count`.
-
-### Best/mean fitness vs generation
-
-![Best/mean fitness chart](../docs/screenshots/synthetic_synapse/fitness.svg)
-
-### Neuron / synapse count vs generation
-
-![Neuron and synapse count chart](../docs/screenshots/synthetic_synapse/topology.svg)
+Held-out score callouts on the three-panel topology chart (sparse / densified / pruned) are computed
+locally against the held-out dataset and surfaced alongside the milestone summary so the
+densify-train-prune narrative remains visible at a glance.
 
 ## 📤 Output
 
 - `docs/screenshots/synthetic_synapse.svg` — three topology panels (one per phase) plus a bar chart
   of synapse count per phase with the held-out score overlaid as a line. A mirror copy is also
   written to `.synthetic-synapse/output/synthetic_synapse.svg`.
-- `docs/data/synthetic_synapse/evolution.csv` — per-generation telemetry with the schema above.
-- `docs/screenshots/synthetic_synapse/fitness.svg` — best vs mean fitness across all generations.
-- `docs/screenshots/synthetic_synapse/topology.svg` — neuron and synapse counts across all
-  generations (separate axes — synapses on the right).
+- `docs/screenshots/synthetic_synapse/evolution_summary.svg` — refine-phase milestone summary SVG
+  sourced from the `evolveDir` return value.
 - `.synthetic-synapse/creatures/champion.json` — the final pruned champion creature.
 
 ## 🧪 Tests
@@ -194,19 +168,14 @@ row per generation with `generation, best_fitness, mean_fitness, neuron_count, s
 - `pruneCreature` removes only synthetic synapses below the threshold and rejects negative
   thresholds.
 - The end-to-end `runSyntheticSynapseDemo` produces three phases in the right order with
-  `densified > sparse` synapse counts and `pruned <= densified`, and emits at least one
-  per-generation telemetry row with finite fitness numbers.
-- The CSV formatter emits the canonical header and one row per generation.
-- `renderFitnessChartSvg` and `renderTopologyChartSvg` produce well-formed SVGs with the expected
-  CSS classes and reject empty input.
+  `densified >= sparse` synapse counts and a finite held-out score per phase.
+- `runSyntheticSynapseDemo` returns milestone summaries from both `evolveDir` phases — seed counts
+  match the minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, and `refineSummary.finalSynapses` is
+  at least `sparseSummary.finalSynapses` (densification only adds).
 - `renderSyntheticSynapseSVG` is well-formed, embeds all three phase labels, and rejects malformed
   phase ordering.
-
-`synthetic_synapse_readme_test.ts` (issue
-[#188](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/188)) additionally verifies the
-README terminology — the comparison column is named "Textbook NEAT", no unqualified "textbook" /
-"vanilla" mislabelling survives, and the "Why does NEAT-AI need this?" section links each of the
-other scaling-failure mitigations to its anchor in upstream `COMPARISON.md`.
+- `renderEvolveDirSummarySvg` renders the refine-phase milestone summary derived from
+  `runSyntheticSynapseDemo`, carrying the four callout labels and the topology counts.
 
 ## 🧰 NEAT-AI Features Used
 
@@ -225,3 +194,5 @@ Features exercised (links go to upstream
 - **[Neuron Pruning](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
   — the final pass removes the synthetic synapses that did not pull weight, keeping the creature
   sparse.
+- **Milestone-only telemetry** — both phases' `EvolveDirSummary` records are captured from
+  `evolveDir`'s return value; no per-generation hook is used (#303).

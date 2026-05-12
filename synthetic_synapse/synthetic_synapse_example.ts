@@ -1,5 +1,6 @@
 /**
- * Synthetic Synapse Training Demo (issue #85, audited under #206).
+ * Synthetic Synapse Training Demo (issue #85, audited under #206,
+ * telemetry simplified under #303).
  *
  * Demonstrates NEAT-AI's **synthetic-synapse training** technique:
  * temporarily **densifying** the inter-layer connectivity of an
@@ -7,8 +8,15 @@
  * freedom, then **pruning** the near-zero synthetic synapses afterwards
  * so the deployed creature stays lean.
  *
+ * Under #303 the per-generation `onTrainingEvent` hook and the chunked
+ * `evolveDir` loop were removed in favour of NEAT-AI's supported
+ * milestone-only telemetry surface. Each `evolveDir` call now returns
+ * a single milestone summary; both summaries are exposed on the result
+ * so the bespoke three-panel topology + bar chart SVG can source its
+ * held-out score callouts from the new milestone path.
+ *
  * This audit (issue #206) brings the example in line with the
- * minimal-seed + measured-telemetry policy in `AGENTS.md`:
+ * minimal-seed policy in `AGENTS.md`:
  *
  * 1. The creature passed to NEAT-AI is built **only** from
  *    `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — no hidden-layer hint,
@@ -19,14 +27,6 @@
  *    learned by NEAT, not bolted on by the example.
  * 3. Stop conditions are a per-example `targetError` plus a
  *    `timeoutMinutes: 5` safety backstop.
- * 4. Per-generation telemetry (best/mean fitness, neuron count,
- *    synapse count) is captured during both evolveDir phases and
- *    written out as CSV + two SVG charts so the README can quote real
- *    measured numbers from the latest run.
- *
- * The synthetic-synapse densify-train-prune cycle then runs on the
- * **evolved** sparse champion — that part of the demo is unchanged in
- * spirit, just powered by NEAT-AI rather than a custom SGD trainer.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -42,6 +42,7 @@ import {
 import { buildLargeCreature } from "../common/large_creature.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderSyntheticSynapseSVG } from "./svg.ts";
 
 /** Working-directory root for artefacts produced by this demo. */
@@ -53,18 +54,9 @@ export const SCREENSHOT_PATH = "docs/screenshots/synthetic_synapse.svg";
 /** Mirror copy under `WORKING_ROOT/output/`. */
 export const WORKING_OUTPUT_PATH = join(WORKING_ROOT, "output", "synthetic_synapse.svg");
 
-/** Per-generation evolution-telemetry CSV path. */
-export const EVOLUTION_CSV_PATH = "docs/data/synthetic_synapse/evolution.csv";
-
-/** CSV header — matches the schema mandated by issue #206. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path. */
-export const FITNESS_SVG_PATH = "docs/screenshots/synthetic_synapse/fitness.svg";
-
-/** Neuron / synapse count chart path. */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/synthetic_synapse/topology.svg";
+/** Milestone summary SVG path — sourced from the post-prune `evolveDir` return value. */
+export const EVOLUTION_SUMMARY_SVG_PATH =
+  "docs/screenshots/synthetic_synapse/evolution_summary.svg";
 
 /**
  * Number of input neurons fed to the NEAT-AI seed.
@@ -116,9 +108,7 @@ export interface SyntheticSynapseConfig {
 /**
  * Defaults chosen so the demo converges via `targetError` well inside
  * the 5-minute backstop on a developer machine while still showing the
- * densify-then-prune effect clearly. The targetError is deliberately
- * tight enough that NEAT must add hidden neurons to reach it from the
- * minimal direct-only seed.
+ * densify-then-prune effect clearly.
  */
 export const DEFAULT_SYNTHETIC_SYNAPSE_CONFIG: SyntheticSynapseConfig = {
   seed: 850850850,
@@ -147,28 +137,16 @@ export interface PhaseRecord {
   heldOutScore: number;
 }
 
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  /** 1-based generation index across the whole demo. */
-  generation: number;
-  /** Best fitness in this generation (max across the population). */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
-}
-
 /** Combined result of running the synthetic-synapse demo. */
 export interface SyntheticSynapseResult {
   /** Three phase records: sparse → densified → pruned. */
   phases: PhaseRecord[];
   /** Best topology snapshot per phase, for the SVG renderer. */
   topologies: Record<PhaseName, TopologySnapshot>;
-  /** Per-generation telemetry across both evolveDir phases. */
-  evolutionRows: EvolutionRow[];
+  /** Milestone summary from the sparse (phase 1) `evolveDir` call. */
+  sparseSummary: EvolveDirSummary;
+  /** Milestone summary from the refine (phase 3) `evolveDir` call. */
+  refineSummary: EvolveDirSummary;
   /** Total wall-clock time of the run, in milliseconds. */
   wallClockMs: number;
   /** Champion creature after the prune phase. */
@@ -361,11 +339,6 @@ export function creatureHeldOutScore(
  * from. The target is **not** the NEAT seed — it just produces labels
  * that the evolved creature must learn to reproduce. Hand-shaping the
  * target is fine; only the seed needs to be minimal.
- *
- * We reuse `buildLargeCreature` with a fully-connected density (1.0)
- * so the underlying truth function is reachable in principle by a dense
- * hidden layer of this size — exactly the kind of mapping where
- * synthetic-synapse training pays off.
  */
 export function buildTargetNetwork(config: SyntheticSynapseConfig): Network {
   const target = buildLargeCreature({
@@ -436,12 +409,6 @@ export function writeBinaryDataset(dataset: readonly DataPoint[], dataDir: strin
  * missing inter-layer edge between adjacent layers in the current
  * topology. Returns the keys of the newly added (synthetic) synapses
  * so callers can prune by membership later.
- *
- * "Adjacent layers" are inferred from neuron indices: input neurons
- * (`0..input-1`) feed any non-input neuron, and any non-output neuron
- * feeds the output layer. Any missing forward-only edge is added at
- * weight zero so the creature's behaviour is unchanged at insertion
- * time — only its derivatives are non-zero.
  */
 export function densifyCreature(creature: Creature): Set<string> {
   const N = creature.neurons.length;
@@ -522,92 +489,60 @@ function snapshotTopology(
 }
 
 /**
- * Iterations per `evolveDir` chunk. Each chunk refreshes the
- * passed-in creature in place, so chunking the phase into smaller
- * runs gives the per-generation telemetry chart visible step changes
- * in neuron/synapse counts as NEAT mutates the topology.
+ * Run a single `evolveDir` phase against `dataDir` from `seed` and
+ * return a milestone summary captured from the call's return value
+ * plus the seed and final creature's topology. The seed is mutated in
+ * place.
  */
-const PHASE_CHUNK_ITERATIONS = 50;
-
-/**
- * Run a single evolveDir phase against `dataDir`, capturing
- * per-generation telemetry into `rows`. The phase is split into
- * fixed-size chunks so the post-chunk topology is refreshed in the
- * passed-in `creature` and reflected in the next chunk's events. The
- * phase exits early when `targetError` is met or iterations exhausted.
- *
- * Returns the cumulative generation count actually evolved.
- */
-async function runEvolvePhase(opts: {
+async function runEvolveDirPhase(opts: {
   creature: Creature;
   dataDir: string;
   config: SyntheticSynapseConfig;
   phaseTimeoutMinutes: number;
-  rows: EvolutionRow[];
-  generationOffset: number;
-}): Promise<{ generations: number; finalError: number }> {
-  const { creature, dataDir, config, phaseTimeoutMinutes, rows, generationOffset } = opts;
+  seedOffset: number;
+}): Promise<EvolveDirSummary> {
+  const { creature, dataDir, config, phaseTimeoutMinutes, seedOffset } = opts;
 
-  let evolved = 0;
-  let finalError = Number.POSITIVE_INFINITY;
-  const phaseStart = Date.now();
-  const phaseBudgetMs = phaseTimeoutMinutes * 60_000;
+  const seedNeurons = creature.neurons.length;
+  const seedSynapses = creature.synapses.length;
+  const start = Date.now();
 
-  while (evolved < config.maxIterationsPerPhase) {
-    // Pre-chunk topology snapshot. NEAT-AI only updates the passed-in
-    // `creature` reference at the end of each evolveDir call, so the
-    // event handler reports these counts for every event inside the
-    // chunk and the next chunk re-reads after the await resolves.
-    const segmentStartNeurons = creature.neurons.length;
-    const segmentStartSynapses = creature.synapses.length;
+  const neatOptions: NeatOptions = {
+    seed: config.seed + seedOffset,
+    populationSize: config.populationSize,
+    iterations: config.maxIterationsPerPhase,
+    targetError: config.targetError,
+    timeoutMinutes: phaseTimeoutMinutes,
+    costOfGrowth: 0,
+    // Push NEAT toward structural growth so the sparse phase actually
+    // adds hidden neurons / inter-layer synapses from the minimal seed
+    // — otherwise densify-train-prune has nothing to do.
+    mutationRate: 0.6,
+    mutationAmount: 3,
+    verbose: false,
+    log: 0,
+    threads: 1,
+  };
 
-    const remainingIterations = config.maxIterationsPerPhase - evolved;
-    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remainingIterations);
-    const elapsedMs = Date.now() - phaseStart;
-    if (elapsedMs >= phaseBudgetMs) break;
-    // NEAT-AI requires `timeoutMinutes` to be an integer, so we always
-    // pass the per-phase backstop. The chunk is also iteration-bounded.
-    const chunkTimeoutMinutes = phaseTimeoutMinutes;
+  const result = await creature.evolveDir(dataDir, neatOptions);
+  const wallClockMs = Date.now() - start;
 
-    const neatOptions: NeatOptions = {
-      seed: config.seed + evolved,
-      populationSize: config.populationSize,
-      iterations: chunkIterations,
-      targetError: config.targetError,
-      timeoutMinutes: chunkTimeoutMinutes,
-      costOfGrowth: 0,
-      // Push NEAT toward structural growth so the sparse phase actually
-      // adds hidden neurons / inter-layer synapses from the minimal
-      // seed — otherwise densify-train-prune has nothing to do.
-      mutationRate: 0.6,
-      mutationAmount: 3,
-      verbose: false,
-      log: 0,
-      threads: 1,
-      onTrainingEvent: (event) => {
-        if (event.kind !== "generation_complete") return;
-        rows.push({
-          generation: generationOffset + evolved + event.generation,
-          bestFitness: event.bestFitness,
-          meanFitness: event.averageFitness,
-          neuronCount: segmentStartNeurons,
-          synapseCount: segmentStartSynapses,
-        });
-      },
-    };
+  const finalError = Number.isFinite(result.error) ? result.error : 0;
+  const finalScore = Number.isFinite(result.score) ? result.score : 0;
+  const generations = Math.max(1, result.generation ?? 1);
 
-    const result = await creature.evolveDir(dataDir, neatOptions);
-    const completed = result.generation ?? chunkIterations;
-    evolved += completed;
-    finalError = result.error ?? finalError;
-
-    // Stop early when the target error has been reached or evolveDir
-    // returned fewer generations than requested (its own stop signal).
-    if (finalError <= config.targetError) break;
-    if (completed < chunkIterations) break;
-  }
-
-  return { generations: evolved, finalError };
+  return {
+    finalError,
+    finalScore,
+    wallClockMs,
+    generations,
+    seedNeurons,
+    seedSynapses,
+    finalNeurons: creature.neurons.length,
+    finalSynapses: creature.synapses.length,
+    targetError: config.targetError,
+    timeoutMinutes: phaseTimeoutMinutes,
+  };
 }
 
 /**
@@ -615,12 +550,14 @@ async function runEvolvePhase(opts: {
  *
  *   1. Seed `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (minimal, no
  *      hidden hint).
- *   2. evolveDir over the binary `.bin` training set → sparse champion.
+ *   2. Run a single `evolveDir` over the binary `.bin` training set →
+ *      sparse champion. Capture the sparse phase milestone summary.
  *   3. Densify the sparse champion.
- *   4. evolveDir again to refine the densified creature.
+ *   4. Run a single `evolveDir` again to refine the densified creature.
+ *      Capture the refine phase milestone summary.
  *   5. Prune synthetic synapses whose magnitude stayed near zero.
  *
- * Returns per-phase scores plus the per-generation telemetry rows.
+ * Returns per-phase scores plus the two milestone summaries.
  */
 export async function runSyntheticSynapseDemo(
   config: SyntheticSynapseConfig = DEFAULT_SYNTHETIC_SYNAPSE_CONFIG,
@@ -666,7 +603,6 @@ export async function runSyntheticSynapseDemo(
       1,
       Math.floor(config.timeoutMinutes / 2),
     );
-    const evolutionRows: EvolutionRow[] = [];
     const phases: PhaseRecord[] = [];
     const topologies: Record<PhaseName, TopologySnapshot> = {} as Record<
       PhaseName,
@@ -675,60 +611,53 @@ export async function runSyntheticSynapseDemo(
 
     // ---- Phase 1: minimal seed → evolved sparse champion ---------------
     const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-    const sparsePhase = await runEvolvePhase({
+    const sparseSummary = await runEvolveDirPhase({
       creature: seed,
       dataDir,
       config,
       phaseTimeoutMinutes,
-      rows: evolutionRows,
-      generationOffset: 0,
+      seedOffset: 0,
     });
-    {
-      const noKeys: ReadonlySet<string> = new Set();
-      topologies.sparse = snapshotTopology(seed, noKeys);
-      phases.push({
-        phase: "sparse",
-        synapseCount: seed.synapses.length,
-        heldOutScore: creatureHeldOutScore(seed, heldOutSet),
-      });
-    }
+    const noKeys: ReadonlySet<string> = new Set();
+    topologies.sparse = snapshotTopology(seed, noKeys);
+    phases.push({
+      phase: "sparse",
+      synapseCount: seed.synapses.length,
+      heldOutScore: creatureHeldOutScore(seed, heldOutSet),
+    });
 
     // ---- Phase 2: densify the sparse champion -------------------------
     const syntheticKeys = densifyCreature(seed);
-    {
-      topologies.densified = snapshotTopology(seed, syntheticKeys);
-      phases.push({
-        phase: "densified",
-        synapseCount: seed.synapses.length,
-        heldOutScore: creatureHeldOutScore(seed, heldOutSet),
-      });
-    }
+    topologies.densified = snapshotTopology(seed, syntheticKeys);
+    phases.push({
+      phase: "densified",
+      synapseCount: seed.synapses.length,
+      heldOutScore: creatureHeldOutScore(seed, heldOutSet),
+    });
 
     // ---- Phase 3: refine the densified creature via evolveDir --------
-    await runEvolvePhase({
+    const refineSummary = await runEvolveDirPhase({
       creature: seed,
       dataDir,
       config,
       phaseTimeoutMinutes,
-      rows: evolutionRows,
-      generationOffset: sparsePhase.generations,
+      seedOffset: 1,
     });
 
     // ---- Phase 4: prune synthetic synapses below threshold -----------
     pruneCreature(seed, syntheticKeys, config.pruneThreshold);
-    {
-      topologies.pruned = snapshotTopology(seed, syntheticKeys);
-      phases.push({
-        phase: "pruned",
-        synapseCount: seed.synapses.length,
-        heldOutScore: creatureHeldOutScore(seed, heldOutSet),
-      });
-    }
+    topologies.pruned = snapshotTopology(seed, syntheticKeys);
+    phases.push({
+      phase: "pruned",
+      synapseCount: seed.synapses.length,
+      heldOutScore: creatureHeldOutScore(seed, heldOutSet),
+    });
 
     return {
       phases,
       topologies,
-      evolutionRows,
+      sparseSummary,
+      refineSummary,
       wallClockMs: Date.now() - start,
       champion: seed,
     };
@@ -743,229 +672,10 @@ export async function runSyntheticSynapseDemo(
   }
 }
 
-/**
- * Format a finite number for CSV emission. Trailing zeros are trimmed
- * so byte-deterministic identical inputs produce one canonical string.
- */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-/** Common SVG header for the per-generation telemetry charts. */
-const TELEMETRY_SVG_WIDTH = 720;
-const TELEMETRY_SVG_HEIGHT = 320;
-const TELEMETRY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
-
-interface PolylinePoint {
-  x: number;
-  y: number;
-}
-
-function buildPolyline(points: readonly PolylinePoint[]): string {
-  return points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
-}
-
-/**
- * Render a two-line chart: best fitness (blue) and mean fitness
- * (orange) versus generation. Used for the README's headline fitness
- * trajectory chart.
- */
-export function renderFitnessChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderFitnessChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const allFitness = rows.flatMap((r) => [r.bestFitness, r.meanFitness]).filter(
-    Number.isFinite,
-  );
-  const minF = Math.min(...allFitness);
-  const maxF = Math.max(...allFitness);
-  const fSpan = (maxF - minF) || 1;
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const yScale = (f: number) => innerY + innerH - ((f - minF) / fSpan) * innerH;
-
-  const bestPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: yScale(r.bestFitness),
-  }));
-  const meanPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: yScale(r.meanFitness),
-  }));
-
-  const yTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const v = minF + t * fSpan;
-    const ty = innerY + innerH - t * innerH;
-    yTicks.push(
-      `    <line x1="${innerX.toFixed(2)}" y1="${ty.toFixed(2)}" ` +
-        `x2="${(innerX + innerW).toFixed(2)}" y2="${ty.toFixed(2)}" ` +
-        `stroke="#eeeeee" stroke-width="0.6"/>`,
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ty + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#444">` +
-        `${v.toFixed(3)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Synthetic synapse — best vs mean fitness per generation">`,
-    `  <title>Synthetic Synapse — Best vs Mean Fitness</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Synthetic Synapse — Best vs Mean Fitness</text>`,
-    yTicks.join("\n"),
-    `  <polyline class="best-fitness" fill="none" stroke="#1f77b4" stroke-width="2" ` +
-    `points="${buildPolyline(bestPts)}"/>`,
-    `  <polyline class="mean-fitness" fill="none" stroke="#ff7f0e" stroke-width="1.4" ` +
-    `stroke-dasharray="4 3" points="${buildPolyline(meanPts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 178).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="172" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#1f77b4" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `best fitness</text>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#ff7f0e" stroke-width="1.4" stroke-dasharray="4 3"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `mean fitness</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
-/**
- * Render the neuron / synapse count chart for the README. Two lines
- * share an X axis; the right Y axis shows synapse counts on a separate
- * scale so the (typically larger) synapse line does not compress the
- * neuron line into invisibility.
- */
-export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderTopologyChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const neurons = rows.map((r) => r.neuronCount);
-  const synapses = rows.map((r) => r.synapseCount);
-  const maxNeurons = Math.max(...neurons, 1);
-  const maxSynapses = Math.max(...synapses, 1);
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
-  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
-
-  const neuronPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: neuronY(r.neuronCount),
-  }));
-  const synapsePts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: synapseY(r.synapseCount),
-  }));
-
-  const leftTicks: string[] = [];
-  const rightTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const ly = innerY + innerH - t * innerH;
-    leftTicks.push(
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
-        `${(t * maxNeurons).toFixed(0)}</text>`,
-    );
-    rightTicks.push(
-      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
-        `${(t * maxSynapses).toFixed(0)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Synthetic synapse — neuron and synapse counts per generation">`,
-    `  <title>Synthetic Synapse — Topology Growth</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Synthetic Synapse — Topology Growth</text>`,
-    leftTicks.join("\n"),
-    rightTicks.join("\n"),
-    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
-    `points="${buildPolyline(neuronPts)}"/>`,
-    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
-    `stroke-dasharray="6 3" points="${buildPolyline(synapsePts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#2ca02c" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `neurons (left axis)</text>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `synapses (right axis)</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
 if (import.meta.main) {
-  console.log("🧬 Synthetic Synapse Training Demo (issue #85, audited #206)");
+  console.log(
+    "🧬 Synthetic Synapse Training Demo (issue #85, audited #206, telemetry rewire #303)",
+  );
   console.log("");
 
   const { dataDir, creaturesDir } = setupWorkingDirs(WORKING_ROOT);
@@ -977,8 +687,6 @@ if (import.meta.main) {
   console.log("📊 Generating synthetic dataset and writing binary .bin training set...");
 
   const config = DEFAULT_SYNTHETIC_SYNAPSE_CONFIG;
-  // Pre-generate the binary dataset so the demo + downstream artefacts
-  // share one file location.
   const target = buildTargetNetwork(config);
   const trainingSet = generateDataset(target, config.trainingSize, config.seed ^ 0x1234_5678);
   writeBinaryDataset(trainingSet, dataDir);
@@ -1000,6 +708,16 @@ if (import.meta.main) {
       }`,
     );
   }
+  console.log(
+    `\n   sparse  evolveDir  generations=${result.sparseSummary.generations}  ` +
+      `wallClock=${(result.sparseSummary.wallClockMs / 1000).toFixed(1)}s  ` +
+      `finalScore=${result.sparseSummary.finalScore.toFixed(4)}`,
+  );
+  console.log(
+    `   refine  evolveDir  generations=${result.refineSummary.generations}  ` +
+      `wallClock=${(result.refineSummary.wallClockMs / 1000).toFixed(1)}s  ` +
+      `finalScore=${result.refineSummary.finalScore.toFixed(4)}`,
+  );
 
   // Render the 3-panel topology + bar-chart SVG.
   const svg = renderSyntheticSynapseSVG({
@@ -1010,25 +728,19 @@ if (import.meta.main) {
   });
   ensureDirSync("docs/screenshots");
   ensureDirSync(join(WORKING_ROOT, "output"));
+  ensureDirSync("docs/screenshots/synthetic_synapse");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   await Deno.writeTextFile(WORKING_OUTPUT_PATH, svg);
   console.log(`\n🖼️  Wrote ${SCREENSHOT_PATH}`);
 
-  // Per-generation telemetry artefacts.
-  if (result.evolutionRows.length > 0) {
-    ensureDirSync("docs/data/synthetic_synapse");
-    ensureDirSync("docs/screenshots/synthetic_synapse");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(result.evolutionRows));
-    console.log(
-      `🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${result.evolutionRows.length} rows)`,
-    );
-    await Deno.writeTextFile(FITNESS_SVG_PATH, renderFitnessChartSvg(result.evolutionRows));
-    console.log(`📈 Wrote best/mean fitness chart ${FITNESS_SVG_PATH}`);
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(result.evolutionRows));
-    console.log(`📈 Wrote neuron/synapse chart ${TOPOLOGY_SVG_PATH}`);
-  } else {
-    console.log("⚠️  No per-generation telemetry captured (evolveDir produced zero events)");
-  }
+  // Milestone summary SVG — sourced from the refine phase's evolveDir
+  // return value (the final, post-prune topology counts come from the
+  // refine summary itself).
+  const summarySvg = renderEvolveDirSummarySvg(result.refineSummary, {
+    title: "Synthetic Synapse — refine evolveDir Run Summary",
+  });
+  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+  console.log(`📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
   // Save the champion creature for downstream inspection.
   const championPath = join(creaturesDir, "champion.json");
@@ -1036,16 +748,6 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Final summary line so the README can quote real measured numbers.
-  const finalRow = result.evolutionRows[result.evolutionRows.length - 1];
-  if (finalRow) {
-    console.log(
-      `\n🏁 Final generation ${finalRow.generation}: ` +
-        `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
-        `meanFitness=${finalRow.meanFitness.toFixed(4)}  ` +
-        `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
-    );
-  }
   console.log(
     `🕒 Completed in ${format(result.wallClockMs, { ignoreZero: true })}`,
   );

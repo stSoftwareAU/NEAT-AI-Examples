@@ -1,12 +1,12 @@
 /**
- * Unit tests for the synthetic-synapse training demo (audit #206).
+ * Unit tests for the synthetic-synapse training demo (audit #206,
+ * telemetry rewire #303).
  *
- * The demo was reworked under issue #206 so the seed passed to NEAT-AI
- * is minimal (`new Creature(INPUT_COUNT, OUTPUT_COUNT)`) and evolution
- * runs through `Creature.evolveDir(...)` over a binary `.bin` training
- * set. Tests below exercise the new flow plus the helpers retained
- * from the previous SGD-driven design (forward pass, dataset
- * generation, held-out scoring, densify/prune on a `Creature`).
+ * Under #303 the per-generation `onTrainingEvent` hook and the chunked
+ * `evolveDir` loop were removed in favour of NEAT-AI's supported
+ * milestone-only telemetry surface. The runner now makes two
+ * `evolveDir` calls (sparse + refine) and captures an
+ * {@link EvolveDirSummary} from each.
  *
  * Tests are "what" tests: they call real functions with deterministic
  * inputs and assert on the returned values, the resulting topology,
@@ -28,21 +28,18 @@ import {
   buildTargetNetwork,
   DEFAULT_SYNTHETIC_SYNAPSE_CONFIG,
   densifyCreature,
-  EVOLUTION_CSV_HEADER,
-  formatEvolutionCsv,
   forward,
   generateDataset,
   heldOutScore,
   INPUT_COUNT,
   OUTPUT_COUNT,
   pruneCreature,
-  renderFitnessChartSvg,
-  renderTopologyChartSvg,
   runSyntheticSynapseDemo,
   type SyntheticSynapseConfig,
   writeBinaryDataset,
 } from "./synthetic_synapse_example.ts";
 import { renderSyntheticSynapseSVG } from "./svg.ts";
+import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 
 /**
  * Small config used throughout the test suite — keeps each test fast
@@ -158,7 +155,7 @@ Deno.test("pruneCreature - rejects negative threshold", () => {
 });
 
 Deno.test(
-  "runSyntheticSynapseDemo - produces three phases, densified > sparse > pruned-floor",
+  "runSyntheticSynapseDemo - produces three phases, densified >= sparse synapses",
   async () => {
     const result = await runSyntheticSynapseDemo(SMALL_CONFIG);
     assertEquals(result.phases.length, 3);
@@ -185,23 +182,30 @@ Deno.test(
 );
 
 Deno.test(
-  "runSyntheticSynapseDemo - emits per-generation telemetry rows",
+  "runSyntheticSynapseDemo - returns milestone summaries from sparse and refine phases",
   async () => {
     const result = await runSyntheticSynapseDemo(SMALL_CONFIG);
-    // evolveDir runs at least one generation per phase, so we expect
-    // at least one telemetry row in the result.
-    assertGreater(result.evolutionRows.length, 0);
-    for (const r of result.evolutionRows) {
-      assertGreaterOrEqual(r.generation, 1);
-      assert(Number.isFinite(r.bestFitness), `gen ${r.generation} bestFitness not finite`);
-      // NEAT-AI may report NaN for averageFitness in early generations
-      // when the population has not yet been fully scored; accept any
-      // numeric value here and rely on the CSV formatter to coerce
-      // non-finite values to "0" for downstream tools.
-      assertEquals(typeof r.meanFitness, "number");
-      assertGreater(r.neuronCount, 0);
-      assertGreater(r.synapseCount, 0);
+
+    // Sparse summary: seed counts match a minimal `new Creature(...)`.
+    assertEquals(result.sparseSummary.seedNeurons, INPUT_COUNT + OUTPUT_COUNT);
+    assertEquals(result.sparseSummary.seedSynapses, INPUT_COUNT * OUTPUT_COUNT);
+
+    // Numeric summary fields are finite on both phases.
+    for (const summary of [result.sparseSummary, result.refineSummary]) {
+      assert(Number.isFinite(summary.finalError));
+      assert(Number.isFinite(summary.finalScore));
+      assertGreater(summary.generations, 0);
+      assertGreater(summary.finalNeurons, 0);
+      assertGreaterOrEqual(summary.finalSynapses, 0);
+      assertGreaterOrEqual(summary.wallClockMs, 0);
     }
+
+    // Refine summary's final topology matches the champion at the end
+    // of the refine phase (before the final synthetic-synapse prune).
+    assertGreaterOrEqual(
+      result.refineSummary.finalSynapses,
+      result.sparseSummary.finalSynapses,
+    );
   },
 );
 
@@ -267,45 +271,22 @@ Deno.test(
   },
 );
 
-Deno.test("formatEvolutionCsv - emits the canonical header and one row per gen", () => {
-  const csv = formatEvolutionCsv([
-    { generation: 1, bestFitness: 0.5, meanFitness: 0.25, neuronCount: 4, synapseCount: 7 },
-    { generation: 2, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 5, synapseCount: 9 },
-  ]);
-  const lines = csv.split("\n").filter((l) => l.length > 0);
-  assertEquals(lines.length, 3);
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "1,0.5,0.25,4,7");
-  assertEquals(lines[2], "2,0.6,0.3,5,9");
-});
-
-Deno.test("renderFitnessChartSvg - emits a well-formed SVG with both fitness lines", () => {
-  const svg = renderFitnessChartSvg([
-    { generation: 1, bestFitness: 0.4, meanFitness: 0.2, neuronCount: 4, synapseCount: 7 },
-    { generation: 5, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 6, synapseCount: 11 },
-  ]);
-  assertStringIncludes(svg, "<svg");
-  assertStringIncludes(svg, "best-fitness");
-  assertStringIncludes(svg, "mean-fitness");
-});
-
-Deno.test("renderFitnessChartSvg - rejects empty input", () => {
-  assertThrows(() => renderFitnessChartSvg([]), Error, "at least one row");
-});
-
-Deno.test("renderTopologyChartSvg - emits a well-formed SVG with both topology lines", () => {
-  const svg = renderTopologyChartSvg([
-    { generation: 1, bestFitness: 0.4, meanFitness: 0.2, neuronCount: 4, synapseCount: 7 },
-    { generation: 5, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 9, synapseCount: 22 },
-  ]);
-  assertStringIncludes(svg, "<svg");
-  assertStringIncludes(svg, "neuron-count");
-  assertStringIncludes(svg, "synapse-count");
-});
-
-Deno.test("renderTopologyChartSvg - rejects empty input", () => {
-  assertThrows(() => renderTopologyChartSvg([]), Error, "at least one row");
-});
+Deno.test(
+  "renderEvolveDirSummarySvg renders the refine milestone summary",
+  async () => {
+    const result = await runSyntheticSynapseDemo(SMALL_CONFIG);
+    const svg = renderEvolveDirSummarySvg(result.refineSummary, {
+      title: "Synthetic Synapse — refine evolveDir Run Summary",
+    });
+    assert(svg.startsWith("<svg"));
+    assert(svg.includes("</svg>"));
+    assert(svg.includes("final error"));
+    assert(svg.includes("final score"));
+    assert(svg.includes("generations"));
+    assert(svg.includes("wall clock"));
+    assert(svg.includes(String(result.refineSummary.finalNeurons)));
+  },
+);
 
 Deno.test("DEFAULT_SYNTHETIC_SYNAPSE_CONFIG - has positive sizes and rates", () => {
   const c = DEFAULT_SYNTHETIC_SYNAPSE_CONFIG;
@@ -331,12 +312,6 @@ Deno.test("heldOutScore - is finite for the target network on its own dataset", 
 Deno.test(
   "networkFromCreature - mirrors the target network topology",
   () => {
-    // The target network is built from `buildLargeCreature` with
-    // hidden=8 + density=1.0 — a fully connected feed-forward graph
-    // whose squash functions stay inside the helper's supported set
-    // (IDENTITY / TANH / LOGISTIC). Evolved creatures may use any
-    // NEAT-AI squash (e.g. MISH, SOFTSIGN) and are scored via
-    // `creatureHeldOutScore`, not `networkFromCreature`.
     const target = buildTargetNetwork(SMALL_CONFIG);
     assertEquals(target.inputCount, INPUT_COUNT);
     assertEquals(target.outputCount, OUTPUT_COUNT);
@@ -344,8 +319,6 @@ Deno.test(
   },
 );
 
-// Sanity: confirm the demo touched the synthetic synapse machinery and
-// emitted a final champion that produces a finite held-out score.
 Deno.test(
   "runSyntheticSynapseDemo - emits a champion with finite held-out score",
   async () => {

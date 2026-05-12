@@ -37,3 +37,6 @@ fi
 if [[ -f ".synthetic-synapse/output/synthetic_synapse.svg" ]]; then
   deno fmt .synthetic-synapse/output/synthetic_synapse.svg > /dev/null
 fi
+if [[ -f "docs/screenshots/synthetic_synapse/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/synthetic_synapse/evolution_summary.svg > /dev/null
+fi

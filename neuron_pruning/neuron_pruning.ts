@@ -1,5 +1,6 @@
 /**
- * Neuron Pruning Demo (issue #87, audited under #217).
+ * Neuron Pruning Demo (issue #87, audited under #217, telemetry simplified
+ * under #303).
  *
  * Demonstrates how NEAT-AI keeps creatures lean by removing hidden
  * neurons whose activations don't vary across the held-out dataset, and
@@ -9,8 +10,16 @@
  * output one value, so its contribution to a downstream neuron is the
  * same constant on every record.
  *
+ * Under #303 the per-generation `onTrainingEvent` hook and the chunked
+ * `evolveDir` loop were removed in favour of NEAT-AI's supported
+ * milestone-only telemetry surface. The example now makes a single
+ * `Creature.evolveDir(...)` call and captures an {@link EvolveDirSummary}
+ * from its return value. The bespoke topology before/after panel
+ * remains the headline narrative — its held-out score callouts are
+ * sourced from the new milestone summary path.
+ *
  * The audit (issue #217) brings the example in line with the
- * minimal-seed + measured-telemetry policy in `AGENTS.md`:
+ * minimal-seed policy in `AGENTS.md`:
  *
  * 1. The creature passed to NEAT-AI is built **only** from
  *    `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — no hidden-layer hint,
@@ -21,10 +30,6 @@
  *    learned by NEAT, not bolted on by the example.
  * 3. Stop conditions are a per-example `targetError` plus a
  *    `timeoutMinutes: 5` safety backstop.
- * 4. Per-generation telemetry (best/mean fitness, neuron count,
- *    synapse count) is captured during the evolveDir phase and written
- *    out as CSV + two SVG charts so the README can quote real measured
- *    numbers from the latest run.
  *
  * The pruning operation then runs on the **evolved** champion: hidden
  * neurons are deliberately converted to constant-output (zero incoming
@@ -34,31 +39,6 @@
  * exempt from the no-warm-start policy because the demo's whole point
  * is to demonstrate the prune operation — the seed itself remains the
  * minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`.
- *
- * The pipeline:
- *
- * 1. Build a minimal NEAT-AI seed (`new Creature(INPUT_COUNT, OUTPUT_COUNT)`).
- * 2. Generate a binary `.bin` training set from a synthesised target.
- * 3. evolveDir over the binary file → evolved champion.
- * 4. Inject deliberately constant-output hidden neurons into the
- *    champion by zeroing their incoming weights and giving them a
- *    non-zero bias — so every record produces `activate(bias)`.
- * 5. Score the pre-prune creature on a held-out dataset.
- * 6. Detect constant neurons by measuring activation variance across
- *    the same dataset.
- * 7. Prune them: for every outgoing synapse `c → t` of a constant
- *    neuron with output `v`, add `weight * v` to `t.bias`, then drop
- *    neuron `c` and all its synapses.
- * 8. Score the post-prune creature on the same held-out dataset — the
- *    score must not regress because the network is mathematically
- *    equivalent on every sampled record.
- *
- * The demo prints per-generation telemetry, the per-neuron pruning
- * report (which constant neurons were removed, and which downstream
- * neurons absorbed their bias-fold contribution), and renders
- * `output/neuron_pruning.svg` showing the topology with pruned
- * neurons greyed-out and bias-fold arrows drawn to the surviving
- * downstream neighbours.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -74,6 +54,7 @@ import {
 import { buildLargeCreature } from "../common/large_creature.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderNeuronPruningSVG } from "./svg.ts";
 
 /** Working-directory root for artefacts produced by this demo. */
@@ -93,18 +74,8 @@ export const SCREENSHOT_PATH = "docs/screenshots/neuron_pruning.svg";
  */
 export const WORKING_OUTPUT_PATH = join(WORKING_ROOT, "output", "neuron_pruning.svg");
 
-/** Per-generation evolution-telemetry CSV path. */
-export const EVOLUTION_CSV_PATH = "docs/data/neuron_pruning/evolution.csv";
-
-/** CSV header — matches the schema mandated by issue #217. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path. */
-export const FITNESS_SVG_PATH = "docs/screenshots/neuron_pruning/fitness.svg";
-
-/** Neuron / synapse count chart path. */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/neuron_pruning/topology.svg";
+/** Milestone summary SVG path — sourced from the `evolveDir` return value. */
+export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/neuron_pruning/evolution_summary.svg";
 
 /**
  * Number of input neurons fed to the NEAT-AI seed.
@@ -164,10 +135,7 @@ export interface NeuronPruningConfig {
 /**
  * Defaults chosen so the demo converges via `targetError` well inside
  * the 5-minute backstop on a developer machine while still illustrating
- * constant-neuron removal clearly. The `targetError` is loose enough
- * that evolution finishes quickly but still has to grow at least a few
- * hidden neurons to fit the synthesised target — without hidden
- * neurons there would be nothing to prune.
+ * constant-neuron removal clearly.
  */
 export const DEFAULT_NEURON_PRUNING_CONFIG: NeuronPruningConfig = {
   inputs: INPUT_COUNT,
@@ -204,20 +172,6 @@ export interface PrunedNeuronRecord {
   biasFoldTargets: number[];
 }
 
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  /** 1-based generation index across the whole demo. */
-  generation: number;
-  /** Best fitness in this generation (max across the population). */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
-}
-
 /** Combined result of running the neuron-pruning demo. */
 export interface NeuronPruningResult {
   /** Neuron count of the creature before pruning (post-evolution + injection). */
@@ -236,8 +190,12 @@ export interface NeuronPruningResult {
   pruned: PrunedNeuronRecord[];
   /** Topology snapshot used by the SVG renderer. */
   topology: TopologySnapshot;
-  /** Per-generation telemetry from evolveDir, plus a final post-prune row. */
-  evolutionRows: EvolutionRow[];
+  /**
+   * Milestone summary captured from the single `evolveDir` call. Provides
+   * the held-out score / generations / wall-clock callouts the headline
+   * topology panel sources for its summary lines.
+   */
+  evolutionSummary: EvolveDirSummary;
   /** Total wall-clock time of the run, in milliseconds. */
   wallClockMs: number;
   /** Final pruned champion creature. */
@@ -693,12 +651,7 @@ export function cloneNetwork(network: Network): Network {
 /**
  * Build a "demo network" for the legacy synchronous helpers exercised
  * by the unit-test suite. Mirrors the historical behaviour of the
- * pre-audit example: build a sparse target via `buildLargeCreature`,
- * convert it, and inject `constantNeurons` deliberately constant-output
- * hidden neurons. The audit's main entry point
- * (`runNeuronPruningDemo`) does not call this — it evolves a champion
- * via `Creature.evolveDir(...)` from a minimal seed and injects into
- * the evolved champion instead.
+ * pre-audit example.
  */
 export function buildDemoNetwork(config: NeuronPruningConfig): Network {
   const creature = buildLargeCreature({
@@ -711,103 +664,6 @@ export function buildDemoNetwork(config: NeuronPruningConfig): Network {
   const network = networkFromCreature(creature);
   injectConstantNeurons(network, config.constantNeurons, config.seed ^ 0x5a5a_5a5a);
   return network;
-}
-
-/**
- * Iterations per `evolveDir` chunk. Each chunk refreshes the
- * passed-in creature in place, so chunking the phase into smaller
- * runs gives the per-generation telemetry chart visible step changes
- * in neuron/synapse counts as NEAT mutates the topology. We use a
- * small chunk size here so the telemetry chart captures intermediate
- * topology growth — with chunks of 50 a fast-converging
- * `targetError` would be met in the first chunk and the chart would
- * show only the seed state and the post-prune endpoint.
- */
-const PHASE_CHUNK_ITERATIONS = 5;
-
-/**
- * Run an evolveDir phase against `dataDir`, capturing per-generation
- * telemetry into `rows`. The phase is split into fixed-size chunks so
- * the post-chunk topology is refreshed in the passed-in `creature` and
- * reflected in the next chunk's events. The phase exits early when
- * `targetError` is met or iterations exhausted.
- *
- * Returns the cumulative generation count actually evolved plus the
- * final error reported by NEAT-AI.
- */
-async function runEvolvePhase(opts: {
-  creature: Creature;
-  dataDir: string;
-  config: NeuronPruningConfig;
-  rows: EvolutionRow[];
-}): Promise<{ generations: number; finalError: number }> {
-  const { creature, dataDir, config, rows } = opts;
-
-  let evolved = 0;
-  let finalError = Number.POSITIVE_INFINITY;
-  const phaseStart = Date.now();
-  const phaseBudgetMs = config.timeoutMinutes * 60_000;
-
-  while (evolved < config.maxIterations) {
-    // Pre-chunk topology snapshot. NEAT-AI only updates the passed-in
-    // `creature` reference at the end of each evolveDir call, so the
-    // event handler reports these counts for every event inside the
-    // chunk and the next chunk re-reads after the await resolves.
-    const segmentStartNeurons = creature.neurons.length;
-    const segmentStartSynapses = creature.synapses.length;
-
-    const remainingIterations = config.maxIterations - evolved;
-    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remainingIterations);
-    const elapsedMs = Date.now() - phaseStart;
-    if (elapsedMs >= phaseBudgetMs) break;
-
-    // NEAT-AI requires `timeoutMinutes` to be a positive integer. Floor
-    // the configured backstop and clamp to at least one minute so tiny
-    // test budgets (e.g. 0.05) still satisfy the validator. The chunk
-    // is also iteration-bounded by `chunkIterations`, so the very small
-    // configured budget is still respected via the wall-clock check
-    // below.
-    const chunkTimeoutMinutes = Math.max(1, Math.floor(config.timeoutMinutes));
-
-    const neatOptions: NeatOptions = {
-      seed: config.seed + evolved,
-      populationSize: config.populationSize,
-      iterations: chunkIterations,
-      targetError: config.targetError,
-      timeoutMinutes: chunkTimeoutMinutes,
-      costOfGrowth: 0,
-      // Push NEAT toward structural growth so the seed actually adds
-      // hidden neurons and synapses — otherwise pruning has nothing to
-      // remove.
-      mutationRate: 0.6,
-      mutationAmount: 3,
-      verbose: false,
-      log: 0,
-      threads: 1,
-      onTrainingEvent: (event) => {
-        if (event.kind !== "generation_complete") return;
-        rows.push({
-          generation: evolved + event.generation,
-          bestFitness: event.bestFitness,
-          meanFitness: event.averageFitness,
-          neuronCount: segmentStartNeurons,
-          synapseCount: segmentStartSynapses,
-        });
-      },
-    };
-
-    const result = await creature.evolveDir(dataDir, neatOptions);
-    const completed = result.generation ?? chunkIterations;
-    evolved += completed;
-    finalError = result.error ?? finalError;
-
-    // Stop early when the target error has been reached or evolveDir
-    // returned fewer generations than requested (its own stop signal).
-    if (finalError <= config.targetError) break;
-    if (completed < chunkIterations) break;
-  }
-
-  return { generations: evolved, finalError };
 }
 
 /**
@@ -839,12 +695,13 @@ export function creatureHeldOutScore(
  *
  *   1. Seed `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (minimal, no
  *      hidden hint).
- *   2. evolveDir over the binary `.bin` training set → evolved champion.
+ *   2. Run a single `evolveDir` over the binary `.bin` training set →
+ *      evolved champion. The call's return value populates an
+ *      {@link EvolveDirSummary} (final error, score, generations,
+ *      wall-clock + seed/final topology) — no per-generation hook.
  *   3. Inject deliberately constant-output hidden neurons.
  *   4. Score pre-prune, detect constant neurons, fold biases, drop the
  *      constant neurons, score post-prune.
- *   5. Capture per-generation telemetry plus a final post-prune row so
- *      the README chart shows the up-then-down trajectory.
  */
 export async function runNeuronPruningDemo(
   config: NeuronPruningConfig = DEFAULT_NEURON_PRUNING_CONFIG,
@@ -890,29 +747,38 @@ export async function runNeuronPruningDemo(
 
     if (ownDataDir) writeBinaryDataset(trainingSet, dataDir);
 
-    // ---- Stage 1: minimal seed → evolved champion ---------------------
+    // ---- Stage 1: minimal seed → single evolveDir call → champion ----
     const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-    const evolutionRows: EvolutionRow[] = [];
-    await runEvolvePhase({
-      creature: seed,
-      dataDir,
-      config,
-      rows: evolutionRows,
-    });
+    const seedNeuronCount = seed.neurons.length;
+    const seedSynapseCount = seed.synapses.length;
+
+    const evolveStart = Date.now();
+    const neatOptions: NeatOptions = {
+      seed: config.seed,
+      populationSize: config.populationSize,
+      iterations: config.maxIterations,
+      targetError: config.targetError,
+      timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+      costOfGrowth: 0,
+      // Push NEAT toward structural growth so the seed actually adds
+      // hidden neurons and synapses — otherwise pruning has nothing to
+      // remove.
+      mutationRate: 0.6,
+      mutationAmount: 3,
+      verbose: false,
+      log: 0,
+      threads: 1,
+    };
+    const evolveResult = await seed.evolveDir(dataDir, neatOptions);
+    const evolveWallClockMs = Date.now() - evolveStart;
+    const finalError = Number.isFinite(evolveResult.error) ? evolveResult.error : 0;
+    const finalScore = Number.isFinite(evolveResult.score) ? evolveResult.score : 0;
+    const generations = Math.max(1, evolveResult.generation ?? 1);
 
     // ---- Stage 2: convert evolved champion to internal Network ---------
-    // We work on the analytical Network for the prune/bias-fold step
-    // because it's mathematically exact and byte-deterministic. The
-    // evolved squash set may include functions the local helper does
-    // not support (e.g. MISH); restrict by mapping those to TANH so
-    // the example can still run through the bias-fold path. In
-    // practice with the small population/iteration budget here, the
-    // champion uses LOGISTIC/TANH/IDENTITY and no remap is needed.
     const network = networkFromEvolvedCreature(seed);
 
     // ---- Stage 3: inject deliberately constant-output hidden neurons --
-    // Cap to the actual hidden count (evolution may have produced
-    // fewer than requested under tight test budgets).
     const hiddenCount = network.neurons.length - network.inputCount - network.outputCount;
     const injectCount = Math.max(0, Math.min(config.constantNeurons, hiddenCount));
     if (injectCount > 0) {
@@ -933,22 +799,22 @@ export async function runNeuronPruningDemo(
 
     const topology = snapshotTopology(preNetwork, pruned);
 
-    // Append a post-prune endpoint row to the telemetry so the
-    // topology chart shows the up-then-down trajectory mandated by the
-    // audit (issue #217). The fitness columns reuse the last training
-    // generation's values because the prune is mathematically
-    // equivalent on every record — the same network behaviour, with
-    // fewer neurons. Only the neuron/synapse counts change.
-    if (evolutionRows.length > 0) {
-      const last = evolutionRows[evolutionRows.length - 1];
-      evolutionRows.push({
-        generation: last.generation + 1,
-        bestFitness: last.bestFitness,
-        meanFitness: last.meanFitness,
-        neuronCount: postNeuronCount,
-        synapseCount: postSynapseCount,
-      });
-    }
+    // Build the milestone summary from the evolveDir return value plus
+    // the seed and final (post-prune) creature topology. The held-out
+    // score callouts on the topology panel are sourced from this
+    // milestone path.
+    const evolutionSummary: EvolveDirSummary = {
+      finalError,
+      finalScore,
+      wallClockMs: evolveWallClockMs,
+      generations,
+      seedNeurons: seedNeuronCount,
+      seedSynapses: seedSynapseCount,
+      finalNeurons: postNeuronCount,
+      finalSynapses: postSynapseCount,
+      targetError: config.targetError,
+      timeoutMinutes: Math.max(1, Math.floor(config.timeoutMinutes)),
+    };
 
     return {
       preNeuronCount,
@@ -959,7 +825,7 @@ export async function runNeuronPruningDemo(
       postScore,
       pruned,
       topology,
-      evolutionRows,
+      evolutionSummary,
       wallClockMs: Date.now() - start,
       champion: seed,
     };
@@ -1013,231 +879,10 @@ function networkFromEvolvedCreature(creature: Creature): Network {
   };
 }
 
-/**
- * Format a finite number for CSV emission. Trailing zeros are trimmed
- * so byte-deterministic identical inputs produce one canonical string.
- */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-/** Common SVG header for the per-generation telemetry charts. */
-const TELEMETRY_SVG_WIDTH = 720;
-const TELEMETRY_SVG_HEIGHT = 320;
-const TELEMETRY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
-
-interface PolylinePoint {
-  x: number;
-  y: number;
-}
-
-function buildPolyline(points: readonly PolylinePoint[]): string {
-  return points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
-}
-
-/**
- * Render a two-line chart: best fitness (blue) and mean fitness
- * (orange) versus generation. Used for the README's headline fitness
- * trajectory chart.
- */
-export function renderFitnessChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderFitnessChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const allFitness = rows.flatMap((r) => [r.bestFitness, r.meanFitness]).filter(
-    Number.isFinite,
-  );
-  const minF = Math.min(...allFitness);
-  const maxF = Math.max(...allFitness);
-  const fSpan = (maxF - minF) || 1;
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const yScale = (f: number) => innerY + innerH - ((f - minF) / fSpan) * innerH;
-
-  const bestPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: yScale(r.bestFitness),
-  }));
-  const meanPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: yScale(r.meanFitness),
-  }));
-
-  const yTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const v = minF + t * fSpan;
-    const ty = innerY + innerH - t * innerH;
-    yTicks.push(
-      `    <line x1="${innerX.toFixed(2)}" y1="${ty.toFixed(2)}" ` +
-        `x2="${(innerX + innerW).toFixed(2)}" y2="${ty.toFixed(2)}" ` +
-        `stroke="#eeeeee" stroke-width="0.6"/>`,
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ty + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#444">` +
-        `${v.toFixed(3)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Neuron pruning — best vs mean fitness per generation">`,
-    `  <title>Neuron Pruning — Best vs Mean Fitness</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Neuron Pruning — Best vs Mean Fitness</text>`,
-    yTicks.join("\n"),
-    `  <polyline class="best-fitness" fill="none" stroke="#1f77b4" stroke-width="2" ` +
-    `points="${buildPolyline(bestPts)}"/>`,
-    `  <polyline class="mean-fitness" fill="none" stroke="#ff7f0e" stroke-width="1.4" ` +
-    `stroke-dasharray="4 3" points="${buildPolyline(meanPts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 178).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="172" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#1f77b4" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `best fitness</text>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#ff7f0e" stroke-width="1.4" stroke-dasharray="4 3"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `mean fitness</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
-/**
- * Render the neuron / synapse count chart for the README. Two lines
- * share an X axis; the right Y axis shows synapse counts on a separate
- * scale so the (typically larger) synapse line does not compress the
- * neuron line into invisibility.
- */
-export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderTopologyChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const neurons = rows.map((r) => r.neuronCount);
-  const synapses = rows.map((r) => r.synapseCount);
-  const maxNeurons = Math.max(...neurons, 1);
-  const maxSynapses = Math.max(...synapses, 1);
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
-  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
-
-  const neuronPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: neuronY(r.neuronCount),
-  }));
-  const synapsePts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: synapseY(r.synapseCount),
-  }));
-
-  const leftTicks: string[] = [];
-  const rightTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const ly = innerY + innerH - t * innerH;
-    leftTicks.push(
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
-        `${(t * maxNeurons).toFixed(0)}</text>`,
-    );
-    rightTicks.push(
-      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
-        `${(t * maxSynapses).toFixed(0)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Neuron pruning — neuron and synapse counts per generation">`,
-    `  <title>Neuron Pruning — Topology Trajectory</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Neuron Pruning — Topology Trajectory (grow then prune)</text>`,
-    leftTicks.join("\n"),
-    rightTicks.join("\n"),
-    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
-    `points="${buildPolyline(neuronPts)}"/>`,
-    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
-    `stroke-dasharray="6 3" points="${buildPolyline(synapsePts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#2ca02c" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `neurons (left axis)</text>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `synapses (right axis)</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("✂️  Neuron Pruning Demo (issue #87, audited #217)");
+  console.log("✂️  Neuron Pruning Demo (issue #87, audited #217, telemetry rewire #303)");
   console.log("");
 
   const { dataDir, creaturesDir } = setupWorkingDirs(WORKING_ROOT);
@@ -1254,7 +899,7 @@ if (import.meta.main) {
   writeBinaryDataset(trainingSet, dataDir);
 
   console.log(
-    `🧪 Evolving from minimal seed via Creature.evolveDir(...) ` +
+    `🧪 Evolving from minimal seed via a single Creature.evolveDir(...) call ` +
       `(targetError=${config.targetError}, timeoutMinutes=${config.timeoutMinutes})...`,
   );
   const result = await runNeuronPruningDemo(config, { dataDir });
@@ -1272,6 +917,12 @@ if (import.meta.main) {
     `   delta      neurons=${result.preNeuronCount - result.postNeuronCount}  ` +
       `synapses=${result.preSynapseCount - result.postSynapseCount}  ` +
       `score=${(result.postScore - result.preScore).toPrecision(4)}`,
+  );
+  console.log(
+    `   evolveDir  generations=${result.evolutionSummary.generations}  ` +
+      `wallClock=${(result.evolutionSummary.wallClockMs / 1000).toFixed(1)}s  ` +
+      `finalScore=${result.evolutionSummary.finalScore.toFixed(4)}  ` +
+      `finalError=${result.evolutionSummary.finalError.toFixed(4)}`,
   );
   console.log("");
   console.log("   pruned neurons (index → bias-fold targets):");
@@ -1293,26 +944,18 @@ if (import.meta.main) {
   });
   ensureDirSync("docs/screenshots");
   ensureDirSync(join(WORKING_ROOT, "output"));
+  ensureDirSync("docs/screenshots/neuron_pruning");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   await Deno.writeTextFile(WORKING_OUTPUT_PATH, svg);
   console.log(`\n🖼️  Wrote ${SCREENSHOT_PATH}`);
   console.log(`🖼️  Mirror at ${WORKING_OUTPUT_PATH}`);
 
-  // Per-generation telemetry artefacts.
-  if (result.evolutionRows.length > 0) {
-    ensureDirSync("docs/data/neuron_pruning");
-    ensureDirSync("docs/screenshots/neuron_pruning");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(result.evolutionRows));
-    console.log(
-      `🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${result.evolutionRows.length} rows)`,
-    );
-    await Deno.writeTextFile(FITNESS_SVG_PATH, renderFitnessChartSvg(result.evolutionRows));
-    console.log(`📈 Wrote best/mean fitness chart ${FITNESS_SVG_PATH}`);
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(result.evolutionRows));
-    console.log(`📈 Wrote neuron/synapse chart ${TOPOLOGY_SVG_PATH}`);
-  } else {
-    console.log("⚠️  No per-generation telemetry captured (evolveDir produced zero events)");
-  }
+  // Milestone summary SVG sourced from the single evolveDir call.
+  const summarySvg = renderEvolveDirSummarySvg(result.evolutionSummary, {
+    title: "Neuron Pruning — evolveDir Run Summary",
+  });
+  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+  console.log(`📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
   // Save the champion creature for downstream inspection.
   const championPath = join(creaturesDir, "champion.json");
@@ -1320,16 +963,6 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Final summary line so the README can quote real measured numbers.
-  const finalRow = result.evolutionRows[result.evolutionRows.length - 1];
-  if (finalRow) {
-    console.log(
-      `\n🏁 Final row generation ${finalRow.generation}: ` +
-        `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
-        `meanFitness=${finalRow.meanFitness.toFixed(4)}  ` +
-        `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
-    );
-  }
   console.log(
     `🕒 Completed in ${format(Date.now() - start, { ignoreZero: true })}`,
   );

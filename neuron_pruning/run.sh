@@ -40,9 +40,6 @@ fi
 if [[ -f ".neuron-pruning/output/neuron_pruning.svg" ]]; then
   deno fmt .neuron-pruning/output/neuron_pruning.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/neuron_pruning/fitness.svg" ]]; then
-  deno fmt docs/screenshots/neuron_pruning/fitness.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/neuron_pruning/topology.svg" ]]; then
-  deno fmt docs/screenshots/neuron_pruning/topology.svg > /dev/null
+if [[ -f "docs/screenshots/neuron_pruning/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/neuron_pruning/evolution_summary.svg > /dev/null
 fi
