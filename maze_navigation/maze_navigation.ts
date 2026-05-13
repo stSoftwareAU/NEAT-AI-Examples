@@ -40,12 +40,20 @@ import {
   EpisodeAdapter,
   type EvolveRLMilestone,
   type EvolveRLOptions,
-  safeWriteJson,
   type StepResult,
 } from "@stsoftware/neat-ai";
 
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type MilestoneSample, renderMilestoneChartSVG } from "../common/milestone_chart.ts";
+import { type MilestoneSample } from "../common/milestone_chart.ts";
+import {
+  appendMultiRunRun,
+  loadMultiRunState,
+  type NewMultiRunSample,
+  parseMultiRunFlags,
+  wipeMultiRunState,
+} from "../common/multi_run_state.ts";
+import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts";
+import { renderMultiRunComplexityChartSVG } from "../common/multi_run_complexity_chart.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { defaultMaze, initialState, manhattan, type MazeState, step } from "./maze.ts";
 import type { Action } from "./maze.ts";
@@ -120,6 +128,15 @@ export interface EvolveOptions {
   addNeuronRate?: number;
   /** Hard cap on episode length. Defaults to {@link MAX_STEPS}. */
   maxSteps?: number;
+  /**
+   * Optional pre-seeded creature export, used by the multi-run resume
+   * flow to continue evolution from a prior champion. When supplied,
+   * the evolveRL seed is built via {@link Creature.fromJSON} instead of
+   * the uniform-random `new Creature(INPUT_COUNT, OUTPUT_COUNT)`. When
+   * absent the first generation starts from random noise (the default
+   * for a `--fresh` run).
+   */
+  seedCreatureExport?: CreatureExport;
 }
 
 /** Result of the evolutionary search. */
@@ -146,8 +163,8 @@ export interface EvolveResult {
    * Milestone payloads collected via `evolveRL`'s `statistics: true`
    * option, surfaced in the schedule documented by
    * {@link MilestoneSample}. Per issue #298 this is the only telemetry
-   * channel NEAT-AI exposes — see {@link MILESTONE_SVG_PATH} for the
-   * rendered chart.
+   * channel NEAT-AI exposes — see {@link MULTI_RUN_ERROR_SVG_PATH} for
+   * the rendered chart.
    */
   milestones: MilestoneSample[];
 }
@@ -372,7 +389,14 @@ export async function evolveMazeController(
   const maxSteps = options.maxSteps ?? MAX_STEPS;
   const adapter = new MazeAdapter({ maxStepsPerEpisode: maxSteps });
 
-  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  // When `seedCreatureExport` is supplied (multi-run resume), build the
+  // seed via `Creature.fromJSON` so the prior champion's topology and
+  // weights carry forward. Otherwise fall back to the uniform-random
+  // minimal genome — the standard noise → competent seeding for a fresh
+  // run.
+  const seedCreature = options.seedCreatureExport !== undefined
+    ? Creature.fromJSON(options.seedCreatureExport)
+    : new Creature(INPUT_COUNT, OUTPUT_COUNT);
 
   // evolveRL normalised target error — the adapter emits cumulative
   // rewards in `[-1, 0]`, so `defaultRewardToError` produces an error
@@ -439,32 +463,228 @@ export async function evolveMazeController(
   };
 }
 
+/** Slug used by the multi-run persistence helpers and chart artefact paths. */
+export const EXAMPLE_SLUG = "maze_navigation";
+
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/maze_navigation.svg";
 
 /**
- * Path to the milestone-statistics chart the runner emits — this is the
- * canonical fitness-progression artefact under the
- * milestone-only telemetry policy (issue #298).
+ * Path to the multi-run error-curve chart the runner emits — error vs
+ * cumulative generation across every run, with faint run-boundary guide
+ * lines. Replaces the legacy single-run milestone chart (issue #322).
  */
-export const MILESTONE_SVG_PATH = "docs/screenshots/maze_navigation_milestones.svg";
+export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/maze_navigation/milestones.svg";
+
+/**
+ * Path to the multi-run complexity chart the runner emits — neurons +
+ * synapses vs cumulative generation across every run.
+ */
+export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/maze_navigation/complexity.svg";
+
+/**
+ * Default `targetError` for a multi-run invocation. Tighter than the
+ * legacy `1 - SOLVED_THRESHOLD = 0.4` because multi-run mode is intended
+ * to keep polishing the champion across repeated invocations — the
+ * agreed default is `0.01` (issue #322).
+ */
+export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.01;
+
+/**
+ * Default wall-clock budget for a single multi-run invocation, in
+ * minutes. Five minutes matches the audit-mandated stop condition
+ * (issue #223) and the issue #322 default.
+ */
+export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
+
+/** Options accepted by {@link runMultiRunMaze}. */
+export interface RunMultiRunMazeOptions {
+  /** Argv (defaults to `Deno.args`). Recognised flags: `--fresh`,
+   * `--timeout=<minutes>`, `--target-error=<value>`. */
+  argv?: readonly string[];
+  /** Base directory override for the multi-run persistence helpers and
+   * chart artefacts (used by tests). Defaults to `docs`. */
+  baseDir?: string;
+  /** Optional overrides applied to `DEFAULT_EVOLVE_OPTIONS` (used by
+   * tests to cap iterations without depending on wall-clock timing). */
+  evolveOverrides?: Partial<EvolveOptions>;
+}
+
+/** Outcome of a single multi-run invocation. */
+export interface MultiRunResult {
+  /** The underlying evolveRL result. */
+  evolveResult: EvolveResult;
+  /** Number of this run within the persisted history (1-based). */
+  runIndex: number;
+  /** Cumulative generation total *after* this run was appended. */
+  lastCumulativeGen: number;
+  /** Total number of milestones in the merged history. */
+  totalMilestones: number;
+  /** `true` when the prior champion was reloaded as the seed creature. */
+  resumed: boolean;
+}
+
+/**
+ * Convert a maze `EvolveRLMilestone` into a {@link NewMultiRunSample}.
+ *
+ * `EvolveRLMilestone.bestScore` is the cumulative reward (per-episode
+ * mean) reported by NEAT-AI's RL fitness, which for this adapter sits
+ * in `[-1, 0]` (the adapter emits a terminal reward
+ * `max(-1, mazeScore - 1)` and zero otherwise). NEAT-AI's
+ * `defaultRewardToError` maps that to `error = max(0, -reward)`, so the
+ * normalised error for the multi-run chart is `error = -bestScore`,
+ * clamped defensively into `[0, 1]`.
+ */
+export function milestoneToMultiRunSample(m: EvolveRLMilestone): NewMultiRunSample {
+  const error = Math.max(0, Math.min(1, -m.bestScore));
+  return {
+    runGen: m.generation,
+    bestScore: m.bestScore,
+    error,
+    neurons: m.bestNeurons,
+    synapses: m.bestSynapses,
+    meanEpisodeSteps: m.meanEpisodeSteps,
+    generationWallClockMs: m.generationWallClockMs,
+  };
+}
+
+/**
+ * End-to-end multi-run wiring: parses flags, optionally wipes prior
+ * state, loads the saved champion (when present) to seed the next run,
+ * evolves the controller, appends fresh milestones to the merged
+ * history, and renders both multi-run charts.
+ *
+ * Returns a {@link MultiRunResult} so callers (CLI + tests) can report
+ * on the run without re-reading disk.
+ */
+export async function runMultiRunMaze(
+  options: RunMultiRunMazeOptions = {},
+): Promise<MultiRunResult> {
+  const argv = options.argv ?? Deno.args;
+  const flags = parseMultiRunFlags(argv);
+  const slug = EXAMPLE_SLUG;
+
+  if (flags.fresh) {
+    await wipeMultiRunState(slug, options.baseDir);
+  }
+
+  const state = await loadMultiRunState(slug, options.baseDir);
+  const resumed = state.creatureExport !== undefined;
+
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  const evolveOptions: EvolveOptions = {
+    ...DEFAULT_EVOLVE_OPTIONS,
+    timeoutMinutes,
+    targetError,
+    seedCreatureExport: state.creatureExport,
+    ...options.evolveOverrides,
+  };
+
+  const evolveResult = await evolveMazeController(evolveOptions);
+
+  // Map each library milestone into the multi-run sample shape via the
+  // exported helper so the conversion stays in one place. `bestScore`
+  // is the per-episode mean cumulative reward in `[-1, 0]` for the maze
+  // adapter; `milestoneToMultiRunSample` handles the error mapping.
+  const newSamples: NewMultiRunSample[] = evolveResult.milestones.map((m) =>
+    milestoneToMultiRunSample({
+      generation: m.generation,
+      bestScore: m.bestScore,
+      bestNeurons: m.bestNeurons,
+      bestSynapses: m.bestSynapses,
+      meanEpisodeSteps: m.meanEpisodeSteps,
+      generationWallClockMs: m.generationWallClockMs,
+    })
+  );
+
+  await appendMultiRunRun(slug, {
+    creatureExport: evolveResult.champion.exportJSON(),
+    newSamples,
+    runIndex: state.nextRunIndex,
+    baseCumulativeGen: state.lastCumulativeGen,
+  }, options.baseDir);
+
+  const merged = await loadMultiRunState(slug, options.baseDir);
+
+  if (merged.milestones.length > 0) {
+    const base = options.baseDir ?? "docs";
+    const screenshotsDir = join(base, "screenshots", slug);
+    ensureDirSync(screenshotsDir);
+
+    const errorSvg = renderMultiRunErrorChartSVG(merged.milestones, {
+      title: "Maze Navigation — multi-run error vs cumulative generations",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "milestones.svg"), errorSvg);
+
+    const complexitySvg = renderMultiRunComplexityChartSVG(merged.milestones, {
+      title: "Maze Navigation — multi-run creature complexity",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "complexity.svg"), complexitySvg);
+  }
+
+  return {
+    evolveResult,
+    runIndex: state.nextRunIndex,
+    lastCumulativeGen: merged.lastCumulativeGen,
+    totalMilestones: merged.milestones.length,
+    resumed,
+  };
+}
 
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🗺️  Maze Navigation Example");
+  console.log("🗺️  Maze Navigation Example (multi-run)");
   console.log("");
 
   const { creaturesDir, outputDir } = setupWorkingDirs(".synthetic-maze");
 
+  // CI/quality quick mode (mirrors the `LUNAR_QUICK=1` idiom). When the
+  // runner is invoked with `MAZE_QUICK=1` (env var) the multi-run state
+  // and chart SVGs are written under a temp directory so the canonical
+  // docs artefacts checked into the repo are never overwritten by a CI
+  // run, and `iterations: 3` forces the evolutionary loop to exit via
+  // the generation cap well inside `quality.sh`'s per-section budget.
+  const quick = Deno.env.get("MAZE_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "maze_quick_" });
+    console.log(
+      "⚡ Quick mode (MAZE_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
+  const flags = parseMultiRunFlags(Deno.args);
+  if (flags.fresh) {
+    console.log("🧹 --fresh: wiping prior multi-run state.");
+  }
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
   console.log("🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
-    `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError.toFixed(2)} ` +
-      `(target score ≥ ${(1 - DEFAULT_EVOLVE_OPTIONS.targetError).toFixed(2)}), ` +
-      `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}`,
+    `   Stop conditions: targetError=${targetError} ` +
+      `(target score ≥ ${(1 - targetError).toFixed(3)}), ` +
+      `timeoutMinutes=${timeoutMinutes}` +
+      (quick ? ", iterations=3 (quick mode)" : ""),
   );
 
-  const result = await evolveMazeController(DEFAULT_EVOLVE_OPTIONS);
+  const multi = await runMultiRunMaze({
+    baseDir: quickBaseDir,
+    evolveOverrides: quick ? { iterations: 3 } : undefined,
+  });
+  const { evolveResult: result } = multi;
+
+  if (multi.resumed) {
+    console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
+  } else {
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+  }
 
   const verdictIcon = result.solved ? "✅" : "⚠️";
   console.log(
@@ -476,10 +696,11 @@ if (import.meta.main) {
       `wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
-  // Save the champion creature.
+  // The champion creature is persisted by `runMultiRunMaze` under
+  // `docs/data/maze_navigation/creature.json`. Also drop a copy under
+  // the example's working directory for ad-hoc inspection.
   const championPath = join(creaturesDir, "champion.json");
-  const championExport: CreatureExport = result.champion.exportJSON();
-  await safeWriteJson(championPath, championExport);
+  await Deno.writeTextFile(championPath, JSON.stringify(result.champion.exportJSON(), null, 2));
   console.log(`💾 Saved champion to ${championPath}`);
 
   // Replay and save the trajectory log so subsequent inspection runs
@@ -495,28 +716,34 @@ if (import.meta.main) {
   await Deno.writeTextFile(trajectoryPath, JSON.stringify(trajectoryLog, null, 2));
   console.log(`📜 Saved trajectory log to ${trajectoryPath}`);
 
-  // Render the animated SVG showing the champion's playthrough.
+  // Render the animated SVG showing the champion's playthrough. Quick
+  // mode keeps this under the temp directory so a CI invocation never
+  // overwrites the canonical docs screenshot.
   const svg = renderRunSVG(trace);
-  ensureDirSync("docs/screenshots");
-  await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
-
-  if (result.milestones.length > 0) {
-    const milestoneSvg = renderMilestoneChartSVG(result.milestones, {
-      title: "Maze Navigation — evolveRL Milestones",
-      logX: true,
-      caption: true,
-    });
-    await Deno.writeTextFile(MILESTONE_SVG_PATH, milestoneSvg);
-    console.log(
-      `📈 Wrote milestone chart ${MILESTONE_SVG_PATH} ` +
-        `(${result.milestones.length} milestones)`,
-    );
+  if (quick && quickBaseDir !== undefined) {
+    const tmpScreenshots = join(quickBaseDir, "screenshots");
+    ensureDirSync(tmpScreenshots);
+    await Deno.writeTextFile(join(tmpScreenshots, "maze_navigation.svg"), svg);
+    console.log("⏭️  Quick mode: skipped overwriting canonical screenshot");
   } else {
-    console.log(
-      "⚠️  No milestones returned by evolveRL — run did not reach the first " +
-        "milestone generation. Skipping milestone chart.",
-    );
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
+    console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+  }
+
+  console.log(
+    `📈 Multi-run charts updated under ${
+      quick ? quickBaseDir : "docs"
+    }/screenshots/${EXAMPLE_SLUG}/ — ` +
+      `${multi.totalMilestones} cumulative milestones across ${multi.runIndex} run(s).`,
+  );
+
+  if (quick && quickBaseDir !== undefined) {
+    try {
+      await Deno.remove(quickBaseDir, { recursive: true });
+    } catch {
+      // Tolerable — temp dir cleanup is best-effort.
+    }
   }
 
   console.log(

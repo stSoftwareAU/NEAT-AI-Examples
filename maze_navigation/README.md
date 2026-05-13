@@ -125,32 +125,85 @@ sensor reading depends on the action it chose at the previous step, so there is 
 ## 🚀 Running the Example
 
 ```bash
+# First run — random seed, writes creature + milestones + both charts.
+./maze_navigation/run.sh --fresh
+
+# Subsequent runs — resume from the saved champion and append milestones.
 ./maze_navigation/run.sh
+
+# Override the wall-clock budget and / or early-stop target error.
+./maze_navigation/run.sh --timeout=10 --target-error=0.005
 ```
+
+The runner forwards every flag to the underlying Deno program, which parses them via
+`parseMultiRunFlags` from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
+
+| Flag                  | Default  | Meaning                                                               |
+| --------------------- | -------- | --------------------------------------------------------------------- |
+| `--fresh`             | _absent_ | Wipe prior creature, milestones, and both chart SVGs before evolving. |
+| `--timeout=<minutes>` | 5        | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
+| `--target-error=<v>`  | 0.01     | Stop as soon as the champion's normalised error falls below `v`.      |
 
 Artefacts:
 
-- `.synthetic-maze/creatures/champion.json` – the fittest controller from the run
+- `.synthetic-maze/creatures/champion.json` – the fittest controller from this invocation
+  (working-directory copy for ad-hoc inspection)
 - `.synthetic-maze/output/trajectory.json` – the champion's step-by-step trajectory log
 - `docs/screenshots/maze_navigation.svg` – animated SVG of the champion's run
-- [`docs/screenshots/maze_navigation_milestones.svg`](../docs/screenshots/maze_navigation_milestones.svg)
-  – dual-axis milestone-statistics chart rendered from the `evolveRL` milestone stream
-  (`renderMilestoneChartSVG` from [`common/milestone_chart.ts`](../common/milestone_chart.ts))
+- [`docs/data/maze_navigation/creature.json`](../docs/data/maze_navigation/creature.json) –
+  persisted champion that subsequent runs reload as the next seed
+- [`docs/data/maze_navigation/milestones.json`](../docs/data/maze_navigation/milestones.json) –
+  merged milestone history across every run, with both `runGen` and `cumulativeGen`
+- [`docs/screenshots/maze_navigation/milestones.svg`](../docs/screenshots/maze_navigation/milestones.svg)
+  – multi-run error-curve chart: error vs cumulative generation, with faint run-boundary guide lines
+  (`renderMultiRunErrorChartSVG` from
+  [`common/multi_run_error_chart.ts`](../common/multi_run_error_chart.ts))
+- [`docs/screenshots/maze_navigation/complexity.svg`](../docs/screenshots/maze_navigation/complexity.svg)
+  – multi-run complexity chart: neuron and synapse counts vs cumulative generation
+  (`renderMultiRunComplexityChartSVG` from
+  [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
-## Evolution Progress
+## Evolution Progress (Multi-Run)
 
 Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
 milestone-cadence telemetry (`evolverl_milestone` events at generations
 `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten). The legacy per-generation evolution
-strip, fitness chart, and topology chart have been replaced by a single milestone-statistics chart
-sourced from the `EvolveRLMilestone[]` array `Creature.evolveRL()` returns when `statistics: true`
-is set. The maze-navigation runner registers **no `onTrainingEvent` handler** — the milestone array
-is read straight from the run summary and rendered with `renderMilestoneChartSVG` (see issue
-[#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).
+strip, fitness chart, and topology chart have been replaced — and as of issue
+[#322](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/322) the single-run milestone chart
+itself is superseded by the multi-run charts above. Each subsequent run reloads the saved champion
+via [`common/multi_run_state.ts`](../common/multi_run_state.ts), evolves further, and appends fresh
+milestones with a monotonically-increasing `cumulativeGen` — so the charts show one continuous noise
+→ competent → polished arc across every run combined.
 
-![Maze Navigation milestone chart — best score and mean episode steps on the left axis, with champion neuron and synapse counts on the right axis, plotted against milestone generation on a log-X axis](../docs/screenshots/maze_navigation_milestones.svg)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as run.sh
+    participant State as multi_run_state.ts
+    participant Maze as maze_navigation.ts
+    participant Charts as multi_run_*_chart.ts
+    CLI->>State: parseMultiRunFlags(argv)
+    alt --fresh
+        CLI->>State: wipeMultiRunState()
+    end
+    CLI->>State: loadMultiRunState()
+    alt prior champion exists
+        State-->>Maze: Creature.fromJSON(creatureExport)
+    else first run
+        State-->>Maze: new Creature(5, 4) — random noise
+    end
+    Maze->>Maze: Creature.evolveRL(adapter)
+    Maze->>State: appendMultiRunRun({champion, milestones})
+    State->>Charts: renderMultiRunErrorChartSVG()
+    State->>Charts: renderMultiRunComplexityChartSVG()
+    Charts-->>CLI: milestones.svg + complexity.svg
+```
 
-Re-run `./maze_navigation/run.sh` to refresh the milestone chart and the run-replay SVG together.
+![Maze Navigation multi-run error chart — error vs cumulative generation across every run, with faint run-boundary guide lines](../docs/screenshots/maze_navigation/milestones.svg)
+
+![Maze Navigation multi-run complexity chart — best-creature neuron and synapse counts vs cumulative generation](../docs/screenshots/maze_navigation/complexity.svg)
+
+Re-run `./maze_navigation/run.sh` (without `--fresh`) to extend both charts with a new run.
 
 Generation 1 — the first milestone — is the **uniform-random NEAT population** straight from
 `new Creature(5, 4)`: direct input → output connections with weights and biases drawn by the
