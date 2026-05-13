@@ -1,7 +1,6 @@
 # 🧠 XOR Classification — Hello World of NEAT
 
-> 🌱 **Generation 1 starts from random noise** — the captured milestones show the network evolving
-> from there to a working XOR classifier.
+> 🌱 **Generation 1 starts from random noise** — NEAT must invent the topology to solve XOR.
 
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies (the Stanley & Miikkulainen 2002
 algorithm that grows topology and weights together). _XOR_ = exclusive OR (the two-input boolean
@@ -16,21 +15,14 @@ the `>= 0.5` classification threshold and the squared-error contribution against
 are well-defined; everything else (hidden topology, weights, biases) is invented by NEAT. Structural
 mutation — add-neuron, add-synapse and weight tuning — is delegated to `creature.evolveDir(...)`.
 XOR is not linearly separable, so the random direct-only gen-1 seed cannot solve the task; NEAT must
-invent at least one hidden neuron during evolution (issues #131, #148, audited under #205).
+invent at least one hidden neuron during evolution (issues #131, #148, audited under #205, telemetry
+rewired under #301).
 
-Per the audit in [issue #205](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/205) the run
-also commits to:
-
-- Stop conditions are `targetError` plus a `timeoutMinutes: 5` safety backstop (the tiny XOR problem
-  typically converges in well under a minute, but the backstop is mandatory so the runner cannot
-  wedge).
-- Per-generation telemetry (best/mean fitness, neuron count, synapse count) is captured during
-  `evolveDir` and emitted as a CSV plus two summary SVG charts so the numbers below are quoted
-  directly from the latest run rather than estimated.
+Stop conditions: `targetError` plus a `timeoutMinutes: 5` safety backstop (the tiny XOR problem
+typically converges in well under a minute, but the backstop is mandatory so the runner cannot
+wedge).
 
 ![XOR decision boundary](../docs/screenshots/xor_decision_boundary.svg)
-
-![XOR evolution chart — best fitness rises as NEAT discovers hidden neurons; the right-axis neuron and synapse counts climb in step with the score, and a final-generation annotation shows the champion's score and topology](../docs/screenshots/xor_classification/evolution.svg)
 
 ## 🔧 How It Works
 
@@ -39,31 +31,25 @@ flowchart LR
     DATA["📊 XOR Samples<br/>4 truth-table rows<br/>(written as Float32 binary)"]
     SEED["🎲 Uniform-Random NEAT<br/>new Creature(2, 1)<br/>random weights and bias<br/>(no hand-crafted topology)"]
     EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE (add-neuron),<br/>ADD_CONN (add-synapse),<br/>MOD_WEIGHT, …"]
-    SNAP["📸 Snapshots at<br/>[1, 10, 100, 1000]"]
-    SOLVED{"MSE ≤ errorThreshold<br/>AND all 4 rows correct?"}
-    CAP{"Hit maxGenerations?"}
+    RETURN["🏁 evolveDir return value<br/>{ error, score, time, generation }"]
     CHAMP["💾 Save champion.json"]
-    RENDER["🖼️ Render SVG<br/>Decision Boundary"]
-    STRIP["🧬 Evolution-Progression Strip<br/>shows topology growth"]
+    RENDER["🖼️ Decision Boundary SVG"]
+    SUMMARY["📈 Milestone Summary SVG<br/>(from evolveDir return value)"]
 
     DATA --> EVOLVE
     SEED --> EVOLVE
-    EVOLVE --> SNAP
-    EVOLVE --> SOLVED
-    SOLVED -- yes --> CHAMP
-    SOLVED -- no --> CAP
-    CAP -- no, more generations --> EVOLVE
-    CAP -- yes, give up --> CHAMP
+    EVOLVE --> RETURN
+    RETURN --> CHAMP
+    RETURN --> SUMMARY
     CHAMP --> RENDER
-    SNAP --> STRIP
 
     style DATA fill:#4a90d9,stroke:#333,color:#fff
     style SEED fill:#f5a623,stroke:#333,color:#fff
     style EVOLVE fill:#e74c3c,stroke:#333,color:#fff
-    style SNAP fill:#bd10e0,stroke:#333,color:#fff
+    style RETURN fill:#bd10e0,stroke:#333,color:#fff
     style CHAMP fill:#7ed321,stroke:#333,color:#fff
     style RENDER fill:#50e3c2,stroke:#333,color:#fff
-    style STRIP fill:#50e3c2,stroke:#333,color:#fff
+    style SUMMARY fill:#50e3c2,stroke:#333,color:#fff
 ```
 
 ## 🎯 Inputs and Outputs
@@ -102,73 +88,24 @@ artefacts are still written.
 Artefacts:
 
 - `.synthetic-xor/creatures/champion.json` – the fittest classifier from the run
-- `.synthetic-xor/snapshots/snapshot-gen-*.json` – running-champion snapshots captured at the
-  configured checkpoints
 - `docs/screenshots/xor_decision_boundary.svg` – the committed decision-boundary plot
-- `docs/screenshots/xor_classification/evolution.svg` – per-generation evolution chart (best-fitness
-  score on the left axis, neuron and synapse counts on the right axis)
-- `docs/screenshots/xor_classification_evolution.svg` – multi-panel evolution-progression strip
-  rendered from the captured snapshots
-- `docs/data/xor_classification/evolution.csv` – per-generation telemetry with the schema
-  `generation, best_fitness, mean_fitness, neuron_count, synapse_count`
-- `docs/screenshots/xor_classification/fitness.svg` – best vs mean fitness across all generations
-- `docs/screenshots/xor_classification/topology.svg` – neuron and synapse counts across all
-  generations (separate axes — synapses on the right)
+- `docs/screenshots/xor_classification/evolution_summary.svg` – milestone summary chart sourced from
+  `Creature.evolveDir`'s return value (final error/score, generations, wall-clock, seed vs final
+  topology counts)
 
 > [!TIP]
 > The script writes its working data to `.synthetic-xor/`, a hidden directory ignored by git.
 
-## 📊 Measured Telemetry (latest run)
+## 📈 Evolution milestone stats
 
-The numbers below are quoted **directly** from the latest local run of `./xor_classification/run.sh`
-(no estimates):
+The milestone summary chart below is generated **directly from the return value of
+`Creature.evolveDir`**. The chart shows the seed and final topology counts side by side and the
+numeric callouts for final error, final score, generations completed, and wall-clock time — i.e. the
+canonical milestone surface called out in
+[issue #298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298). No per-generation
+telemetry is captured or emitted by this example any more (per issue #301).
 
-| Metric                                | Value  |
-| ------------------------------------- | ------ |
-| Total generations                     | 186    |
-| Wall-clock time                       | 1.66 s |
-| Final best fitness (`1 − MSE`)        | 1.0000 |
-| Final best error (MSE)                | 0.0000 |
-| Truth-table rows classified correctly | 4 / 4  |
-| Seed-creature neurons (gen 1)         | 3      |
-| Seed-creature synapses (gen 1)        | 2      |
-| Final-creature neurons                | 8      |
-| Final-creature synapses               | 14     |
-| Hidden neurons in final champion      | 5      |
-
-**Topology genuinely changed across generations** — NEAT added 5 hidden neurons (3 → 8) and grew the
-synapse count from 2 to 14 during evolution from a uniform-random direct-only seed. With all four
-truth-table rows classified correctly and a final fitness of **1.0000** (per-sample MSE ≈ 0), the
-champion produces a perfect XOR classifier from a minimal `new Creature(2, 1)` seed.
-
-### Per-generation evolution CSV
-
-[`docs/data/xor_classification/evolution.csv`](../docs/data/xor_classification/evolution.csv) — one
-row per generation with `generation, best_fitness, mean_fitness, neuron_count, synapse_count`.
-
-### Best/mean fitness vs generation
-
-![Best/mean fitness chart](../docs/screenshots/xor_classification/fitness.svg)
-
-### Neuron / synapse count vs generation
-
-![Neuron and synapse count chart](../docs/screenshots/xor_classification/topology.svg)
-
-## Evolution Progress
-
-![XOR evolution-progression strip — distinct panels per checkpoint generation showing the running champion's topology and score growing from a flat 2 → 1 seed to a multi-neuron solver, linked by a score-progression polyline](../docs/screenshots/xor_classification_evolution.svg)
-
-The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
-generations `[1, 10, 100, 1000, 10000]` (those that fall inside the configured `maxGenerations`).
-Because the gen-1 creature is **random noise** — direct input → output synapses with random weights
-and a random output bias, no hidden neurons — but the champion typically grows several hidden
-neurons during evolution, the resulting strip is a literal picture of NEAT topology discovery: the
-first panel shows a flat 2 → 1 network at noise-level fitness, the middle panels show the network
-growing structure as add-neuron mutations land, and the final panel shows the champion that solves
-XOR. Each panel displays the champion's topology, the generation label, and the score (`1 - MSE`) at
-that checkpoint — the per-panel neuron and synapse counts visibly differ across the strip, which
-**is** the evolution worth watching. The companion per-generation chart above plots the same neuron
-and synapse counts as a curve on the right axis so structural growth is visible at a glance.
+![Milestone summary chart](../docs/screenshots/xor_classification/evolution_summary.svg)
 
 ## 🧠 Tacit Knowledge
 
@@ -180,16 +117,10 @@ A few things that are not obvious from the code alone:
   proof that structural mutation (`ADD_NODE`, `ADD_CONN`) actually fired during the run. The random
   direct-only gen-1 seed plateaus near MSE ≈ 0.25; NEAT must invent at least one hidden neuron to
   break out of that plateau.
-- **Many generations may be required, and that's intentional.** Discovering a working topology from
-  a blank seed takes time — that's the point of the demo. The neuron and synapse counts on the
-  evolution chart and the topology panels in the progression strip rise as NEAT lands its structural
-  mutations, and the captured snapshots at `[1, 10, 100, 1000, 10000]` show the network growing from
-  a flat 2 → 1 wiring into a multi-neuron solver.
 - **Solved-vs-cap.** The runner stops as soon as MSE drops below `errorThreshold` _and_ all four
   rows are classified correctly. If neither happens within `maxGenerations`, the run is reported as
-  "did not solve" — but the captured snapshots and SVGs are still written so a debugger can see what
-  topology emerged. The hard cap exists specifically to keep the screenshot regeneration pipeline
-  from wedging indefinitely.
+  "did not solve" — but the milestone summary SVG is still written. The hard cap exists specifically
+  to keep the screenshot regeneration pipeline from wedging indefinitely.
 - **Mutation rate matters.** The library defaults (`mutationRate = 0.3`, `mutationAmount = 1`) are
   too conservative for a problem this small; the runner sets them to `0.6` and `3` so structural
   mutations fire often enough to bootstrap a hidden neuron in the early generations.
@@ -205,7 +136,9 @@ A few things that are not obvious from the code alone:
 > [#130](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/130) noticed that an earlier
 > version of this demo started from a hand-fixed 2-2-1 topology and only mutated weights, so the
 > neuron and synapse counts never changed. This page (and the screenshots) reflects the rewrite that
-> replaced the hand-rolled loop with real NEAT structural mutation from a minimal random seed.
+> replaced the hand-rolled loop with real NEAT structural mutation from a minimal random seed. Issue
+> [#301](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/301) then retired the
+> per-generation charts and checkpoint strip in favour of the milestone summary above.
 
 ## 🧰 NEAT-AI Features Used
 

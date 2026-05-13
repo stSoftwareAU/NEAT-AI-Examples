@@ -368,16 +368,18 @@ policy probability `p(topology) = base / (1 + size / scale)` evaluated at the sa
 size — it collapses toward zero as size rises, exactly as the adaptive mutation policy intends.
 Audited under [issue #212](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/212).
 
-### 🌱 Evolution Showcase — gen 1 → 10000
+### 🌱 Evolution Showcase — milestone summary
 
-![Evolution Showcase multi-panel strip — five panels showing the champion creature at generations 1, 10, 100, 1000, and 10000, with a score-progression polyline linking them and visible network growth across panels](docs/screenshots/evolution_showcase_evolution.svg)
+![Evolution Showcase milestone summary — bars compare seed vs final neuron and synapse counts; numeric callouts list final error, final score, generations, and wall-clock time](docs/screenshots/evolution_showcase/evolution_summary.svg)
 
-Five panels — one per canonical checkpoint — show the long-form champion's topology and score at
-generations 1, 10, 100, 1000, and 10000. The seed creature has no hidden capacity at all (4 inputs
-wired straight to a single output); by gen 10000 the network has grown visibly larger and
-approximates the deterministic teacher far more closely. A score-progression polyline links the
-panels and the caption records the final score, total generations, and wall-clock time.
-**Long-running by design** — see [evolution_showcase/README.md](evolution_showcase/README.md).
+The milestone summary chart is generated directly from `Creature.evolveDir`'s return value: a
+"before vs after" topology bar pair (seed vs final neurons / synapses) on the left and numeric
+callouts for final error, final score, generations, and wall-clock time on the right. The seed
+creature has no hidden capacity at all (4 inputs wired straight to a single output); the evolved
+champion has grown visibly larger and approximates the deterministic teacher far more closely.
+**Long-running by design** — see [evolution_showcase/README.md](evolution_showcase/README.md). Issue
+[#301](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/301) retired the per-generation
+checkpoint strip in favour of this milestone summary.
 
 ### 🧠 Memetic Evolution — seeding from the fittest archive
 

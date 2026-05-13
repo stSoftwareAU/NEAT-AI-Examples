@@ -1,9 +1,9 @@
 /**
  * Unit tests for the stock-market direction-prediction example
- * (audit issue #218). "What" tests only — each test calls a real
- * function with deterministic data and asserts on the observable
- * outputs (file contents, telemetry rows, accuracy floor, SVG
- * structure, signal records).
+ * (audit issue #218, telemetry rewired under #301). "What" tests only —
+ * each test calls a real function with deterministic data and asserts
+ * on the observable outputs (file contents, milestone summary fields,
+ * accuracy floor, SVG structure, signal records).
  */
 import {
   assert,
@@ -11,14 +11,13 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertThrows,
 } from "@std/assert";
-import { ensureDirSync, existsSync } from "@std/fs";
-import { join } from "@std/path";
+import { existsSync } from "@std/fs";
 import { Creature } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { buildSamples, splitChronologically } from "./data.ts";
 import {
   balancedDirectionalAccuracy,
@@ -27,17 +26,10 @@ import {
   cumulativeStrategyReturn,
   DEFAULT_EVOLVE_OPTIONS,
   directionalAccuracy,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
   evolveStockController,
-  formatEvolutionCsv,
-  type GenerationInfo,
   INPUT_COUNT,
   OUTPUT_COUNT,
-  planSegments,
   predictionFromOutput,
-  renderFitnessChartSvg,
-  renderTopologyChartSvg,
   replayController,
   WINDOW_SIZE,
   writeStockTrainingDataset,
@@ -65,15 +57,11 @@ Deno.test("buildRandomSeedCreature has WINDOW_SIZE inputs and 1 output", () => {
   const json = buildRandomSeedCreature(12345);
   assertEquals(json.input, INPUT_COUNT);
   assertEquals(json.output, OUTPUT_COUNT);
-  // Random seed must have zero hidden neurons — NEAT-AI must invent
-  // them via structural mutation during `evolveDir`.
   const hidden = json.neurons.filter((n) => n.type === "hidden");
   assertEquals(hidden.length, 0, "random seed must have zero hidden neurons");
 });
 
 Deno.test("buildRandomSeedCreature pins the output activation to LOGISTIC", () => {
-  // The prediction interface (>= 0.5 ⇒ "up") assumes the output is
-  // bounded to [0, 1]; the runtime relies on a LOGISTIC squash.
   const json = buildRandomSeedCreature(5, WINDOW_SIZE);
   const outputs = json.neurons.filter((n) => n.type === "output");
   assertEquals(outputs.length, OUTPUT_COUNT);
@@ -117,7 +105,6 @@ Deno.test("writeStockTrainingDataset writes one record per sample", () => {
     const view = new Float32Array(bytes.buffer, bytes.byteOffset, samples.length * stride);
     for (let i = 0; i < samples.length; i++) {
       for (let j = 0; j < 5; j++) {
-        // Float32 round-trip — compare with a small tolerance.
         assertAlmostEquals(view[i * stride + j], samples[i].features[j], 1e-6);
       }
       assertEquals(view[i * stride + 5], samples[i].label);
@@ -159,13 +146,6 @@ Deno.test("writeStockTrainingDataset rejects samples with wrong feature length",
   } finally {
     Deno.removeSync(tmp, { recursive: true });
   }
-});
-
-Deno.test("planSegments inserts every in-budget checkpoint and ends at maxGenerations", () => {
-  assertEquals(planSegments([1, 10, 100, 1000, 10000], 50), [1, 10, 50]);
-  assertEquals(planSegments([1, 5], 5), [1, 5]);
-  assertEquals(planSegments([], 7), [7]);
-  assertEquals(planSegments([1000], 10), [10]);
 });
 
 Deno.test("predictionFromOutput thresholds at 0.5", () => {
@@ -234,9 +214,6 @@ Deno.test("balancedDirectionalAccuracy returns 0 on an empty sample list", () =>
 });
 
 Deno.test("DEFAULT_EVOLVE_OPTIONS has the audit-mandated stop conditions", () => {
-  // Issue #218 mandates a per-example targetError plus the 5-minute
-  // timeoutMinutes safety backstop. Plus a hard generation cap so a
-  // stuck run never blocks the example forever.
   assertGreater(DEFAULT_EVOLVE_OPTIONS.errorThreshold, 0);
   assertGreater(1, DEFAULT_EVOLVE_OPTIONS.errorThreshold);
   assertEquals(
@@ -250,7 +227,7 @@ Deno.test("DEFAULT_EVOLVE_OPTIONS has the audit-mandated stop conditions", () =>
 });
 
 Deno.test(
-  "evolveStockController emits GenerationInfo with finite fields and grows from the minimal seed",
+  "evolveStockController returns a milestone EvolveDirSummary with finite fields",
   async () => {
     const tmp = Deno.makeTempDirSync({ prefix: "stock_evolve_" });
     try {
@@ -261,8 +238,7 @@ Deno.test(
         validationFraction: 0.15,
       });
       writeStockTrainingDataset(split.train, tmp, 5);
-      const seen: GenerationInfo[] = [];
-      await evolveStockController({
+      const result = await evolveStockController({
         ...DEFAULT_EVOLVE_OPTIONS,
         windowSize: 5,
         seed: 1,
@@ -271,19 +247,20 @@ Deno.test(
         errorThreshold: 0,
         timeoutMinutes: 0,
         dataDir: tmp,
-        onGeneration: (info) => seen.push(info),
       });
-      assertGreater(seen.length, 0, "expected at least one onGeneration call");
-      for (const info of seen) {
-        assertEquals(typeof info.neurons, "number");
-        assertEquals(typeof info.synapses, "number");
-        assertEquals(Number.isInteger(info.neurons), true);
-        assertEquals(Number.isInteger(info.synapses), true);
-        assertGreater(info.neurons, 0);
-        assertGreaterOrEqual(info.synapses, 0);
-        assert(Number.isFinite(info.bestFitness));
-        assert(Number.isFinite(info.bestError));
-      }
+      const s = result.summary;
+      assert(Number.isFinite(s.finalError));
+      assert(Number.isFinite(s.finalScore));
+      assert(Number.isFinite(s.wallClockMs));
+      assert(Number.isInteger(s.generations));
+      assertGreaterOrEqual(s.generations, 1);
+      assertGreater(s.seedNeurons, 0);
+      assertGreaterOrEqual(s.seedSynapses, 0);
+      assertGreater(s.finalNeurons, 0);
+      assertGreaterOrEqual(s.finalSynapses, 0);
+      // tests pass timeoutMinutes=0 so the field must be omitted from
+      // the summary caption.
+      assertEquals(s.timeoutMinutes, undefined);
     } finally {
       Deno.removeSync(tmp, { recursive: true });
     }
@@ -314,10 +291,7 @@ Deno.test(
       });
       assertEquals(result.solved, false);
       assertGreaterOrEqual(result.generations, 1);
-      // Cap is honoured at the segment-loop level so the run cannot
-      // wedge indefinitely.
       assertGreaterOrEqual(20, result.generations);
-      // Champion is a real Creature that activates without throwing.
       creatureActivatesFinite(result.champion);
     } finally {
       Deno.removeSync(tmp, { recursive: true });
@@ -326,54 +300,88 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveStockController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
+  "evolveStockController throws when dataDir is missing",
   async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "stock_snapshots_" });
-    const dataDir = join(tmp, "data");
-    const snapshotsDir = join(tmp, "snapshots");
-    ensureDirSync(dataDir);
-    ensureDirSync(snapshotsDir);
+    let threw = false;
     try {
-      const prices = syntheticPrices(120, 11);
-      const samples = buildSamples(prices, { windowSize: 5 });
-      const split = splitChronologically(samples, {
-        trainFraction: 0.7,
-        validationFraction: 0.15,
-      });
-      writeStockTrainingDataset(split.train, dataDir, 5);
-      const checkpoints = [1, 2, 3];
       await evolveStockController({
         ...DEFAULT_EVOLVE_OPTIONS,
         windowSize: 5,
         seed: 1,
         populationSize: 4,
-        maxGenerations: 4,
+        maxGenerations: 2,
         errorThreshold: 0,
         timeoutMinutes: 0,
-        dataDir,
-        snapshotConfig: { checkpoints, outputDir: snapshotsDir },
+        dataDir: "",
       });
+    } catch (_err) {
+      threw = true;
+    }
+    assert(threw, "expected an error when dataDir is empty");
+  },
+);
 
-      for (const gen of checkpoints) {
-        assertEquals(
-          existsSync(join(snapshotsDir, `snapshot-gen-${gen}.json`)),
-          true,
-          `expected snapshot-gen-${gen}.json to exist`,
-        );
-      }
-
-      const snapshots = loadSnapshots(snapshotsDir);
-      assertEquals(snapshots.length, checkpoints.length);
-
-      const svg = renderEvolutionProgressSvg(snapshots, {
-        title: "Stock-Market — Evolution Progress",
+Deno.test(
+  "evolveStockController milestone summary renders an SVG containing each numeric callout",
+  async () => {
+    const tmp = Deno.makeTempDirSync({ prefix: "stock_summary_" });
+    try {
+      const prices = syntheticPrices(200, 5);
+      const samples = buildSamples(prices, { windowSize: 5 });
+      const split = splitChronologically(samples, {
+        trainFraction: 0.7,
+        validationFraction: 0.15,
+      });
+      writeStockTrainingDataset(split.train, tmp, 5);
+      const result = await evolveStockController({
+        ...DEFAULT_EVOLVE_OPTIONS,
+        windowSize: 5,
+        seed: 1,
+        populationSize: 6,
+        maxGenerations: 3,
+        errorThreshold: 0,
+        timeoutMinutes: 0,
+        dataDir: tmp,
+      });
+      const svg = renderEvolveDirSummarySvg(result.summary, {
+        title: "Stock Market — evolveDir Run Summary",
       });
       assert(svg.startsWith("<svg"));
-      const panels = svg.match(/<g class="panel"/g) ?? [];
-      assertEquals(panels.length, checkpoints.length);
+      assert(svg.includes("</svg>"));
+      assert(svg.includes(String(result.summary.generations)));
+      assert(svg.includes(String(result.summary.seedNeurons)));
+      assert(svg.includes(String(result.summary.seedSynapses)));
+      assert(svg.includes(String(result.summary.finalNeurons)));
+      assert(svg.includes(String(result.summary.finalSynapses)));
+      assert(svg.includes("final error"));
+      assert(svg.includes("final score"));
+      assert(svg.includes("wall clock"));
+      assert(!svg.includes("NaN"));
+      assert(!svg.includes("Infinity"));
     } finally {
       Deno.removeSync(tmp, { recursive: true });
     }
+  },
+);
+
+Deno.test(
+  "renderEvolveDirSummarySvg rejects a summary with missing numeric fields",
+  () => {
+    const badSummary = {
+      finalError: 0.1,
+      finalScore: 0.5,
+      wallClockMs: Number.NaN,
+      generations: 10,
+      seedNeurons: 3,
+      seedSynapses: 2,
+      finalNeurons: 5,
+      finalSynapses: 6,
+    } as EvolveDirSummary;
+    assertThrows(
+      () => renderEvolveDirSummarySvg(badSummary),
+      Error,
+      "wallClockMs",
+    );
   },
 );
 
@@ -426,7 +434,6 @@ Deno.test("cumulativeStrategyReturn sums returns when prediction is up", () => {
       correct: false,
     },
   ];
-  // Up-predictions: 0.1 + 0.02 + (-0.07) = 0.05
   assertAlmostEquals(cumulativeStrategyReturn(records), 0.05, 1e-9);
 });
 
@@ -502,77 +509,6 @@ Deno.test("renderChartSVG throws on an empty record list", () => {
   }
   assert(thrown instanceof Error);
   assert((thrown as Error).message.includes("must not be empty"));
-});
-
-Deno.test("formatEvolutionCsv emits the canonical header and one row per sample", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.5, meanFitness: 0.25, neuronCount: 3, synapseCount: 2 },
-    { generation: 2, bestFitness: 0.75, meanFitness: 0.4, neuronCount: 4, synapseCount: 3 },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines.length, 1 + rows.length);
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "1,0.5,0.25,3,2");
-  assertEquals(lines[2], "2,0.75,0.4,4,3");
-});
-
-Deno.test("formatEvolutionCsv handles empty input and trailing newline", () => {
-  const empty = formatEvolutionCsv([]);
-  assertEquals(empty, EVOLUTION_CSV_HEADER + "\n");
-  const single = formatEvolutionCsv([
-    { generation: 7, bestFitness: 0.123456789, meanFitness: NaN, neuronCount: 5, synapseCount: 6 },
-  ]);
-  assert(single.endsWith("\n"));
-  const lines = single.trim().split("\n");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "7,0.123457,0,5,6");
-});
-
-Deno.test("renderFitnessChartSvg produces a well-formed SVG referencing both fitness lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 3, synapseCount: 2 },
-    { generation: 2, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 4, synapseCount: 3 },
-  ];
-  const svg = renderFitnessChartSvg(rows);
-  assert(svg.startsWith("<svg"));
-  assert(svg.includes("</svg>"));
-  assert(svg.includes('class="best-fitness"'));
-  assert(svg.includes('class="mean-fitness"'));
-  assert(svg.includes("Best vs Mean Fitness"));
-});
-
-Deno.test("renderFitnessChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderFitnessChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw);
-});
-
-Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both count lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 3, synapseCount: 2 },
-    { generation: 5, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 6, synapseCount: 9 },
-  ];
-  const svg = renderTopologyChartSvg(rows);
-  assert(svg.startsWith("<svg"));
-  assert(svg.includes("</svg>"));
-  assert(svg.includes('class="neuron-count"'));
-  assert(svg.includes('class="synapse-count"'));
-  assert(svg.includes("Topology Growth"));
-});
-
-Deno.test("renderTopologyChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderTopologyChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw);
 });
 
 /* ------------------------------------------------------------------ */

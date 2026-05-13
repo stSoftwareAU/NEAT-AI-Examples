@@ -1,19 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-# Evolution Showcase Example Runner — minimal-seed evolution + telemetry (issue #211).
+# Evolution Showcase Example Runner — minimal-seed evolution + milestone
+# summary (issue #211, telemetry rewired under #301).
 #
 # Builds a hand-crafted teacher creature, synthesises a deterministic
 # binary `.bin` training set from it, evolves a minimal NEAT-AI seed
 # (`new Creature(INPUT, OUTPUT)`) via `Creature.evolveDir` until either
 # the per-example `targetError` is reached or the `timeoutMinutes: 5`
-# backstop fires, captures per-generation telemetry, and emits the
-# audit-mandated CSV plus three SVG charts:
+# backstop fires, and renders a single milestone summary SVG built from
+# the call's return value:
 #
-#   - docs/data/evolution_showcase/evolution.csv       (per-generation rows)
-#   - docs/screenshots/evolution_showcase/fitness.svg  (best vs mean fitness)
-#   - docs/screenshots/evolution_showcase/topology.svg (score / neurons / synapses)
-#   - docs/screenshots/evolution_showcase_evolution.svg (multi-panel snapshot strip)
+#   - docs/screenshots/evolution_showcase/evolution_summary.svg
 #
 # The example is **not** part of `quality.sh`. Runtime is roughly tens
 # of seconds on a developer laptop with the default configuration.
@@ -40,14 +38,9 @@ deno run \
   evolution_showcase/evolution_showcase.ts \
   "$@"
 
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderers emit compact output for readability, and
+# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
+# stay clean — the renderer emits compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
-for svg in \
-  "docs/screenshots/evolution_showcase_evolution.svg" \
-  "docs/screenshots/evolution_showcase/fitness.svg" \
-  "docs/screenshots/evolution_showcase/topology.svg"; do
-  if [[ -f "${svg}" ]]; then
-    deno fmt "${svg}" > /dev/null
-  fi
-done
+if [[ -f "docs/screenshots/evolution_showcase/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/evolution_showcase/evolution_summary.svg > /dev/null
+fi
