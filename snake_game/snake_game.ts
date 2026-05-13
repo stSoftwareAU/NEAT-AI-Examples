@@ -5,54 +5,54 @@
  * Each agent observes a small sensor pack (wall distances, food
  * direction, tail direction, length — see `agent.ts`) and emits four
  * activations, one per heading; the argmax becomes the next heading.
- * The simulator (`snake.ts`), evolutionary loop, and animated SVG
- * renderer (`svg.ts`) all run in pure TypeScript; the only external
- * dependency is NEAT-AI's `Creature.activate`.
+ * The simulator (`snake.ts`), animated SVG renderer (`svg.ts`), and
+ * episode adapter all run in pure TypeScript. The evolutionary loop is
+ * driven by NEAT-AI's class-shaped `Creature.evolveRL()` API
+ * (issue #291, replaces #238).
  *
- * 🌱 **Generation 1 starts from random noise.** The initial population
- * is built by NEAT-AI's uniform-random `Creature(INPUT_COUNT,
- * OUTPUT_COUNT)` constructor — direct input → output connections with
- * weights and biases drawn by the library's RNG. **No hand-crafted
- * topology, no tuned weight init.** Hidden neurons appear only when
- * the add-neuron mutation operator splits an existing connection
- * during evolution; structural mutation discovers them.
+ * 🌱 **Generation 1 starts from random noise.** The seed passed to
+ * `Creature.evolveRL()` is a brand-new `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` — the library's uniform-random minimal genome. No
+ * topology is hand-specified; structural mutation is owned by NEAT-AI.
+ *
+ * 📈 **Progress is reported as milestone statistics.** Per issue #298
+ * NEAT-AI surfaces only milestone-cadence telemetry (`evolverl_milestone`
+ * events at generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then
+ * powers of ten). This example collects the milestone payloads emitted
+ * by `Creature.evolveRL()` and renders them via
+ * `renderMilestoneChartSVG` — no per-generation handler is registered.
  *
  * Score = `food × FOOD_REWARD − stepCount × STEP_PENALTY` minus a
- * one-off `DEATH_PENALTY` if the snake collided with a wall or
- * itself. Survival without eating cannot out-score eating quickly,
- * because the per-step penalty only adds up over time.
- *
- * Fitness (used for selection during evolution) adds a small
- * Manhattan-distance shaping reward on top of the raw score so
- * mutations that move the head closer to the food receive credit
- * before the snake actually eats — this breaks the flat fitness
- * landscape that previously trapped the population at "ate one food".
+ * one-off `DEATH_PENALTY` if the snake collided with a wall or itself.
+ * The reward surfaced to `evolveRL` is a single scalar terminal reward
+ * normalised onto `[-1, 0]` so `defaultRewardToError` produces an error
+ * of `1 - min(eaten, SOLVED_THRESHOLD) / SOLVED_THRESHOLD`. Across
+ * `episodesPerCreature` trials the mean error is therefore
+ * `1 - meanCappedEaten / SOLVED_THRESHOLD`, so
+ * `EvolveRLOptions.targetError = 0.5` stops evolution once the
+ * champion's mean food eaten reaches `1.5` across the per-generation
+ * seed set.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
-  createSeededPopulation,
-  createSeededRng,
   Creature,
   type CreatureExport,
-  type NeuronExport,
+  EpisodeAdapter,
+  type EvolveRLMilestone,
+  type EvolveRLOptions,
   safeWriteJson,
-  setRandomNumberGenerator,
-  type SynapseExport,
+  type StepResult,
 } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { type MilestoneSample, renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 import {
-  captureSnapshot,
-  loadSnapshots,
-  type SnapshotConfig,
-} from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
-import { type EpisodeAdapter, runEpisode } from "../common/episode_runner.ts";
+  type EpisodeAdapter as LocalEpisodeAdapter,
+  runEpisode,
+} from "../common/episode_runner.ts";
 import { decodeAction, encodeState, INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { type Heading, newGame, type SnakeState, step } from "./snake.ts";
 import { renderRunSVG } from "./svg.ts";
@@ -70,25 +70,37 @@ export const STEP_PENALTY = 0.1;
 export const DEATH_PENALTY = 50;
 
 /**
- * Coefficient for the Manhattan-distance shaping reward used during
- * fitness evaluation. Each tick the snake moves closer to (or further
- * from) the food contributes `±DISTANCE_SHAPING_COEFF` to fitness.
- * Small enough that eating food still dominates, but large enough to
- * reward navigation progress before the first food.
+ * Coefficient for the Manhattan-distance shaping reward used by the
+ * legacy {@link scoreController} fitness signal. Each tick the snake
+ * moves closer to (or further from) the food contributes
+ * `±DISTANCE_SHAPING_COEFF` to the post-run fitness number reported
+ * by the scoring helpers. See {@link ADAPTER_SHAPING_COEFF} for the
+ * (much smaller) coefficient used inside the `evolveRL` adapter
+ * itself.
  */
 export const DISTANCE_SHAPING_COEFF = 0.5;
 
 /**
+ * Per-step Manhattan-distance shaping coefficient used by
+ * {@link SnakeAdapter}. Sized so the cumulative shaping contribution
+ * over a 500-step episode can dominate the food-eaten signal — without
+ * a strong shaping term the GA receives no gradient until a creature
+ * accidentally swallows food, and the population stalls. The
+ * post-evolution `solved` flag still requires
+ * `championEaten ≥ SOLVED_THRESHOLD` on the held-out evaluation seeds,
+ * so an "approaches-but-never-eats" champion cannot trip the gate.
+ */
+export const ADAPTER_SHAPING_COEFF = 5e-3;
+
+/**
  * Best-seed food-eaten threshold at or above which the controller is
- * declared "solved". The threshold is applied to the **maximum
- * eaten across the evaluation seeds** for the running champion —
- * i.e. the same number that the SVG playthrough visualises after
- * `pickBestReplaySeed`. This matches closed issue #137's "champion
- * ate at least three food on the replay episode" target, but the bar
- * means more here because evolution now starts from uniform-random
- * NEAT noise (no hand-crafted layered seed), so reaching three food
- * on any single seed is a genuine demonstration of evolution
- * discovering both topology and weights from scratch.
+ * declared "solved". The threshold is applied to the **maximum eaten
+ * across the evaluation seeds** for the running champion — i.e. the
+ * same number that the SVG playthrough visualises after
+ * `pickBestReplaySeed`. This matches closed issue #137's "champion ate
+ * at least three food on the replay episode" target, but the bar
+ * means more here because evolution starts from uniform-random NEAT
+ * noise (no hand-crafted layered seed).
  */
 export const SOLVED_THRESHOLD = 3;
 
@@ -96,17 +108,20 @@ export const SOLVED_THRESHOLD = 3;
  * Minimum mean food eaten across the evaluation seed batch required
  * before the {@link SOLVED_THRESHOLD} early-stop is allowed to fire.
  * Without this floor a fragile elite that aces a single seed (and
- * fails the rest) would short-circuit the run and leave the user
- * with a flaky champion. Set above the gen-1 noise floor (~0.4) but
- * below the typical mean reached at the food-three plateau (~1.6).
+ * fails the rest) would short-circuit the run and leave the user with
+ * a flaky champion.
  */
 export const SOLVED_AVG_FLOOR = 1.5;
 
 /**
- * Episode seeds used to evaluate every creature during evolution. The
- * fitness reported to the selection step is the mean across these
- * episodes, so a controller has to generalise across several food
- * spawn sequences to win — far more robust than a single fixed seed.
+ * Episode seeds used to evaluate every creature during post-evolution
+ * scoring. The fitness reported by {@link evaluateController} is the
+ * mean across these episodes, so a controller has to generalise across
+ * several food spawn sequences to clear the bar — far more robust than
+ * a single fixed seed. `Creature.evolveRL()` rotates its own per-
+ * generation seed set derived from `EvolveRLOptions.seed`; this list
+ * is consulted only by the replay / scoring helpers that the runner
+ * uses after evolution finishes.
  */
 export const DEFAULT_EVAL_SEEDS: readonly number[] = [
   0x51a1,
@@ -123,283 +138,83 @@ export const DEFAULT_EVAL_SEEDS: readonly number[] = [
  */
 export const DEFAULT_REPLAY_SEED = DEFAULT_EVAL_SEEDS[0];
 
-/**
- * Pick the evaluation seed on which `creature` ate the most food.
- * Ties favour earlier seeds in `seeds`. Used by the runner so the
- * recorded SVG always shows the champion's strongest playthrough
- * across the multi-episode evaluation, rather than picking a fixed
- * seed where the run might end on a bad spawn.
- */
-export function pickBestReplaySeed(
-  creature: Creature,
-  seeds: readonly number[] = DEFAULT_EVAL_SEEDS,
-  maxSteps: number = MAX_STEPS,
-): { seed: number; eaten: number; score: number } {
-  let bestSeed = seeds[0];
-  let bestEaten = -1;
-  let bestScore = -Infinity;
-  for (const seed of seeds) {
-    const r = scoreController(creature, seed, maxSteps);
-    if (
-      r.eaten > bestEaten ||
-      (r.eaten === bestEaten && r.score > bestScore)
-    ) {
-      bestEaten = r.eaten;
-      bestScore = r.score;
-      bestSeed = seed;
-    }
-  }
-  return { seed: bestSeed, eaten: bestEaten, score: bestScore };
-}
-
-/**
- * Generations at which the runner captures evolution snapshots. The
- * cadence matches the typical evolution shape from uniform-random
- * NEAT noise: gen-1 random scribbles, gen-10 starting to chase food,
- * gen-50 plateau on "eat one or two", gen-100 add-neuron splits
- * starting to pay off, gen-200 elite pushes past the food-three
- * threshold on its best replay seed.
- */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 50, 100, 200];
-
-/** Hidden directory under which snapshot files are written. */
-export const SNAPSHOTS_DIR = ".synthetic-snake/snapshots";
-
-/** Path to the multi-panel evolution-progression SVG. */
-export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/snake_game_evolution.svg";
-
-/** Path to the per-generation dual-axis evolution-chart SVG. */
-export const EVOLUTION_CHART_PATH = "docs/screenshots/snake_game/evolution.svg";
-
-/** Path to the per-generation evolution telemetry CSV (audit issue #222). */
-export const EVOLUTION_CSV_PATH = "docs/data/snake_game/evolution.csv";
-
-/** Header row for the per-generation telemetry CSV (audit issue #222). */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path (audit issue #222). */
-export const FITNESS_SVG_PATH = "docs/screenshots/snake_game/fitness.svg";
-
-/** Neuron / synapse count chart path (audit issue #222). */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/snake_game/topology.svg";
-
-/**
- * One row of per-generation evolution telemetry. Captured during a run
- * and serialised to {@link EVOLUTION_CSV_PATH} so downstream tools can
- * inspect how the population's fitness and topology evolved over time.
- */
-export interface EvolutionRow {
-  /** Zero-based generation index. */
-  generation: number;
-  /** Best fitness in this generation (mean shaped fitness across eval seeds). */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion creature. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion creature. */
-  synapseCount: number;
-}
-
-/**
- * Format a finite number with up to six decimal places, trimming
- * trailing zeros so deterministic inputs produce a single canonical
- * string. Non-finite values become "0" — the CSV must not leak
- * NaN/Infinity.
- */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/**
- * Format an evolution-telemetry table into a CSV string with the exact
- * {@link EVOLUTION_CSV_HEADER} header. Numeric fields use a fixed
- * representation so the file is byte-deterministic for identical
- * inputs.
- */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-// ---- Topology chart renderer -------------------------------------------
-// Pairs with the shared `renderFitnessChartSVG` from
-// `common/fitness_chart.ts` — together the two SVGs satisfy the
-// "neuron/synapse" + "best/mean fitness" charts requested by audit
-// issue #222.
-
-const TOPOLOGY_SVG_WIDTH = 720;
-const TOPOLOGY_SVG_HEIGHT = 320;
-const TOPOLOGY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
-
-/**
- * Render the neuron / synapse count chart for the README. Two lines
- * share an X axis; the right Y axis shows synapse counts on a separate
- * scale so the synapse line does not compress the neuron line into
- * invisibility. Throws if `rows` is empty.
- */
-export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderTopologyChartSvg requires at least one row");
-  }
-  const innerW = TOPOLOGY_SVG_WIDTH - TOPOLOGY_MARGIN.left - TOPOLOGY_MARGIN.right;
-  const innerH = TOPOLOGY_SVG_HEIGHT - TOPOLOGY_MARGIN.top - TOPOLOGY_MARGIN.bottom;
-  const innerX = TOPOLOGY_MARGIN.left;
-  const innerY = TOPOLOGY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const maxNeurons = Math.max(...rows.map((r) => r.neuronCount), 1);
-  const maxSynapses = Math.max(...rows.map((r) => r.synapseCount), 1);
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
-  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
-
-  const neuronPts = rows
-    .map((r) => `${xScale(r.generation).toFixed(2)},${neuronY(r.neuronCount).toFixed(2)}`)
-    .join(" ");
-  const synapsePts = rows
-    .map((r) => `${xScale(r.generation).toFixed(2)},${synapseY(r.synapseCount).toFixed(2)}`)
-    .join(" ");
-
-  const leftTicks: string[] = [];
-  const rightTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const ly = innerY + innerH - t * innerH;
-    leftTicks.push(
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
-        `${(t * maxNeurons).toFixed(0)}</text>`,
-    );
-    rightTicks.push(
-      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
-        `${(t * maxSynapses).toFixed(0)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TOPOLOGY_SVG_WIDTH} ${TOPOLOGY_SVG_HEIGHT}" ` +
-    `width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Snake — neuron and synapse counts per generation">`,
-    `  <title>Snake — Topology Growth</title>`,
-    `  <rect width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TOPOLOGY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Snake — Topology Growth</text>`,
-    leftTicks.join("\n"),
-    rightTicks.join("\n"),
-    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
-    `points="${neuronPts}"/>`,
-    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
-    `stroke-dasharray="6 3" points="${synapsePts}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#2ca02c" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `neurons (left axis)</text>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `synapses (right axis)</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
 /** Configuration options for {@link evolveSnakeController}. */
 export interface EvolveOptions {
+  /** Random seed driving population initialisation and mutation. */
   seed: number;
+  /** Population size for each generation. */
   populationSize: number;
   /**
-   * NEAT-AI standard target-error stop condition (audit issue #222).
-   * Evolution halts as soon as the running champion's mean food eaten
-   * across the evaluation seed batch reaches `(1 - targetError) ×
-   * SOLVED_THRESHOLD` (default `targetError = 0.5` → mean ≥ 1.5 of the
-   * three-food target, equivalent to {@link SOLVED_AVG_FLOOR}) **and**
-   * its best per-seed eaten count reaches {@link SOLVED_THRESHOLD}.
-   * The two-condition gate guards against fragile elites that ace one
-   * seed and fail the rest.
+   * NEAT-AI standard target-error stop condition. Evolution halts as
+   * soon as the mean cumulative episode reward across the
+   * per-generation seed batch reaches `-targetError` (default `0.05`).
+   * Under {@link SnakeAdapter}'s reward shaping this is a strict gate
+   * that only fires when the champion is reliably clearing the food.
+   * Forwarded verbatim to `EvolveRLOptions.targetError`. The
+   * post-evolution `solved` flag is computed independently from
+   * {@link SOLVED_THRESHOLD} / {@link SOLVED_AVG_FLOOR} on the
+   * held-out {@link DEFAULT_EVAL_SEEDS} batch.
    */
   targetError: number;
   /**
-   * NEAT-AI standard wall-clock stop condition (audit issue #222).
-   * Evolution halts when the elapsed time since the loop began exceeds
-   * `timeoutMinutes` minutes (default `5`). Whichever of `targetError`
-   * and `timeoutMinutes` fires first wins.
+   * NEAT-AI standard wall-clock stop condition. Evolution halts when
+   * the elapsed time since the loop began exceeds `timeoutMinutes`
+   * minutes (default `5`). Whichever of `targetError` and
+   * `timeoutMinutes` fires first wins. NEAT-AI 5.0.0 requires this to
+   * be an integer ≥ 1, so sub-minute backstops are no longer
+   * expressible — use {@link iterations} for fast unit tests.
    */
   timeoutMinutes: number;
   /**
-   * Optional additional safety cap on the number of generations. When
-   * unset the loop is bounded only by `targetError` and `timeoutMinutes`
-   * (matching the audit-mandated stop conditions). Tests pin it to a
-   * small value to exercise specific code paths without waiting on the
-   * wall clock.
+   * Optional generation cap (NEAT-AI's standard `iterations` option).
+   * When supplied, the loop will also stop once `generation` reaches
+   * this value — useful for fast unit tests that need a deterministic
+   * generation count without depending on wall-clock timing. Defaults
+   * to `Infinity` so production runs are bounded only by `targetError`
+   * and `timeoutMinutes`.
    */
-  maxGenerations?: number;
+  iterations?: number;
+  /**
+   * Standard deviation of the weight/bias perturbation noise. Retained
+   * on the public API for backwards compatibility — NEAT-AI 5.0.0 owns
+   * mutation magnitude internally and ignores this value.
+   */
   mutationStrength: number;
+  /** Probability that any given gene is perturbed each generation. */
   mutationRate: number;
   /**
    * Per-creature probability of receiving an add-neuron structural
-   * mutation each generation (split an existing connection by
-   * inserting a hidden neuron). Defaults to a small value so topology
-   * grows gradually rather than thrashing.
+   * mutation. Kept on the public API for backwards compatibility but
+   * is no longer used directly — NEAT-AI owns mutation policy under
+   * `evolveRL()`. Documented here so historical callers keep
+   * type-checking; the value is ignored.
    */
   addNeuronRate?: number;
+  /**
+   * Number of independent episode trials each candidate is scored on
+   * (mean across trials). Defaults to {@link DEFAULT_EVAL_SEEDS}'s
+   * length. Maps to `EvolveRLOptions.episodesPerCreature`.
+   */
+  trials?: number;
   /** Hard cap on episode length. Defaults to {@link MAX_STEPS}. */
   maxSteps?: number;
-  /** Episode seeds used to evaluate fitness. Defaults to {@link DEFAULT_EVAL_SEEDS}. */
+  /**
+   * Episode seeds used by post-evolution {@link evaluateController}
+   * scoring. Defaults to {@link DEFAULT_EVAL_SEEDS}. `Creature.evolveRL`
+   * derives its own per-generation seed set from
+   * `EvolveRLOptions.seed`; this list is consumed only by callers that
+   * re-score the champion after evolution finishes.
+   */
   evalSeeds?: readonly number[];
-  /** When set, captures snapshots of the running champion at the listed generations. */
-  snapshotConfig?: SnapshotConfig;
-  onGeneration?: (info: GenerationInfo) => void;
-}
-
-/** Statistics emitted after each generation. */
-export interface GenerationInfo {
-  generation: number;
-  bestFitness: number;
-  meanFitness: number;
-  bestEaten: number;
-  bestScore: number;
-  /** Neuron count of the champion creature for this generation. */
-  neurons: number;
-  /** Synapse count of the champion creature for this generation. */
-  synapses: number;
 }
 
 /** Result of the evolutionary search. */
 export interface EvolveResult {
+  /** The fittest creature found during the run. */
   champion: Creature;
-  /** Mean raw game score across the evaluation seeds. */
+  /** Mean raw game score across the post-evolution evaluation seeds. */
   bestScore: number;
-  /** Mean food eaten across the evaluation seeds. */
+  /** Mean food eaten across the post-evolution evaluation seeds. */
   championEatenAvg: number;
   /** Eaten count for the replay episode (used by the SVG). */
   championEaten: number;
@@ -409,206 +224,198 @@ export interface EvolveResult {
   championReplaySeed: number;
   /** Number of generations actually run before stopping. */
   generations: number;
-  /** True when the champion's mean food eaten reached {@link SOLVED_THRESHOLD}. */
+  /** True when the champion's best replay eaten ≥ {@link SOLVED_THRESHOLD}
+   *  AND its mean food eaten across the eval seeds ≥
+   *  {@link SOLVED_AVG_FLOOR}. */
   solved: boolean;
   /** Wall-clock duration of the evolution loop in milliseconds. */
   wallclockMs: number;
   /**
    * Why the evolution loop terminated:
-   * - `"target"` — the champion met both `targetError` and the best-seed
-   *   eaten threshold.
+   * - `"target"` — the champion met both gates.
    * - `"timeout"` — `timeoutMinutes` elapsed before the target fired.
-   * - `"cap"` — the optional `maxGenerations` cap was reached (test path).
+   * - `"iterations"` — the optional generation cap was hit first.
    */
-  stopReason: "target" | "timeout" | "cap";
+  stopReason: "target" | "timeout" | "iterations";
+  /**
+   * Milestone payloads collected via `evolveRL`'s `statistics: true`
+   * option, surfaced in the schedule documented by
+   * {@link MilestoneSample}. Per issue #298 this is the only telemetry
+   * channel NEAT-AI exposes — see {@link MILESTONE_SVG_PATH} for the
+   * rendered chart.
+   */
+  milestones: MilestoneSample[];
 }
 
 /**
  * Sensible defaults for the demonstration runner.
  *
- * - `targetError = 0.5` makes the per-example target the existing
- *   `SOLVED_AVG_FLOOR = 1.5` mean food eaten (`(1 - 0.5) × 3 = 1.5`),
- *   paired with the best-per-seed `SOLVED_THRESHOLD = 3` gate so a
- *   fragile elite cannot trip the early stop.
+ * - `targetError = 0.05` requires the mean cumulative episode reward
+ *   across the per-generation seed batch to climb above `-0.05`. Under
+ *   the {@link SnakeAdapter}'s reward shaping (terminal `-1` baseline,
+ *   `+1/SOLVED_THRESHOLD` per food eaten, Manhattan-distance shaping
+ *   bounded by ~`±0.5` per episode) this is a strict gate that only
+ *   fires when the champion is actually clearing the food — a snake
+ *   that merely chases the food without eating it cannot reach the
+ *   threshold on its own.
  * - `timeoutMinutes = 5` is the audit-mandated wall-clock backstop.
- *   The default seed reaches the target well within this budget on a
- *   commodity laptop, so the backstop is rarely hit in practice.
  */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
-  populationSize: 200,
-  // NEAT-AI standard stop conditions: evolution halts as soon as the
-  // running champion's mean food eaten across the evaluation seed
-  // batch reaches `(1 - targetError) × SOLVED_THRESHOLD` AND its best
-  // per-seed eaten count reaches `SOLVED_THRESHOLD` (audit issue #222).
-  targetError: 0.5,
+  populationSize: 60,
+  targetError: 0.05,
   timeoutMinutes: 5,
-  mutationStrength: 2.0,
-  mutationRate: 0.8,
-  addNeuronRate: 0.08,
+  mutationStrength: 0.6,
+  mutationRate: 0.5,
+  // Retained for backwards compatibility — NEAT-AI owns structural
+  // mutation under evolveRL().
+  addNeuronRate: 0.03,
+  trials: 10,
 };
 
-/**
- * Fraction of every generation replaced with fresh uniform-random
- * NEAT genomes. Keeps a steady supply of structural and weight
- * diversity so the elite's "eat one or two food and die" lineage
- * cannot dominate forever.
- */
-export const RANDOM_INJECTION_FRACTION = 0.1;
+// ---- SnakeAdapter ------------------------------------------------------
+
+/** Adapter configuration consumed by {@link SnakeAdapter}. */
+export interface SnakeAdapterOptions {
+  /** Cap on the number of ticks per episode. Default {@link MAX_STEPS}. */
+  maxStepsPerEpisode?: number;
+  /** Food-eaten target used for normalised reward shaping. Default
+   *  {@link SOLVED_THRESHOLD}. */
+  solvedThreshold?: number;
+}
+
+/** State threaded through each episode by {@link SnakeAdapter}. */
+export interface SnakeEpisodeState {
+  /** Current simulator state. */
+  game: SnakeState;
+  /** 1-based step index of the just-completed step (`0` after `reset`). */
+  stepIdx: number;
+}
 
 /**
- * Build the initial population using the NEAT-AI library's
- * uniform-random creature constructor. Every member has the requested
- * number of inputs and outputs with random weights and a random output
- * bias — **no topology is hand-specified by this example**; structural
- * mutation grows hidden neurons during evolution.
+ * Snake-game episode adapter for `Creature.evolveRL()`. Each `step()`
+ * advances the deterministic simulator, encodes the next observation
+ * as a `Float32Array`, and emits a reward that maps directly onto
+ * NEAT-AI's non-negative `error` slot via `defaultRewardToError`
+ * (`error = max(0, -reward)`):
  *
- * `seed` controls the global library RNG so the same `seed` reproduces
- * the same initial population across runs.
- */
-export function buildRandomPopulation(
-  seed: number,
-  populationSize: number,
-): CreatureExport[] {
-  setRandomNumberGenerator(createSeededRng(seed));
-  return createSeededPopulation({
-    inputCount: INPUT_COUNT,
-    outputCount: OUTPUT_COUNT,
-    populationSize,
-    seeds: [],
-  });
-}
-
-/** Sample a value from `[-range, range]` using the supplied PRNG. */
-function uniformSigned(random: () => number, range: number): number {
-  return (random() * 2 - 1) * range;
-}
-
-/** Deep-clone a creature export so callers can safely mutate it. */
-function cloneExport(creature: CreatureExport): CreatureExport {
-  return JSON.parse(JSON.stringify(creature)) as CreatureExport;
-}
-
-/**
- * Insert a hidden neuron in the middle of an existing connection: the
- * NEAT "add-node" structural mutation. Picks a random synapse, replaces
- * it with a path through a fresh hidden neuron, and assigns reasonable
- * starting weights so the new path approximates the original signal
- * before further mutation tunes it.
+ * - Per-step Manhattan shaping — `(prevDistance − newDistance) ×
+ *   ADAPTER_SHAPING_COEFF`. Tiny enough not to dominate the food
+ *   signal but dense enough to break the flat fitness landscape that
+ *   would otherwise leave the population stuck at "ate one food".
+ * - Per food eaten this tick — `+1 / solvedThreshold`.
+ * - Terminal step (snake died or hit the step cap) — additional
+ *   constant `-1` baseline penalty.
  *
- * The new neuron uses LOGISTIC activation — a smooth squash that lets
- * gradients flow during weight perturbation without the saturating
- * plateau of HARD_TANH at the edges of its range.
+ * Cumulative episode reward is therefore
+ * `(eatenCappedAtThreshold) / solvedThreshold + shapingSum − 1`,
+ * which `defaultRewardToError` collapses to
+ * `error ≈ 1 − cappedEaten / solvedThreshold` (the shaping term is
+ * bounded to ~0.05 by {@link ADAPTER_SHAPING_COEFF}). Across
+ * `episodesPerCreature` trials the mean cumulative error is
+ * `1 − meanCappedEaten / solvedThreshold`, so
+ * `EvolveRLOptions.targetError = 0.5` stops evolution once the mean
+ * eaten reaches `1.5 =` {@link SOLVED_AVG_FLOOR} food across the
+ * per-generation seed set.
  */
-function addHiddenNeuron(
-  creature: CreatureExport,
-  random: () => number,
-  hiddenCounter: { value: number },
-): CreatureExport {
-  if (creature.synapses.length === 0) return creature;
+export class SnakeAdapter extends EpisodeAdapter<SnakeEpisodeState, Heading> {
+  readonly maxStepsPerEpisode: number;
+  readonly solvedThreshold: number;
 
-  const synapseIdx = Math.floor(random() * creature.synapses.length);
-  const original = creature.synapses[synapseIdx];
+  /**
+   * Deterministic food-spawn PRNG for the current episode. Reseeded by
+   * {@link reset} so two episodes with the same `rngSeed` produce
+   * identical food sequences.
+   */
+  private foodRng?: () => number;
 
-  // Issue a deterministic UUID so the export is reproducible across runs
-  // with the same seed. The library treats this string as opaque, so any
-  // unique identifier is acceptable.
-  const uuid = `hidden-${hiddenCounter.value++}`;
+  constructor(options: SnakeAdapterOptions = {}) {
+    super();
+    this.maxStepsPerEpisode = options.maxStepsPerEpisode ?? MAX_STEPS;
+    this.solvedThreshold = options.solvedThreshold ?? SOLVED_THRESHOLD;
+  }
 
-  const newNeuron: NeuronExport = {
-    type: "hidden",
-    uuid,
-    bias: uniformSigned(random, 0.5),
-    squash: "LOGISTIC",
-  };
+  override get observationLength(): number {
+    return INPUT_COUNT;
+  }
 
-  const newSynapses: SynapseExport[] = creature.synapses.filter((_, i) => i !== synapseIdx);
-  // input → hidden: keep the original weight so the path through the
-  // new neuron starts close to the original signal.
-  newSynapses.push({
-    weight: original.weight,
-    fromUUID: original.fromUUID,
-    toUUID: uuid,
-  });
-  // hidden → output: weight 1 so the LOGISTIC pass-through is roughly
-  // identity at the operating point, again preserving original signal.
-  newSynapses.push({
-    weight: 1,
-    fromUUID: uuid,
-    toUUID: original.toUUID,
-  });
+  override maxSteps(): number {
+    return this.maxStepsPerEpisode;
+  }
 
-  // Hidden neurons must stay before every output. For hidden targets,
-  // insert directly before the target; for output targets, insert before
-  // the first output so NEAT-AI 4.x validation keeps the export ordered.
-  const targetIdx = creature.neurons.findIndex((n) => n.uuid === original.toUUID);
-  const target = targetIdx === -1 ? undefined : creature.neurons[targetIdx];
-  const firstOutputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  const insertAt = target?.type === "hidden"
-    ? targetIdx
-    : firstOutputIdx === -1
-    ? creature.neurons.length
-    : firstOutputIdx;
-  const newNeurons = [
-    ...creature.neurons.slice(0, insertAt),
-    newNeuron,
-    ...creature.neurons.slice(insertAt),
-  ];
+  override reset(
+    rngSeed: number,
+  ): { observation: Float32Array; state: SnakeEpisodeState } {
+    this.foodRng = createDeterministicRandom(rngSeed >>> 0);
+    const game = newGame(this.foodRng);
+    return {
+      observation: encodeState(game),
+      state: { game, stepIdx: 0 },
+    };
+  }
 
-  return {
-    ...creature,
-    neurons: newNeurons,
-    synapses: newSynapses,
-  };
-}
+  override decodeAction(
+    creatureOutput: Float32Array,
+    _state: SnakeEpisodeState,
+  ): Heading {
+    return decodeAction(creatureOutput);
+  }
 
-/**
- * Mutate a creature genome. Each existing weight and non-input bias is
- * perturbed independently with probability `mutationRate`; the noise is
- * drawn uniformly from `[-mutationStrength, mutationStrength]`. With
- * probability `addNeuronRate` the genome additionally receives a NEAT
- * add-node structural mutation (split one synapse with a hidden neuron).
- *
- * The resulting export is suitable for `Creature.fromJSON(...)`. No
- * topology is hand-specified — every change here is a generic NEAT
- * mutation operator that works on whatever variable topology the
- * creature currently has.
- */
-export function mutateCreatureExport(
-  parent: CreatureExport,
-  random: () => number,
-  mutationRate: number,
-  mutationStrength: number,
-  options?: { addNeuronRate?: number; hiddenCounter?: { value: number } },
-): CreatureExport {
-  const child = cloneExport(parent);
-
-  for (const synapse of child.synapses) {
-    if (random() < mutationRate) {
-      synapse.weight += uniformSigned(random, mutationStrength);
+  override step(
+    state: SnakeEpisodeState,
+    action: Heading,
+  ): StepResult<Float32Array> & { state: SnakeEpisodeState } {
+    if (!this.foodRng) {
+      throw new Error("SnakeAdapter.step called before reset");
     }
-  }
+    const newGameState = step(state.game, action, this.foodRng);
+    const newStepIdx = state.stepIdx + 1;
+    const died = newGameState.dead;
+    const hitCap = !died && newStepIdx >= this.maxStepsPerEpisode;
+    const terminated = died || hitCap;
 
-  for (const neuron of child.neurons) {
-    if (random() < mutationRate) {
-      neuron.bias = (neuron.bias ?? 0) + uniformSigned(random, mutationStrength);
+    // Per-step Manhattan shaping: `+ADAPTER_SHAPING_COEFF` when the
+    // head closes on the food, `-ADAPTER_SHAPING_COEFF` when it backs
+    // away. Bounded to ~0.05 over an entire episode so the
+    // `targetError` mapping stays accurate.
+    const prevDistance = manhattan(state.game.body[0], state.game.food);
+    const newDistance = manhattan(newGameState.body[0], newGameState.food);
+    let reward = (prevDistance - newDistance) * ADAPTER_SHAPING_COEFF;
+
+    // Food-eaten bonus: `+1 / threshold` per food consumed this tick.
+    const foodThisTick = newGameState.eaten - state.game.eaten;
+    if (foodThisTick > 0) {
+      const eatenSoFar = state.game.eaten;
+      const remaining = Math.max(0, this.solvedThreshold - eatenSoFar);
+      reward += Math.min(foodThisTick, remaining) / this.solvedThreshold;
     }
-  }
 
-  const addNeuronRate = options?.addNeuronRate ?? 0;
-  const counter = options?.hiddenCounter ?? { value: 0 };
-  if (addNeuronRate > 0 && random() < addNeuronRate) {
-    return addHiddenNeuron(child, random, counter);
-  }
+    // Terminal -1 baseline so cumulative reward of a noise snake is
+    // `≈ -1` (error ≈ 1) and a snake that eats the full threshold is
+    // `≈ 0` (error ≈ 0).
+    if (terminated) {
+      reward -= 1;
+    }
 
-  return child;
+    return {
+      state: { game: newGameState, stepIdx: newStepIdx },
+      observation: encodeState(newGameState),
+      reward,
+      terminated,
+      truncated: false,
+    };
+  }
 }
+
+// ---- Legacy scoring / replay helpers ------------------------------------
+// Retained because the runner's post-evolution path renders the SVG and
+// the tests still exercise the deterministic Manhattan-shaped fitness.
 
 /** Outcome of a single scoring episode. */
 export interface EpisodeResult {
   /** Raw game score: `eaten × FOOD_REWARD − steps × STEP_PENALTY − DEATH_PENALTY?`. */
   score: number;
-  /** Fitness as used for selection: `score + DISTANCE_SHAPING_COEFF × Δdistance`. */
+  /** Fitness as used for legacy selection: raw score + Manhattan shaping. */
   fitness: number;
   eaten: number;
   steps: number;
@@ -621,14 +428,14 @@ function manhattan(a: { x: number; y: number }, b: { x: number; y: number }): nu
 }
 
 /**
- * Build a snake-game {@link EpisodeAdapter} bound to a per-episode RNG.
- * The food sequence is driven by the same `episodeRandom` so two
+ * Build a snake-game {@link LocalEpisodeAdapter} bound to a per-episode
+ * RNG. The food sequence is driven by the same `episodeRandom` so two
  * controllers given the same `episodeSeed` see the same spawns.
  */
-function snakeAdapter(
+function snakeLocalAdapter(
   start: SnakeState,
   episodeRandom: () => number,
-): EpisodeAdapter<SnakeState, Heading> {
+): LocalEpisodeAdapter<SnakeState, Heading> {
   return {
     initialState: start,
     encode: encodeState,
@@ -643,11 +450,6 @@ function snakeAdapter(
  * seed is used for every controller in a generation so the comparison
  * is fair (same initial state, same food sequence on equivalent
  * decisions).
- *
- * Both the raw game `score` and a `fitness` value (raw score plus a
- * small Manhattan-distance shaping reward) are returned. Selection
- * uses fitness; the public summary keeps reporting raw score so the
- * scoreboard remains directly comparable to the README formula.
  */
 export function scoreController(
   creature: Creature,
@@ -656,14 +458,10 @@ export function scoreController(
 ): EpisodeResult {
   const episodeRandom = createDeterministicRandom(episodeSeed);
   const start = newGame(episodeRandom);
-  const { trace, finalState } = runEpisode(creature, snakeAdapter(start, episodeRandom), {
+  const { trace, finalState } = runEpisode(creature, snakeLocalAdapter(start, episodeRandom), {
     maxSteps,
   });
 
-  // Post-hoc Manhattan-distance shaping. Matches the per-step
-  // accumulation the inline loop used to do — for each consecutive pair
-  // of states in the trace, credit/penalty the snake for closing on or
-  // backing away from the food.
   let shaping = 0;
   for (let i = 1; i < trace.length; i++) {
     const prevDistance = manhattan(trace[i - 1].body[0], trace[i - 1].food);
@@ -685,28 +483,14 @@ export function scoreController(
 
 /** Mean fitness/score/eaten across a list of evaluation seeds. */
 export interface MultiEpisodeResult {
-  /** Mean shaped fitness across the seed batch (used for selection). */
   fitness: number;
-  /** Mean raw game score across the seed batch. */
   score: number;
-  /** Mean food eaten across the seed batch. */
   eaten: number;
-  /** Mean steps survived across the seed batch. */
   steps: number;
-  /**
-   * Maximum food eaten on any single seed in the batch — the same
-   * number the SVG playthrough renders after `pickBestReplaySeed`,
-   * and the value the {@link SOLVED_THRESHOLD} early-stop is checked
-   * against.
-   */
   maxEaten: number;
 }
 
-/**
- * Average a controller's episode results across `seeds`. Used during
- * evolution so a controller has to do well on more than one food
- * sequence to win, instead of overfitting to a single replay.
- */
+/** Average a controller's episode results across `seeds`. */
 export function evaluateController(
   creature: Creature,
   seeds: readonly number[],
@@ -736,9 +520,34 @@ export function evaluateController(
 }
 
 /**
+ * Pick the evaluation seed on which `creature` ate the most food.
+ * Ties favour earlier seeds in `seeds`.
+ */
+export function pickBestReplaySeed(
+  creature: Creature,
+  seeds: readonly number[] = DEFAULT_EVAL_SEEDS,
+  maxSteps: number = MAX_STEPS,
+): { seed: number; eaten: number; score: number } {
+  let bestSeed = seeds[0];
+  let bestEaten = -1;
+  let bestScore = -Infinity;
+  for (const seed of seeds) {
+    const r = scoreController(creature, seed, maxSteps);
+    if (
+      r.eaten > bestEaten ||
+      (r.eaten === bestEaten && r.score > bestScore)
+    ) {
+      bestEaten = r.eaten;
+      bestScore = r.score;
+      bestSeed = seed;
+    }
+  }
+  return { seed: bestSeed, eaten: bestEaten, score: bestScore };
+}
+
+/**
  * Replay a creature's run from the same initial state, returning the
- * full state trace (one entry per tick, including the initial state)
- * suitable for the SVG renderer.
+ * full state trace (one entry per tick, including the initial state).
  */
 export function replayController(
   creature: Creature,
@@ -747,253 +556,132 @@ export function replayController(
 ): SnakeState[] {
   const episodeRandom = createDeterministicRandom(episodeSeed);
   const start = newGame(episodeRandom);
-  return runEpisode(creature, snakeAdapter(start, episodeRandom), { maxSteps }).trace;
+  return runEpisode(creature, snakeLocalAdapter(start, episodeRandom), { maxSteps }).trace;
 }
 
-interface ScoredMember {
-  json: CreatureExport;
-  fitness: number;
-  score: number;
-  eaten: number;
-  steps: number;
-  /** Best per-seed eaten count across the eval seed batch. */
-  maxEaten: number;
-  neurons: number;
-  synapses: number;
-}
+// ---- evolveRL driver --------------------------------------------------
 
-function topologyCounts(json: CreatureExport): { neurons: number; synapses: number } {
-  // The export omits input neurons (they are implicit in `input`), so
-  // we add them back to report a comparable "total neurons" figure.
+/**
+ * Convert an `EvolveRLMilestone` from the library into the
+ * {@link MilestoneSample} shape consumed by `renderMilestoneChartSVG`.
+ */
+function toMilestoneSample(m: EvolveRLMilestone): MilestoneSample {
   return {
-    neurons: json.neurons.length + (json.input ?? INPUT_COUNT),
-    synapses: json.synapses.length,
+    generation: m.generation,
+    bestScore: m.bestScore,
+    bestNeurons: m.bestNeurons,
+    bestSynapses: m.bestSynapses,
+    meanEpisodeSteps: m.meanEpisodeSteps,
+    generationWallClockMs: m.generationWallClockMs,
   };
 }
 
 /**
- * Run a generational evolutionary algorithm. Truncation selection
- * keeps the top half as parents (ranked by fitness); the elite carries
- * over so the best fitness is monotonically non-decreasing. A small
- * {@link RANDOM_INJECTION_FRACTION} of every generation is replaced
- * by fresh uniform-random NEAT genomes so structural diversity does
- * not collapse onto the elite's local optimum.
+ * Run NEAT-AI's first-class reinforcement-learning evolution loop
+ * against a {@link SnakeAdapter}. Mutation, crossover, elitism,
+ * plateau detection, and stop-condition handling are owned by
+ * `Creature.evolveRL()` (issue #291, replaces #238).
  *
- * Stops as soon as the running champion meets the audit-mandated stop
- * conditions (issue #222):
- *
- * - **`targetError`** — its mean food eaten across the evaluation seed
- *   batch reaches `(1 - targetError) × SOLVED_THRESHOLD` **and** its
- *   best per-seed eaten count reaches {@link SOLVED_THRESHOLD}
- *   (default `targetError = 0.5` → mean ≥ 1.5, best ≥ 3).
- * - **`timeoutMinutes`** — wall-clock backstop that fires whichever
- *   comes first (default 5 min).
- * - **`maxGenerations`** — optional safety cap, used by tests; left
- *   unset for the audit defaults.
+ * Telemetry is collected via NEAT-AI's `statistics: true` option, which
+ * surfaces an `EvolveRLMilestone[]` array on the run summary covering
+ * generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers
+ * of ten. Per issue #298 the example registers **no `onTrainingEvent`
+ * handler** — milestone statistics are the only telemetry channel
+ * NEAT-AI exposes.
  */
-export function evolveSnakeController(
+export async function evolveSnakeController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
-): EvolveResult {
-  const random = createDeterministicRandom(options.seed);
+): Promise<EvolveResult> {
   const maxSteps = options.maxSteps ?? MAX_STEPS;
   const evalSeeds = options.evalSeeds ?? DEFAULT_EVAL_SEEDS;
-  const targetMeanEaten = (1 - options.targetError) * SOLVED_THRESHOLD;
-  const timeoutMs = options.timeoutMinutes * 60_000;
-  const loopStart = Date.now();
 
-  // Counter for deterministic hidden-neuron UUIDs so the export stream
-  // is reproducible across runs with the same seed.
-  const hiddenCounter = { value: 0 };
-  const mutationOpts = { addNeuronRate: options.addNeuronRate ?? 0, hiddenCounter };
-
-  // Initial population: uniform-random NEAT genomes from the library.
-  // No hand-crafted topology — `new Creature(input, output)` decides
-  // the initial structure, with random weights and a random output
-  // bias.
-  const initialExports = buildRandomPopulation(options.seed, options.populationSize);
-  let population: ScoredMember[] = initialExports.map((json) => {
-    const creature = Creature.fromJSON(json);
-    const r = evaluateController(creature, evalSeeds, maxSteps);
-    const counts = topologyCounts(json);
-    return {
-      json,
-      fitness: r.fitness,
-      score: r.score,
-      eaten: r.eaten,
-      steps: r.steps,
-      maxEaten: r.maxEaten,
-      neurons: counts.neurons,
-      synapses: counts.synapses,
-    };
+  const adapter = new SnakeAdapter({
+    maxStepsPerEpisode: maxSteps,
+    solvedThreshold: SOLVED_THRESHOLD,
   });
 
-  let bestJSON = population[0].json;
-  let bestFitness = -Infinity;
-  let bestScore = -Infinity;
-  let bestEatenAvg = 0;
-  let bestMaxEaten = 0;
-  let solvedAt = -1;
-  let stopReason: "target" | "timeout" | "cap" = "timeout";
-  let generation = 0;
+  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
 
-  // Loop while no stop condition has fired. The body computes whether
-  // the champion meets the target gate and whether the wall-clock has
-  // expired; either condition (or the optional `maxGenerations` cap)
-  // breaks the loop.
-  while (true) {
-    population.sort((a, b) => b.fitness - a.fitness);
-    const generationBest = population[0];
-    if (generationBest.fitness > bestFitness) {
-      bestFitness = generationBest.fitness;
-      bestJSON = generationBest.json;
-      bestScore = generationBest.score;
-      bestEatenAvg = generationBest.eaten;
-      bestMaxEaten = generationBest.maxEaten;
-    }
+  // The adapter emits a cumulative episode reward in `[-1, 0]`, so
+  // `defaultRewardToError` produces an error of `1 - cappedEaten /
+  // SOLVED_THRESHOLD`. The caller's `targetError` already lives in
+  // that range, so it passes through unchanged. Negative values (used
+  // by tests to force the wall-clock / iterations backstop) are clamped
+  // to `0`, the smallest legal value.
+  const absoluteTargetError = Math.max(0, options.targetError);
 
-    const meanFitness = population.reduce((acc, p) => acc + p.fitness, 0) /
-      population.length;
-    options.onGeneration?.({
-      generation,
-      bestFitness: generationBest.fitness,
-      meanFitness,
-      bestEaten: generationBest.eaten,
-      bestScore: generationBest.score,
-      neurons: generationBest.neurons,
-      synapses: generationBest.synapses,
-    });
+  const loopStart = Date.now();
 
-    if (options.snapshotConfig) {
-      const checkpointGen = generation + 1;
-      if (options.snapshotConfig.checkpoints.includes(checkpointGen)) {
-        captureSnapshot(options.snapshotConfig, checkpointGen, bestJSON, bestScore);
-      }
-    }
+  const evolveOptions: EvolveRLOptions = {
+    seed: options.seed >>> 0,
+    populationSize: options.populationSize,
+    mutationRate: options.mutationRate,
+    targetError: absoluteTargetError,
+    timeoutMinutes: options.timeoutMinutes,
+    iterations: options.iterations,
+    episodesPerCreature: options.trials ?? DEFAULT_EVAL_SEEDS.length,
+    statistics: true,
+  };
 
-    // Two-condition early stop (audit issue #222): the running champion
-    // must reach the best-seed eaten threshold AND demonstrate it is
-    // not a one-trick pony — its mean eaten across the seed batch must
-    // be at least the audit-mandated `targetMeanEaten` floor (derived
-    // from `targetError`). Without the floor the search would halt the
-    // first time a fragile elite gets lucky on a single seed, leaving
-    // the user with a champion that fails most spawns.
-    const targetMet = bestMaxEaten >= SOLVED_THRESHOLD && bestEatenAvg >= targetMeanEaten;
-    if (targetMet && solvedAt < 0) solvedAt = generation;
+  const result = await seedCreature.evolveRL(adapter, evolveOptions);
 
-    const elapsedMs = Date.now() - loopStart;
-    const timedOut = elapsedMs >= timeoutMs;
-    const cappedOut = options.maxGenerations !== undefined &&
-      generation + 1 >= options.maxGenerations;
+  const wallclockMs = Date.now() - loopStart;
 
-    if (targetMet) {
-      // When capturing evolution snapshots, keep running until the
-      // next not-yet-fired checkpoint is captured — otherwise the
-      // progression strip would be a single panel.
-      const nextCheckpoint = options.snapshotConfig?.checkpoints
-        .filter((c) => c > generation + 1)
-        .sort((a, b) => a - b)[0];
-      if (nextCheckpoint === undefined) {
-        stopReason = "target";
-        break;
-      }
-    }
+  const milestones: MilestoneSample[] = (result.milestones ?? []).map(toMilestoneSample);
 
-    if (timedOut) {
-      stopReason = solvedAt >= 0 ? "target" : "timeout";
-      break;
-    }
-    if (cappedOut) {
-      stopReason = solvedAt >= 0 ? "target" : "cap";
-      break;
-    }
+  // Re-score the champion against the example's stable evaluation seed
+  // set so the runner can render the SVG playthrough on a known good
+  // seed. evolveRL's own internal scoring uses a per-generation seed
+  // rotation that the replay path cannot reproduce.
+  const evalResult = evaluateController(seedCreature, evalSeeds, maxSteps);
+  const pick = pickBestReplaySeed(seedCreature, evalSeeds, maxSteps);
+  const replay = scoreController(seedCreature, pick.seed, maxSteps);
 
-    const parentCount = Math.max(1, Math.floor(options.populationSize / 2));
-    const parents = population.slice(0, parentCount);
+  // The shaping signal in `SnakeAdapter` makes `targetError` a useful
+  // early-stop knob but a poor proxy for "task solved". The `solved`
+  // gate is therefore anchored to the historical
+  // {@link SOLVED_THRESHOLD} / {@link SOLVED_AVG_FLOOR} pair, computed
+  // post-evolution from the held-out evaluation seeds.
+  const targetMet = replay.eaten >= SOLVED_THRESHOLD && evalResult.eaten >= SOLVED_AVG_FLOOR;
 
-    // Diversity injection: a small fraction of every generation is
-    // freshly-sampled uniform-random NEAT genomes. This keeps a steady
-    // supply of structural and weight diversity in the population so
-    // the search cannot collapse onto the elite's local optimum
-    // forever — without this the elite's "eat one or two food then
-    // die" lineage dominates and escape mutations are rare.
-    const randomCount = Math.max(0, Math.floor(options.populationSize * RANDOM_INJECTION_FRACTION));
-
-    const next: ScoredMember[] = [];
-    next.push(parents[0]); // elite
-    // Build fresh uniform-random NEAT members and score them.
-    if (randomCount > 0) {
-      const fresh = createSeededPopulation({
-        inputCount: INPUT_COUNT,
-        outputCount: OUTPUT_COUNT,
-        populationSize: randomCount,
-        seeds: [],
-      });
-      for (const json of fresh) {
-        const creature = Creature.fromJSON(json);
-        const r = evaluateController(creature, evalSeeds, maxSteps);
-        const counts = topologyCounts(json);
-        next.push({
-          json,
-          fitness: r.fitness,
-          score: r.score,
-          eaten: r.eaten,
-          steps: r.steps,
-          maxEaten: r.maxEaten,
-          neurons: counts.neurons,
-          synapses: counts.synapses,
-        });
-      }
-    }
-    while (next.length < options.populationSize) {
-      const parent = parents[Math.floor(random() * parents.length)];
-      const childJSON = mutateCreatureExport(
-        parent.json,
-        random,
-        options.mutationRate,
-        options.mutationStrength,
-        mutationOpts,
-      );
-      const childCreature = Creature.fromJSON(childJSON);
-      const r = evaluateController(childCreature, evalSeeds, maxSteps);
-      const counts = topologyCounts(childJSON);
-      next.push({
-        json: childJSON,
-        fitness: r.fitness,
-        score: r.score,
-        eaten: r.eaten,
-        steps: r.steps,
-        maxEaten: r.maxEaten,
-        neurons: counts.neurons,
-        synapses: counts.synapses,
-      });
-    }
-    population = next;
-    generation++;
+  let stopReason: "target" | "timeout" | "iterations";
+  if (targetMet) {
+    stopReason = "target";
+  } else if (
+    options.iterations !== undefined && result.generation >= options.iterations
+  ) {
+    stopReason = "iterations";
+  } else {
+    stopReason = "timeout";
   }
 
-  const champion = Creature.fromJSON(bestJSON);
-  // Pick the seed on which the champion did best — the runner uses
-  // this for the SVG demo so the visualisation showcases the
-  // controller's strongest run rather than a worst-case spawn from the
-  // eval set.
-  const pick = pickBestReplaySeed(champion, evalSeeds, maxSteps);
-  const replay = scoreController(champion, pick.seed, maxSteps);
   return {
-    champion,
-    bestScore,
-    championEatenAvg: bestEatenAvg,
+    champion: seedCreature,
+    bestScore: evalResult.score,
+    championEatenAvg: evalResult.eaten,
     championEaten: replay.eaten,
     championSteps: replay.steps,
     championReplaySeed: pick.seed,
-    generations: generation + 1,
-    solved: replay.eaten >= SOLVED_THRESHOLD && bestEatenAvg >= targetMeanEaten,
-    wallclockMs: Date.now() - loopStart,
+    generations: result.generation,
+    solved: targetMet,
+    wallclockMs,
     stopReason,
+    milestones,
   };
 }
 
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/snake_game.svg";
+
+/**
+ * Path to the milestone-statistics chart the runner emits — this is
+ * the canonical fitness-progression artefact under the milestone-only
+ * telemetry policy (issue #298). Replaces the legacy per-generation
+ * `snake_game_evolution.svg`, `snake_game/evolution.svg`,
+ * `snake_game/fitness.svg`, `snake_game/topology.svg`, and
+ * `evolution.csv` artefacts.
+ */
+export const MILESTONE_SVG_PATH = "docs/screenshots/snake_game_milestones.svg";
 
 if (import.meta.main) {
   const start = Date.now();
@@ -1003,52 +691,16 @@ if (import.meta.main) {
 
   const { creaturesDir } = setupWorkingDirs(".synthetic-snake");
 
-  console.log("🧬 Evolving controller from uniform-random NEAT noise...");
+  console.log("🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
     `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError} ` +
-      `(mean eaten ≥ ${(1 - DEFAULT_EVOLVE_OPTIONS.targetError) * SOLVED_THRESHOLD} ` +
-      `with best per-seed eaten ≥ ${SOLVED_THRESHOLD}), ` +
-      `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}`,
+      `(mean cumulative reward ≥ ${-DEFAULT_EVOLVE_OPTIONS.targetError}), ` +
+      `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}. ` +
+      `Solved gate: best replay eaten ≥ ${SOLVED_THRESHOLD} AND mean eaten ` +
+      `≥ ${SOLVED_AVG_FLOOR}.`,
   );
-  ensureDirSync(SNAPSHOTS_DIR);
-  for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
-    if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
-  }
-  const evolutionStart = Date.now();
-  const evolutionSamples: EvolutionSample[] = [];
-  const evolutionRows: EvolutionRow[] = [];
-  const result = evolveSnakeController({
-    ...DEFAULT_EVOLVE_OPTIONS,
-    snapshotConfig: {
-      checkpoints: [...EVOLUTION_CHECKPOINTS],
-      outputDir: SNAPSHOTS_DIR,
-    },
-    onGeneration: (
-      { generation, bestFitness, meanFitness, bestEaten, bestScore, neurons, synapses },
-    ) => {
-      evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
-      evolutionRows.push({
-        generation,
-        bestFitness,
-        meanFitness,
-        neuronCount: neurons,
-        synapseCount: synapses,
-      });
-      if (
-        generation % 25 === 0 ||
-        bestEaten >= SOLVED_THRESHOLD
-      ) {
-        console.log(
-          `   Gen ${generation.toString().padStart(4)}  ` +
-            `fitness=${bestFitness.toFixed(1).padStart(8)}  ` +
-            `score=${bestScore.toFixed(1).padStart(7)}  ` +
-            `mean=${meanFitness.toFixed(1).padStart(7)}  ` +
-            `eaten=${bestEaten.toFixed(2)}  ` +
-            `neurons=${neurons}  synapses=${synapses}`,
-        );
-      }
-    },
-  });
+
+  const result = await evolveSnakeController(DEFAULT_EVOLVE_OPTIONS);
 
   const verdictIcon = result.solved ? "✅" : "⚠️";
   console.log(
@@ -1066,67 +718,28 @@ if (import.meta.main) {
   console.log(`💾 Saved champion to ${championPath}`);
 
   // Render the animated SVG showing the champion's playthrough on the
-  // best-performing eval seed (chosen by the evolver).
+  // best-performing eval seed.
   const trace = replayController(result.champion, result.championReplaySeed);
   const svg = renderRunSVG(trace);
   ensureDirSync("docs/screenshots");
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
 
-  // Render the per-generation evolution chart (score / neurons / synapses).
-  if (evolutionSamples.length > 0) {
-    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
-      title: "Snake — Evolution",
-      scoreLabel: "best score",
+  if (result.milestones.length > 0) {
+    const milestoneSvg = renderMilestoneChartSVG(result.milestones, {
+      title: "Snake — evolveRL Milestones",
+      logX: true,
+      caption: true,
     });
-    ensureDirSync("docs/screenshots/snake_game");
-    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
-    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
-  }
-
-  // Per-generation evolution telemetry (audit issue #222): CSV (source
-  // of truth) + best/mean fitness chart + neuron/synapse topology chart.
-  // All three are emitted on every full run so downstream tools and the
-  // README can reuse the same data.
-  if (evolutionRows.length > 0) {
-    ensureDirSync("docs/data/snake_game");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
-    console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
-
-    ensureDirSync("docs/screenshots/snake_game");
-    const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
-      generation: r.generation,
-      bestFitness: r.bestFitness,
-      avgFitness: r.meanFitness,
-    }));
-    const fitnessSvg = renderFitnessChartSVG(fitnessSamples, {
-      title: "Snake — Fitness vs Generation",
-      bestLabel: "best fitness",
-      avgLabel: "mean fitness",
-    });
-    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
-    console.log(`📈 Wrote fitness chart ${FITNESS_SVG_PATH}`);
-
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(evolutionRows));
-    console.log(`📐 Wrote topology chart ${TOPOLOGY_SVG_PATH}`);
-  }
-
-  // Render the multi-panel evolution-progression strip from the
-  // checkpoint snapshots captured during the run.
-  const snapshots = loadSnapshots(SNAPSHOTS_DIR);
-  if (snapshots.length > 0) {
-    const progressionSvg = renderEvolutionProgressSvg(snapshots, {
-      title: "Snake — Evolution Progress",
-      caption: {
-        finalScore: result.bestScore,
-        totalGenerations: result.generations,
-        wallClockMs: Date.now() - evolutionStart,
-      },
-    });
-    await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
+    await Deno.writeTextFile(MILESTONE_SVG_PATH, milestoneSvg);
     console.log(
-      `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
-        `(${snapshots.length} panels)`,
+      `📈 Wrote milestone chart ${MILESTONE_SVG_PATH} ` +
+        `(${result.milestones.length} milestones)`,
+    );
+  } else {
+    console.log(
+      "⚠️  No milestones returned by evolveRL — run did not reach the first " +
+        "milestone generation. Skipping milestone chart.",
     );
   }
 

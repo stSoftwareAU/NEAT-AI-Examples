@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Snake Game Example Runner
 #
-# Evolves a NEAT-AI controller that plays the classic Snake grid game,
-# saves the champion creature, and writes an animated SVG of the
-# champion's playthrough to docs/screenshots/snake_game.svg.
+# Evolves a NEAT-AI controller that plays the classic Snake grid game
+# via Creature.evolveRL(), saves the champion creature, and writes an
+# animated SVG of the champion's playthrough plus the milestone chart.
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -31,13 +31,9 @@ deno run \
 # Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
 # stay clean — the renderers emit compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
-for svg in \
-  "docs/screenshots/snake_game.svg" \
-  "docs/screenshots/snake_game_evolution.svg" \
-  "docs/screenshots/snake_game/evolution.svg" \
-  "docs/screenshots/snake_game/fitness.svg" \
-  "docs/screenshots/snake_game/topology.svg"; do
-  if [[ -f "${svg}" ]]; then
-    deno fmt "${svg}" > /dev/null
-  fi
-done
+if [[ -f "docs/screenshots/snake_game.svg" ]]; then
+  deno fmt docs/screenshots/snake_game.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/snake_game_milestones.svg" ]]; then
+  deno fmt docs/screenshots/snake_game_milestones.svg > /dev/null
+fi
