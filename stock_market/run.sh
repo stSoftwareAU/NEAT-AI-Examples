@@ -5,9 +5,11 @@ set -euo pipefail
 #
 # Evolves a NEAT-AI controller that predicts next-period direction
 # (up/down) on the public S&P 500 monthly-close dataset, saves the
-# champion creature, writes a per-day signal log, and renders an
-# animated SVG snapshot of the test window to
-# docs/screenshots/stock_market.svg.
+# champion creature, writes a per-day signal log, and renders:
+#
+#   - docs/screenshots/stock_market.svg
+#   - docs/screenshots/stock_market/evolution_summary.svg
+#     (milestone summary, sourced from `evolveDir`'s return value — issue #301).
 #
 # ⚠️ Teaching example only — not investment advice.
 
@@ -38,15 +40,6 @@ deno run \
 if [[ -f "docs/screenshots/stock_market.svg" ]]; then
   deno fmt docs/screenshots/stock_market.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/stock_market_evolution.svg" ]]; then
-  deno fmt docs/screenshots/stock_market_evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/stock_market/evolution.svg" ]]; then
-  deno fmt docs/screenshots/stock_market/evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/stock_market/fitness.svg" ]]; then
-  deno fmt docs/screenshots/stock_market/fitness.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/stock_market/topology.svg" ]]; then
-  deno fmt docs/screenshots/stock_market/topology.svg > /dev/null
+if [[ -f "docs/screenshots/stock_market/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/stock_market/evolution_summary.svg > /dev/null
 fi

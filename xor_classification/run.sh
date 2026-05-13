@@ -4,8 +4,11 @@ set -euo pipefail
 # XOR Classification Example Runner
 #
 # Evolves a NEAT-AI classifier that learns the XOR truth table, saves
-# the champion creature, and writes an SVG visualisation of the
-# decision boundary to docs/screenshots/xor_decision_boundary.svg.
+# the champion creature, and writes:
+#
+#   - docs/screenshots/xor_decision_boundary.svg
+#   - docs/screenshots/xor_classification/evolution_summary.svg
+#     (milestone summary, sourced from `evolveDir`'s return value — issue #301).
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -34,15 +37,6 @@ deno run \
 if [[ -f "docs/screenshots/xor_decision_boundary.svg" ]]; then
   deno fmt docs/screenshots/xor_decision_boundary.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/xor_classification/evolution.svg" ]]; then
-  deno fmt docs/screenshots/xor_classification/evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/xor_classification/fitness.svg" ]]; then
-  deno fmt docs/screenshots/xor_classification/fitness.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/xor_classification/topology.svg" ]]; then
-  deno fmt docs/screenshots/xor_classification/topology.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/xor_classification_evolution.svg" ]]; then
-  deno fmt docs/screenshots/xor_classification_evolution.svg > /dev/null
+if [[ -f "docs/screenshots/xor_classification/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/xor_classification/evolution_summary.svg > /dev/null
 fi

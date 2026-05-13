@@ -1,5 +1,6 @@
 /**
- * Stock Market Direction Prediction Example (audit #218).
+ * Stock Market Direction Prediction Example (audit #218,
+ * per-generation telemetry retired under #301).
  *
  * Evolves a NEAT-AI network from a **minimal seed** to predict
  * next-period direction (up/down) on the public S&P 500 monthly-close
@@ -16,12 +17,13 @@
  * Hidden neurons are not pre-built — they emerge purely from NEAT-AI's
  * own structural mutation operators while `evolveDir` runs.
  *
- * Categorisation (audit #203). The training task is a pre-generated
- * binary `(window, target)` regression set, so the example uses the
- * canonical "binary `.bin` + `evolveDir`" path with `feedbackLoop`
- * unset (forward-only). Per-step `activate()` is reserved for
- * interactive simulations and reinforcement-learning agents — neither
- * applies here.
+ * Under #301 the per-generation `onTrainingEvent` hook, the chunked
+ * `evolveDir` loop, and the multi-panel checkpoint strip were removed
+ * in favour of NEAT-AI's supported milestone-only telemetry surface
+ * (see [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298)
+ * for the decision record). The run now makes one `evolveDir` call and
+ * renders a single milestone summary SVG from its return value via the
+ * shared `EvolveDirSummary` helper from #284.
  *
  * Stop conditions (audit #218):
  *   - `targetError`     — per-example reasonable mean-squared error
@@ -31,8 +33,7 @@
  *                         not reach the floor and exits via the
  *                         secondary safety backstop.
  *   - `timeoutMinutes`  — 5-minute wall-clock backstop mandated by
- *                         #218. The library requires a positive
- *                         integer.
+ *                         #218.
  *
  * ⚠️ Teaching example only — not investment advice.
  */
@@ -50,13 +51,7 @@ import {
 
 import { fetchDataset } from "../common/data_cache.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import {
-  captureSnapshot,
-  loadSnapshots,
-  type SnapshotConfig,
-} from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
   buildSamples,
   type DataSplit,
@@ -95,44 +90,8 @@ export const DATASET_PATH = join(STOCK_ROOT, "data", "prices.csv");
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/stock_market.svg";
 
-/** Path to the multi-panel evolution-progression SVG the runner emits. */
-export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/stock_market_evolution.svg";
-
-/** Path to the per-generation evolution-chart SVG the runner emits. */
-export const EVOLUTION_CHART_PATH = "docs/screenshots/stock_market/evolution.svg";
-
-/** Per-generation evolution-telemetry CSV path (audit #218). */
-export const EVOLUTION_CSV_PATH = "docs/data/stock_market/evolution.csv";
-
-/** CSV header — matches the schema mandated by issue #218. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path (audit #218). */
-export const FITNESS_SVG_PATH = "docs/screenshots/stock_market/fitness.svg";
-
-/** Neuron / synapse count chart path (audit #218). */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/stock_market/topology.svg";
-
-/** Hidden directory under which snapshot files are written. */
-export const SNAPSHOTS_DIR = ".synthetic-stock/snapshots";
-
-/**
- * Generations at which the runner captures evolution snapshots. The
- * cadence is the canonical NEAT-AI strip; checkpoints past the
- * configured `maxGenerations` simply do not fire.
- */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 50, 100, 200];
-
-/**
- * Iterations per inner `evolveDir` chunk. Each chunk refreshes the
- * passed-in creature in place, so chunking the run gives the CSV / SVG
- * charts visible step changes in neuron / synapse counts as NEAT
- * mutates the topology. The value matches the convention used by
- * `xor_classification.ts` and `mcmc_acceptance.ts` so all audited
- * examples keep telemetry resolution aligned.
- */
-const TELEMETRY_CHUNK_ITERATIONS = 25;
+/** Milestone summary SVG path — sourced from `evolveDir`'s return value (#301). */
+export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/stock_market/evolution_summary.svg";
 
 /** Configuration options for {@link evolveStockController}. */
 export interface EvolveOptions {
@@ -174,49 +133,12 @@ export interface EvolveOptions {
   mutationAmount: number;
   /** Number of inputs (window size). Default {@link WINDOW_SIZE}. */
   windowSize: number;
-  /** Optional callback invoked once per generation with progress info. */
-  onGeneration?: (info: GenerationInfo) => void;
-  /**
-   * Optional snapshot configuration. When supplied, the running champion
-   * is captured at every generation matching `snapshotConfig.checkpoints`
-   * and written to `snapshotConfig.outputDir`.
-   */
-  snapshotConfig?: SnapshotConfig;
   /**
    * Existing data directory containing the binary training file. When
    * omitted the caller is expected to populate the directory before
    * calling — see {@link writeStockTrainingDataset}.
    */
   dataDir: string;
-}
-
-/** Statistics emitted after each generation. */
-export interface GenerationInfo {
-  generation: number;
-  /** Best fitness in this generation (max across the population). */
-  bestFitness: number;
-  /** Best mean-squared error in this generation (≈ `1 - bestFitness`). */
-  bestError: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of the champion creature for this generation. */
-  neurons: number;
-  /** Synapse count of the champion creature for this generation. */
-  synapses: number;
-}
-
-/** One row of per-generation evolution telemetry (audit issue #218). */
-export interface EvolutionRow {
-  /** 1-based generation index. */
-  generation: number;
-  /** Best fitness in this generation (max across the population). */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
 }
 
 /** Result of the evolutionary search. */
@@ -230,6 +152,8 @@ export interface EvolveResult {
   generations: number;
   /** True when the champion's training error fell below `errorThreshold`. */
   solved: boolean;
+  /** Milestone summary built from `evolveDir`'s return value (issue #301). */
+  summary: EvolveDirSummary;
 }
 
 /**
@@ -318,33 +242,16 @@ export function writeStockTrainingDataset(
 }
 
 /**
- * Compute the schedule of segment endpoints. The list always ends at
- * `maxGenerations`. Checkpoint values that fall within
- * `[1, maxGenerations]` become extra segment boundaries so a snapshot
- * can be captured at exactly that generation.
- */
-export function planSegments(
-  checkpoints: readonly number[],
-  maxGenerations: number,
-): number[] {
-  const set = new Set<number>();
-  for (const c of checkpoints) {
-    if (c >= 1 && c <= maxGenerations) set.add(c);
-  }
-  set.add(maxGenerations);
-  return [...set].sort((a, b) => a - b);
-}
-
-/**
  * Run NEAT structural evolution to learn next-period direction.
  *
  * The runner builds the **uniform-random seed creature** via
  * {@link buildRandomSeedCreature} (no hidden neurons, random weights and
  * output bias from the seeded PRNG) and delegates structural mutation
- * to the library via `creature.evolveDir(dataDir, ...)`. Snapshots are
- * captured at `options.snapshotConfig.checkpoints` by splitting the run
- * into segments that end at each checkpoint, allowing the running
- * champion (and its discovered topology) to be recorded as it grows.
+ * to the library via `creature.evolveDir(dataDir, ...)`. One call
+ * covers the whole budget; the return value's
+ * `{ error, score, time, generation }` fields plus the seed and final
+ * topology counts feed an {@link EvolveDirSummary} for the milestone
+ * summary chart (issue #301).
  *
  * Determinism: the seed flows through `NeatOptions.seed` and is also
  * used to construct the initial creature, so two runs with the same
@@ -357,129 +264,56 @@ export async function evolveStockController(options: EvolveOptions): Promise<Evo
   }
 
   const creature = Creature.fromJSON(buildRandomSeedCreature(options.seed, options.windowSize));
+  const seedNeurons = creature.neurons.length;
+  const seedSynapses = creature.synapses.length;
 
-  const checkpoints = options.snapshotConfig ? [...options.snapshotConfig.checkpoints] : [];
-  const segmentEnds = planSegments(checkpoints, options.maxGenerations);
+  const neatOptions: NeatOptions = {
+    seed: options.seed,
+    populationSize: options.populationSize,
+    iterations: options.maxGenerations,
+    targetError: Math.max(0, Math.min(1, options.errorThreshold)),
+    ...(options.timeoutMinutes > 0
+      ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
+      : {}),
+    // No `feedbackLoop` key → engine runs forward-only, the canonical
+    // mode for binary `.bin` regression sets.
+    costOfGrowth: 0,
+    mutationRate: options.mutationRate,
+    mutationAmount: options.mutationAmount,
+    verbose: false,
+    log: 0,
+    threads: 1,
+  };
 
-  let priorGenerations = 0;
-  let lastError = Number.POSITIVE_INFINITY;
-  let lastScore = -Infinity;
-  let solved = false;
+  const start = Date.now();
+  const result = await creature.evolveDir(options.dataDir, neatOptions);
+  const wallClockMs = Date.now() - start;
 
-  // Read the live `creature.neurons` / `creature.synapses` arrays
-  // rather than `exportJSON()` — the latter produces a compacted /
-  // canonicalised view that does not always reflect mid-run structural
-  // growth, while the live arrays do (matching the pattern used by
-  // `xor_classification.ts`, issue #205).
-  const countTopology = () => ({
-    neurons: creature.neurons.length,
-    synapses: creature.synapses.length,
-  });
-  let topology = countTopology();
+  const finalError = Number.isFinite(result.error) ? result.error : 0;
+  const finalScore = Number.isFinite(result.score) ? result.score : 0;
+  const generations = Math.max(1, result.generation ?? 1);
+  const solved = finalError <= options.errorThreshold;
 
-  for (const endGen of segmentEnds) {
-    const segmentIterations = endGen - priorGenerations;
-    if (segmentIterations <= 0) continue;
-
-    let segmentEvolved = 0;
-    while (segmentEvolved < segmentIterations) {
-      const remaining = segmentIterations - segmentEvolved;
-      const chunkIterations = Math.min(TELEMETRY_CHUNK_ITERATIONS, remaining);
-      topology = countTopology();
-
-      const chunkOffset = priorGenerations;
-      const neatOptions: NeatOptions = {
-        seed: options.seed + chunkOffset,
-        populationSize: options.populationSize,
-        iterations: chunkIterations,
-        targetError: Math.max(0, Math.min(1, options.errorThreshold)),
-        // Audit policy: 5-minute safety backstop. Tests pass 0 to skip
-        // because activating the option loads NEAT-AI's GPU / discovery
-        // dynamic library that Deno's --allow-ffi sanitizer flags.
-        ...(options.timeoutMinutes > 0
-          ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
-          : {}),
-        // No `feedbackLoop` key → engine runs forward-only, the
-        // canonical mode for binary `.bin` regression sets.
-        costOfGrowth: 0,
-        mutationRate: options.mutationRate,
-        mutationAmount: options.mutationAmount,
-        verbose: false,
-        log: 0,
-        threads: 1,
-        onTrainingEvent: (event) => {
-          if (event.kind !== "generation_complete") return;
-          const fitness = event.bestFitness;
-          // score = 1 - error - growthPenalty. With costOfGrowth=0 the
-          // growth penalty is 0, so error ≈ 1 - fitness within 1e-6.
-          const error = Math.max(0, 1 - fitness);
-          options.onGeneration?.({
-            generation: chunkOffset + event.generation,
-            bestFitness: fitness,
-            bestError: error,
-            meanFitness: event.averageFitness,
-            neurons: topology.neurons,
-            synapses: topology.synapses,
-          });
-        },
-      };
-
-      const result = await creature.evolveDir(options.dataDir, neatOptions);
-      const completed = result.generation ?? chunkIterations;
-      priorGenerations += completed;
-      segmentEvolved += completed;
-      lastError = result.error;
-      lastScore = result.score;
-
-      // Per-generation events fired during evolveDir capture the
-      // chunk's starting topology — NEAT-AI's structural mutations
-      // happen inside the call and the live `creature` arrays only
-      // reflect them once it returns. Emit one "post-chunk" event so
-      // the CSV / SVG charts pick up topology growth that landed
-      // during the chunk.
-      const postTopology = countTopology();
-      if (
-        postTopology.neurons !== topology.neurons ||
-        postTopology.synapses !== topology.synapses
-      ) {
-        options.onGeneration?.({
-          generation: priorGenerations,
-          bestFitness: lastScore,
-          bestError: Math.max(0, lastError),
-          meanFitness: Number.NaN,
-          neurons: postTopology.neurons,
-          synapses: postTopology.synapses,
-        });
-      }
-
-      if (lastError <= options.errorThreshold) {
-        solved = true;
-        break;
-      }
-      if (completed < chunkIterations) break;
-    }
-    topology = countTopology();
-
-    // Capture a snapshot whenever this segment ends on a configured
-    // checkpoint.
-    if (options.snapshotConfig && checkpoints.includes(endGen)) {
-      captureSnapshot(
-        options.snapshotConfig,
-        endGen,
-        creature.exportJSON() as unknown,
-        lastScore,
-      );
-    }
-
-    if (solved) break;
-  }
+  const summary: EvolveDirSummary = {
+    finalError,
+    finalScore,
+    wallClockMs,
+    generations,
+    seedNeurons,
+    seedSynapses,
+    finalNeurons: creature.neurons.length,
+    finalSynapses: creature.synapses.length,
+    targetError: options.errorThreshold,
+    ...(options.timeoutMinutes > 0 ? { timeoutMinutes: options.timeoutMinutes } : {}),
+  };
 
   return {
     champion: creature,
-    bestFitness: lastScore,
-    bestError: lastError,
-    generations: priorGenerations,
+    bestFitness: finalScore,
+    bestError: finalError,
+    generations,
     solved,
+    summary,
   };
 }
 
@@ -620,231 +454,6 @@ export async function loadPrices(path: string = DATASET_PATH): Promise<PricePoin
   return parsePriceCSV(text);
 }
 
-/**
- * Format a finite number for CSV emission. Trailing zeros are trimmed
- * so byte-deterministic identical inputs produce one canonical string.
- */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-// ---- Telemetry SVG renderers -------------------------------------------
-// Two purpose-built charts requested by issue #218: best/mean fitness on
-// one chart, neuron/synapse count on another. Pure string emission to
-// match the convention used by xor_classification.ts and
-// mcmc_acceptance.ts.
-const TELEMETRY_SVG_WIDTH = 720;
-const TELEMETRY_SVG_HEIGHT = 320;
-const TELEMETRY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
-
-interface PolylinePoint {
-  x: number;
-  y: number;
-}
-
-function buildPolyline(points: readonly PolylinePoint[]): string {
-  return points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
-}
-
-/**
- * Render a two-line chart: best fitness (blue) and mean fitness
- * (orange) versus generation. Throws if `rows` is empty.
- */
-export function renderFitnessChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderFitnessChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const allFitness = rows.flatMap((r) => [r.bestFitness, r.meanFitness]).filter(
-    Number.isFinite,
-  );
-  const minF = allFitness.length > 0 ? Math.min(...allFitness) : 0;
-  const maxF = allFitness.length > 0 ? Math.max(...allFitness) : 1;
-  const fSpan = (maxF - minF) || 1;
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const yScale = (f: number) => innerY + innerH - ((f - minF) / fSpan) * innerH;
-  const safeY = (f: number): number => Number.isFinite(f) ? yScale(f) : (innerY + innerH);
-
-  const bestPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: safeY(r.bestFitness),
-  }));
-  const meanPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: safeY(r.meanFitness),
-  }));
-
-  const yTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const v = minF + t * fSpan;
-    const ty = innerY + innerH - t * innerH;
-    yTicks.push(
-      `    <line x1="${innerX.toFixed(2)}" y1="${ty.toFixed(2)}" ` +
-        `x2="${(innerX + innerW).toFixed(2)}" y2="${ty.toFixed(2)}" ` +
-        `stroke="#eeeeee" stroke-width="0.6"/>`,
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ty + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#444">` +
-        `${v.toFixed(3)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Stock-Market — best vs mean fitness per generation">`,
-    `  <title>Stock Market — Best vs Mean Fitness</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Stock Market — Best vs Mean Fitness</text>`,
-    yTicks.join("\n"),
-    `  <polyline class="best-fitness" fill="none" stroke="#1f77b4" stroke-width="2" ` +
-    `points="${buildPolyline(bestPts)}"/>`,
-    `  <polyline class="mean-fitness" fill="none" stroke="#ff7f0e" stroke-width="1.4" ` +
-    `stroke-dasharray="4 3" points="${buildPolyline(meanPts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 178).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="172" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#1f77b4" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `best fitness</text>`,
-    `    <line x1="${(innerX + innerW - 168).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 144).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#ff7f0e" stroke-width="1.4" stroke-dasharray="4 3"/>`,
-    `    <text x="${(innerX + innerW - 138).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `mean fitness</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
-/**
- * Render the neuron / synapse count chart for the README. Two lines
- * share an X axis; the right Y axis shows synapse counts on a separate
- * scale so the synapse line does not compress the neuron line into
- * invisibility.
- */
-export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderTopologyChartSvg requires at least one row");
-  }
-  const innerW = TELEMETRY_SVG_WIDTH - TELEMETRY_MARGIN.left - TELEMETRY_MARGIN.right;
-  const innerH = TELEMETRY_SVG_HEIGHT - TELEMETRY_MARGIN.top - TELEMETRY_MARGIN.bottom;
-  const innerX = TELEMETRY_MARGIN.left;
-  const innerY = TELEMETRY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const neurons = rows.map((r) => r.neuronCount);
-  const synapses = rows.map((r) => r.synapseCount);
-  const maxNeurons = Math.max(...neurons, 1);
-  const maxSynapses = Math.max(...synapses, 1);
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
-  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
-
-  const neuronPts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: neuronY(r.neuronCount),
-  }));
-  const synapsePts = rows.map((r) => ({
-    x: xScale(r.generation),
-    y: synapseY(r.synapseCount),
-  }));
-
-  const leftTicks: string[] = [];
-  const rightTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const ly = innerY + innerH - t * innerH;
-    leftTicks.push(
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
-        `${(t * maxNeurons).toFixed(0)}</text>`,
-    );
-    rightTicks.push(
-      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
-        `${(t * maxSynapses).toFixed(0)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TELEMETRY_SVG_WIDTH} ${TELEMETRY_SVG_HEIGHT}" ` +
-    `width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Stock-Market — neuron and synapse counts per generation">`,
-    `  <title>Stock Market — Topology Growth</title>`,
-    `  <rect width="${TELEMETRY_SVG_WIDTH}" height="${TELEMETRY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TELEMETRY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Stock Market — Topology Growth</text>`,
-    leftTicks.join("\n"),
-    rightTicks.join("\n"),
-    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
-    `points="${buildPolyline(neuronPts)}"/>`,
-    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
-    `stroke-dasharray="6 3" points="${buildPolyline(synapsePts)}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#2ca02c" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `neurons (left axis)</text>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `synapses (right axis)</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
-
 if (import.meta.main) {
   const start = Date.now();
 
@@ -881,51 +490,16 @@ if (import.meta.main) {
   console.log(`📦 Wrote training set to ${trainBin}`);
 
   console.log("\n🧬 Evolving controller from a minimal NEAT seed via evolveDir...");
-  ensureDirSync(SNAPSHOTS_DIR);
-  for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
-    if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
-  }
-  const evolutionSamples: EvolutionSample[] = [];
-  const evolutionRows: EvolutionRow[] = [];
-  const evolutionStart = Date.now();
   const result = await evolveStockController({
     ...DEFAULT_EVOLVE_OPTIONS,
     dataDir,
-    snapshotConfig: {
-      checkpoints: [...EVOLUTION_CHECKPOINTS],
-      outputDir: SNAPSHOTS_DIR,
-    },
-    onGeneration: ({ generation, bestFitness, bestError, meanFitness, neurons, synapses }) => {
-      evolutionSamples.push({ generation, score: bestFitness, neurons, synapses });
-      evolutionRows.push({
-        generation,
-        bestFitness,
-        meanFitness,
-        neuronCount: neurons,
-        synapseCount: synapses,
-      });
-      if (
-        generation % 10 === 0 ||
-        bestError <= DEFAULT_EVOLVE_OPTIONS.errorThreshold ||
-        generation === DEFAULT_EVOLVE_OPTIONS.maxGenerations - 1
-      ) {
-        console.log(
-          `   Gen ${generation.toString().padStart(4)}  ` +
-            `bestFitness=${bestFitness.toFixed(4)}  ` +
-            `bestError=${bestError.toFixed(4)}  ` +
-            `meanFitness=${Number.isFinite(meanFitness) ? meanFitness.toFixed(4) : "n/a"}  ` +
-            `neurons=${neurons}  synapses=${synapses}`,
-        );
-      }
-    },
   });
 
-  const wallClockMs = Date.now() - evolutionStart;
   console.log(
     `\n${result.solved ? "✅ Solved" : "⚠️  Did not solve (within budget)"} ` +
       `after ${result.generations} generations ` +
       `(error=${result.bestError.toFixed(4)}, fitness=${result.bestFitness.toFixed(4)}, ` +
-      `wall-clock=${(wallClockMs / 1000).toFixed(1)}s).`,
+      `wall-clock=${(result.summary.wallClockMs / 1000).toFixed(1)}s).`,
   );
 
   // Save champion creature.
@@ -978,63 +552,22 @@ if (import.meta.main) {
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
 
-  // Render the per-generation evolution chart (best score / neurons / synapses).
-  if (evolutionSamples.length > 0) {
-    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
-      title: "Stock-Market — Evolution",
-      scoreLabel: "best fitness (1 - MSE)",
-    });
-    ensureDirSync("docs/screenshots/stock_market");
-    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
-    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
-  }
+  // Milestone summary SVG sourced from the evolveDir return value
+  // (issue #301): one chart, no per-generation telemetry.
+  ensureDirSync("docs/screenshots/stock_market");
+  const summarySvg = renderEvolveDirSummarySvg(result.summary, {
+    title: "Stock Market — evolveDir Run Summary",
+  });
+  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+  console.log(`📈 Wrote milestone summary ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
-  // Per-generation telemetry artefacts mandated by issue #218: CSV +
-  // best/mean fitness chart + neuron/synapse count chart.
-  if (evolutionRows.length > 0) {
-    ensureDirSync("docs/data/stock_market");
-    ensureDirSync("docs/screenshots/stock_market");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
-    console.log(
-      `🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`,
-    );
-    await Deno.writeTextFile(FITNESS_SVG_PATH, renderFitnessChartSvg(evolutionRows));
-    console.log(`📈 Wrote best/mean fitness chart ${FITNESS_SVG_PATH}`);
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(evolutionRows));
-    console.log(`📈 Wrote neuron/synapse chart ${TOPOLOGY_SVG_PATH}`);
-  }
-
-  // Render the multi-panel evolution-progression strip from the
-  // checkpoint snapshots captured during the run.
-  const snapshots = loadSnapshots(SNAPSHOTS_DIR);
-  if (snapshots.length > 0) {
-    const progressionSvg = renderEvolutionProgressSvg(snapshots, {
-      title: "Stock-Market — Evolution Progress",
-      caption: {
-        finalScore: result.bestFitness,
-        totalGenerations: result.generations,
-        wallClockMs,
-      },
-    });
-    await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
-    console.log(
-      `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
-        `(${snapshots.length} panels)`,
-    );
-  }
-
-  // Final summary line so the README can quote real measured numbers.
-  const finalRow = evolutionRows[evolutionRows.length - 1];
-  if (finalRow) {
-    console.log(
-      `\n🏁 Final generation ${finalRow.generation}: ` +
-        `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
-        `meanFitness=${
-          Number.isFinite(finalRow.meanFitness) ? finalRow.meanFitness.toFixed(4) : "n/a"
-        }  ` +
-        `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
-    );
-  }
+  console.log(
+    `\n🏁 Final summary: generations=${result.summary.generations}  ` +
+      `bestFitness=${result.summary.finalScore.toFixed(4)}  ` +
+      `bestError=${result.summary.finalError.toFixed(4)}  ` +
+      `seed=${result.summary.seedNeurons}/${result.summary.seedSynapses}  ` +
+      `final=${result.summary.finalNeurons}/${result.summary.finalSynapses}`,
+  );
   console.log(
     `🕒 Completed in ${format(Date.now() - start, { ignoreZero: true })}`,
   );

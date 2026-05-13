@@ -3,15 +3,18 @@
  * each test calls a real function and asserts on observable outputs
  * (predictions, fitness, file contents, SVG structure).
  *
- * Issue #148: the hand-crafted minimal-seed creature has been removed.
- * Tests previously named after `buildMinimalSeedCreature` now exercise
- * the uniform-random {@link buildRandomSeedCreature} replacement, and
- * the few assertions that depended on the all-zero scaffold (e.g. MSE
- * exactly 0.25) have been relaxed to the contract the random gen-1
- * creature still satisfies — finite outputs in `[0, 1]` and a
- * gen-1 score well below the solved threshold.
+ * Per issue #301, per-generation telemetry, snapshot strips, and the
+ * deprecated CSV / fitness / topology SVG renderers were removed in
+ * favour of the milestone-summary SVG built from `evolveDir`'s return
+ * value.
  */
-import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreater,
+  assertGreaterOrEqual,
+  assertThrows,
+} from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
@@ -21,23 +24,15 @@ import {
   correctCount,
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
   evolveXorController,
-  formatEvolutionCsv,
-  type GenerationInfo,
   INPUT_COUNT,
   meanSquaredError,
   OUTPUT_COUNT,
-  planSegments,
   predict,
-  renderFitnessChartSvg,
-  renderTopologyChartSvg,
   writeXorDataset,
   xorSamples,
 } from "./xor_classification.ts";
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderDecisionBoundarySVG, shadeColour } from "./svg.ts";
 
 Deno.test("xorSamples returns the four canonical truth-table rows", () => {
@@ -53,8 +48,6 @@ Deno.test("buildRandomSeedCreature has 2 inputs, 0 hidden, 1 output", () => {
   const json = buildRandomSeedCreature(12345);
   assertEquals(json.input, INPUT_COUNT);
   assertEquals(json.output, OUTPUT_COUNT);
-  // Two neurons in the export shape: only the output (inputs are implicit
-  // by `input` count). No hidden neurons — NEAT must invent them.
   const hidden = json.neurons.filter((n) => n.type === "hidden");
   assertEquals(
     hidden.length,
@@ -75,9 +68,6 @@ Deno.test("buildRandomSeedCreature produces a valid creature with finite outputs
 });
 
 Deno.test("buildRandomSeedCreature is deterministic for a given seed", () => {
-  // Same seed → identical export; different seed → different export.
-  // No hand-crafted scaffold: every neuron, weight, and bias is drawn
-  // from the seeded PRNG.
   const a = buildRandomSeedCreature(4242);
   const b = buildRandomSeedCreature(4242);
   const c = buildRandomSeedCreature(9999);
@@ -99,9 +89,6 @@ Deno.test("predict returns a number in [0, 1] for the random seed creature", () 
 });
 
 Deno.test("meanSquaredError on the random seed is in [0, 1] and finite", () => {
-  // The random seed has zero hidden neurons and random direct weights, so
-  // it cannot represent XOR. Per-sample squared error is bounded by 1
-  // (LOGISTIC output ∈ [0, 1] vs target ∈ {0, 1}).
   const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const mse = meanSquaredError(creature);
   assert(Number.isFinite(mse));
@@ -123,7 +110,6 @@ Deno.test("writeXorDataset emits a binary file with exactly four records", () =>
     assertEquals(existsSync(path), true);
     const bytes = Deno.readFileSync(path);
     const stride = INPUT_COUNT + OUTPUT_COUNT;
-    // 4 samples * 3 floats * 4 bytes = 48 bytes.
     assertEquals(bytes.length, 4 * stride * 4);
     const view = new Float32Array(bytes.buffer, bytes.byteOffset, 4 * stride);
     for (let i = 0; i < 4; i++) {
@@ -137,31 +123,14 @@ Deno.test("writeXorDataset emits a binary file with exactly four records", () =>
   }
 });
 
-Deno.test("planSegments inserts every in-budget checkpoint and ends at maxGenerations", () => {
-  // Mixed checkpoints — some in budget, some out — must be deduped,
-  // sorted, and the budget endpoint must always be present.
-  assertEquals(planSegments([1, 10, 100, 1000, 10000], 50), [1, 10, 50]);
-  assertEquals(planSegments([1, 5], 5), [1, 5]);
-  assertEquals(planSegments([], 7), [7]);
-  // Checkpoints past the budget never become segment ends.
-  assertEquals(planSegments([1000], 10), [10]);
-});
-
 Deno.test(
   "evolveXorController solves XOR and grows hidden neurons (happy path)",
   async () => {
-    // Reduced budget: small population + capped generations to stay
-    // inside the 120-second per-test budget while still giving NEAT
-    // room to invent a hidden neuron and solve XOR from random noise.
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
       populationSize: 30,
       maxGenerations: 400,
-      // Tests skip the wall-clock backstop. NEAT-AI activates a
-      // GPU/discovery code path under `timeoutMinutes` whose dynamic
-      // library load Deno's --allow-ffi sanitizer treats as a leak; the
-      // production runner still exercises that path via
-      // `DEFAULT_EVOLVE_OPTIONS.timeoutMinutes`.
+      // Tests skip the wall-clock backstop — see DEFAULT_EVOLVE_OPTIONS.
       timeoutMinutes: 0,
     });
     assertEquals(
@@ -197,36 +166,6 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveXorController emits GenerationInfo whose fields are finite numbers",
-  async () => {
-    const samples: GenerationInfo[] = [];
-    await evolveXorController({
-      ...DEFAULT_EVOLVE_OPTIONS,
-      maxGenerations: 3,
-      populationSize: 6,
-      errorThreshold: 0, // unreachable in three generations
-      timeoutMinutes: 0, // skip wall-clock backstop in tests (see "happy path")
-      onGeneration: (info) => samples.push(info),
-    });
-    assertGreater(samples.length, 0);
-    for (const s of samples) {
-      assertEquals(typeof s.neurons, "number");
-      assertEquals(typeof s.synapses, "number");
-      assertEquals(Number.isInteger(s.neurons), true);
-      assertEquals(Number.isInteger(s.synapses), true);
-      assertGreater(s.neurons, 0);
-      assertGreaterOrEqual(s.synapses, 0);
-      // Best-fitness / best-error must be finite — they reflect the
-      // captured champion. `meanFitness` may be NaN early on when the
-      // library has not yet evaluated every member, so we do not
-      // assert finiteness on the population-mean field.
-      assert(Number.isFinite(s.bestFitness), `bestFitness must be finite, got ${s.bestFitness}`);
-      assert(Number.isFinite(s.bestError), `bestError must be finite, got ${s.bestError}`);
-    }
-  },
-);
-
-Deno.test(
   "evolveXorController is deterministic for a fixed seed",
   async () => {
     const opts = {
@@ -235,11 +174,10 @@ Deno.test(
       populationSize: 6,
       maxGenerations: 3,
       errorThreshold: 0,
-      timeoutMinutes: 0, // skip wall-clock backstop in tests (see "happy path")
+      timeoutMinutes: 0,
     };
     const a = await evolveXorController(opts);
     const b = await evolveXorController(opts);
-    // Same seed must produce the same champion topology and weights.
     assertEquals(
       JSON.stringify(a.champion.exportJSON()),
       JSON.stringify(b.champion.exportJSON()),
@@ -252,60 +190,97 @@ Deno.test(
 Deno.test(
   "evolveXorController honours the hard generation cap when the threshold is unreachable",
   async () => {
-    // errorThreshold=0 is unreachable in two generations from random
-    // noise; the run must still terminate at maxGenerations and return
-    // a usable champion (no infinite loop).
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 2,
       populationSize: 6,
       errorThreshold: 0,
-      timeoutMinutes: 0, // skip wall-clock backstop in tests (see "happy path")
+      timeoutMinutes: 0,
     });
     assertEquals(result.solved, false);
     assertGreaterOrEqual(result.generations, 1);
-    // The library may run a small number of additional iterations
-    // inside a single segment, but the loop must not exceed a small
-    // multiple of `maxGenerations` — i.e. the cap is honoured at the
-    // segment-loop level so the run cannot wedge indefinitely.
+    // The cap is honoured at the evolveDir level so the run cannot
+    // wedge indefinitely. NEAT-AI may run a small number of additional
+    // iterations inside a single segment.
     assertGreaterOrEqual(20, result.generations);
-    // Champion is a real Creature that activates without throwing.
     const out = predict(result.champion, [0, 1]);
     assert(Number.isFinite(out), `champion output must be finite, got ${out}`);
   },
 );
 
 Deno.test(
-  "evolveXorController gen-1 snapshot has a poor score (well below the threshold)",
+  "evolveXorController returns a milestone EvolveDirSummary with finite numeric fields",
   async () => {
-    // Verify the noise → competent narrative: the captured gen-1
-    // snapshot must demonstrably be far from solving XOR. With random
-    // direct-only weights (no hidden neurons) the best-case MSE is at
-    // least the linear-baseline plateau of 0.25, so `1 - MSE` cannot
-    // reach the solved threshold of `1 - errorThreshold` (= 0.95).
-    const tmp = Deno.makeTempDirSync({ prefix: "xor_gen1_test_" });
-    try {
-      await evolveXorController({
-        ...DEFAULT_EVOLVE_OPTIONS,
-        maxGenerations: 1,
-        populationSize: 6,
-        errorThreshold: 0,
-        timeoutMinutes: 0, // skip wall-clock backstop in tests
-        snapshotConfig: { checkpoints: [1], outputDir: tmp },
-      });
-      const snaps = loadSnapshots(tmp);
-      assertEquals(snaps.length, 1);
-      const gen1 = snaps[0];
-      assertEquals(gen1.generation, 1);
-      const solvedScore = 1 - DEFAULT_EVOLVE_OPTIONS.errorThreshold;
-      assertGreater(
-        solvedScore,
-        gen1.score,
-        `gen-1 score (${gen1.score}) must be below the solved threshold (${solvedScore})`,
-      );
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
+    const result = await evolveXorController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 3,
+      populationSize: 6,
+      errorThreshold: 0,
+      timeoutMinutes: 0,
+    });
+    const s = result.summary;
+    assert(Number.isFinite(s.finalError));
+    assert(Number.isFinite(s.finalScore));
+    assert(Number.isFinite(s.wallClockMs));
+    assert(Number.isInteger(s.generations));
+    assertGreaterOrEqual(s.generations, 1);
+    assertGreater(s.seedNeurons, 0);
+    assertGreaterOrEqual(s.seedSynapses, 0);
+    assertGreater(s.finalNeurons, 0);
+    assertGreaterOrEqual(s.finalSynapses, 0);
+    assertEquals(s.targetError, 0);
+    // Tests pass timeoutMinutes=0 so the field should be omitted.
+    assertEquals(s.timeoutMinutes, undefined);
+  },
+);
+
+Deno.test(
+  "evolveXorController milestone summary renders an SVG containing each numeric callout",
+  async () => {
+    const result = await evolveXorController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      maxGenerations: 3,
+      populationSize: 6,
+      errorThreshold: 0,
+      timeoutMinutes: 0,
+    });
+    const svg = renderEvolveDirSummarySvg(result.summary, {
+      title: "XOR Classification — evolveDir Run Summary",
+    });
+    assert(svg.startsWith("<svg"));
+    assert(svg.includes("</svg>"));
+    // Each numeric callout from the summary surfaces in the SVG.
+    assert(svg.includes(String(result.summary.generations)));
+    assert(svg.includes(String(result.summary.seedNeurons)));
+    assert(svg.includes(String(result.summary.seedSynapses)));
+    assert(svg.includes(String(result.summary.finalNeurons)));
+    assert(svg.includes(String(result.summary.finalSynapses)));
+    assert(svg.includes("final error"));
+    assert(svg.includes("final score"));
+    assert(svg.includes("wall clock"));
+    assert(!svg.includes("NaN"));
+    assert(!svg.includes("Infinity"));
+  },
+);
+
+Deno.test(
+  "renderEvolveDirSummarySvg rejects a summary with missing numeric fields",
+  () => {
+    const badSummary = {
+      finalError: Number.NaN,
+      finalScore: 0.5,
+      wallClockMs: 100,
+      generations: 10,
+      seedNeurons: 3,
+      seedSynapses: 2,
+      finalNeurons: 5,
+      finalSynapses: 6,
+    } as EvolveDirSummary;
+    assertThrows(
+      () => renderEvolveDirSummarySvg(badSummary),
+      Error,
+      "finalError",
+    );
   },
 );
 
@@ -319,7 +294,6 @@ Deno.test("shadeColour clamps and produces a hex colour string", () => {
 });
 
 Deno.test("renderDecisionBoundarySVG produces a well-formed SVG with all four samples", () => {
-  // Use the random seed; the test only cares about SVG structure.
   const creature = Creature.fromJSON(buildRandomSeedCreature(12345));
   const svg = renderDecisionBoundarySVG(creature, {
     gridResolution: 8,
@@ -388,125 +362,6 @@ Deno.test("renderDecisionBoundarySVG embeds SMIL pulse animations on each sample
 });
 
 Deno.test(
-  "evolveXorController writes evolution snapshots and the strip SVG embeds one panel per snapshot",
-  async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "xor_snapshots_test_" });
-    try {
-      const checkpoints = [1, 2, 3];
-      await evolveXorController({
-        ...DEFAULT_EVOLVE_OPTIONS,
-        // Force the loop to keep running long enough that all
-        // checkpoints fire even if the run otherwise solves early.
-        errorThreshold: 0,
-        maxGenerations: 4,
-        populationSize: 6,
-        timeoutMinutes: 0, // skip wall-clock backstop in tests
-        snapshotConfig: { checkpoints, outputDir: tmp },
-      });
-
-      // Each configured checkpoint writes a snapshot file.
-      for (const gen of checkpoints) {
-        assertEquals(
-          existsSync(join(tmp, `snapshot-gen-${gen}.json`)),
-          true,
-          `expected snapshot-gen-${gen}.json to exist`,
-        );
-      }
-
-      const snapshots = loadSnapshots(tmp);
-      assertEquals(snapshots.length, checkpoints.length);
-
-      const svg = renderEvolutionProgressSvg(snapshots, {
-        title: "XOR Classification — Evolution Progress",
-      });
-      assert(svg.startsWith("<svg"), "must start with <svg>");
-      assert(svg.length > 0, "SVG must be non-empty");
-      const panels = svg.match(/<g class="panel"/g) ?? [];
-      assertEquals(
-        panels.length,
-        checkpoints.length,
-        `expected one panel per snapshot, got ${panels.length}`,
-      );
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
-  },
-);
-
-Deno.test("formatEvolutionCsv emits the canonical header and one row per sample", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.5, meanFitness: 0.25, neuronCount: 3, synapseCount: 2 },
-    { generation: 2, bestFitness: 0.75, meanFitness: 0.4, neuronCount: 4, synapseCount: 3 },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines.length, 1 + rows.length);
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "1,0.5,0.25,3,2");
-  assertEquals(lines[2], "2,0.75,0.4,4,3");
-});
-
-Deno.test("formatEvolutionCsv handles empty input and trailing newline", () => {
-  const empty = formatEvolutionCsv([]);
-  assertEquals(empty, EVOLUTION_CSV_HEADER + "\n");
-  const single = formatEvolutionCsv([
-    { generation: 7, bestFitness: 0.123456789, meanFitness: NaN, neuronCount: 5, synapseCount: 6 },
-  ]);
-  // NaN must serialise as "0" and floats are trimmed to six significant digits
-  // beyond the decimal point.
-  assert(single.endsWith("\n"), "CSV must end with a single newline");
-  const lines = single.trim().split("\n");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-  assertEquals(lines[1], "7,0.123457,0,5,6");
-});
-
-Deno.test("renderFitnessChartSvg produces a well-formed SVG referencing both fitness lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 3, synapseCount: 2 },
-    { generation: 2, bestFitness: 0.8, meanFitness: 0.5, neuronCount: 4, synapseCount: 3 },
-  ];
-  const svg = renderFitnessChartSvg(rows);
-  assert(svg.startsWith("<svg"));
-  assert(svg.includes("</svg>"));
-  assert(svg.includes('class="best-fitness"'), "must emit the best-fitness polyline");
-  assert(svg.includes('class="mean-fitness"'), "must emit the mean-fitness polyline");
-  assert(svg.includes("Best vs Mean Fitness"));
-});
-
-Deno.test("renderFitnessChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderFitnessChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw, "expected an error for empty input");
-});
-
-Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both count lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 3, synapseCount: 2 },
-    { generation: 5, bestFitness: 0.95, meanFitness: 0.7, neuronCount: 6, synapseCount: 9 },
-  ];
-  const svg = renderTopologyChartSvg(rows);
-  assert(svg.startsWith("<svg"));
-  assert(svg.includes("</svg>"));
-  assert(svg.includes('class="neuron-count"'), "must emit the neuron polyline");
-  assert(svg.includes('class="synapse-count"'), "must emit the synapse polyline");
-  assert(svg.includes("Topology Growth"));
-});
-
-Deno.test("renderTopologyChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderTopologyChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assert(threw, "expected an error for empty input");
-});
-
-Deno.test(
   "evolveXorController honours the timeoutMinutes backstop without throwing",
   // Activating the 5-minute backstop loads NEAT-AI's GPU/discovery
   // cleanup machinery, which Deno's test sanitizer reports as a leaked
@@ -517,9 +372,6 @@ Deno.test(
   // option is still verified end-to-end.
   { sanitizeOps: false, sanitizeResources: false },
   async () => {
-    // The 5-minute audit backstop is mandated by issue #205. The
-    // library requires a positive integer; we verify the option is
-    // accepted by running a short evolveDir end-to-end.
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
       maxGenerations: 3,
@@ -528,6 +380,8 @@ Deno.test(
       timeoutMinutes: 5,
     });
     assertGreaterOrEqual(result.generations, 1);
+    // timeoutMinutes is forwarded to the summary caption.
+    assertEquals(result.summary.timeoutMinutes, 5);
     const out = predict(result.champion, [0, 1]);
     assert(Number.isFinite(out));
   },
