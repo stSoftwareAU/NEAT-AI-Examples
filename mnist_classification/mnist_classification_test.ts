@@ -37,11 +37,14 @@ import {
   buildGridCells,
   classificationAccuracy,
   confusionMatrix,
+  EVOLUTION_SUMMARY_SVG_PATH,
   inferStopCondition,
+  type MnistRunSummary,
   pickGridSamples,
   predict,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
 
 /**
@@ -514,6 +517,108 @@ Deno.test("inferStopCondition reports targetError when the run finishes well ins
   assertEquals(inferStopCondition(60_000, 10), "targetError");
   // 1-minute budget, used 30 s → targetError.
   assertEquals(inferStopCondition(30_000, 1), "targetError");
+});
+
+Deno.test("EVOLUTION_SUMMARY_SVG_PATH points at the example's docs/screenshots sub-directory", () => {
+  // Sanity-check the constant the runner uses to write the milestone
+  // summary SVG. The README embeds this exact relative path.
+  assertEquals(
+    EVOLUTION_SUMMARY_SVG_PATH,
+    "docs/screenshots/mnist_classification/evolution_summary.svg",
+  );
+});
+
+Deno.test("MnistRunSummary round-trips the three new evolveDir milestone fields", () => {
+  const summary: MnistRunSummary = {
+    trainingRecords: 60_000,
+    evolveWallClockMs: 610_032,
+    targetError: 0.001,
+    timeoutMinutes: 10,
+    seedNeurons: 794,
+    seedSynapses: 7840,
+    finalNeurons: 794,
+    finalSynapses: 7841,
+    validationAccuracy: 0.109,
+    testAccuracy: 0.1037,
+    stopCondition: "timeoutMinutes",
+    evolveDirError: 0.087,
+    evolveDirScore: 0.913,
+    evolveDirGenerations: 42,
+  };
+  const round = JSON.parse(JSON.stringify(summary)) as MnistRunSummary;
+  assertEquals(round.evolveDirError, summary.evolveDirError);
+  assertEquals(round.evolveDirScore, summary.evolveDirScore);
+  assertEquals(round.evolveDirGenerations, summary.evolveDirGenerations);
+  // Existing fields still survive the round-trip.
+  assertEquals(round.trainingRecords, summary.trainingRecords);
+  assertEquals(round.stopCondition, summary.stopCondition);
+});
+
+Deno.test(
+  "evolveDir milestone SVG contains each numeric callout from the run summary",
+  () => {
+    // Build a summary mirroring what the runner emits, then render the
+    // milestone SVG and confirm every numeric callout the README references
+    // actually appears in the SVG bytes the runner will write to
+    // EVOLUTION_SUMMARY_SVG_PATH.
+    const summary: EvolveDirSummary = {
+      finalError: 0.087,
+      finalScore: 0.913,
+      wallClockMs: 610_032,
+      generations: 42,
+      seedNeurons: 794,
+      seedSynapses: 7840,
+      finalNeurons: 794,
+      finalSynapses: 7841,
+      targetError: 0.001,
+      timeoutMinutes: 10,
+    };
+    const svg = renderEvolveDirSummarySvg(summary, {
+      title: "MNIST Classification — evolveDir Run Summary",
+    });
+    assert(svg.startsWith("<svg"));
+    assert(svg.includes("</svg>"));
+    // Numeric callouts surface as text in the SVG.
+    assert(svg.includes(String(summary.generations)));
+    assert(svg.includes(String(summary.seedNeurons)));
+    assert(svg.includes(String(summary.seedSynapses)));
+    assert(svg.includes(String(summary.finalNeurons)));
+    assert(svg.includes(String(summary.finalSynapses)));
+    // Stop-condition caption embeds both numbers.
+    assert(svg.includes("target error"));
+    assert(svg.includes("timeout 10 min"));
+    // Labels for the milestone callout rows.
+    assert(svg.includes("final error"));
+    assert(svg.includes("final score"));
+    assert(svg.includes("generations"));
+    assert(svg.includes("wall clock"));
+    assert(!svg.includes("NaN"));
+    assert(!svg.includes("Infinity"));
+  },
+);
+
+Deno.test("README embeds the milestone SVG and removes the #273 deferred placeholder", () => {
+  // The README is the published surface for these milestone stats — the
+  // honesty audit referenced in mnist_classification.ts will eventually
+  // own this check, but until that file exists we cross-check the README
+  // here so the placeholder cannot silently come back.
+  const readme = Deno.readTextFileSync("mnist_classification/README.md");
+  assert(
+    readme.includes("../docs/screenshots/mnist_classification/evolution_summary.svg"),
+    "README must embed the new evolution_summary.svg under docs/screenshots/mnist_classification/",
+  );
+  assert(
+    readme.includes("Evolution milestone stats"),
+    'README must contain the "Evolution milestone stats" subsection heading',
+  );
+  assert(
+    !readme.includes("Per-generation telemetry — deferred"),
+    "README must no longer contain the deferred placeholder line",
+  );
+  assert(
+    !readme.includes("tracked in #273"),
+    'README must no longer reference the "tracked in #273" deferred placeholder',
+  );
 });
 
 Deno.test("readGzippedFile rejects a missing file", async () => {

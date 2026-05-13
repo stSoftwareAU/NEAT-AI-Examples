@@ -27,6 +27,7 @@ import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 
 import { fetchDataset } from "../common/data_cache.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import {
   buildDigitSamples,
@@ -83,6 +84,16 @@ export const TRAIN_LABELS_PATH = join(MNIST_ROOT, "data", "train-labels-idx1-uby
 export const SCREENSHOT_PATH = "docs/screenshots/mnist_classification.svg";
 
 /**
+ * Path to the milestone summary SVG sourced from `Creature.evolveDir`'s
+ * return value (final error, score, generation count) plus the seed and
+ * post-evolution topology counts. Added under #285 to replace the
+ * "deferred (#273)" placeholder — milestone stats only, no per-generation
+ * telemetry.
+ */
+export const EVOLUTION_SUMMARY_SVG_PATH =
+  "docs/screenshots/mnist_classification/evolution_summary.svg";
+
+/**
  * Committed copy of the run summary JSON. The README quotes numbers
  * from this file (audited by `readme_screenshot_honesty_test.ts`), so
  * the runner writes a small canonical copy under `docs/data/` in
@@ -130,6 +141,22 @@ export interface MnistRunSummary {
    * `targetError`.
    */
   stopCondition: "targetError" | "timeoutMinutes";
+  /**
+   * Final `error` field from `Creature.evolveDir`'s return value
+   * (milestone stat — populated under #285).
+   */
+  evolveDirError: number;
+  /**
+   * Final `score` field from `Creature.evolveDir`'s return value
+   * (milestone stat — populated under #285).
+   */
+  evolveDirScore: number;
+  /**
+   * Final `generation` field from `Creature.evolveDir`'s return value:
+   * the generation count completed before the run terminated. Milestone
+   * stat — populated under #285.
+   */
+  evolveDirGenerations: number;
 }
 
 /**
@@ -422,11 +449,18 @@ if (import.meta.main) {
       `{ targetError: ${TARGET_ERROR}, timeoutMinutes: ${TIMEOUT_MINUTES} })…`,
   );
   const evolveStart = Date.now();
-  await seed.evolveDir(binDir, {
+  const evolveResult = await seed.evolveDir(binDir, {
     targetError: TARGET_ERROR,
     timeoutMinutes: TIMEOUT_MINUTES,
   });
   const evolveMs = Date.now() - evolveStart;
+  // Pull milestone stats out of `evolveDir`'s return value (issue #285).
+  // The library resolves with `{ error, score, time, generation }`; we
+  // coerce non-finite fields to safe defaults so the summary JSON stays
+  // well-formed even on a degenerate run.
+  const evolveDirError = Number.isFinite(evolveResult.error) ? evolveResult.error : 0;
+  const evolveDirScore = Number.isFinite(evolveResult.score) ? evolveResult.score : 0;
+  const evolveDirGenerations = Math.max(1, evolveResult.generation ?? 1);
   console.log(
     `\n✅ Evolution finished in ${(evolveMs / 1000).toFixed(1)}s.` +
       `   Champion topology: ${seed.neurons.length} neurons, ` +
@@ -482,12 +516,39 @@ if (import.meta.main) {
     validationAccuracy,
     testAccuracy,
     stopCondition: inferStopCondition(evolveMs, TIMEOUT_MINUTES),
+    evolveDirError,
+    evolveDirScore,
+    evolveDirGenerations,
   };
   const summaryPath = join(outputDir, "run_summary.json");
   await safeWriteJson(summaryPath, summary);
   ensureDirSync(dirnameOf(RUN_SUMMARY_DOCS_PATH));
   await safeWriteJson(RUN_SUMMARY_DOCS_PATH, summary);
   console.log(`📝 Wrote run summary to ${summaryPath} and ${RUN_SUMMARY_DOCS_PATH}`);
+
+  // Stage 6 — render the milestone summary SVG sourced from the
+  // captured `evolveDir` return value (issue #285). Milestone stats
+  // only — no per-generation telemetry.
+  const evolveSummary: EvolveDirSummary = {
+    finalError: evolveDirError,
+    finalScore: evolveDirScore,
+    wallClockMs: evolveMs,
+    generations: evolveDirGenerations,
+    seedNeurons,
+    seedSynapses,
+    finalNeurons: seed.neurons.length,
+    finalSynapses: seed.synapses.length,
+    targetError: TARGET_ERROR,
+    timeoutMinutes: TIMEOUT_MINUTES,
+  };
+  ensureDirSync(dirnameOf(EVOLUTION_SUMMARY_SVG_PATH));
+  await Deno.writeTextFile(
+    EVOLUTION_SUMMARY_SVG_PATH,
+    renderEvolveDirSummarySvg(evolveSummary, {
+      title: "MNIST Classification — evolveDir Run Summary",
+    }),
+  );
+  console.log(`📈 Wrote milestone summary ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
   console.log(
     `\n🏁 Example completed in ${format(Date.now() - start, { ignoreZero: true })}`,
