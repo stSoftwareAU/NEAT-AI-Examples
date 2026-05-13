@@ -130,6 +130,33 @@ Two stop conditions bound the search — the same two fields used across NEAT-AI
 - **`timeoutMinutes`** (default `2`) — the evolver stops once `timeoutMinutes` minutes have elapsed
   since the loop began, even when the target is not reached, so the example terminates predictably.
 
+### Graded terminal reward — gradient between near-miss and disaster
+
+The adapter emits a **graded** terminal reward in `[-1, 0]` via `gradedTerminalReward` rather than
+the binary `0`/`-1` it used to carry. The reward is `0` exactly when the lander lands safely;
+otherwise it is a weighted combination of four normalised terminal-step signals: distance from pad
+centre, impact speed (`sqrt(vx² + vy²)`), tilt magnitude, and angular velocity. A soft, upright
+crash next to the pad scores close to `0`; a fast inverted spin out of bounds scores close to `-1`.
+
+```mermaid
+flowchart LR
+    State["LanderState + Terrain"] --> Classify{outcome == landed?}
+    Classify -- yes --> Zero["reward = 0"]
+    Classify -- no --> Signals["Normalise 4 signals<br/>distance, speed, tilt, spin"]
+    Signals --> Weighted["Weighted sum<br/>clamped to [0, 1]"]
+    Weighted --> Negate["reward = -weighted"]
+    Negate --> Out["reward in [-1, 0)"]
+```
+
+Implication for `targetError`: because non-landed crashes can now contribute less than `1` to the
+error sum, `error = 1 − landedRate` is now an **upper bound** rather than an exact identity. A
+landed rate of e.g. 50% can produce a mean error well below 0.5 if the non-landed crashes are soft.
+So `targetError = 0.01` still guarantees the loop stops at **≥ 99% landed rate** in the worst case,
+and may stop earlier when the non-landed trials are graded mildly. The graded shape gives the
+evolutionary search a smooth gradient to climb — a controller that drifts within metres of the pad
+scores measurably better than one that explodes out of bounds, so selection can reward incremental
+improvement instead of waiting for the first successful landing.
+
 Whichever condition fires first wins. The runner reports `result.stopReason` (`"target"` or
 `"timeout"`) and `result.wallclockMs` so callers can distinguish the two outcomes. The CLI runner
 accepts overrides:

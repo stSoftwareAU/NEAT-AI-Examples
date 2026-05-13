@@ -90,6 +90,101 @@ const SCORE = {
   flyingAltitudeCost: 1.0,
 } as const;
 
+/**
+ * Normalisation upper bounds and weights for {@link gradedTerminalReward}.
+ *
+ * Each of the four terminal-step signals (distance from pad, impact speed,
+ * tilt, spin rate) is divided by the matching upper bound and clamped to
+ * `[0, 1]`. The four clamped contributions are combined with the matching
+ * weights — which sum to `1` — and negated, so the final reward lives in
+ * `[-1, 0]`. A perfectly-centred, soft, upright, non-spinning touchdown
+ * (the `landed` outcome) is returned as exactly `0` by the caller before
+ * the weighted sum ever runs.
+ *
+ * Upper-bound rationale:
+ *
+ * - `distanceMax = worldHalfWidth (50 m)` — the largest distance from the
+ *   pad centre an in-bounds lander can reach, so the saturated value is a
+ *   true `out_of_bounds`-grade miss.
+ * - `speedMax = 25 m/s` — comfortably above free-fall terminal speed from
+ *   the canonical entry (`sqrt(2 * g * altitude) ≈ 16 m/s`) plus modest
+ *   horizontal drift, so a powered "fast crash" still maps inside `[0, 1]`.
+ * - `tiltMax = π` — fully inverted, the worst possible tilt.
+ * - `spinMax = 5 rad/s` — sustained powered spinning produces values in
+ *   this range under {@link DEFAULT_PARAMS} (`rcsAngularAccel = 1.5
+ *   rad/s²` for several seconds).
+ *
+ * Weights favour pad accuracy and impact speed — the two signals that
+ * most directly distinguish a near-miss from a disaster — while still
+ * keeping tilt and spin in the gradient so a barrel-rolling lander does
+ * not score the same as an upright one.
+ */
+export const SCORE_NORMALISERS = {
+  /** Upper bound on `|x - padX|` (metres) — beyond this the lander is out of bounds. */
+  distanceMax: 50,
+  /** Upper bound on impact speed `sqrt(vx² + vy²)` (m/s). */
+  speedMax: 25,
+  /** Upper bound on tilt magnitude (radians). Fully inverted = π. */
+  tiltMax: Math.PI,
+  /** Upper bound on angular-velocity magnitude (rad/s). */
+  spinMax: 5,
+  /** Weight on the normalised distance contribution. */
+  weightDistance: 0.4,
+  /** Weight on the normalised impact-speed contribution. */
+  weightSpeed: 0.3,
+  /** Weight on the normalised tilt contribution. */
+  weightTilt: 0.2,
+  /** Weight on the normalised angular-velocity contribution. */
+  weightSpin: 0.1,
+} as const;
+
+/** Clamp a value to `[0, 1]`. */
+function clamp01(value: number): number {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+/**
+ * Graded terminal reward in `[-1, 0]` derived from four normalised
+ * terminal-step signals: distance from the pad centre, impact speed,
+ * tilt, and angular velocity.
+ *
+ * Returns exactly `0` when the state classifies as `landed` — preserving
+ * the historical "landed → reward 0" semantics so
+ * `defaultRewardToError` still produces `error = 0` for a successful
+ * episode. Every non-landed state returns a value in `[-1, 0)`: each of
+ * the four signals is divided by its upper bound from
+ * {@link SCORE_NORMALISERS}, clamped to `[0, 1]`, combined with the
+ * matching weight (weights sum to `1`), and negated. The reward
+ * therefore stays in the same `[-1, 0]` range as the legacy binary
+ * value, but with a smooth gradient that distinguishes "crashed softly
+ * near the pad" (close to `0`) from "flew out of bounds at maximum
+ * speed" (close to `-1`).
+ *
+ * Pure function — no side effects, deterministic for fixed inputs.
+ */
+export function gradedTerminalReward(
+  state: LanderState,
+  terrain: LanderTerrain,
+): number {
+  if (classifyOutcome(state, terrain) === "landed") return 0;
+  const distanceNorm = clamp01(
+    Math.abs(state.x - terrain.padX) / SCORE_NORMALISERS.distanceMax,
+  );
+  const impactSpeed = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
+  const speedNorm = clamp01(impactSpeed / SCORE_NORMALISERS.speedMax);
+  const tiltNorm = clamp01(Math.abs(state.angle) / SCORE_NORMALISERS.tiltMax);
+  const spinNorm = clamp01(Math.abs(state.angularV) / SCORE_NORMALISERS.spinMax);
+  const weighted = SCORE_NORMALISERS.weightDistance * distanceNorm +
+    SCORE_NORMALISERS.weightSpeed * speedNorm +
+    SCORE_NORMALISERS.weightTilt * tiltNorm +
+    SCORE_NORMALISERS.weightSpin * spinNorm;
+  // `weighted` is bounded by sum(weights) = 1, but clamp once more so
+  // floating-point drift can never push the reward outside `[-1, 0]`.
+  return -clamp01(weighted);
+}
+
 /** Configuration options for {@link evolveLanderController}. */
 export interface EvolveOptions {
   /** Random seed driving population initialisation and mutation. */
@@ -100,11 +195,14 @@ export interface EvolveOptions {
    * NEAT-AI standard target-error stop condition. Evolution halts as
    * soon as the champion's normalised error reaches `targetError`. The
    * adapter emits a terminal reward of `0` when the lander lands safely
-   * and `-1` otherwise, so the cumulative reward sits in `[-1, 0]` and
-   * `defaultRewardToError` yields an `error` equal to `1 - landedRate`
-   * across the per-creature episode batch. The historical
-   * `1 - targetLandedRate` semantics therefore pass straight through:
-   * `targetError = 0.01` corresponds to a 99% landed rate.
+   * and {@link gradedTerminalReward}'s value in `[-1, 0)` otherwise, so
+   * the cumulative reward sits in `[-1, 0]` and `defaultRewardToError`
+   * yields an `error` that is an **upper bound** on `1 - landedRate`
+   * (soft crashes contribute less than `1` to the error sum, so a 50%
+   * landed rate can produce a mean error well below 0.5). `targetError
+   * = 0.01` therefore corresponds to **at least** a 99% landed rate —
+   * the stop condition may fire earlier when non-landed trials are
+   * graded mildly.
    */
   targetError: number;
   /**
@@ -281,15 +379,22 @@ export interface LanderAdapterOptions {
  * - Non-terminal step: reward `0`.
  * - Terminal step where the lander landed safely: reward `0`.
  * - Terminal step where the lander crashed, flew off, or timed out:
- *   reward `-1`.
+ *   reward `gradedTerminalReward(state, terrain)`, a value in `[-1, 0)`
+ *   derived from four normalised signals (distance from pad, impact
+ *   speed, tilt, angular velocity). A near-miss soft crash next to the
+ *   pad scores close to `0`; a fast inverted spin out of bounds scores
+ *   close to `-1`.
  *
- * Across `episodesPerCreature` trials the mean cumulative reward is
- * therefore `-(1 - landedRate)`, so `defaultRewardToError` yields
- * `error = 1 - landedRate` and `EvolveRLOptions.targetError = 0.01`
- * stops evolution as soon as the champion's landed rate on the
- * per-generation seed set reaches 99%. The historical
- * `1 - targetLandedRate` semantics carried by the example's caller
- * therefore pass straight through to the upstream API.
+ * The mean cumulative reward across `episodesPerCreature` trials is
+ * therefore `-(weighted_sum)` over non-landed trials, so
+ * `defaultRewardToError` yields an `error` in `[0, 1]`. Because every
+ * non-landed trial now contributes ≤ 1 to the error sum (rather than
+ * exactly 1 under the old binary scheme), `error = 1 - landedRate` is an
+ * **upper bound** rather than an exact identity: a landed rate of 50%
+ * can produce a mean error well below 0.5 when the non-landed crashes
+ * are soft. `EvolveRLOptions.targetError = 0.01` therefore still
+ * triggers a stop at ≥ 99% landed rate in the worst case, and may
+ * trigger earlier when the non-landed trials are graded mildly.
  *
  * Per-episode initial-state perturbation is owned by the adapter: each
  * `reset(rngSeed)` draws a fresh perturbed {@link LanderScenario}
@@ -356,15 +461,14 @@ export class LanderAdapter extends EpisodeAdapter<LanderState, LanderAction> {
     const terminalByPhysics = isTerminal(newState, this.terrain);
     const atCap = this.stepIdx >= this.maxStepsPerEpisode;
     const terminated = terminalByPhysics || atCap;
-    // Binary terminal reward: `0` for landed, `-1` for anything else
-    // (crashed, out-of-bounds, or step-cap reached while still flying).
-    // `defaultRewardToError` yields error = 0 for landed and 1 otherwise,
-    // so the mean across `episodesPerCreature` trials is exactly
-    // `1 - landedRate`.
+    // Graded terminal reward in `[-1, 0]` — `0` for a clean landing and
+    // a smooth gradient otherwise (see {@link gradedTerminalReward}).
+    // `defaultRewardToError` therefore yields error = 0 for landed and a
+    // value in `(0, 1]` for every other outcome, so the mean across
+    // `episodesPerCreature` trials is an upper bound on `1 - landedRate`.
     let reward = 0;
     if (terminated) {
-      const outcome = classifyOutcome(newState, this.terrain);
-      reward = outcome === "landed" ? 0 : -1;
+      reward = gradedTerminalReward(newState, this.terrain);
     }
     return {
       state: newState,
@@ -684,13 +788,6 @@ function toMilestoneSample(m: EvolveRLMilestone): MilestoneSample {
   };
 }
 
-/** Clamp a value to `[0, 1]`. */
-function clamp01(value: number): number {
-  if (value < 0) return 0;
-  if (value > 1) return 1;
-  return value;
-}
-
 /**
  * Run NEAT-AI's first-class reinforcement-learning evolution loop
  * against a {@link LanderAdapter}. Mutation, crossover, elitism,
@@ -703,6 +800,13 @@ function clamp01(value: number): number {
  * of ten. Per issue #298 the example registers **no `onTrainingEvent`
  * handler** — milestone statistics are the only telemetry channel
  * NEAT-AI exposes.
+ *
+ * Reward shape: the adapter emits {@link gradedTerminalReward} at each
+ * terminal step, so `defaultRewardToError` produces an error in `[0, 1]`
+ * that is an **upper bound** on `1 - landedRate` rather than the
+ * historical exact identity. `targetError = 0.01` therefore stops
+ * evolution at **≥ 99% landed rate** (it may fire earlier when the
+ * non-landed trials are graded mildly).
  */
 export async function evolveLanderController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -714,13 +818,13 @@ export async function evolveLanderController(
 
   const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
 
-  // EvolveRL normalised target error — the adapter emits a binary
-  // terminal reward in `{0, -1}`, so `defaultRewardToError` produces
-  // an error in `{0, 1}` and the mean across episodes is exactly
-  // `1 - landedRate`. The caller's `targetError` value therefore maps
-  // straight onto the upstream API without rescaling. Negative values
-  // (used by tests to force the iterations backstop) are clamped to
-  // `0`, the smallest legal value.
+  // EvolveRL normalised target error — the adapter emits a graded
+  // terminal reward in `[-1, 0]` via {@link gradedTerminalReward}, so
+  // `defaultRewardToError` produces an error in `[0, 1]` whose mean
+  // across episodes is an upper bound on `1 - landedRate`. The caller's
+  // `targetError` value therefore maps straight onto the upstream API
+  // without rescaling. Negative values (used by tests to force the
+  // iterations backstop) are clamped to `0`, the smallest legal value.
   const absoluteTargetError = Math.max(0, options.targetError);
 
   const loopStart = Date.now();
