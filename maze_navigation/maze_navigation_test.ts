@@ -3,12 +3,16 @@
  * only — each test calls a real function, runs the simulator or
  * evolver, and asserts on the observable outputs.
  *
- * Migration note (issue #239): the controller now evolves through
- * `Creature.evolveRL()`, so the tests for the removed
- * `buildRandomPopulation` and `mutateCreatureExport` internal helpers
- * have been dropped in favour of direct adapter and controller tests.
- * The remaining tests still assert on public behaviour rather than
- * implementation choices.
+ * Migration notes:
+ * - Issue #239 — the controller evolves through `Creature.evolveRL()`,
+ *   so the tests for the removed `buildRandomPopulation` and
+ *   `mutateCreatureExport` internal helpers have been dropped in favour
+ *   of direct adapter and controller tests.
+ * - Issue #289 — per-generation telemetry, snapshot capture, and the
+ *   evolution / fitness / topology charts have been replaced by the
+ *   milestone-statistics chart from #287. Tests covering the removed
+ *   surfaces have been deleted; a new test asserts the milestone-chart
+ *   SVG round-trip via `evolveRL` + `renderMilestoneChartSVG`.
  */
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { existsSync } from "@std/fs";
@@ -17,15 +21,11 @@ import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
   DEFAULT_EVOLVE_OPTIONS,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
   evolveMazeController,
-  formatEvolutionCsv,
-  type GenerationInfo,
   MAX_STEPS,
   MazeAdapter,
   type MazeEpisodeState,
-  renderTopologyChartSvg,
+  MILESTONE_SVG_PATH,
   replayController,
   scoreController,
   SOLVED_THRESHOLD,
@@ -33,8 +33,7 @@ import {
 import { renderRunSVG } from "./svg.ts";
 import { INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { Action } from "./maze.ts";
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 
 Deno.test("MazeAdapter advertises 5 inputs and the default MAX_STEPS-step cap", () => {
   const adapter = new MazeAdapter();
@@ -126,42 +125,36 @@ Deno.test("scoreController returns a finite score for a fresh seed creature", ()
 });
 
 Deno.test({
-  name: "evolveMazeController generation-1 telemetry sits well below the threshold",
+  name: "evolveMazeController gen-1 milestone sits well below the threshold",
   // NEAT-AI 5.0.0 loads a Rust/WASM FFI library + Metal accelerator that
   // do not unload before the test ends — disable the sanitisers for the
   // evolve-driven tests.
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // Gen 1 must be noise. A fresh `new Creature(input, output)` seed
+    // Gen 1 must be noise: a fresh `new Creature(input, output)` seed
     // and the library's uniform-random initial population cannot solve
-    // the L-corridor maze under the default seed.
-    let firstGenMean = Number.POSITIVE_INFINITY;
-    let firstGenBestReached = true;
-    // We use `iterations: 1` so the loop terminates immediately after
-    // gen 0 — fast and deterministic without any wall-clock dependency.
-    await evolveMazeController({
+    // the L-corridor maze under the default seed. Per #298 the only
+    // available telemetry is the milestone payload at generation 1.
+    const result = await evolveMazeController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
-      onGeneration: (info) => {
-        if (info.generation === 0 && firstGenMean === Number.POSITIVE_INFINITY) {
-          firstGenMean = info.meanScore;
-          firstGenBestReached = info.bestReached;
-        }
-      },
     });
-    assert(
-      firstGenMean < SOLVED_THRESHOLD,
-      `expected gen-1 population mean to be well below the SOLVED_THRESHOLD ` +
-        `(${SOLVED_THRESHOLD}), got ${firstGenMean}`,
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least the gen-1 milestone to be collected",
     );
-    // The default seed must not produce a gen-1 population whose best
-    // member already reaches the goal — that would mean we got lucky
-    // and the evolution narrative has nothing to show.
+    const first = result.milestones[0];
     assertEquals(
-      firstGenBestReached,
-      false,
-      "gen-1 best member must not already reach the goal under the default seed",
+      first.generation,
+      1,
+      `expected the first milestone to live at generation 1, got ${first.generation}`,
+    );
+    assert(
+      first.bestScore < SOLVED_THRESHOLD,
+      `expected the gen-1 best score to sit below SOLVED_THRESHOLD=${SOLVED_THRESHOLD}, ` +
+        `got ${first.bestScore}`,
     );
   },
 });
@@ -303,126 +296,72 @@ Deno.test("renderRunSVG rejects an empty trace", () => {
 });
 
 Deno.test({
-  name:
-    "evolveMazeController writes seed + final snapshots and the strip SVG embeds one panel per snapshot",
+  name: "evolveMazeController collects milestone samples and the chart SVG round-trips",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "maze_snapshots_test_" });
-    try {
-      // Tiny population, weak mutation, low iterations cap. Under the
-      // new evolveRL-driven loop only the seed creature (gen 1) and
-      // final champion are snapshot — mid-run intermediate checkpoints
-      // are no longer captured because the upstream API does not
-      // expose mid-run creature exports.
-      await evolveMazeController({
-        seed: 1,
-        populationSize: 3,
-        targetError: -1, // unreachable so the loop runs to the iterations cap
-        timeoutMinutes: 5,
-        iterations: 4,
-        mutationStrength: 0.05,
-        mutationRate: 0.05,
-        addNeuronRate: 0,
-        snapshotConfig: { checkpoints: [1], outputDir: tmp },
-      });
-
-      const snapshots = loadSnapshots(tmp);
-      assertGreaterOrEqual(
-        snapshots.length,
-        2,
-        `expected at least seed + final snapshots, got ${snapshots.length}`,
-      );
-
-      const svg = renderEvolutionProgressSvg(snapshots, {
-        title: "Maze Navigation — Evolution Progress",
-      });
-      assert(svg.startsWith("<svg"), "must start with <svg>");
-      assert(svg.length > 0, "SVG must be non-empty");
-      const panels = svg.match(/<g class="panel"/g) ?? [];
-      assertEquals(panels.length, snapshots.length);
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
-  },
-});
-
-Deno.test({
-  name: "evolveMazeController emits GenerationInfo with sensible neuron and synapse counts",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    const samples: GenerationInfo[] = [];
-    await evolveMazeController({
-      seed: 1,
-      populationSize: 3,
-      targetError: -1, // unreachable so the loop runs to the iterations cap
-      timeoutMinutes: 5,
-      iterations: 3,
-      mutationStrength: 0.05,
-      mutationRate: 0.05,
-      addNeuronRate: 0,
-      onGeneration: (info) => samples.push(info),
+    // Per #287/#289 the milestone chart is the only fitness-progression
+    // artefact the maze-navigation example emits. The first milestone
+    // fires at generation 1, so even a single-iteration run must collect
+    // at least one sample, and the chart must render to a well-formed
+    // SVG.
+    const result = await evolveMazeController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
     });
-    assertGreater(samples.length, 0, "expected at least one onGeneration call");
-    for (const info of samples) {
-      // The minimal seed has `INPUT_COUNT + OUTPUT_COUNT` neurons with
-      // `INPUT_COUNT * OUTPUT_COUNT` direct synapses. NEAT-AI may grow
-      // topology under its own mutation policy, so the counts can only
-      // be asserted as ≥ the seed values.
-      assertGreaterOrEqual(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
-      assertGreaterOrEqual(info.synapses, INPUT_COUNT);
-      assert(Number.isFinite(info.bestScore));
-      assert(Number.isFinite(info.meanScore));
-      assertEquals(typeof info.bestReached, "boolean");
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least one milestone sample after iterations=1",
+    );
+    for (const m of result.milestones) {
+      assertGreater(m.generation, 0);
+      assertGreaterOrEqual(m.bestNeurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertGreaterOrEqual(m.bestSynapses, 1);
+      assertGreaterOrEqual(m.meanEpisodeSteps, 0);
+      assertGreaterOrEqual(m.generationWallClockMs, 0);
+    }
+
+    const tmp = await Deno.makeTempDir({ prefix: "maze_milestone_" });
+    try {
+      const svg = renderMilestoneChartSVG(result.milestones, {
+        title: "Maze Navigation — evolveRL Milestones",
+        logX: true,
+        caption: true,
+      });
+      const path = join(tmp, "maze_navigation_milestones.svg");
+      await Deno.writeTextFile(path, svg);
+      const written = await Deno.readTextFile(path);
+      assert(written.startsWith("<svg"), "must start with <svg>");
+      assert(written.includes("</svg>"), "must contain </svg>");
+      assert(
+        written.includes("Maze Navigation &#x2014; evolveRL Milestones") ||
+          written.includes("Maze Navigation — evolveRL Milestones"),
+        "expected the chart title to appear in the SVG",
+      );
+      // The chart should reference each milestone series.
+      assert(
+        written.includes("best-score-line"),
+        "expected the best-score series",
+      );
+      assert(
+        written.includes("mean-steps-line"),
+        "expected the mean-steps series",
+      );
+      assert(
+        written.includes("neurons-line"),
+        "expected the neurons series",
+      );
+      assert(
+        written.includes("synapses-line"),
+        "expected the synapses series",
+      );
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
     }
   },
 });
 
-Deno.test(
-  "formatEvolutionCsv emits the audit-mandated header and one row per record",
-  () => {
-    // Audit issue #223: CSV header must be the canonical schema used by
-    // every audited example.
-    const rows: EvolutionRow[] = [
-      { generation: 0, bestFitness: 0.12, meanFitness: 0.05, neuronCount: 9, synapseCount: 20 },
-      { generation: 1, bestFitness: 0.6, meanFitness: 0.3, neuronCount: 10, synapseCount: 21 },
-    ];
-    const csv = formatEvolutionCsv(rows);
-    const lines = csv.trim().split("\n");
-    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-    assertEquals(
-      EVOLUTION_CSV_HEADER,
-      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
-    );
-    assertEquals(lines.length, rows.length + 1);
-    assertEquals(lines[1], "0,0.12,0.05,9,20");
-    assertEquals(lines[2], "1,0.6,0.3,10,21");
-    // Determinism: identical inputs produce identical bytes.
-    assertEquals(formatEvolutionCsv(rows), csv);
-  },
-);
-
-Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 0, bestFitness: 0.1, meanFitness: 0.05, neuronCount: 9, synapseCount: 20 },
-    { generation: 5, bestFitness: 0.4, meanFitness: 0.2, neuronCount: 10, synapseCount: 21 },
-    { generation: 10, bestFitness: 0.9, meanFitness: 0.6, neuronCount: 12, synapseCount: 24 },
-  ];
-  const svg = renderTopologyChartSvg(rows);
-  assert(svg.startsWith("<svg"), "must start with <svg>");
-  assert(svg.includes("</svg>"), "must contain </svg>");
-  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
-  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
-  assert(svg.includes("Maze Navigation — Topology Growth"));
-});
-
-Deno.test("renderTopologyChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderTopologyChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assertEquals(threw, true, "expected empty input to throw");
+Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
+  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/maze_navigation_milestones.svg");
 });

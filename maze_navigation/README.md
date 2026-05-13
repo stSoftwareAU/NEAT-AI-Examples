@@ -132,69 +132,31 @@ Artefacts:
 
 - `.synthetic-maze/creatures/champion.json` – the fittest controller from the run
 - `.synthetic-maze/output/trajectory.json` – the champion's step-by-step trajectory log
-- `.synthetic-maze/snapshots/snapshot-gen-*.json` – running-champion snapshots captured at the
-  configured checkpoints
 - `docs/screenshots/maze_navigation.svg` – animated SVG of the champion's run
-- `docs/screenshots/maze_navigation_evolution.svg` – multi-panel evolution-progression strip
-  rendered from the captured snapshots
-- `docs/screenshots/maze_navigation_evolution_chart.svg` – dual-axis evolution chart plotting best
-  score and champion neuron / synapse counts against generation
-- [`docs/data/maze_navigation/evolution.csv`](../docs/data/maze_navigation/evolution.csv) —
-  per-generation telemetry (`generation,best_fitness,mean_fitness,neuron_count,synapse_count`)
-- `docs/screenshots/maze_navigation/fitness.svg` – best/mean fitness chart vs generation
-- `docs/screenshots/maze_navigation/topology.svg` – neuron and synapse counts vs generation
+- [`docs/screenshots/maze_navigation_milestones.svg`](../docs/screenshots/maze_navigation_milestones.svg)
+  – dual-axis milestone-statistics chart rendered from the `evolveRL` milestone stream
+  (`renderMilestoneChartSVG` from [`common/milestone_chart.ts`](../common/milestone_chart.ts))
 
 ## Evolution Progress
 
-![Maze Navigation evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/maze_navigation_evolution.svg)
+Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
+milestone-cadence telemetry (`evolverl_milestone` events at generations
+`1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten). The legacy per-generation evolution
+strip, fitness chart, and topology chart have been replaced by a single milestone-statistics chart
+sourced from the `EvolveRLMilestone[]` array `Creature.evolveRL()` returns when `statistics: true`
+is set. The maze-navigation runner registers **no `onTrainingEvent` handler** — the milestone array
+is read straight from the run summary and rendered with `renderMilestoneChartSVG` (see issue
+[#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).
 
-![Maze Navigation evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/maze_navigation_evolution_chart.svg)
+![Maze Navigation milestone chart — best score and mean episode steps on the left axis, with champion neuron and synapse counts on the right axis, plotted against milestone generation on a log-X axis](../docs/screenshots/maze_navigation_milestones.svg)
 
-### 📊 Measured telemetry (latest run, seed `12345`)
+Re-run `./maze_navigation/run.sh` to refresh the milestone chart and the run-replay SVG together.
 
-The full per-generation log is in
-[`docs/data/maze_navigation/evolution.csv`](../docs/data/maze_navigation/evolution.csv). Numbers
-below are quoted directly from that file; nothing is estimated.
-
-| Generation | best_fitness | mean_fitness | neurons | synapses | Notes                              |
-| ---------- | ------------ | ------------ | ------- | -------- | ---------------------------------- |
-| 0          | -0.1         | -0.139       | 9       | 20       | uniform-random NEAT noise          |
-| 9          | 0.982        | 0.043        | 9       | 20       | first generation to reach the goal |
-| 49         | 0.982        | 0.959        | 21      | 32       | hidden neurons start to accumulate |
-| 149        | 0.982        | 0.729        | 48      | 59       | structural drift continues         |
-| 299        | 0.982        | 0.940        | 94      | 105      | final generation                   |
-
-Run summary (also from the same CSV plus the runner's stdout):
-
-- **Total generations**: 300 — the loop continued past the first solved generation so every
-  configured checkpoint (`1, 10, 50, 150, 300`) could be captured for the progression strip.
-- **Wall-clock**: 5.4 s on a commodity laptop, well inside the `timeoutMinutes = 5` budget.
-- **Stop reason**: `target` — the champion's score met `1 − targetError = 0.6` and the snapshot
-  cadence then ran to completion.
-- **Champion**: reached the goal in **18 steps** (the optimal L-corridor path) with a final
-  Manhattan distance of 0 and a fitness of 0.982.
-- **Topology growth is genuine**: neuron count climbs from 9 → 94 (10.4×) and synapse count from 20
-  → 105 (5.3×) between generation 0 and the final generation — confirming the seed is not being
-  memorised.
-
-#### Best/mean fitness chart
-
-![Maze Navigation — best and mean fitness vs generation](../docs/screenshots/maze_navigation/fitness.svg)
-
-#### Neuron / synapse count chart
-
-![Maze Navigation — neuron and synapse counts vs generation](../docs/screenshots/maze_navigation/topology.svg)
-
-The runner captures a snapshot of the **running champion** at each of the canonical checkpoint
-generations `[1, 10, 50, 150, 300]`. The cadence is tuned for variable-topology evolution from
-uniform-random NEAT noise — denser early than the cart-pole cadence because the linear maze
-controller typically converges in the first dozen generations.
-
-Generation 1 is the **uniform-random NEAT population** straight from `new Creature(5, 4)` — direct
-input → output connections with weights and biases drawn by the library's RNG. Its best member sits
-well below `SOLVED_THRESHOLD` (best=-0.1, mean=-0.139 on the latest run). The intermediate
-milestones show the controller learning to follow walls and head toward the goal; the final captured
-snapshot meets the threshold and reaches the goal in the optimal 18 steps.
+Generation 1 — the first milestone — is the **uniform-random NEAT population** straight from
+`new Creature(5, 4)`: direct input → output connections with weights and biases drawn by the
+library's RNG. Subsequent milestones (gens 10 / 100 / 1000) show the controller learning to follow
+walls and head toward the goal; the final milestone meets the threshold and reaches the goal in the
+optimal 18 steps.
 
 ## 🧠 Tacit Knowledge
 
