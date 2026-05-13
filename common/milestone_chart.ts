@@ -2,12 +2,11 @@
  * Shared SVG renderer for `evolveRL()` milestone statistics.
  *
  * `Creature.evolveRL()` emits `evolverl_milestone` events whose payload is
- * captured per-checkpoint as a {@link MilestoneSample}. Unlike the
- * per-generation history visualised by {@link ./evolution_chart.ts}, the
- * milestone stream is sparse and non-uniformly spaced (typically
- * 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of ten), so this
- * renderer plots each sample at its actual generation and offers an
- * optional log-X mapping for the wide dynamic range.
+ * captured per-checkpoint as a {@link MilestoneSample}. The milestone
+ * stream is sparse and non-uniformly spaced (typically 1, 2, 5, 10, 20,
+ * 50, 100, 200, 500, 1000, then powers of ten), so this renderer plots
+ * each sample at its actual generation and offers an optional log-X
+ * mapping for the wide dynamic range.
  *
  * Series:
  *   - `bestScore` (left axis, blue)
