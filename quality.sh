@@ -189,8 +189,13 @@ run_example "Mountain Car Control Example" "./mountain_car/run.sh"
 # Run the Snake Game example
 run_example "Snake Game Example" "./snake_game/run.sh"
 
-# Run the Maze Navigation example
-run_example "Maze Navigation Example" "./maze_navigation/run.sh"
+# Run the Maze Navigation example. The CI/quality budget caps the
+# section via `MAZE_QUICK=1` (issue #322): the runner forces an
+# `iterations: 3` cap, writes its artefacts under a temp directory, and
+# never overwrites the canonical docs creature/milestones/charts. A
+# direct `./maze_navigation/run.sh` invocation still uses the realistic
+# 5-minute / target-error=0.01 defaults.
+run_example_with_env "Maze Navigation Example" "./maze_navigation/run.sh" "MAZE_QUICK=1"
 
 # Run the XOR Classification example
 run_example "XOR Classification Example" "./xor_classification/run.sh"

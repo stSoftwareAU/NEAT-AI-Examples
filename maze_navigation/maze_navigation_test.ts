@@ -17,16 +17,22 @@
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
   DEFAULT_EVOLVE_OPTIONS,
+  DEFAULT_MULTI_RUN_TARGET_ERROR,
+  DEFAULT_MULTI_RUN_TIMEOUT_MINUTES,
   evolveMazeController,
+  EXAMPLE_SLUG,
   MAX_STEPS,
   MazeAdapter,
   type MazeEpisodeState,
-  MILESTONE_SVG_PATH,
+  milestoneToMultiRunSample,
+  MULTI_RUN_COMPLEXITY_SVG_PATH,
+  MULTI_RUN_ERROR_SVG_PATH,
   replayController,
+  runMultiRunMaze,
   scoreController,
   SOLVED_THRESHOLD,
 } from "./maze_navigation.ts";
@@ -34,6 +40,7 @@ import { renderRunSVG } from "./svg.ts";
 import { INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
 import { Action } from "./maze.ts";
 import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
+import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
 
 Deno.test("MazeAdapter advertises 5 inputs and the default MAX_STEPS-step cap", () => {
   const adapter = new MazeAdapter();
@@ -362,6 +369,211 @@ Deno.test({
   },
 });
 
-Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
-  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/maze_navigation_milestones.svg");
+Deno.test("multi-run chart paths sit under the maze_navigation slug directory", () => {
+  // Path constants reflect the new multi-run layout (issue #322), which
+  // supersedes the legacy single-run `maze_navigation_milestones.svg`.
+  assertEquals(MULTI_RUN_ERROR_SVG_PATH, "docs/screenshots/maze_navigation/milestones.svg");
+  assertEquals(
+    MULTI_RUN_COMPLEXITY_SVG_PATH,
+    "docs/screenshots/maze_navigation/complexity.svg",
+  );
+  assertEquals(EXAMPLE_SLUG, "maze_navigation");
+  assertEquals(DEFAULT_MULTI_RUN_TARGET_ERROR, 0.01);
+  assertEquals(DEFAULT_MULTI_RUN_TIMEOUT_MINUTES, 5);
+});
+
+Deno.test("milestoneToMultiRunSample maps reward into error and copies topology", () => {
+  // The maze adapter emits cumulative reward in [-1, 0], so error = -reward.
+  const sample = milestoneToMultiRunSample(
+    {
+      generation: 10,
+      bestScore: -0.25,
+      bestNeurons: 11,
+      bestSynapses: 24,
+      meanEpisodeSteps: 42,
+      generationWallClockMs: 123,
+    } as unknown as Parameters<typeof milestoneToMultiRunSample>[0],
+  );
+  assertEquals(sample.runGen, 10);
+  assertEquals(sample.bestScore, -0.25);
+  assertEquals(sample.error, 0.25); // -(-0.25)
+  assertEquals(sample.neurons, 11);
+  assertEquals(sample.synapses, 24);
+  assertEquals(sample.meanEpisodeSteps, 42);
+  assertEquals(sample.generationWallClockMs, 123);
+});
+
+Deno.test("milestoneToMultiRunSample clamps error into [0, 1]", () => {
+  // bestScore = -1.5 → -(-1.5) = 1.5 → clamped to 1.
+  const high = milestoneToMultiRunSample(
+    {
+      generation: 1,
+      bestScore: -1.5,
+      bestNeurons: 9,
+      bestSynapses: 20,
+      meanEpisodeSteps: 200,
+      generationWallClockMs: 1,
+    } as unknown as Parameters<typeof milestoneToMultiRunSample>[0],
+  );
+  assertEquals(high.error, 1);
+
+  // bestScore = 0.5 (above the adapter range) → -0.5 → clamped to 0.
+  const low = milestoneToMultiRunSample(
+    {
+      generation: 1,
+      bestScore: 0.5,
+      bestNeurons: 9,
+      bestSynapses: 20,
+      meanEpisodeSteps: 200,
+      generationWallClockMs: 1,
+    } as unknown as Parameters<typeof milestoneToMultiRunSample>[0],
+  );
+  assertEquals(low.error, 0);
+});
+
+Deno.test({
+  name:
+    "evolveMazeController honours seedCreatureExport — accepts the export and produces a valid run",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // Resume-path smoke test: when `seedCreatureExport` is supplied the
+    // call must succeed and produce a champion that round-trips back to
+    // a `CreatureExport` with the same input/output channel counts as
+    // the seed (i.e., the library accepted the supplied genome instead
+    // of crashing on schema mismatch). End-to-end resume semantics are
+    // exercised by the `runMultiRunMaze resume flow` integration test
+    // below.
+    const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const seedExport: CreatureExport = seedCreature.exportJSON();
+    assertEquals(seedExport.input, INPUT_COUNT);
+    assertEquals(seedExport.output, OUTPUT_COUNT);
+
+    const result = await evolveMazeController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
+      seedCreatureExport: seedExport,
+    });
+    assertGreater(result.milestones.length, 0);
+
+    const championExport = result.champion.exportJSON();
+    assertEquals(championExport.input, INPUT_COUNT);
+    assertEquals(championExport.output, OUTPUT_COUNT);
+    assert(Number.isFinite(result.bestScore));
+  },
+});
+
+Deno.test({
+  name: "runMultiRunMaze resume flow loads prior creature, appends milestones, and renders charts",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "maze_resume_" });
+    try {
+      const slug = EXAMPLE_SLUG;
+
+      // Pre-seed multi-run state with a prior champion + a synthetic
+      // milestone so loadMultiRunState reports nextRunIndex=2.
+      const priorCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+      await appendMultiRunRun(slug, {
+        creatureExport: priorCreature.exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: 0.5,
+          neurons: 9,
+          synapses: 20,
+          meanEpisodeSteps: 200,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      // Drive the multi-run flow with an `iterations=1` cap so the test
+      // completes in seconds and never depends on wall-clock timing.
+      const outcome = await runMultiRunMaze({
+        argv: [],
+        baseDir: tmp,
+        evolveOverrides: { iterations: 1 },
+      });
+
+      // Prior champion must have been reloaded as the evolveRL seed.
+      assertEquals(outcome.resumed, true);
+      assertEquals(outcome.runIndex, 2);
+
+      // Persisted history now contains both the pre-seeded milestone and
+      // the new run's milestones, all with monotonic cumulativeGen.
+      const state = await loadMultiRunState(slug, tmp);
+      assertGreater(state.milestones.length, 1);
+      assertEquals(state.nextRunIndex, 3);
+      assertEquals(state.creatureExport !== undefined, true);
+      const newRunMilestones = state.milestones.filter((m) => m.runIndex === 2);
+      assertGreater(newRunMilestones.length, 0);
+      for (let i = 1; i < state.milestones.length; i++) {
+        const prev = state.milestones[i - 1].cumulativeGen;
+        const curr = state.milestones[i].cumulativeGen;
+        assert(curr >= prev, `cumulativeGen must be monotonic (${prev} → ${curr})`);
+      }
+
+      // Both chart SVGs were written under the baseDir override.
+      const errorSvg = join(tmp, "screenshots", slug, "milestones.svg");
+      const complexitySvg = join(tmp, "screenshots", slug, "complexity.svg");
+      assertEquals(existsSync(errorSvg), true, "error chart SVG should exist");
+      assertEquals(existsSync(complexitySvg), true, "complexity chart SVG should exist");
+      const errorText = await Deno.readTextFile(errorSvg);
+      const complexityText = await Deno.readTextFile(complexitySvg);
+      assert(errorText.startsWith("<svg"), "error chart must be an SVG");
+      assert(complexityText.startsWith("<svg"), "complexity chart must be an SVG");
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "runMultiRunMaze --fresh wipes prior artefacts before running",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "maze_fresh_" });
+    try {
+      const slug = EXAMPLE_SLUG;
+      // Pre-seed with two runs' worth of state.
+      await appendMultiRunRun(slug, {
+        creatureExport: new Creature(INPUT_COUNT, OUTPUT_COUNT).exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: 0.5,
+          neurons: 9,
+          synapses: 20,
+          meanEpisodeSteps: 200,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const outcome = await runMultiRunMaze({
+        argv: ["--fresh"],
+        baseDir: tmp,
+        evolveOverrides: { iterations: 1 },
+      });
+
+      // `--fresh` wiped the prior state, so this is run 1 and there was
+      // no prior champion to resume from.
+      assertEquals(outcome.resumed, false);
+      assertEquals(outcome.runIndex, 1);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.nextRunIndex, 2);
+      // Every persisted milestone now belongs to run 1.
+      for (const m of state.milestones) {
+        assertEquals(m.runIndex, 1);
+      }
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
 });

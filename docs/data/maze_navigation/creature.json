@@ -1,0 +1,101 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.11767038985830892,
+      "squash": "ArcTan"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": -0.05078733155543366,
+      "squash": "GAUSSIAN"
+    },
+    {
+      "type": "output",
+      "uuid": "output-2",
+      "bias": 0.9650905932157781,
+      "squash": "SINE"
+    },
+    {
+      "type": "output",
+      "uuid": "output-3",
+      "bias": -0.4434754000011609,
+      "squash": "SELU"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.5943945001448206,
+      "fromUUID": "input-0",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.8783257002139987,
+      "fromUUID": "input-2",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": 0.6363709000016659,
+      "fromUUID": "input-2",
+      "toUUID": "output-3"
+    },
+    {
+      "weight": 0.8545763003731607,
+      "fromUUID": "input-3",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 5,
+  "output": 4,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0.018000000000000016"
+    },
+    {
+      "name": "score",
+      "value": "0.98199996"
+    },
+    {
+      "name": "trialRewards",
+      "value": "-0.018000000000000016"
+    },
+    {
+      "name": "meanReward",
+      "value": "-0.018000000000000016"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
+    },
+    {
+      "name": "adjusted",
+      "value": "2 weights"
+    },
+    {
+      "name": "approach-logged",
+      "value": "fine"
+    }
+  ],
+  "memetic": {
+    "generation": 1,
+    "score": 0.9819999597144958,
+    "biases": {},
+    "weights": [
+      {
+        "fromUUID": "input-0",
+        "toUUID": "output-2",
+        "weight": 0.36507049999999996
+      },
+      {
+        "fromUUID": "input-2",
+        "toUUID": "output-1",
+        "weight": 1.3310478000034844
+      }
+    ]
+  }
+}
