@@ -95,66 +95,34 @@ retained because the environment is interactive — there is no pre-generated bi
 Artefacts:
 
 - `.synthetic-mountain-car/creatures/champion.json` – the fittest controller from the run
-- `.synthetic-mountain-car/snapshots/snapshot-gen-*.json` – running-champion snapshots captured at
-  the configured checkpoints
 - `docs/screenshots/mountain_car.svg` – animated SVG showing the champion's drive up the hill
-- `docs/screenshots/mountain_car_evolution.svg` – multi-panel evolution-progression strip rendered
-  from the captured snapshots
-- `docs/screenshots/mountain_car/evolution.svg` – dual-axis evolution chart plotting best score and
-  champion neuron / synapse counts against generation
-- [`docs/screenshots/mountain_car/fitness.svg`](../docs/screenshots/mountain_car/fitness.svg) – best
-  vs mean per-trial fitness against generation
-- [`docs/screenshots/mountain_car/topology.svg`](../docs/screenshots/mountain_car/topology.svg) –
-  champion neuron and synapse counts against generation
-- [`docs/data/mountain_car/evolution.csv`](../docs/data/mountain_car/evolution.csv) – the
-  per-generation telemetry source-of-truth
-  (`generation,best_fitness,mean_fitness,neuron_count,synapse_count`)
+- [`docs/screenshots/mountain_car_milestones.svg`](../docs/screenshots/mountain_car_milestones.svg)
+  – dual-axis milestone-statistics chart rendered from the `evolveRL` milestone stream
+  (`renderMilestoneChartSVG` from [`common/milestone_chart.ts`](../common/milestone_chart.ts))
 
 ## 📈 Evolution Progress
 
-![Mountain-Car evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/mountain_car_evolution.svg)
+Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
+milestone-cadence telemetry (`evolverl_milestone` events at generations
+`1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten). The legacy per-generation snapshot
+strip, evolution chart, fitness chart, and topology chart have been replaced by a single
+milestone-statistics chart sourced from the `EvolveRLMilestone[]` array `Creature.evolveRL()`
+returns when `statistics: true` is set. The mountain-car runner registers **no `onTrainingEvent`
+handler** — the milestone array is read straight from the run summary and rendered with
+`renderMilestoneChartSVG` (see issue
+[#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).
 
-![Mountain-Car evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/mountain_car/evolution.svg)
+![Mountain-Car milestone chart — best score and mean episode steps on the left axis, with champion neuron and synapse counts on the right axis, plotted against milestone generation on a log-X axis](../docs/screenshots/mountain_car_milestones.svg)
 
-![Mountain-Car best vs mean per-trial fitness against generation](../docs/screenshots/mountain_car/fitness.svg)
+Re-run `./mountain_car/run.sh` to refresh the milestone chart and the run-replay SVG together.
 
-![Mountain-Car champion neuron and synapse counts against generation](../docs/screenshots/mountain_car/topology.svg)
-
-The runner captures a snapshot of the **running champion** at each of the checkpoint generations
-`[1, 10, 50, 150, 300]`. The cadence is chosen to match variable-topology evolution from
-uniform-random noise: gen 1 is pure noise, gens 10 / 50 / 150 show the controller growing structure
-and shifting weights, and the final captured panel shows the swing-up policy cresting the flag. The
-chart fits a normal window — the milestones are spaced so the score-progression polyline is readable
-end-to-end.
-
-Generation 1 is the **uniform-random NEAT population** straight from `new Creature(2, 3)` — direct
-input → output connections with weights and biases drawn by the library's RNG. Most gen-1 creatures
-waste their 200 steps rocking inside the valley without ever cresting the flag, so the population
-mean per-trial score sits at the failure baseline (well below any successful score). The
-intermediate milestones show the controller learning the swing-up strategy; the final champion meets
+Generation 1 — the first milestone — is the **uniform-random NEAT population** straight from
+`new Creature(2, 3)`: direct input → output connections with weights and biases drawn by the
+library's RNG. Most gen-1 creatures waste their 200 steps rocking inside the valley without ever
+cresting the flag, so the population mean per-trial score sits at the failure baseline (well below
+any successful score). Subsequent milestones (gens 10 / 100 / 1000) show the controller growing
+structure and shifting weights into a swing-up region of the search space; the final milestone meets
 the 80% summit-rate threshold across the perturbed-start batch.
-
-### Latest measured run (audit issue #221)
-
-Numbers below are quoted **from the latest end-to-end run** with `seed=12345` on a commodity Apple
-M-series laptop. Re-run `./mountain_car/run.sh` to refresh them.
-
-| Metric                      | Measured value                                                                                             |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Wall-clock                  | 22.8 s (well below the 5 min backstop)                                                                     |
-| Generations executed        | 300 (loop kept running so all checkpoints — `[1, 10, 50, 150, 300]` — could fire after the target was met) |
-| Champion best score         | 471.0 (mean per-trial score)                                                                               |
-| Champion summit rate        | 100% (5 / 5 perturbed trials cleared the flag)                                                             |
-| First positive best fitness | gen 55 (first partial swing-up)                                                                            |
-| First topology change       | gen 37 (add-neuron mutation: 5 → 7 neurons, 6 → 8 synapses)                                                |
-| Initial topology (gen 0)    | 5 neurons, 6 synapses (`new Creature(2, 3)` minimal seed)                                                  |
-| Final topology (champion)   | 7 neurons, 8 synapses                                                                                      |
-| Stop reason                 | `target` — summit rate ≥ 80% before the timeout                                                            |
-
-**The final creature solves the environment** — it crests the goal flag on every one of the five
-perturbed-start trials in well under the 200-step horizon. The `evolution.csv` shows the topology
-genuinely growing (5 → 7 neurons; 6 → 8 synapses), so the seed is not memorising a hand-crafted
-shape; structural mutation is discovering it.
 
 ## 🧠 Tacit Knowledge
 

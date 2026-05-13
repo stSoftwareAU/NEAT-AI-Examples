@@ -4,12 +4,16 @@
  * asserts on the observable outputs (scores, file contents, SVG
  * structure).
  *
- * Migration note (issue #237): the controller now evolves through
- * `Creature.evolveRL()`, so the tests for the removed
- * `buildRandomPopulation` and `mutateCreatureExport` internal helpers
- * have been dropped in favour of direct adapter and controller tests.
- * The remaining tests still assert on public behaviour rather than
- * implementation choices.
+ * Migration notes:
+ * - Issue #237 — the controller evolves through `Creature.evolveRL()`,
+ *   so the tests for the removed `buildRandomPopulation` and
+ *   `mutateCreatureExport` internal helpers have been dropped in favour
+ *   of direct adapter and controller tests.
+ * - Issue #290 — per-generation telemetry, snapshot capture, and the
+ *   evolution / fitness / topology charts have been replaced by the
+ *   milestone-statistics chart from #287. Tests covering the removed
+ *   surfaces have been deleted; a new test asserts the milestone-chart
+ *   SVG round-trip via `evolveRL` + `renderMilestoneChartSVG`.
  */
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
@@ -19,17 +23,13 @@ import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 import {
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
   evolveMountainCarController,
-  formatEvolutionCsv,
-  type GenerationInfo,
   INPUT_COUNT,
   MAX_STEPS,
+  MILESTONE_SVG_PATH,
   MountainCarAdapter,
   type MountainCarEpisodeState,
   OUTPUT_COUNT,
-  renderTopologyChartSvg,
   replayController,
   scoreController,
   scoreSwingUpPolicy,
@@ -38,8 +38,7 @@ import {
 } from "./mountain_car.ts";
 import { renderRunSVG } from "./svg.ts";
 import { GOAL_POSITION, MAX_EPISODE_STEPS } from "./physics.ts";
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 
 Deno.test("MountainCarAdapter advertises 2 inputs and the canonical step cap", () => {
   const adapter = new MountainCarAdapter();
@@ -168,7 +167,7 @@ Deno.test(
 );
 
 Deno.test({
-  name: "evolveMountainCarController generation-1 population is noise on average",
+  name: "evolveMountainCarController gen-1 milestone sits well below the threshold",
   // NEAT-AI 5.0.0 loads a Rust/WASM FFI library + Metal accelerator that
   // do not unload before the test ends — disable the sanitisers for the
   // evolve-driven tests.
@@ -177,37 +176,30 @@ Deno.test({
   fn: async () => {
     // Gen 1 must be noise: a fresh `new Creature(input, output)` seed
     // and the library's uniform-random structural mutations cannot
-    // already solve mountain-car. We bound the run to a single
-    // generation via the `iterations` cap (NEAT-AI 5.0.0 requires
-    // integer `timeoutMinutes`, so sub-minute backstops are no longer
-    // expressible).
-    let firstGenMean = Infinity;
-    let firstGenBestSummit = Infinity;
-    await evolveMountainCarController({
+    // already solve mountain-car. Per #298 the only available telemetry
+    // is the milestone payload at generation 1.
+    const result = await evolveMountainCarController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
-      onGeneration: (info) => {
-        if (info.generation === 0 && firstGenMean === Infinity) {
-          firstGenMean = info.meanScore;
-          firstGenBestSummit = info.bestSummitRate;
-        }
-      },
     });
-    // meanScore is `SUCCESS_BONUS * summitRate`. A noisy population
-    // dominated by timeouts has a near-zero summit rate so the mean
-    // sits well below SUCCESS_BONUS/4.
-    assert(
-      firstGenMean < SUCCESS_BONUS / 4,
-      `expected gen-1 population mean to be well below SUCCESS_BONUS/4 ` +
-        `(${SUCCESS_BONUS / 4}), got ${firstGenMean}`,
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least the gen-1 milestone to be collected",
     );
-    // It is theoretically possible for a lucky random NEAT genome to
-    // already swing the car up, but its summit rate cannot already be
-    // at the threshold — that would defeat the noise narrative.
+    const first = result.milestones[0];
+    assertEquals(
+      first.generation,
+      1,
+      `expected the first milestone to live at generation 1, got ${first.generation}`,
+    );
+    // The gen-1 best score is bounded by SUCCESS_BONUS (a perfect
+    // summit) but for a noisy population dominated by timeouts must sit
+    // well below the solved-rate equivalent.
     assert(
-      firstGenBestSummit < SOLVED_THRESHOLD,
-      `expected gen-1 best summit rate to be below the solve threshold ` +
-        `${SOLVED_THRESHOLD}, got ${firstGenBestSummit}`,
+      first.bestScore < SUCCESS_BONUS * SOLVED_THRESHOLD,
+      `expected the gen-1 best score to sit below SOLVED_THRESHOLD-equivalent ` +
+        `(${SUCCESS_BONUS * SOLVED_THRESHOLD}), got ${first.bestScore}`,
     );
   },
 });
@@ -286,131 +278,73 @@ Deno.test({
 });
 
 Deno.test({
-  name: "evolveMountainCarController emits GenerationInfo with sensible neuron and synapse counts",
+  name: "evolveMountainCarController collects milestone samples and the chart SVG round-trips",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const samples: GenerationInfo[] = [];
-    await evolveMountainCarController({
-      seed: 1,
-      populationSize: 3,
-      targetError: -1,
-      timeoutMinutes: 1,
-      iterations: 3,
-      mutationStrength: 0.05,
-      mutationRate: 0.05,
-      addNeuronRate: 0,
-      trials: 2,
-      trialSeed: 1,
-      initialPerturbation: 0.05,
-      onGeneration: (info) => samples.push(info),
+    // Per #287/#290 the milestone chart is the only fitness-progression
+    // artefact the mountain-car example emits. The first milestone fires
+    // at generation 1, so even a single-iteration run must collect at
+    // least one sample, and the chart must render to a well-formed SVG.
+    const result = await evolveMountainCarController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
     });
-    assertGreater(samples.length, 0, "expected at least one onGeneration call");
-    for (const info of samples) {
-      // The minimal seed is `INPUT_COUNT + OUTPUT_COUNT` neurons with
-      // at least `INPUT_COUNT * OUTPUT_COUNT` direct synapses. Library
-      // mutation may grow either count, so we lower-bound rather than
-      // assert exact equality.
-      assertGreaterOrEqual(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
-      assertGreaterOrEqual(info.synapses, INPUT_COUNT);
-      assertGreaterOrEqual(info.bestSummitRate, 0);
-      assertGreaterOrEqual(1, info.bestSummitRate);
-    }
-  },
-});
-
-Deno.test({
-  name:
-    "evolveMountainCarController writes snapshots and the strip SVG embeds one panel per snapshot",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "mountain_car_snapshots_test_" });
-    try {
-      // Under the evolveRL API only the seed creature (gen-1) and the
-      // final champion are captured. Request gen-1 explicitly — the
-      // final-generation snapshot is always written.
-      await evolveMountainCarController({
-        seed: 1,
-        populationSize: 3,
-        targetError: -1,
-        timeoutMinutes: 5,
-        iterations: 3,
-        mutationStrength: 0.05,
-        mutationRate: 0.05,
-        addNeuronRate: 0,
-        trials: 2,
-        trialSeed: 1,
-        initialPerturbation: 0.05,
-        snapshotConfig: { checkpoints: [1], outputDir: tmp },
-      });
-
-      const snapshots = loadSnapshots(tmp);
-      assertGreaterOrEqual(
-        snapshots.length,
-        2,
-        `expected at least seed + final snapshots, got ${snapshots.length}`,
-      );
-
-      const svg = renderEvolutionProgressSvg(snapshots, {
-        title: "Mountain Car — Evolution Progress",
-      });
-      assert(svg.startsWith("<svg"), "must start with <svg>");
-      assert(svg.length > 0, "SVG must be non-empty");
-      const panels = svg.match(/<g class="panel"/g) ?? [];
-      assertEquals(panels.length, snapshots.length);
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
-  },
-});
-
-Deno.test(
-  "formatEvolutionCsv emits the audit-mandated header and one row per record",
-  () => {
-    // Audit issue #221: CSV header must be the canonical schema used by
-    // every audited example.
-    const rows: EvolutionRow[] = [
-      { generation: 0, bestFitness: -75.5, meanFitness: -90.1, neuronCount: 5, synapseCount: 6 },
-      { generation: 1, bestFitness: 42.0, meanFitness: -10.0, neuronCount: 6, synapseCount: 7 },
-    ];
-    const csv = formatEvolutionCsv(rows);
-    const lines = csv.trim().split("\n");
-    assertEquals(lines[0], EVOLUTION_CSV_HEADER);
-    assertEquals(
-      EVOLUTION_CSV_HEADER,
-      "generation,best_fitness,mean_fitness,neuron_count,synapse_count",
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least one milestone sample after iterations=1",
     );
-    assertEquals(lines.length, rows.length + 1);
-    assertEquals(lines[1], "0,-75.5,-90.1,5,6");
-    assertEquals(lines[2], "1,42,-10,6,7");
-    // Determinism: identical inputs produce identical bytes.
-    assertEquals(formatEvolutionCsv(rows), csv);
-  },
-);
+    for (const m of result.milestones) {
+      assertGreater(m.generation, 0);
+      assertGreaterOrEqual(m.bestNeurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertGreaterOrEqual(m.bestSynapses, 1);
+      assertGreaterOrEqual(m.meanEpisodeSteps, 0);
+      assertGreaterOrEqual(m.generationWallClockMs, 0);
+    }
 
-Deno.test("renderTopologyChartSvg produces a well-formed SVG referencing both lines", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 0, bestFitness: -50, meanFitness: -90, neuronCount: 5, synapseCount: 6 },
-    { generation: 5, bestFitness: 100, meanFitness: 10, neuronCount: 6, synapseCount: 7 },
-    { generation: 10, bestFitness: 471, meanFitness: 200, neuronCount: 7, synapseCount: 8 },
-  ];
-  const svg = renderTopologyChartSvg(rows);
-  assert(svg.startsWith("<svg"), "must start with <svg>");
-  assert(svg.includes("</svg>"), "must contain </svg>");
-  assert(svg.includes("neuron-count"), "expected neuron-count polyline");
-  assert(svg.includes("synapse-count"), "expected synapse-count polyline");
-  assert(svg.includes("Mountain Car — Topology Growth"));
+    const tmp = await Deno.makeTempDir({ prefix: "mountain_car_milestone_" });
+    try {
+      const svg = renderMilestoneChartSVG(result.milestones, {
+        title: "Mountain Car — evolveRL Milestones",
+        logX: true,
+        caption: true,
+      });
+      const path = join(tmp, "mountain_car_milestones.svg");
+      await Deno.writeTextFile(path, svg);
+      const written = await Deno.readTextFile(path);
+      assert(written.startsWith("<svg"), "must start with <svg>");
+      assert(written.includes("</svg>"), "must contain </svg>");
+      assert(
+        written.includes("Mountain Car &#x2014; evolveRL Milestones") ||
+          written.includes("Mountain Car — evolveRL Milestones"),
+        "expected the chart title to appear in the SVG",
+      );
+      // The chart should reference each milestone series.
+      assert(
+        written.includes("best-score-line"),
+        "expected the best-score series",
+      );
+      assert(
+        written.includes("mean-steps-line"),
+        "expected the mean-steps series",
+      );
+      assert(
+        written.includes("neurons-line"),
+        "expected the neurons series",
+      );
+      assert(
+        written.includes("synapses-line"),
+        "expected the synapses series",
+      );
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
 });
 
-Deno.test("renderTopologyChartSvg rejects empty input", () => {
-  let threw = false;
-  try {
-    renderTopologyChartSvg([]);
-  } catch (_err) {
-    threw = true;
-  }
-  assertEquals(threw, true, "expected empty input to throw");
+Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
+  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/mountain_car_milestones.svg");
 });
 
 Deno.test("replayController returns a non-empty trace starting at the initial state", () => {
