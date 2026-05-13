@@ -18,7 +18,7 @@
  *
  * Output is byte-deterministic for identical input — no timestamps, no
  * Math.random, no DOM. Pure string emission, matching the convention of
- * {@link ./fitness_chart.ts} and {@link ./evolution_chart.ts}.
+ * {@link ./milestone_chart.ts}.
  */
 
 /** Outcome categories supported by the renderer. */
