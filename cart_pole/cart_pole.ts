@@ -4,7 +4,7 @@
  * Evolves a NEAT-AI creature to balance an inverted pole on a moving
  * cart — the classic neuroevolution control benchmark. The physics
  * simulator (see `physics.ts`) is pure TypeScript. The evolutionary
- * loop is now driven entirely by NEAT-AI's class-shaped
+ * loop is driven entirely by NEAT-AI's class-shaped
  * `Creature.evolveRL()` API (issue #236, depends on
  * `stSoftwareAU/NEAT-AI#2630` and library version `5.0.0`).
  *
@@ -20,6 +20,13 @@
  * `Creature.evolveRL()` is a brand-new `new Creature(INPUT_COUNT,
  * OUTPUT_COUNT)` — the library's uniform-random minimal genome. No
  * topology is hand-specified; structural mutation is owned by NEAT-AI.
+ *
+ * 📈 **Progress is reported as milestone statistics.** Per issue #298
+ * NEAT-AI surfaces only milestone-cadence telemetry (`evolverl_milestone`
+ * events at generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then
+ * powers of ten). This example collects the milestone payloads emitted
+ * by `Creature.evolveRL()` and renders them via
+ * `renderMilestoneChartSVG` — no per-generation handler is registered.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -28,6 +35,7 @@ import {
   Creature,
   type CreatureExport,
   EpisodeAdapter,
+  type EvolveRLMilestone,
   type EvolveRLOptions,
   safeWriteJson,
   type StepResult,
@@ -35,14 +43,7 @@ import {
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import {
-  captureSnapshot,
-  loadSnapshots,
-  type SnapshotConfig,
-} from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { type MilestoneSample, renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 import {
   type EpisodeAdapter as LocalEpisodeAdapter,
   runEpisode,
@@ -176,17 +177,6 @@ export interface EvolveOptions {
    * wobble patterns yet remain deterministic across runs.
    */
   disturbanceSeed?: number;
-  /** Optional callback invoked once per generation with progress info. */
-  onGeneration?: (info: GenerationInfo) => void;
-  /**
-   * Optional snapshot configuration. When supplied, a snapshot of the
-   * seed creature is captured if generation `1` is a checkpoint, and a
-   * snapshot of the final champion is captured if `result.generations`
-   * is a checkpoint. Mid-run intermediate generations are no longer
-   * captured because `Creature.evolveRL()` does not expose mid-run
-   * creature exports — see issue #236 for the migration trade-offs.
-   */
-  snapshotConfig?: SnapshotConfig;
 }
 
 /** Options controlling multi-trial perturbed scoring of a single creature. */
@@ -208,17 +198,6 @@ export interface ScoreOptions {
   disturbanceSeed?: number;
 }
 
-/** Statistics emitted after each generation. */
-export interface GenerationInfo {
-  generation: number;
-  bestScore: number;
-  meanScore: number;
-  /** Neuron count of the champion creature for this generation. */
-  neurons: number;
-  /** Synapse count of the champion creature for this generation. */
-  synapses: number;
-}
-
 /** Result of the evolutionary search. */
 export interface EvolveResult {
   /** The fittest creature found during the run. */
@@ -238,6 +217,14 @@ export interface EvolveResult {
    * - `"iterations"` — the optional generation cap was hit first.
    */
   stopReason: "target" | "timeout" | "iterations";
+  /**
+   * Milestone payloads collected via `evolveRL`'s `statistics: true`
+   * option, surfaced in the schedule documented by
+   * {@link MilestoneSample}. Per issue #298 this is the only telemetry
+   * channel NEAT-AI exposes — see {@link MILESTONE_SVG_PATH} for the
+   * rendered chart.
+   */
+  milestones: MilestoneSample[];
 }
 
 /**
@@ -495,12 +482,22 @@ export function replayController(
   return runEpisode(creature, cartPoleAdapter(initialState(), params, wobble), { maxSteps }).trace;
 }
 
-/** Per-generation aggregate accumulated from `onEpisodeTrials` events. */
-interface GenerationBucket {
-  meanRewards: number[];
-  bestReward: number;
-  bestNeurons: number;
-  bestSynapses: number;
+/**
+ * Convert an `EvolveRLMilestone` from the library into the
+ * {@link MilestoneSample} shape consumed by
+ * `renderMilestoneChartSVG`. Both interfaces are structurally
+ * identical, but pinning the conversion keeps consumers from leaking
+ * the upstream type onto their own surfaces.
+ */
+function toMilestoneSample(m: EvolveRLMilestone): MilestoneSample {
+  return {
+    generation: m.generation,
+    bestScore: m.bestScore,
+    bestNeurons: m.bestNeurons,
+    bestSynapses: m.bestSynapses,
+    meanEpisodeSteps: m.meanEpisodeSteps,
+    generationWallClockMs: m.generationWallClockMs,
+  };
 }
 
 /**
@@ -509,17 +506,12 @@ interface GenerationBucket {
  * plateau detection, and stop-condition handling are owned by
  * `Creature.evolveRL()` (issue #236).
  *
- * Per-generation telemetry is reconstructed by:
- *
- * 1. Accumulating per-creature `meanReward` via `onEpisodeTrials`.
- * 2. Reading champion topology counts from the optional
- *    `evolverl_milestone` events when `statistics: true` is enabled.
- * 3. Firing the caller's `options.onGeneration` callback from each
- *    `generation_complete` training event with the aggregated data.
- *
- * Snapshot capture is reduced to gen-1 (the seed creature) and the
- * final generation (the champion after `evolveRL` returns) because the
- * upstream API does not expose mid-run creature exports.
+ * Telemetry is collected via NEAT-AI's `statistics: true` option, which
+ * surfaces an `EvolveRLMilestone[]` array on the run summary covering
+ * generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers
+ * of ten. Per issue #298 the example registers **no `onTrainingEvent`
+ * handler** — milestone statistics are the only telemetry channel
+ * NEAT-AI exposes.
  */
 export async function evolveCartPoleController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -532,23 +524,6 @@ export async function evolveCartPoleController(
   });
 
   const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-  const seedExport = seedCreature.exportJSON();
-  const seedNeurons = seedExport.neurons.length + (seedExport.input ?? INPUT_COUNT);
-  const seedSynapses = seedExport.synapses.length;
-
-  // Capture the seed creature as the gen-1 snapshot so the existing
-  // multi-panel SVG renderer still has at least one early-generation
-  // panel to draw alongside the final champion.
-  if (options.snapshotConfig?.checkpoints.includes(1)) {
-    captureSnapshot(options.snapshotConfig, 1, seedExport, 0);
-  }
-
-  const generationData = new Map<number, GenerationBucket>();
-  let latestBestNeurons = seedNeurons;
-  let latestBestSynapses = seedSynapses;
-  let bestSteps = 0;
-  let lastObservedGeneration = 0;
-  let solvedAtGen = -1;
 
   // EvolveRL normalised target error — the adapter emits rewards in
   // `[-1, 0]`, so `defaultRewardToError` produces an error in `[0, 1]`
@@ -574,80 +549,13 @@ export async function evolveCartPoleController(
     iterations: options.iterations,
     episodesPerCreature: options.trials ?? 10,
     statistics: true,
-    onEpisodeTrials: (event) => {
-      let bucket = generationData.get(event.generation);
-      if (!bucket) {
-        bucket = {
-          meanRewards: [],
-          bestReward: Number.NEGATIVE_INFINITY,
-          bestNeurons: latestBestNeurons,
-          bestSynapses: latestBestSynapses,
-        };
-        generationData.set(event.generation, bucket);
-      }
-      bucket.meanRewards.push(event.meanReward);
-      if (event.meanReward > bucket.bestReward) {
-        bucket.bestReward = event.meanReward;
-      }
-    },
-    onTrainingEvent: (event) => {
-      if (event.kind === "evolverl_milestone") {
-        latestBestNeurons = event.bestNeurons;
-        latestBestSynapses = event.bestSynapses;
-        const bucket = generationData.get(event.generation);
-        if (bucket) {
-          bucket.bestNeurons = event.bestNeurons;
-          bucket.bestSynapses = event.bestSynapses;
-        }
-        return;
-      }
-      if (event.kind !== "generation_complete") return;
-
-      lastObservedGeneration = event.generation;
-      const bucket = generationData.get(event.generation);
-      // Surface generation numbers as zero-based to match the historical
-      // GenerationInfo contract.
-      const generation0 = event.generation - 1;
-      let bestStepsThisGen: number;
-      let meanStepsThisGen: number;
-      let neurons: number;
-      let synapses: number;
-      if (bucket && bucket.meanRewards.length > 0) {
-        const sum = bucket.meanRewards.reduce((a, b) => a + b, 0);
-        const meanReward = sum / bucket.meanRewards.length;
-        // Reward in `[-1, 0]` maps to mean balance steps via
-        // `meanSteps = MAX_STEPS * (1 + meanReward)`.
-        meanStepsThisGen = MAX_STEPS * (1 + meanReward);
-        bestStepsThisGen = MAX_STEPS * (1 + bucket.bestReward);
-        neurons = bucket.bestNeurons;
-        synapses = bucket.bestSynapses;
-      } else {
-        // No data this generation (e.g. every creature was an elite cached
-        // from a previous round). Fall back to the previous champion's
-        // known stats.
-        meanStepsThisGen = bestSteps;
-        bestStepsThisGen = bestSteps;
-        neurons = latestBestNeurons;
-        synapses = latestBestSynapses;
-      }
-      if (bestStepsThisGen > bestSteps) bestSteps = bestStepsThisGen;
-      if (bestStepsThisGen >= SOLVED_THRESHOLD && solvedAtGen < 0) {
-        solvedAtGen = generation0;
-      }
-      options.onGeneration?.({
-        generation: generation0,
-        bestScore: bestStepsThisGen,
-        meanScore: meanStepsThisGen,
-        neurons,
-        synapses,
-      });
-    },
   };
 
   const result = await seedCreature.evolveRL(adapter, evolveOptions);
 
   const wallclockMs = Date.now() - loopStart;
-  const finalGeneration = Math.max(lastObservedGeneration, result.generation);
+
+  const milestones: MilestoneSample[] = (result.milestones ?? []).map(toMilestoneSample);
 
   // The champion's `bestScore` mirrors evolveRL's own assessment so
   // that "the champion solved the task" agrees with `result.error <=
@@ -656,28 +564,6 @@ export async function evolveCartPoleController(
   // generalisation is exercised separately by callers re-running
   // `scoreController()` on a different seed set.
   const finalScore = MAX_STEPS * (1 - Math.max(0, Math.min(1, result.error)));
-  if (finalScore > bestSteps) bestSteps = finalScore;
-
-  // Capture the final champion as the last snapshot if the caller asked
-  // for a checkpoint at the final generation (or used the default
-  // checkpoint list that includes the final gen).
-  if (options.snapshotConfig?.checkpoints.includes(finalGeneration)) {
-    captureSnapshot(
-      options.snapshotConfig,
-      finalGeneration,
-      seedCreature.exportJSON(),
-      finalScore,
-    );
-  } else if (options.snapshotConfig) {
-    // Always write a snapshot at the final generation so the multi-panel
-    // SVG has a closing frame even when no exact checkpoint matches.
-    captureSnapshot(
-      { ...options.snapshotConfig, checkpoints: [finalGeneration] },
-      finalGeneration,
-      seedCreature.exportJSON(),
-      finalScore,
-    );
-  }
 
   const targetScore = MAX_STEPS * (1 - absoluteTargetError);
   const targetMet = finalScore >= targetScore;
@@ -686,7 +572,7 @@ export async function evolveCartPoleController(
   if (targetMet) {
     stopReason = "target";
   } else if (
-    options.iterations !== undefined && finalGeneration >= options.iterations
+    options.iterations !== undefined && result.generation >= options.iterations
   ) {
     stopReason = "iterations";
   } else {
@@ -696,10 +582,11 @@ export async function evolveCartPoleController(
   return {
     champion: seedCreature,
     bestScore: finalScore,
-    generations: finalGeneration,
+    generations: result.generation,
     solved: targetMet,
     wallclockMs,
     stopReason,
+    milestones,
   };
 }
 
@@ -709,150 +596,12 @@ export const SCREENSHOT_PATH = "docs/screenshots/cart_pole.svg";
 /** Number of evenly-spaced keyframes sampled for the SMIL-animated SVG. */
 export const SVG_FRAME_COUNT = 60;
 
-/** Generations at which the runner captures evolution snapshots. */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500, 1000];
-
-/** Hidden directory under which snapshot files are written. */
-export const SNAPSHOTS_DIR = ".synthetic-cart-pole/snapshots";
-
-/** Path to the multi-panel evolution-progression SVG the runner emits. */
-export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/cart_pole_evolution.svg";
-
-/** Path to the per-generation evolution-chart SVG the runner emits. */
-export const EVOLUTION_CHART_PATH = "docs/screenshots/cart_pole_evolution_chart.svg";
-
-/** Path to the per-generation evolution telemetry CSV (audit issue #220). */
-export const EVOLUTION_CSV_PATH = "docs/data/cart_pole/evolution.csv";
-
-/** Header row for the per-generation telemetry CSV (audit issue #220). */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path (audit issue #220). */
-export const FITNESS_SVG_PATH = "docs/screenshots/cart_pole/fitness.svg";
-
-/** Neuron / synapse count chart path (audit issue #220). */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/cart_pole/topology.svg";
-
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  generation: number;
-  bestFitness: number;
-  meanFitness: number;
-  neuronCount: number;
-  synapseCount: number;
-}
-
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format an evolution-telemetry table into a deterministic CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-// ---- Topology chart renderer ------------------------------------------
-
-const TOPOLOGY_SVG_WIDTH = 720;
-const TOPOLOGY_SVG_HEIGHT = 320;
-const TOPOLOGY_MARGIN = { top: 36, right: 70, bottom: 44, left: 60 };
-
-/** Render the neuron / synapse count chart for the README. */
-export function renderTopologyChartSvg(rows: readonly EvolutionRow[]): string {
-  if (rows.length === 0) {
-    throw new Error("renderTopologyChartSvg requires at least one row");
-  }
-  const innerW = TOPOLOGY_SVG_WIDTH - TOPOLOGY_MARGIN.left - TOPOLOGY_MARGIN.right;
-  const innerH = TOPOLOGY_SVG_HEIGHT - TOPOLOGY_MARGIN.top - TOPOLOGY_MARGIN.bottom;
-  const innerX = TOPOLOGY_MARGIN.left;
-  const innerY = TOPOLOGY_MARGIN.top;
-
-  const minGen = rows[0].generation;
-  const maxGen = rows[rows.length - 1].generation;
-  const genSpan = Math.max(1, maxGen - minGen);
-
-  const maxNeurons = Math.max(...rows.map((r) => r.neuronCount), 1);
-  const maxSynapses = Math.max(...rows.map((r) => r.synapseCount), 1);
-
-  const xScale = (g: number) => innerX + ((g - minGen) / genSpan) * innerW;
-  const neuronY = (n: number) => innerY + innerH - (n / maxNeurons) * innerH;
-  const synapseY = (s: number) => innerY + innerH - (s / maxSynapses) * innerH;
-
-  const neuronPts = rows
-    .map((r) => `${xScale(r.generation).toFixed(2)},${neuronY(r.neuronCount).toFixed(2)}`)
-    .join(" ");
-  const synapsePts = rows
-    .map((r) => `${xScale(r.generation).toFixed(2)},${synapseY(r.synapseCount).toFixed(2)}`)
-    .join(" ");
-
-  const leftTicks: string[] = [];
-  const rightTicks: string[] = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i / 4;
-    const ly = innerY + innerH - t * innerH;
-    leftTicks.push(
-      `    <text x="${(innerX - 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="end" font-family="sans-serif" font-size="10" fill="#2ca02c">` +
-        `${(t * maxNeurons).toFixed(0)}</text>`,
-    );
-    rightTicks.push(
-      `    <text x="${(innerX + innerW + 6).toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" ` +
-        `text-anchor="start" font-family="sans-serif" font-size="10" fill="#d62728">` +
-        `${(t * maxSynapses).toFixed(0)}</text>`,
-    );
-  }
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TOPOLOGY_SVG_WIDTH} ${TOPOLOGY_SVG_HEIGHT}" ` +
-    `width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" role="img" ` +
-    `aria-label="Cart Pole — neuron and synapse counts per generation">`,
-    `  <title>Cart Pole — Topology Growth</title>`,
-    `  <rect width="${TOPOLOGY_SVG_WIDTH}" height="${TOPOLOGY_SVG_HEIGHT}" fill="#fafafa"/>`,
-    `  <text x="${TOPOLOGY_SVG_WIDTH / 2}" y="22" text-anchor="middle" ` +
-    `font-family="sans-serif" font-size="14" font-weight="bold" fill="#222">` +
-    `Cart Pole — Topology Growth</text>`,
-    leftTicks.join("\n"),
-    rightTicks.join("\n"),
-    `  <polyline class="neuron-count" fill="none" stroke="#2ca02c" stroke-width="2" ` +
-    `points="${neuronPts}"/>`,
-    `  <polyline class="synapse-count" fill="none" stroke="#d62728" stroke-width="2" ` +
-    `stroke-dasharray="6 3" points="${synapsePts}"/>`,
-    `  <text x="${innerX.toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `font-family="sans-serif" font-size="11" fill="#333">gen ${minGen}</text>`,
-    `  <text x="${(innerX + innerW).toFixed(2)}" y="${(innerY + innerH + 28).toFixed(2)}" ` +
-    `text-anchor="end" font-family="sans-serif" font-size="11" fill="#333">gen ${maxGen}</text>`,
-    `  <g class="legend" font-family="sans-serif" font-size="11" fill="#222">`,
-    `    <rect x="${(innerX + innerW - 198).toFixed(2)}" y="${(innerY + 6).toFixed(2)}" ` +
-    `width="190" height="44" fill="#ffffff" fill-opacity="0.9" stroke="#cccccc"/>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 18).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 18).toFixed(2)}" ` +
-    `stroke="#2ca02c" stroke-width="2"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 21).toFixed(2)}">` +
-    `neurons (left axis)</text>`,
-    `    <line x1="${(innerX + innerW - 188).toFixed(2)}" y1="${(innerY + 36).toFixed(2)}" ` +
-    `x2="${(innerX + innerW - 164).toFixed(2)}" y2="${(innerY + 36).toFixed(2)}" ` +
-    `stroke="#d62728" stroke-width="2" stroke-dasharray="6 3"/>`,
-    `    <text x="${(innerX + innerW - 158).toFixed(2)}" y="${(innerY + 39).toFixed(2)}">` +
-    `synapses (right axis)</text>`,
-    `  </g>`,
-    `</svg>`,
-    "",
-  ].join("\n");
-}
+/**
+ * Path to the milestone-statistics chart the runner emits — this is the
+ * canonical fitness-progression artefact under the
+ * milestone-only telemetry policy (issue #298).
+ */
+export const MILESTONE_SVG_PATH = "docs/screenshots/cart_pole_milestones.svg";
 
 if (import.meta.main) {
   const start = Date.now();
@@ -872,38 +621,8 @@ if (import.meta.main) {
       `(target score ≥ ${(MAX_STEPS * (1 - DEFAULT_EVOLVE_OPTIONS.targetError)).toFixed(0)}), ` +
       `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}`,
   );
-  ensureDirSync(SNAPSHOTS_DIR);
-  for (const entry of Deno.readDirSync(SNAPSHOTS_DIR)) {
-    if (entry.isFile) Deno.removeSync(join(SNAPSHOTS_DIR, entry.name));
-  }
-  const evolutionSamples: EvolutionSample[] = [];
-  const evolutionRows: EvolutionRow[] = [];
-  const evolutionStart = Date.now();
-  const result = await evolveCartPoleController({
-    ...DEFAULT_EVOLVE_OPTIONS,
-    snapshotConfig: {
-      checkpoints: [...EVOLUTION_CHECKPOINTS],
-      outputDir: SNAPSHOTS_DIR,
-    },
-    onGeneration: ({ generation, bestScore, meanScore, neurons, synapses }) => {
-      evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
-      evolutionRows.push({
-        generation,
-        bestFitness: bestScore,
-        meanFitness: meanScore,
-        neuronCount: neurons,
-        synapseCount: synapses,
-      });
-      if (generation % 5 === 0 || bestScore >= SOLVED_THRESHOLD) {
-        console.log(
-          `   Gen ${generation.toString().padStart(3)}  best=${
-            bestScore.toFixed(1).padStart(6)
-          }  mean=${meanScore.toFixed(1).padStart(6)}  ` +
-            `neurons=${neurons}  synapses=${synapses}`,
-        );
-      }
-    },
-  });
+
+  const result = await evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
 
   console.log(
     `\n${result.solved ? "✅ Solved" : "⚠️  Did not solve"} ` +
@@ -929,52 +648,21 @@ if (import.meta.main) {
   await Deno.writeTextFile(SCREENSHOT_PATH, svg);
   console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
 
-  if (evolutionSamples.length > 0) {
-    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
-      title: "Cart-Pole — Evolution",
-      scoreLabel: "best score",
+  if (result.milestones.length > 0) {
+    const milestoneSvg = renderMilestoneChartSVG(result.milestones, {
+      title: "Cart-Pole — evolveRL Milestones",
+      logX: true,
+      caption: true,
     });
-    await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
-    console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
-  }
-
-  if (evolutionRows.length > 0) {
-    ensureDirSync("docs/data/cart_pole");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(evolutionRows));
-    console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
-
-    ensureDirSync("docs/screenshots/cart_pole");
-    const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
-      generation: r.generation,
-      bestFitness: r.bestFitness,
-      avgFitness: r.meanFitness,
-    }));
-    const fitnessSvg = renderFitnessChartSVG(fitnessSamples, {
-      title: "Cart-Pole — Fitness vs Generation",
-      bestLabel: "best fitness",
-      avgLabel: "mean fitness",
-    });
-    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
-    console.log(`📈 Wrote fitness chart ${FITNESS_SVG_PATH}`);
-
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, renderTopologyChartSvg(evolutionRows));
-    console.log(`📐 Wrote topology chart ${TOPOLOGY_SVG_PATH}`);
-  }
-
-  const snapshots = loadSnapshots(SNAPSHOTS_DIR);
-  if (snapshots.length > 0) {
-    const progressionSvg = renderEvolutionProgressSvg(snapshots, {
-      title: "Cart-Pole — Evolution Progress",
-      caption: {
-        finalScore: result.bestScore,
-        totalGenerations: result.generations,
-        wallClockMs: Date.now() - evolutionStart,
-      },
-    });
-    await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
+    await Deno.writeTextFile(MILESTONE_SVG_PATH, milestoneSvg);
     console.log(
-      `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
-        `(${snapshots.length} panels)`,
+      `📈 Wrote milestone chart ${MILESTONE_SVG_PATH} ` +
+        `(${result.milestones.length} milestones)`,
+    );
+  } else {
+    console.log(
+      "⚠️  No milestones returned by evolveRL — run did not reach the first " +
+        "milestone generation. Skipping milestone chart.",
     );
   }
 
