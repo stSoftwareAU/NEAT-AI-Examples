@@ -94,31 +94,85 @@ replaced the old `maxGenerations` cap with the standard NEAT-AI stop conditions:
 ## 🚀 Running the Example
 
 ```bash
+# First run — random seed, writes creature + milestones + both charts.
+./cart_pole/run.sh --fresh
+
+# Subsequent runs — resume from the saved champion and append milestones.
 ./cart_pole/run.sh
+
+# Override the wall-clock budget and / or early-stop target error.
+./cart_pole/run.sh --timeout=10 --target-error=0.005
 ```
+
+The runner forwards every flag to the underlying Deno program, which parses them via
+`parseMultiRunFlags` from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
+
+| Flag                  | Default | Meaning                                                               |
+| --------------------- | ------- | --------------------------------------------------------------------- |
+| `--fresh`             | absent  | Wipe prior creature, milestones, and both chart SVGs before evolving. |
+| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
+| `--target-error=<v>`  | 0.04    | Stop as soon as the champion's normalised error falls below `v`.      |
 
 Artefacts:
 
-- `.synthetic-cart-pole/creatures/champion.json` – the fittest controller from the run
+- `.synthetic-cart-pole/creatures/champion.json` – the fittest controller from this invocation
+  (working-directory copy for ad-hoc inspection)
 - `docs/screenshots/cart_pole.svg` – animated balance run of the champion
-- [`docs/screenshots/cart_pole_milestones.svg`](../docs/screenshots/cart_pole_milestones.svg) –
-  dual-axis milestone-statistics chart rendered from the `evolveRL` milestone stream
-  (`renderMilestoneChartSVG` from [`common/milestone_chart.ts`](../common/milestone_chart.ts))
+- [`docs/data/cart_pole/creature.json`](../docs/data/cart_pole/creature.json) – persisted champion
+  that subsequent runs reload as the next seed
+- [`docs/data/cart_pole/milestones.json`](../docs/data/cart_pole/milestones.json) – merged milestone
+  history across every run, with both `runGen` and `cumulativeGen`
+- [`docs/screenshots/cart_pole/milestones.svg`](../docs/screenshots/cart_pole/milestones.svg) –
+  multi-run error-curve chart: error vs cumulative generation, with faint run-boundary guide lines
+  (`renderMultiRunErrorChartSVG` from
+  [`common/multi_run_error_chart.ts`](../common/multi_run_error_chart.ts))
+- [`docs/screenshots/cart_pole/complexity.svg`](../docs/screenshots/cart_pole/complexity.svg) –
+  multi-run complexity chart: neuron and synapse counts vs cumulative generation
+  (`renderMultiRunComplexityChartSVG` from
+  [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
-## Evolution Progress
+## Evolution Progress (Multi-Run)
 
 Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
 milestone-cadence telemetry (`evolverl_milestone` events at generations
 `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten). The legacy per-generation evolution
-strip, fitness chart, and topology chart have been replaced by a single milestone-statistics chart
-sourced from the `EvolveRLMilestone[]` array `Creature.evolveRL()` returns when `statistics: true`
-is set. The cart-pole runner registers **no `onTrainingEvent` handler** — the milestone array is
-read straight from the run summary and rendered with `renderMilestoneChartSVG` (see issue
-[#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).
+strip, fitness chart, and topology chart have been replaced — and as of issue
+[#321](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/321) the single-run milestone chart
+itself (`docs/screenshots/cart_pole_milestones.svg`) is superseded by the multi-run chart pair
+above. Each subsequent run reloads the saved champion via
+[`common/multi_run_state.ts`](../common/multi_run_state.ts), evolves further, and appends fresh
+milestones with a monotonically-increasing `cumulativeGen` — so the charts show one continuous noise
+→ competent → polished arc across every run combined.
 
-![Cart-Pole milestone chart — best score and mean episode steps on the left axis, with champion neuron and synapse counts on the right axis, plotted against milestone generation on a log-X axis](../docs/screenshots/cart_pole_milestones.svg)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as run.sh
+    participant State as multi_run_state.ts
+    participant Cart as cart_pole.ts
+    participant Charts as multi_run_*_chart.ts
+    CLI->>State: parseMultiRunFlags(argv)
+    alt --fresh
+        CLI->>State: wipeMultiRunState()
+    end
+    CLI->>State: loadMultiRunState()
+    alt prior champion exists
+        State-->>Cart: Creature.fromJSON(creatureExport)
+    else first run
+        State-->>Cart: new Creature(4, 1) — random noise
+    end
+    Cart->>Cart: Creature.evolveRL(adapter)
+    Cart->>State: appendMultiRunRun({champion, milestones})
+    State->>Charts: renderMultiRunErrorChartSVG()
+    State->>Charts: renderMultiRunComplexityChartSVG()
+    Charts-->>CLI: milestones.svg + complexity.svg
+```
 
-Re-run `./cart_pole/run.sh` to refresh the milestone chart and the run-replay SVG together.
+![Cart-Pole multi-run error chart — error vs cumulative generation across every run, with faint run-boundary guide lines](../docs/screenshots/cart_pole/milestones.svg)
+
+![Cart-Pole multi-run complexity chart — best-creature neuron and synapse counts vs cumulative generation](../docs/screenshots/cart_pole/complexity.svg)
+
+Re-run `./cart_pole/run.sh` (without `--fresh`) to extend both charts with a new run.
 
 Generation 1 — the first milestone — is the **uniform-random NEAT population** straight from
 `new Creature(4, 1)`: direct input → output connections with weights and biases drawn by the

@@ -1,0 +1,120 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": -0.2682869926813718,
+      "squash": "TANH"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 2.230474284088345,
+      "fromUUID": "input-0",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.3734468780466159,
+      "fromUUID": "input-1",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 1.039263976265812,
+      "fromUUID": "input-2",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 226.7449948592839,
+      "fromUUID": "input-3",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 4,
+  "output": 1,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0.5618"
+    },
+    {
+      "name": "score",
+      "value": "0.4381999590128041"
+    },
+    {
+      "name": "trialRewards",
+      "value": "-0.848,-0.084,-0.658,-0.158,-0.462,-0.69,-0.848,-0.772,-0.446,-0.652"
+    },
+    {
+      "name": "meanReward",
+      "value": "-0.5618"
+    },
+    {
+      "name": "adjusted",
+      "value": "1 weight"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
+    },
+    {
+      "name": "restored",
+      "value": "1"
+    },
+    {
+      "name": "approach-logged",
+      "value": "fine"
+    }
+  ],
+  "memetic": {
+    "generation": 12,
+    "score": 0.1819999592697519,
+    "biases": {},
+    "weights": [
+      {
+        "fromUUID": "input-3",
+        "toUUID": "output-0",
+        "weight": 4.757056659700283
+      }
+    ],
+    "ancestry": [
+      {
+        "generation": 11,
+        "weights": [
+          {
+            "fromUUID": "input-3",
+            "toUUID": "output-0",
+            "weight": 4.757056659700283
+          }
+        ],
+        "biases": {},
+        "score": 0.1819999592697519
+      },
+      {
+        "generation": 10,
+        "weights": [
+          {
+            "fromUUID": "input-3",
+            "toUUID": "output-0",
+            "weight": 4.757056659700283
+          }
+        ],
+        "biases": {},
+        "score": 0.1819999592697519
+      },
+      {
+        "generation": 9,
+        "weights": [
+          {
+            "fromUUID": "input-3",
+            "toUUID": "output-0",
+            "weight": 4.757056659700283
+          }
+        ],
+        "biases": {},
+        "score": 0.1819999592697519
+      }
+    ]
+  }
+}

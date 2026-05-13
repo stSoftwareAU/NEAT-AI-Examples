@@ -174,8 +174,13 @@ run_example "Crossover (Breeding) Example" "./crossover/run.sh"
 # Run the CRISPR Gene Injection example
 run_example "CRISPR Gene Injection Example" "./crispr_injection/run.sh"
 
-# Run the Cart-Pole Balancing example
-run_example "Cart-Pole Balancing Example" "./cart_pole/run.sh"
+# Run the Cart-Pole Balancing example. The CI/quality budget caps the
+# section via `CART_POLE_QUICK=1` (issue #321): the runner forces an
+# `iterations: 3` cap, writes its artefacts under a temp directory, and
+# never overwrites the canonical docs creature/milestones/charts. A
+# direct `./cart_pole/run.sh` invocation still uses the realistic
+# 5-minute / target-error=0.04 defaults.
+run_example_with_env "Cart-Pole Balancing Example" "./cart_pole/run.sh" "CART_POLE_QUICK=1"
 
 # Run the Lunar Lander Descent example in quick mode (issue #201): the
 # CI/quality budget caps the section at ~6 seconds, exits via timeout,
