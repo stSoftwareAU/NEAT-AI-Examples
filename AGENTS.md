@@ -151,17 +151,18 @@ programs. See [README.md](README.md#-quality-check) for full details.
 The `common/` directory holds helpers that every example may reuse. Reach for these before
 reinventing equivalent logic in a new example.
 
-| Module                           | Purpose                                                                                                                                                                   |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `common/deterministic_random.ts` | Seeded PRNG for reproducible data generation.                                                                                                                             |
-| `common/synthetic_data.ts`       | Synthetic dataset generation and scoring.                                                                                                                                 |
-| `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.                                                                                                                    |
-| `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache.                                                                                                             |
-| `common/evolve_dir_summary.ts`   | Summarise the milestone stats returned by `evolveDir` (from [#284](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/284)).                                         |
-| `common/large_creature.ts`       | Deterministic large creatures (~10k synapses) for size demos.                                                                                                             |
-| `common/episode_runner.ts`       | Shared per-episode rollout loop for agent examples.                                                                                                                       |
-| `common/outcome_bar_chart.ts`    | Per-scenario outcome bar chart (count panel + cell strip).                                                                                                                |
-| `common/milestone_chart.ts`      | Dual-axis SVG renderer for milestone statistics from `evolveDir` and `evolveRL` / `evolveEnv` (from [#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)). |
+| Module                           | Purpose                                                                                                                                                                                                                         |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common/deterministic_random.ts` | Seeded PRNG for reproducible data generation.                                                                                                                                                                                   |
+| `common/synthetic_data.ts`       | Synthetic dataset generation and scoring.                                                                                                                                                                                       |
+| `common/working_dirs.ts`         | Standard hidden working-directory layout for examples.                                                                                                                                                                          |
+| `common/data_cache.ts`           | Download datasets into hidden directories with on-disk cache.                                                                                                                                                                   |
+| `common/evolve_dir_summary.ts`   | Summarise the milestone stats returned by `evolveDir` (from [#284](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/284)).                                                                                               |
+| `common/large_creature.ts`       | Deterministic large creatures (~10k synapses) for size demos.                                                                                                                                                                   |
+| `common/episode_runner.ts`       | Shared per-episode rollout loop for agent examples.                                                                                                                                                                             |
+| `common/outcome_bar_chart.ts`    | Per-scenario outcome bar chart (count panel + cell strip).                                                                                                                                                                      |
+| `common/milestone_chart.ts`      | Dual-axis SVG renderer for milestone statistics from `evolveDir` and `evolveRL` / `evolveEnv` (from [#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).                                                       |
+| `common/multi_run_state.ts`      | Multi-run persistence helper: load/save champion + merged milestones across runs, plus a `--fresh` / `--timeout` / `--target-error` CLI flag parser (from [#318](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/318)). |
 
 ### `common/data_cache.ts`
 
@@ -233,6 +234,8 @@ common/
   milestone_chart_test.ts          — Unit tests for the milestone chart renderer
   evolve_dir_summary.ts            — SVG summary chart for evolveDir() return values
   evolve_dir_summary_test.ts       — Unit tests for the evolveDir summary renderer
+  multi_run_state.ts               — Multi-run persistence helper (cross-run evolution)
+  multi_run_state_test.ts          — Unit tests for the multi-run state helper
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
