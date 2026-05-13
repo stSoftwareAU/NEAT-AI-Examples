@@ -48,7 +48,16 @@ import {
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type MilestoneSample, renderMilestoneChartSVG } from "../common/milestone_chart.ts";
+import { type MilestoneSample } from "../common/milestone_chart.ts";
+import {
+  appendMultiRunRun,
+  loadMultiRunState,
+  type NewMultiRunSample,
+  parseMultiRunFlags,
+  wipeMultiRunState,
+} from "../common/multi_run_state.ts";
+import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts";
+import { renderMultiRunComplexityChartSVG } from "../common/multi_run_complexity_chart.ts";
 import {
   type EpisodeAdapter as LocalEpisodeAdapter,
   runEpisode,
@@ -206,6 +215,15 @@ export interface EvolveOptions {
    * re-score the champion after evolution finishes.
    */
   evalSeeds?: readonly number[];
+  /**
+   * Optional pre-seeded creature export, used by the multi-run resume
+   * flow to continue evolution from a prior champion. When supplied, the
+   * evolveRL seed is built via {@link Creature.fromJSON} instead of the
+   * uniform-random `new Creature(INPUT_COUNT, OUTPUT_COUNT)`. When absent
+   * the first generation starts from random noise (the default for a
+   * `--fresh` run).
+   */
+  seedCreatureExport?: CreatureExport;
 }
 
 /** Result of the evolutionary search. */
@@ -600,7 +618,14 @@ export async function evolveSnakeController(
     solvedThreshold: SOLVED_THRESHOLD,
   });
 
-  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  // When `seedCreatureExport` is supplied (multi-run resume), build the
+  // seed via `Creature.fromJSON` so the prior champion's topology and
+  // weights carry forward. Otherwise fall back to the uniform-random
+  // minimal genome — the standard noise → competent seeding for a fresh
+  // run.
+  const seedCreature = options.seedCreatureExport !== undefined
+    ? Creature.fromJSON(options.seedCreatureExport)
+    : new Creature(INPUT_COUNT, OUTPUT_COUNT);
 
   // The adapter emits a cumulative episode reward in `[-1, 0]`, so
   // `defaultRewardToError` produces an error of `1 - cappedEaten /
@@ -673,34 +698,229 @@ export async function evolveSnakeController(
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/snake_game.svg";
 
+/** Slug used by the multi-run persistence helpers and chart artefact paths. */
+export const EXAMPLE_SLUG = "snake_game";
+
 /**
- * Path to the milestone-statistics chart the runner emits — this is
- * the canonical fitness-progression artefact under the milestone-only
- * telemetry policy (issue #298). Replaces the legacy per-generation
- * `snake_game_evolution.svg`, `snake_game/evolution.svg`,
- * `snake_game/fitness.svg`, `snake_game/topology.svg`, and
- * `evolution.csv` artefacts.
+ * Path to the multi-run error-curve chart the runner emits — error vs
+ * cumulative generation across every run, with faint run-boundary guide
+ * lines. Supersedes the legacy single-run
+ * `docs/screenshots/snake_game_milestones.svg` artefact (issue #325).
  */
-export const MILESTONE_SVG_PATH = "docs/screenshots/snake_game_milestones.svg";
+export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/snake_game/milestones.svg";
+
+/**
+ * Path to the multi-run complexity chart the runner emits — neurons +
+ * synapses vs cumulative generation across every run.
+ */
+export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/snake_game/complexity.svg";
+
+/**
+ * Default `targetError` for a multi-run invocation (issue #325).
+ * `0.01` corresponds to a mean capped-eaten / `SOLVED_THRESHOLD` ratio
+ * of ~`0.99` across the per-generation seed batch — a strict early-stop
+ * that the snake controller will essentially never reach inside a
+ * single 5-minute window, so the timeout backstop is the dominant stop
+ * condition in practice.
+ */
+export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.01;
+
+/**
+ * Default wall-clock budget for a single multi-run invocation, in
+ * minutes (issue #325). Five minutes matches the audit-mandated stop
+ * condition shared across the agent examples.
+ */
+export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
+
+/** Options accepted by {@link runMultiRunSnakeGame}. */
+export interface RunMultiRunSnakeGameOptions {
+  /** Argv (defaults to `Deno.args`). Recognised flags: `--fresh`,
+   * `--timeout=<minutes>`, `--target-error=<value>`. */
+  argv?: readonly string[];
+  /** Base directory override for the multi-run persistence helpers and
+   * chart artefacts (used by tests). Defaults to `docs`. */
+  baseDir?: string;
+  /** Optional overrides applied to `DEFAULT_EVOLVE_OPTIONS` (used by
+   * tests to cap iterations without depending on wall-clock timing). */
+  evolveOverrides?: Partial<EvolveOptions>;
+}
+
+/** Outcome of a single multi-run invocation. */
+export interface MultiRunResult {
+  /** The underlying evolveRL result. */
+  evolveResult: EvolveResult;
+  /** Number of this run within the persisted history (1-based). */
+  runIndex: number;
+  /** Cumulative generation total *after* this run was appended. */
+  lastCumulativeGen: number;
+  /** Total number of milestones in the merged history. */
+  totalMilestones: number;
+  /** `true` when the prior champion was reloaded as the seed creature. */
+  resumed: boolean;
+}
+
+/**
+ * Convert a snake-game `EvolveRLMilestone` into a {@link NewMultiRunSample}.
+ *
+ * The {@link SnakeAdapter} emits a cumulative episode reward in roughly
+ * `[-1, 0]`: a terminal `-1` baseline plus `+1 / SOLVED_THRESHOLD` per
+ * food eaten (capped at the threshold) plus a Manhattan-distance shaping
+ * term bounded by `~±0.05` per episode. NEAT-AI's
+ * `defaultRewardToError` maps that to `error = max(0, -reward)`, so the
+ * normalised error for the multi-run chart is essentially
+ * `error = 1 - meanCappedEaten / SOLVED_THRESHOLD` (modulo the tiny
+ * shaping term). The mapping is computed as `error = -bestScore`,
+ * clamped defensively into `[0, 1]`.
+ */
+export function milestoneToMultiRunSample(m: EvolveRLMilestone): NewMultiRunSample {
+  const error = Math.max(0, Math.min(1, -m.bestScore));
+  return {
+    runGen: m.generation,
+    bestScore: m.bestScore,
+    error,
+    neurons: m.bestNeurons,
+    synapses: m.bestSynapses,
+    meanEpisodeSteps: m.meanEpisodeSteps,
+    generationWallClockMs: m.generationWallClockMs,
+  };
+}
+
+/**
+ * End-to-end multi-run wiring: parses flags, optionally wipes prior
+ * state, loads the saved champion (when present) to seed the next run,
+ * evolves the controller, appends fresh milestones to the merged
+ * history, and renders both multi-run charts.
+ *
+ * Returns a {@link MultiRunResult} so callers (CLI + tests) can report
+ * on the run without re-reading disk.
+ */
+export async function runMultiRunSnakeGame(
+  options: RunMultiRunSnakeGameOptions = {},
+): Promise<MultiRunResult> {
+  const argv = options.argv ?? Deno.args;
+  const flags = parseMultiRunFlags(argv);
+  const slug = EXAMPLE_SLUG;
+
+  if (flags.fresh) {
+    await wipeMultiRunState(slug, options.baseDir);
+  }
+
+  const state = await loadMultiRunState(slug, options.baseDir);
+  const resumed = state.creatureExport !== undefined;
+
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  const evolveOptions: EvolveOptions = {
+    ...DEFAULT_EVOLVE_OPTIONS,
+    timeoutMinutes,
+    targetError,
+    seedCreatureExport: state.creatureExport,
+    ...options.evolveOverrides,
+  };
+
+  const evolveResult = await evolveSnakeController(evolveOptions);
+
+  const newSamples: NewMultiRunSample[] = evolveResult.milestones.map((m) =>
+    milestoneToMultiRunSample({
+      generation: m.generation,
+      bestScore: m.bestScore,
+      bestNeurons: m.bestNeurons,
+      bestSynapses: m.bestSynapses,
+      meanEpisodeSteps: m.meanEpisodeSteps,
+      generationWallClockMs: m.generationWallClockMs,
+    })
+  );
+
+  await appendMultiRunRun(slug, {
+    creatureExport: evolveResult.champion.exportJSON(),
+    newSamples,
+    runIndex: state.nextRunIndex,
+    baseCumulativeGen: state.lastCumulativeGen,
+  }, options.baseDir);
+
+  const merged = await loadMultiRunState(slug, options.baseDir);
+
+  if (merged.milestones.length > 0) {
+    const base = options.baseDir ?? "docs";
+    const screenshotsDir = join(base, "screenshots", slug);
+    ensureDirSync(screenshotsDir);
+
+    const errorSvg = renderMultiRunErrorChartSVG(merged.milestones, {
+      title: "Snake — multi-run error vs cumulative generations",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "milestones.svg"), errorSvg);
+
+    const complexitySvg = renderMultiRunComplexityChartSVG(merged.milestones, {
+      title: "Snake — multi-run creature complexity",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "complexity.svg"), complexitySvg);
+  }
+
+  return {
+    evolveResult,
+    runIndex: state.nextRunIndex,
+    lastCumulativeGen: merged.lastCumulativeGen,
+    totalMilestones: merged.milestones.length,
+    resumed,
+  };
+}
 
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🐍 Snake Game Example");
+  console.log("🐍 Snake Game Example (multi-run)");
   console.log("");
 
   const { creaturesDir } = setupWorkingDirs(".synthetic-snake");
 
-  console.log("🧬 Evolving controller via Creature.evolveRL()...");
+  // CI/quality quick mode (mirrors the cart_pole / maze_navigation
+  // idioms). When the runner is invoked with `SNAKE_QUICK=1` the
+  // multi-run state and chart SVGs are written under a temp directory so
+  // the canonical docs artefacts checked into the repo are never
+  // overwritten by a CI run, and `iterations: 3` forces the evolutionary
+  // loop to exit via the generation cap well inside `quality.sh`'s
+  // per-section budget.
+  const quick = Deno.env.get("SNAKE_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "snake_quick_" });
+    console.log(
+      "⚡ Quick mode (SNAKE_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
+  const flags = parseMultiRunFlags(Deno.args);
+  if (flags.fresh) {
+    console.log("🧹 --fresh: wiping prior multi-run state.");
+  }
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  console.log("\n🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
-    `   Stop conditions: targetError=${DEFAULT_EVOLVE_OPTIONS.targetError} ` +
-      `(mean cumulative reward ≥ ${-DEFAULT_EVOLVE_OPTIONS.targetError}), ` +
-      `timeoutMinutes=${DEFAULT_EVOLVE_OPTIONS.timeoutMinutes}. ` +
-      `Solved gate: best replay eaten ≥ ${SOLVED_THRESHOLD} AND mean eaten ` +
+    `   Stop conditions: targetError=${targetError.toFixed(3)} ` +
+      `(mean cumulative reward ≥ ${(-targetError).toFixed(3)}), ` +
+      `timeoutMinutes=${timeoutMinutes}` +
+      (quick ? ", iterations=3 (quick mode)" : "") +
+      `. Solved gate: best replay eaten ≥ ${SOLVED_THRESHOLD} AND mean eaten ` +
       `≥ ${SOLVED_AVG_FLOOR}.`,
   );
 
-  const result = await evolveSnakeController(DEFAULT_EVOLVE_OPTIONS);
+  const multi = await runMultiRunSnakeGame({
+    baseDir: quickBaseDir,
+    evolveOverrides: quick ? { iterations: 3 } : undefined,
+  });
+  const { evolveResult: result } = multi;
+
+  if (multi.resumed) {
+    console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
+  } else {
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+  }
 
   const verdictIcon = result.solved ? "✅" : "⚠️";
   console.log(
@@ -711,36 +931,44 @@ if (import.meta.main) {
       `wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
-  // Save the champion creature.
+  // The champion creature is persisted by `runMultiRunSnakeGame` under
+  // `docs/data/snake_game/creature.json`. Also drop a copy under the
+  // example's working directory for ad-hoc inspection.
   const championPath = join(creaturesDir, "champion.json");
   const championExport: CreatureExport = result.champion.exportJSON();
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
   // Render the animated SVG showing the champion's playthrough on the
-  // best-performing eval seed.
+  // best-performing eval seed. Quick mode keeps this under the temp
+  // directory so a CI invocation never overwrites the canonical docs
+  // screenshot.
   const trace = replayController(result.champion, result.championReplaySeed);
   const svg = renderRunSVG(trace);
-  ensureDirSync("docs/screenshots");
-  await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
-
-  if (result.milestones.length > 0) {
-    const milestoneSvg = renderMilestoneChartSVG(result.milestones, {
-      title: "Snake — evolveRL Milestones",
-      logX: true,
-      caption: true,
-    });
-    await Deno.writeTextFile(MILESTONE_SVG_PATH, milestoneSvg);
-    console.log(
-      `📈 Wrote milestone chart ${MILESTONE_SVG_PATH} ` +
-        `(${result.milestones.length} milestones)`,
-    );
+  if (quick && quickBaseDir !== undefined) {
+    const tmpScreenshots = join(quickBaseDir, "screenshots");
+    ensureDirSync(tmpScreenshots);
+    await Deno.writeTextFile(join(tmpScreenshots, "snake_game.svg"), svg);
+    console.log("⏭️  Quick mode: skipped overwriting canonical screenshot");
   } else {
-    console.log(
-      "⚠️  No milestones returned by evolveRL — run did not reach the first " +
-        "milestone generation. Skipping milestone chart.",
-    );
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
+    console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH} (${trace.length} frames captured)`);
+  }
+
+  console.log(
+    `📈 Multi-run charts updated under ${
+      quick ? quickBaseDir : "docs"
+    }/screenshots/${EXAMPLE_SLUG}/ — ` +
+      `${multi.totalMilestones} cumulative milestones across ${multi.runIndex} run(s).`,
+  );
+
+  if (quick && quickBaseDir !== undefined) {
+    try {
+      await Deno.remove(quickBaseDir, { recursive: true });
+    } catch {
+      // Tolerable — temp dir cleanup is best-effort.
+    }
   }
 
   console.log(

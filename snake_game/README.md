@@ -17,21 +17,48 @@ loop is driven entirely by NEAT-AI's class-shaped `Creature.evolveRL()` API (iss
 
 ![Champion playthrough](../docs/screenshots/snake_game.svg)
 
-## 📈 Milestone Statistics
+## 📈 Evolution Progress (Multi-Run)
 
 Per [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI exposes only
 **milestone-cadence** telemetry — `evolverl_milestone` events at generations
-`1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten. The runner captures every milestone
-payload returned by `Creature.evolveRL()` and renders them as a dual-axis SVG chart via
-[`common/milestone_chart.ts`](../common/milestone_chart.ts) (from
-[#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).
+`1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten. Snake's single-run milestone chart
+(`docs/screenshots/snake_game_milestones.svg`) has been superseded by the multi-run chart pair below
+under [#325](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/325). Each subsequent run
+reloads the saved champion via [`common/multi_run_state.ts`](../common/multi_run_state.ts), evolves
+further, and appends fresh milestones with a monotonically-increasing `cumulativeGen` — so the
+charts show one continuous noise → competent arc across every run combined.
 
-**Left axis:** best score and mean episode steps. **Right axis:** champion neuron and synapse
-counts. The chart replaces the legacy per-generation snake_game_evolution.svg / evolution.svg /
-fitness.svg / topology.svg artefacts — those required a per-generation handler that NEAT-AI no
-longer surfaces.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as run.sh
+    participant State as multi_run_state.ts
+    participant Snake as snake_game.ts
+    participant Charts as multi_run_*_chart.ts
+    CLI->>State: parseMultiRunFlags(argv)
+    alt --fresh
+        CLI->>State: wipeMultiRunState()
+    end
+    CLI->>State: loadMultiRunState()
+    alt prior champion exists
+        State-->>Snake: Creature.fromJSON(creatureExport)
+    else first run
+        State-->>Snake: new Creature(8, 4) — random noise
+    end
+    Snake->>Snake: Creature.evolveRL(adapter)
+    Snake->>State: appendMultiRunRun({champion, milestones})
+    State->>Charts: renderMultiRunErrorChartSVG()
+    State->>Charts: renderMultiRunComplexityChartSVG()
+    Charts-->>CLI: milestones.svg + complexity.svg
+```
 
-![Snake-game evolveRL milestone chart](../docs/screenshots/snake_game_milestones.svg)
+![Snake multi-run error chart — error vs cumulative generation across every run, with faint run-boundary guide lines](../docs/screenshots/snake_game/milestones.svg)
+
+![Snake multi-run complexity chart — best-creature neuron and synapse counts vs cumulative generation](../docs/screenshots/snake_game/complexity.svg)
+
+The error series uses the snake-game convention `error = 1 − meanCappedEaten / SOLVED_THRESHOLD`
+(modulo a tiny shaping term bounded by `±ADAPTER_SHAPING_COEFF`). Re-run `./snake_game/run.sh`
+(without `--fresh`) to extend both charts with a new run.
 
 ## 🔧 How It Works
 
@@ -115,16 +142,42 @@ is not flagged solved by mistake.
 ## 🚀 Running the Example
 
 ```bash
+# First run — random seed, writes creature + milestones + both charts.
+./snake_game/run.sh --fresh
+
+# Subsequent runs — resume from the saved champion and append milestones.
 ./snake_game/run.sh
+
+# Override the wall-clock budget and / or early-stop target error.
+./snake_game/run.sh --timeout=10 --target-error=0.005
 ```
+
+The runner forwards every flag to the underlying Deno program, which parses them via
+`parseMultiRunFlags` from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
+
+| Flag                  | Default | Meaning                                                               |
+| --------------------- | ------- | --------------------------------------------------------------------- |
+| `--fresh`             | absent  | Wipe prior creature, milestones, and both chart SVGs before evolving. |
+| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
+| `--target-error=<v>`  | 0.01    | Stop as soon as the normalised error falls below `v`.                 |
 
 Artefacts:
 
-- `.synthetic-snake/creatures/champion.json` – the fittest controller from the run
+- `.synthetic-snake/creatures/champion.json` – the fittest controller from this invocation
+  (working-directory copy for ad-hoc inspection)
 - `docs/screenshots/snake_game.svg` – animated SVG of the champion's playthrough
-- `docs/screenshots/snake_game_milestones.svg` – `Creature.evolveRL()` milestone-statistics chart
-  (best score and mean episode steps on the left axis; champion neuron and synapse counts on the
-  right axis)
+- [`docs/data/snake_game/creature.json`](../docs/data/snake_game/creature.json) – persisted champion
+  that subsequent runs reload as the next seed
+- [`docs/data/snake_game/milestones.json`](../docs/data/snake_game/milestones.json) – merged
+  milestone history across every run, with both `runGen` and `cumulativeGen`
+- [`docs/screenshots/snake_game/milestones.svg`](../docs/screenshots/snake_game/milestones.svg) –
+  multi-run error-curve chart: error vs cumulative generation, with faint run-boundary guide lines
+  (`renderMultiRunErrorChartSVG` from
+  [`common/multi_run_error_chart.ts`](../common/multi_run_error_chart.ts))
+- [`docs/screenshots/snake_game/complexity.svg`](../docs/screenshots/snake_game/complexity.svg) –
+  multi-run complexity chart: neuron and synapse counts vs cumulative generation
+  (`renderMultiRunComplexityChartSVG` from
+  [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
 ## ❓ FAQ — Streaming observations vs batch supervised training
 

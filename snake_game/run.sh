@@ -34,6 +34,9 @@ deno run \
 if [[ -f "docs/screenshots/snake_game.svg" ]]; then
   deno fmt docs/screenshots/snake_game.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/snake_game_milestones.svg" ]]; then
-  deno fmt docs/screenshots/snake_game_milestones.svg > /dev/null
+if [[ -f "docs/screenshots/snake_game/milestones.svg" ]]; then
+  deno fmt docs/screenshots/snake_game/milestones.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/snake_game/complexity.svg" ]]; then
+  deno fmt docs/screenshots/snake_game/complexity.svg > /dev/null
 fi
