@@ -18,12 +18,10 @@ import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
 
 import {
+  buildAtScaleEvolveDirSummary,
   creatureAsRaw,
   DEFAULT_AT_SCALE_EVOLUTION_CONFIG,
   type DiscoveryAtScaleConfig,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
-  formatEvolutionCsv,
   injectDefects,
   INPUT_COUNT,
   loadDatasetSamples,
@@ -32,13 +30,12 @@ import {
   REFERENCE_DENSITY,
   REFERENCE_HIDDEN,
   REFERENCE_SEED,
-  rowsToEvolutionSamples,
-  rowsToFitnessSamples,
   runDiscoveryAtScaleDemo,
   runMinimalSeedAtScaleEvolution,
   snapshotTopology,
 } from "./discovery_at_scale.ts";
 import { DEFECT_COLOURS, renderDiscoveryAtScaleSVG } from "./svg.ts";
+import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { buildLargeCreature } from "../common/large_creature.ts";
 import { generateSyntheticData } from "../common/synthetic_data.ts";
 
@@ -353,58 +350,70 @@ Deno.test({
 });
 
 /* ------------------------------------------------------------------ */
-/*  Audit (#208) — minimal-seed evolution + measured telemetry         */
+/*  Audit (#208, #304) — minimal-seed evolution + milestone summary    */
 /* ------------------------------------------------------------------ */
 
-Deno.test("formatEvolutionCsv emits the schema mandated by issue #208", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 1, bestFitness: -0.5, meanFitness: -0.7, neuronCount: 9, synapseCount: 18 },
-    { generation: 2, bestFitness: -0.3, meanFitness: -0.6, neuronCount: 10, synapseCount: 21 },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  const lines = csv.trim().split("\n");
-  assertEquals(lines[0], EVOLUTION_CSV_HEADER, "first line must be the audit-mandated header");
-  assertEquals(lines.length, 3, "header + 2 data rows");
-  assertEquals(lines[1], "1,-0.5,-0.7,9,18");
-  assertEquals(lines[2], "2,-0.3,-0.6,10,21");
-});
-
-Deno.test("formatEvolutionCsv survives non-finite fitness without throwing", () => {
-  const rows: EvolutionRow[] = [
+Deno.test("buildAtScaleEvolveDirSummary maps an evolution result onto the summary record", () => {
+  const summary = buildAtScaleEvolveDirSummary(
     {
-      generation: 1,
-      bestFitness: Number.POSITIVE_INFINITY,
-      meanFitness: Number.NEGATIVE_INFINITY,
-      neuronCount: 9,
-      synapseCount: 18,
+      champion: new Creature(INPUT_COUNT, OUTPUT_COUNT),
+      wallClockMs: 11_300,
+      finalError: 0.0040,
+      finalScore: 0.9960,
+      generations: 186,
+      seedNeuronCount: 9,
+      seedSynapseCount: 18,
+      finalNeuronCount: 14,
+      finalSynapseCount: 32,
     },
-  ];
-  const csv = formatEvolutionCsv(rows);
-  assertEquals(csv.trim().split("\n")[1], "1,0,0,9,18");
+    DEFAULT_AT_SCALE_EVOLUTION_CONFIG,
+  );
+
+  assertEquals(summary.finalError, 0.0040);
+  assertEquals(summary.finalScore, 0.9960);
+  assertEquals(summary.wallClockMs, 11_300);
+  assertEquals(summary.generations, 186);
+  assertEquals(summary.seedNeurons, 9);
+  assertEquals(summary.seedSynapses, 18);
+  assertEquals(summary.finalNeurons, 14);
+  assertEquals(summary.finalSynapses, 32);
+  assertEquals(summary.targetError, DEFAULT_AT_SCALE_EVOLUTION_CONFIG.targetError);
+  assertEquals(summary.timeoutMinutes, DEFAULT_AT_SCALE_EVOLUTION_CONFIG.timeoutMinutes);
 });
 
-Deno.test("rowsToFitnessSamples renames meanFitness to avgFitness", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 3, bestFitness: -0.1, meanFitness: -0.4, neuronCount: 11, synapseCount: 24 },
-  ];
-  const samples = rowsToFitnessSamples(rows);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 3);
-  assertEquals(samples[0].bestFitness, -0.1);
-  assertEquals(samples[0].avgFitness, -0.4);
-});
+Deno.test(
+  "renderEvolveDirSummarySvg of an at-scale summary surfaces seed-vs-final topology",
+  () => {
+    const summary = buildAtScaleEvolveDirSummary(
+      {
+        champion: new Creature(INPUT_COUNT, OUTPUT_COUNT),
+        wallClockMs: 11_300,
+        finalError: 0.0040,
+        finalScore: 0.9960,
+        generations: 186,
+        seedNeuronCount: 9,
+        seedSynapseCount: 18,
+        finalNeuronCount: 14,
+        finalSynapseCount: 32,
+      },
+      DEFAULT_AT_SCALE_EVOLUTION_CONFIG,
+    );
 
-Deno.test("rowsToEvolutionSamples maps neuron and synapse counts onto chart fields", () => {
-  const rows: EvolutionRow[] = [
-    { generation: 7, bestFitness: 0.2, meanFitness: 0.1, neuronCount: 13, synapseCount: 28 },
-  ];
-  const samples = rowsToEvolutionSamples(rows);
-  assertEquals(samples.length, 1);
-  assertEquals(samples[0].generation, 7);
-  assertEquals(samples[0].score, 0.2);
-  assertEquals(samples[0].neurons, 13);
-  assertEquals(samples[0].synapses, 28);
-});
+    const svg = renderEvolveDirSummarySvg(summary, {
+      title: "Discovery at Scale — evolveDir Run Summary",
+    });
+    assertStringIncludes(svg, "<svg");
+    assertStringIncludes(svg, "Discovery at Scale");
+    // Seed-vs-final topology counts surface as bar labels (the headline
+    // visual for this demo per issue #304).
+    assertStringIncludes(svg, ">9<");
+    assertStringIncludes(svg, ">18<");
+    assertStringIncludes(svg, ">14<");
+    assertStringIncludes(svg, ">32<");
+    // Wall-clock duration humanised (>= 1 second).
+    assert(/\b\d+m \d+s\b|\b\d+s\b/.test(svg), "duration must be humanised");
+  },
+);
 
 Deno.test("DEFAULT_AT_SCALE_EVOLUTION_CONFIG honours the audit's stop-condition rule", () => {
   // Issue #208 mandates targetError + timeoutMinutes <= 5 (or higher
@@ -451,14 +460,13 @@ Deno.test("runMinimalSeedAtScaleEvolution rejects non-positive config values", a
 });
 
 Deno.test(
-  "runMinimalSeedAtScaleEvolution captures per-generation telemetry from a minimal seed",
+  "runMinimalSeedAtScaleEvolution captures milestone fields from a minimal seed",
   async () => {
-    // Verifies the audit's telemetry contract: starting from
+    // Verifies the audit's telemetry contract under #304: starting from
     // `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, the function captures
-    // per-generation rows whose schema matches the audit (generation,
-    // best/mean fitness, neuron and synapse counts) and records the
-    // seed topology. The growth assertion lives in the next test
-    // (which reads the committed CSV from the production run).
+    // the milestone-summary fields from `evolveDir`'s return value
+    // (final error / score, generations, wall-clock) and the seed +
+    // final topology counts.
     const tmpDir = Deno.makeTempDirSync({ prefix: "discovery_at_scale_test_" });
     const dataDir = join(tmpDir, "data");
     ensureDirSync(dataDir);
@@ -490,21 +498,18 @@ Deno.test(
 
       assertEquals(result.seedNeuronCount, seedNeurons, "seed neuron count must be recorded");
       assertEquals(result.seedSynapseCount, seedSynapses, "seed synapse count must be recorded");
-      assertGreater(
-        result.rows.length,
-        0,
-        "at least one generation_complete event must be captured",
+      assertGreater(result.generations, 0, "generations must be positive");
+      assertGreater(result.finalNeuronCount, 0, "final neuron count must be positive");
+      assertGreater(result.finalSynapseCount, 0, "final synapse count must be positive");
+      assert(
+        Number.isFinite(result.finalError),
+        "finalError must be finite once evolution has progressed",
       );
-
-      const finalRow = result.rows[result.rows.length - 1];
-      assertGreater(finalRow.generation, 0, "generation must be 1-based");
-      assertGreater(finalRow.neuronCount, 0, "neuron count must be positive");
-      assertGreater(finalRow.synapseCount, 0, "synapse count must be positive");
-      assertEquals(
-        Number.isFinite(finalRow.bestFitness),
-        true,
-        "bestFitness must be finite once evolution has progressed",
+      assert(
+        Number.isFinite(result.finalScore),
+        "finalScore must be finite once evolution has progressed",
       );
+      assert(result.wallClockMs >= 0, "wallClockMs must be non-negative");
     } finally {
       Deno.removeSync(tmpDir, { recursive: true });
     }

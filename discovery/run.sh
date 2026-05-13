@@ -29,3 +29,9 @@ deno run \
   --allow-ffi \
   discovery/discover_missing_neuron.ts \
   "$@"
+
+# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
+# stay clean.
+if [[ -f "docs/screenshots/discovery/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/discovery/evolution_summary.svg > /dev/null
+fi

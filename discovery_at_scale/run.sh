@@ -45,9 +45,6 @@ fi
 if [[ -f ".discovery-at-scale/output/discovery_at_scale.svg" ]]; then
   deno fmt .discovery-at-scale/output/discovery_at_scale.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/discovery_at_scale/fitness.svg" ]]; then
-  deno fmt docs/screenshots/discovery_at_scale/fitness.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/discovery_at_scale/topology.svg" ]]; then
-  deno fmt docs/screenshots/discovery_at_scale/topology.svg > /dev/null
+if [[ -f "docs/screenshots/discovery_at_scale/evolution_summary.svg" ]]; then
+  deno fmt docs/screenshots/discovery_at_scale/evolution_summary.svg > /dev/null
 fi

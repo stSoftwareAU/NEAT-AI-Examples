@@ -1,17 +1,18 @@
 # 🔍 Discovery — Evolve Network Structure From a Minimal Seed
 
-**The audit (#207) reframes this example.** The published evolution now genuinely _learns_ the
-network structure from a minimal NEAT-AI seed, with no hand-tuned topology and no pre-built
-`network.json`. NEAT discovers on its own how many hidden neurons and synapses are needed to fit a
-ground-truth function — and the README quotes the _measured_ numbers from the latest run.
+**The audit (#207) reframes this example; #304 trims its telemetry surface.** The published
+evolution genuinely _learns_ the network structure from a minimal NEAT-AI seed, with no hand-tuned
+topology and no pre-built `network.json`. NEAT discovers on its own how many hidden neurons and
+synapses are needed to fit a ground-truth function — and the README quotes the _measured_ numbers
+from the latest run via a single milestone-summary SVG.
 
 ```mermaid
 flowchart LR
     REF["🧬 Hand-crafted reference creature<br/>(only used to label the .bin set)"]
     DATA["📦 Binary .bin training set"]
     SEED["🌱 new Creature(4, 1)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.0005,<br/>timeoutMinutes=5"]
-    OUT["🏆 Evolved champion + CSV + 2 SVGs"]
+    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=1e-6,<br/>timeoutMinutes=5"]
+    OUT["🏆 Evolved champion + milestone summary SVG"]
     REF --> DATA
     DATA --> EVOLVE
     SEED --> EVOLVE
@@ -23,8 +24,7 @@ flowchart LR
     style OUT fill:#50e3c2,stroke:#333,color:#fff
 ```
 
-**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _CSV_ = Comma-Separated Values.
-_SVG_ = Scalable Vector Graphics.
+**Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _SVG_ = Scalable Vector Graphics.
 
 `discover_missing_neuron.ts` runs end-to-end:
 
@@ -35,51 +35,30 @@ _SVG_ = Scalable Vector Graphics.
 3. Call `Creature.evolveDir(dataDir, options)` over the `.bin` directory in forward-only mode until
    either the per-example `targetError` is reached or the `timeoutMinutes: 5` backstop fires (issue
    #207 stop-condition rule).
-4. Capture per-generation telemetry via `onTrainingEvent` and emit a CSV plus two SVG charts.
+4. Capture the milestone-summary fields from `evolveDir`'s return value and render them via the
+   shared `common/evolve_dir_summary.ts` helper (#284) — seed-vs-final topology bars plus numeric
+   callouts for `finalError`, `finalScore`, `generations`, and wall-clock duration.
 
 ## 📈 Latest measured run (`./discovery/run.sh`)
 
 > The numbers below come from the most recent local run committed alongside this README. They are
 > **measured, not estimated**, per the audit rule in #207.
 
-| Metric                    | Value                 |
-| ------------------------- | --------------------- |
-| Total generations         | 252                   |
-| Wall-clock                | 9.5 s                 |
-| Final best fitness        | 0.9995                |
-| Final per-record error    | 0.0005 (target met)   |
-| Seed neurons / synapses   | 5 / 4                 |
-| Final neurons / synapses  | 8 / 22                |
-| Stop condition that fired | `targetError` reached |
+### Milestone summary
 
-Topology genuinely grew: NEAT-AI added **3 hidden neurons** and **18 synapses** on top of the
-minimal seed. The CSV and the two SVGs below show the trajectory across all 252 generations.
+![Discovery — milestone summary](../docs/screenshots/discovery/evolution_summary.svg)
 
-### Best vs mean fitness per generation
-
-![Best vs mean fitness](../docs/screenshots/discovery/fitness.svg)
-
-### Score, neuron, and synapse counts per generation
-
-![Score / neurons / synapses](../docs/screenshots/discovery/topology.svg)
-
-### Per-generation CSV
-
-[`docs/data/discovery/evolution.csv`](../docs/data/discovery/evolution.csv) holds the full
-per-generation telemetry with the schema mandated by the audit:
-
-```text
-generation,best_fitness,mean_fitness,neuron_count,synapse_count
-```
+Topology genuinely grew: NEAT-AI added hidden neurons and synapses on top of the minimal seed, as
+the seed-vs-final bars in the summary above show. The numeric callouts cover the four milestone
+fields returned by `evolveDir` (`finalError`, `finalScore`, `generations`, wall-clock).
 
 ## 🧪 What "reasonable solution" means here
 
-The evolved champion's best fitness is **0.9995** against the binary `.bin` training set (higher is
-better; the theoretical maximum is 1.0). The final per-record error of **0.0005** is the value of
-the `targetError` stop condition — evolution stopped because the champion is producing labels within
-`5 × 10⁻⁴` of the reference creature's outputs on average. That is a reasonable solution to the
-labelled task: the evolved creature has reproduced the input → output behaviour of the hand-crafted
-reference _without ever seeing its topology_.
+The final per-record error reported in the milestone summary above is below the `targetError` stop
+condition — evolution stopped because the champion is producing labels within that tolerance of the
+reference creature's outputs on average. That is a reasonable solution to the labelled task: the
+evolved creature has reproduced the input → output behaviour of the hand-crafted reference _without
+ever seeing its topology_.
 
 ## 🚀 Running the example
 
@@ -94,11 +73,9 @@ will find:
 - `creatures/baseline.json` — The hand-crafted reference creature (label oracle only).
 - `creatures/discovered.json` — The evolved champion produced from the minimal seed.
 
-In addition, the per-generation telemetry artefacts are committed under `docs/`:
+In addition, the milestone summary SVG is committed under `docs/`:
 
-- [`docs/data/discovery/evolution.csv`](../docs/data/discovery/evolution.csv)
-- [`docs/screenshots/discovery/fitness.svg`](../docs/screenshots/discovery/fitness.svg)
-- [`docs/screenshots/discovery/topology.svg`](../docs/screenshots/discovery/topology.svg)
+- [`docs/screenshots/discovery/evolution_summary.svg`](../docs/screenshots/discovery/evolution_summary.svg)
 
 ## 🧰 NEAT-AI features used
 
@@ -109,8 +86,10 @@ In addition, the per-generation telemetry artefacts are committed under `docs/`:
   faster than per-call `activate()`.
 - **Forward-only mutation** — `evolveDir` defaults to forward-only when `feedbackLoop` is not set,
   matching the audit's stop-condition + topology contract.
-- **`onTrainingEvent` callback** — feeds per-generation telemetry into the CSV and the two SVG
-  charts without slowing the run.
+- **Milestone summary** — the demo consumes `evolveDir`'s return value
+  (`{ error, score, time,
+  generation }`) directly and renders it via
+  `common/evolve_dir_summary.ts` (#284). No per-generation telemetry is captured (#304).
 
 See upstream [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)
 for the broader feature catalogue.
