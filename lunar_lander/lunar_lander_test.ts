@@ -35,6 +35,7 @@ import {
   DEFAULT_EVOLVE_OPTIONS,
   evolveLanderController,
   freeFallBaselineScore,
+  gradedTerminalReward,
   INPUT_COUNT,
   isQuickMode,
   LanderAdapter,
@@ -46,6 +47,7 @@ import {
   QUICK_TARGET_ERROR,
   QUICK_TIMEOUT_MINUTES,
   replayController,
+  SCORE_NORMALISERS,
   scoreController,
   scoreFinalState,
   validateChampion,
@@ -113,8 +115,12 @@ Deno.test(
     const adapter = new LanderAdapter();
     let state: LanderState = adapter.reset(1).state;
     // No thrusters — the lander free-falls and either crashes or
-    // drifts out-of-bounds. Either way the terminal step must emit
-    // reward -1 (not landed) and all prior steps must be 0.
+    // drifts out-of-bounds. The terminal reward is now graded in
+    // `[-1, 0]` via {@link gradedTerminalReward}, so we assert
+    // (a) every non-terminal step emits reward 0, (b) the terminal
+    // step's reward is in `[-1, 0]`, and (c) for this free-fall
+    // scenario (impacts off-pad at high speed) the terminal reward is
+    // strictly less than 0.
     let priorReward = 0;
     let terminatedStep = -1;
     for (let i = 0; i < MAX_STEPS + 5; i++) {
@@ -123,7 +129,12 @@ Deno.test(
       if (result.terminated) {
         terminatedStep = i + 1;
         assertEquals(priorReward, 0);
-        assertEquals(result.reward, -1);
+        assertGreaterOrEqual(result.reward, -1);
+        assertGreaterOrEqual(0, result.reward);
+        assert(
+          result.reward < 0,
+          `free-fall terminal reward must be strictly < 0, got ${result.reward}`,
+        );
         break;
       }
       assertEquals(result.reward, 0);
@@ -132,6 +143,166 @@ Deno.test(
     assertGreater(terminatedStep, 0, "expected the lander to terminate");
   },
 );
+
+Deno.test("gradedTerminalReward returns exactly 0 for a clean landing", () => {
+  // Landed = on-pad, near-upright, slow vertical, slow horizontal —
+  // every safe-landing predicate from classifyOutcome must hold.
+  const landed: LanderState = {
+    x: DEFAULT_TERRAIN.padX,
+    y: DEFAULT_TERRAIN.groundY,
+    vx: 0,
+    vy: -0.5,
+    angle: 0,
+    angularV: 0,
+    fuel: 50,
+  };
+  assertEquals(gradedTerminalReward(landed, DEFAULT_TERRAIN), 0);
+});
+
+Deno.test("gradedTerminalReward returns a value in [-1, 0) for every non-landed state", () => {
+  // Sweep a representative grid of non-landed terminal states and assert
+  // the reward stays inside `[-1, 0)` for each. Each component varies
+  // independently so multiple normaliser-corner cases get touched.
+  const states: LanderState[] = [
+    // Soft crash off-pad, no spin, upright.
+    { x: 20, y: 0, vx: 0.5, vy: -1, angle: 0, angularV: 0, fuel: 0 },
+    // Hard crash on-pad, tilted.
+    { x: 0, y: 0, vx: 5, vy: -10, angle: 0.6, angularV: 0.5, fuel: 0 },
+    // Out-of-bounds.
+    { x: 80, y: 30, vx: -10, vy: -2, angle: 0, angularV: 0, fuel: 0 },
+    // Tumbling crash off-pad.
+    { x: -40, y: 0, vx: 0, vy: -5, angle: 1.5, angularV: 4, fuel: 0 },
+    // Worst case — far from pad, fast, fully inverted, fast spin.
+    { x: 49, y: 0, vx: 30, vy: -30, angle: Math.PI, angularV: 10, fuel: 0 },
+  ];
+  for (const s of states) {
+    const r = gradedTerminalReward(s, DEFAULT_TERRAIN);
+    assertGreaterOrEqual(r, -1);
+    assertGreaterOrEqual(0, r);
+    assert(r < 0, `expected non-landed reward to be strictly < 0, got ${r}`);
+  }
+});
+
+Deno.test("gradedTerminalReward: softer crash > harder crash (less negative)", () => {
+  const soft: LanderState = {
+    x: 5,
+    y: 0,
+    vx: 1,
+    vy: -2,
+    angle: 0,
+    angularV: 0,
+    fuel: 0,
+  };
+  const hard: LanderState = {
+    x: 5,
+    y: 0,
+    vx: 10,
+    vy: -20,
+    angle: 0,
+    angularV: 0,
+    fuel: 0,
+  };
+  const rSoft = gradedTerminalReward(soft, DEFAULT_TERRAIN);
+  const rHard = gradedTerminalReward(hard, DEFAULT_TERRAIN);
+  assertGreater(rSoft, rHard);
+});
+
+Deno.test("gradedTerminalReward: closer to pad > farther from pad", () => {
+  // Hold every other signal constant so the distance contribution
+  // alone drives the difference.
+  const near: LanderState = {
+    x: 2,
+    y: 0,
+    vx: 3,
+    vy: -3,
+    angle: 0.3,
+    angularV: 0,
+    fuel: 0,
+  };
+  const far: LanderState = { ...near, x: 40 };
+  const rNear = gradedTerminalReward(near, DEFAULT_TERRAIN);
+  const rFar = gradedTerminalReward(far, DEFAULT_TERRAIN);
+  assertGreater(rNear, rFar);
+});
+
+Deno.test("gradedTerminalReward: upright > tilted (less negative)", () => {
+  const upright: LanderState = {
+    x: 10,
+    y: 0,
+    vx: 3,
+    vy: -3,
+    angle: 0,
+    angularV: 0,
+    fuel: 0,
+  };
+  const tilted: LanderState = { ...upright, angle: 1.2 };
+  const rUp = gradedTerminalReward(upright, DEFAULT_TERRAIN);
+  const rTilt = gradedTerminalReward(tilted, DEFAULT_TERRAIN);
+  assertGreater(rUp, rTilt);
+});
+
+Deno.test("gradedTerminalReward: non-spinning > spinning (less negative)", () => {
+  const still: LanderState = {
+    x: 10,
+    y: 0,
+    vx: 3,
+    vy: -3,
+    angle: 0,
+    angularV: 0,
+    fuel: 0,
+  };
+  const spinning: LanderState = { ...still, angularV: 4 };
+  const rStill = gradedTerminalReward(still, DEFAULT_TERRAIN);
+  const rSpin = gradedTerminalReward(spinning, DEFAULT_TERRAIN);
+  assertGreater(rStill, rSpin);
+});
+
+Deno.test("gradedTerminalReward respects [-1, 0] bounds across a state sweep", () => {
+  // Exhaustively sweep each component well past the normaliser upper
+  // bounds — the clamp must keep the result inside `[-1, 0]`.
+  const sweep = [-1e6, -1000, -50, -5, 0, 5, 50, 1000, 1e6];
+  for (const x of sweep) {
+    for (const vx of sweep) {
+      for (const angle of [-10, -Math.PI, 0, Math.PI, 10]) {
+        const state: LanderState = {
+          x,
+          y: 0,
+          vx,
+          vy: -Math.abs(vx),
+          angle,
+          angularV: vx,
+          fuel: 0,
+        };
+        const r = gradedTerminalReward(state, DEFAULT_TERRAIN);
+        assertGreaterOrEqual(r, -1);
+        assertGreaterOrEqual(0, r);
+      }
+    }
+  }
+});
+
+Deno.test("gradedTerminalReward handles out_of_bounds states (non-positive, bounded)", () => {
+  // Beyond worldHalfWidth = 50 the state classifies as out_of_bounds.
+  const oob: LanderState = {
+    x: 200,
+    y: 40,
+    vx: 5,
+    vy: -1,
+    angle: 0.1,
+    angularV: 0,
+    fuel: 10,
+  };
+  const r = gradedTerminalReward(oob, DEFAULT_TERRAIN);
+  assertGreaterOrEqual(r, -1);
+  assertGreaterOrEqual(0, r);
+  assert(r < 0, `out_of_bounds reward must be strictly < 0, got ${r}`);
+});
+
+Deno.test("SCORE_NORMALISERS weights sum to 1", () => {
+  const sum = SCORE_NORMALISERS.weightDistance + SCORE_NORMALISERS.weightSpeed +
+    SCORE_NORMALISERS.weightTilt + SCORE_NORMALISERS.weightSpin;
+  assertAlmostEquals(sum, 1, 1e-9);
+});
 
 Deno.test("LanderAdapter.decodeAction matches the public decodeAction", () => {
   const adapter = new LanderAdapter();
