@@ -1,12 +1,14 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-env --allow-net --allow-ffi
 
 /**
- * Discovery Example — minimal-seed evolution + measured telemetry (issue #207).
+ * Discovery Example — minimal-seed evolution + milestone summary (issue #207, #304).
  *
  * The original demo crippled a hand-crafted creature and asked NEAT-AI's
- * `discoveryDir` to recover the missing neuron. The audit (#207) repurposes
+ * `discoveryDir` to recover the missing neuron. The audit (#207) repurposed
  * the example so the published evolution genuinely *learns* the network
- * structure from a minimal NEAT-AI seed:
+ * structure from a minimal NEAT-AI seed, and #304 dropped the per-generation
+ * telemetry surface in favour of the milestone summary returned by
+ * `evolveDir`:
  *
  *   1. The reference creature is still hand-crafted, but it is used **only**
  *      as the ground-truth that synthesises labels for the binary `.bin`
@@ -17,10 +19,10 @@
  *      pre-generated `.bin` training set (per #190) until either the
  *      `targetError` threshold is reached or the `timeoutMinutes: 5`
  *      backstop fires.
- *   4. Per-generation telemetry (best/mean fitness + neuron / synapse
- *      counts) is captured via `onTrainingEvent` and emitted as a CSV plus
- *      two SVG charts so the README can quote the *measured* numbers from
- *      the latest run only.
+ *   4. The return value (`{ error, score, time, generation }`) plus the
+ *      pre/post topology counts feed an {@link EvolveDirSummary}, which the
+ *      shared `common/evolve_dir_summary.ts` helper renders as a single
+ *      milestone-summary SVG (#284).
  *
  * The legacy `createCrippledCreature` helper is retained as an exported
  * utility and is exercised by the test suite — it documents the historical
@@ -31,7 +33,7 @@
  */
 
 import { ensureDirSync } from "@std/fs";
-import { join } from "@std/path";
+import { dirname, join } from "@std/path";
 import {
   Creature,
   type CreatureExport,
@@ -40,8 +42,7 @@ import {
   safeWriteJson,
 } from "@stsoftware/neat-ai";
 
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { generateSyntheticData, type SyntheticConfig } from "../common/synthetic_data.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { asCreatureExport, type LegacyCreatureJSON } from "../common/legacy_types.ts";
@@ -57,18 +58,8 @@ export const INPUT_COUNT = 4;
 /** Number of output neurons fed to the NEAT-AI seed. Matches the reference creature. */
 export const OUTPUT_COUNT = 1;
 
-/** Per-generation evolution-telemetry CSV path. */
-export const EVOLUTION_CSV_PATH = "docs/data/discovery/evolution.csv";
-
-/** CSV header — schema mandated by issue #207. */
-export const EVOLUTION_CSV_HEADER =
-  "generation,best_fitness,mean_fitness,neuron_count,synapse_count";
-
-/** Best/mean fitness chart path. */
-export const FITNESS_SVG_PATH = "docs/screenshots/discovery/fitness.svg";
-
-/** Neuron / synapse count chart path. */
-export const TOPOLOGY_SVG_PATH = "docs/screenshots/discovery/topology.svg";
+/** Milestone-summary SVG path (single artefact per #304). */
+export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/discovery/evolution_summary.svg";
 
 /** Configuration for a single training-data generation run. */
 export const SYNTHETIC_CONFIG: SyntheticConfig = {
@@ -101,8 +92,8 @@ export const DEFAULT_DISCOVERY_CONFIG: DiscoveryEvolutionConfig = {
   // direct-only seed can fit it to ~0.003 with no hidden neurons. We
   // pick a tighter targetError than that so NEAT-AI is genuinely
   // forced to grow hidden structure to satisfy the stop condition —
-  // otherwise the topology chart would flatline (acceptance criterion
-  // in issue #207).
+  // otherwise the topology bars would look identical (acceptance
+  // criterion in issue #207).
   targetError: 0.000001,
   timeoutMinutes: 5,
   populationSize: 24,
@@ -110,36 +101,26 @@ export const DEFAULT_DISCOVERY_CONFIG: DiscoveryEvolutionConfig = {
   seed: 207207,
 };
 
-/** One row of per-generation evolution telemetry. */
-export interface EvolutionRow {
-  /** 1-based generation index across the run. */
-  generation: number;
-  /** Best fitness observed in this generation. */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  meanFitness: number;
-  /** Neuron count of this generation's champion. */
-  neuronCount: number;
-  /** Synapse count of this generation's champion. */
-  synapseCount: number;
-}
-
 /** Result of {@link runMinimalSeedEvolution}. */
 export interface DiscoveryEvolutionResult {
   /** The best creature found by `evolveDir`. */
   champion: Creature;
-  /** Per-generation telemetry rows captured during the run. */
-  rows: EvolutionRow[];
   /** Total wall-clock time of the evolution call, in milliseconds. */
   wallClockMs: number;
   /** Final per-record error returned by `evolveDir`. */
   finalError: number;
+  /** Final score returned by `evolveDir`. */
+  finalScore: number;
   /** Total generations completed. */
   generations: number;
   /** Initial neuron count of the minimal seed (before evolution). */
   seedNeuronCount: number;
   /** Initial synapse count of the minimal seed (before evolution). */
   seedSynapseCount: number;
+  /** Final neuron count of the evolved champion. */
+  finalNeuronCount: number;
+  /** Final synapse count of the evolved champion. */
+  finalSynapseCount: number;
 }
 
 /**
@@ -241,41 +222,10 @@ export function createCrippledCreature(
   return crippled;
 }
 
-/** Format a finite number for CSV emission with trimmed trailing zeros. */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
-
-/** Format the per-generation telemetry rows as a CSV string. */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.meanFitness),
-        r.neuronCount,
-        r.synapseCount,
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-/**
- * Iterations per `evolveDir` chunk. Chunking the run keeps the
- * per-generation telemetry chart in step with topology mutations: the
- * passed-in `creature` reference is only updated at the end of each
- * `evolveDir` call, so smaller chunks make the neuron / synapse line
- * climb in visible step changes rather than as a single jump at the end.
- */
-const PHASE_CHUNK_ITERATIONS = 25;
-
 /**
  * Run minimal-seed `evolveDir` against the binary `.bin` training set in
- * `dataDir`, capturing per-generation telemetry for the README.
+ * `dataDir` and return the milestone-summary fields captured from the
+ * `evolveDir` return value (issue #304 — no per-generation telemetry).
  *
  * The seed passed in must be `new Creature(INPUT_COUNT, OUTPUT_COUNT)` —
  * this function deliberately does not construct the seed itself so the
@@ -294,103 +244,63 @@ export async function runMinimalSeedEvolution(
   const seedNeuronCount = seed.neurons.length;
   const seedSynapseCount = seed.synapses.length;
 
-  const rows: EvolutionRow[] = [];
+  const neatOptions: NeatOptions = {
+    seed: config.seed,
+    populationSize: config.populationSize,
+    iterations: config.maxIterations,
+    targetError: config.targetError,
+    timeoutMinutes: config.timeoutMinutes,
+    // No feedbackLoop key → engine treats the run as forward-only.
+    costOfGrowth: 0,
+    // Push NEAT toward structural growth so the example genuinely
+    // adds hidden neurons / inter-layer synapses from the minimal seed
+    // — required by the audit's "neuron and synapse counts genuinely
+    // change" acceptance criterion.
+    mutationRate: 0.6,
+    mutationAmount: 3,
+    verbose: false,
+    log: 0,
+    threads: 1,
+  };
+
   const start = Date.now();
-  const budgetMs = config.timeoutMinutes * 60_000;
+  const result = await seed.evolveDir(dataDir, neatOptions);
+  const wallClockMs = Date.now() - start;
 
-  let evolved = 0;
-  let finalError = Number.POSITIVE_INFINITY;
-
-  while (evolved < config.maxIterations) {
-    // The creature reference is updated by `evolveDir` at the end of
-    // each call. Re-read its topology *before* the next chunk so the
-    // event handler reports the latest neuron / synapse counts for
-    // every generation inside the chunk.
-    const segmentStartNeurons = seed.neurons.length;
-    const segmentStartSynapses = seed.synapses.length;
-
-    const elapsedMs = Date.now() - start;
-    if (elapsedMs >= budgetMs) break;
-
-    const remaining = config.maxIterations - evolved;
-    const chunkIterations = Math.min(PHASE_CHUNK_ITERATIONS, remaining);
-
-    const neatOptions: NeatOptions = {
-      seed: config.seed + evolved,
-      populationSize: config.populationSize,
-      iterations: chunkIterations,
-      targetError: config.targetError,
-      timeoutMinutes: config.timeoutMinutes,
-      // No feedbackLoop key → engine treats the run as forward-only.
-      costOfGrowth: 0,
-      // Push NEAT toward structural growth so the example genuinely
-      // adds hidden neurons / inter-layer synapses from the minimal seed
-      // — required by the audit's "neuron and synapse counts genuinely
-      // change" acceptance criterion.
-      mutationRate: 0.6,
-      mutationAmount: 3,
-      verbose: false,
-      log: 0,
-      threads: 1,
-      onTrainingEvent: (event) => {
-        if (event.kind !== "generation_complete") return;
-        rows.push({
-          generation: evolved + event.generation,
-          bestFitness: event.bestFitness,
-          meanFitness: event.averageFitness,
-          neuronCount: segmentStartNeurons,
-          synapseCount: segmentStartSynapses,
-        });
-      },
-    };
-
-    const result = await seed.evolveDir(dataDir, neatOptions);
-    const completed = result.generation ?? chunkIterations;
-    evolved += completed;
-    finalError = result.error ?? finalError;
-
-    if (finalError <= config.targetError) break;
-    if (completed < chunkIterations) break;
-  }
-
-  // Patch the final row so the chart shows the post-evolution topology
-  // — `evolveDir` updates the creature reference *after* the last event
-  // fires inside the chunk, so without this fix-up the last row still
-  // reports the pre-chunk counts.
-  if (rows.length > 0) {
-    const last = rows[rows.length - 1];
-    last.neuronCount = seed.neurons.length;
-    last.synapseCount = seed.synapses.length;
-  }
+  const finalError = Number.isFinite(result.error) ? result.error : 0;
+  const finalScore = Number.isFinite(result.score) ? result.score : 0;
+  const generations = Math.max(1, result.generation ?? 1);
 
   return {
     champion: seed,
-    rows,
-    wallClockMs: Date.now() - start,
+    wallClockMs,
     finalError,
-    generations: evolved,
+    finalScore,
+    generations,
     seedNeuronCount,
     seedSynapseCount,
+    finalNeuronCount: seed.neurons.length,
+    finalSynapseCount: seed.synapses.length,
   };
 }
 
-/** Convert telemetry rows into the shape expected by the shared chart helpers. */
-export function rowsToFitnessSamples(rows: readonly EvolutionRow[]): FitnessSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    bestFitness: r.bestFitness,
-    avgFitness: r.meanFitness,
-  }));
-}
-
-/** Convert telemetry rows into the shape expected by the evolution chart helper. */
-export function rowsToEvolutionSamples(rows: readonly EvolutionRow[]): EvolutionSample[] {
-  return rows.map((r) => ({
-    generation: r.generation,
-    score: r.bestFitness,
-    neurons: r.neuronCount,
-    synapses: r.synapseCount,
-  }));
+/** Build the {@link EvolveDirSummary} record from a finished evolution result. */
+export function buildEvolveDirSummary(
+  result: DiscoveryEvolutionResult,
+  config: DiscoveryEvolutionConfig,
+): EvolveDirSummary {
+  return {
+    finalError: result.finalError,
+    finalScore: result.finalScore,
+    wallClockMs: result.wallClockMs,
+    generations: result.generations,
+    seedNeurons: result.seedNeuronCount,
+    seedSynapses: result.seedSynapseCount,
+    finalNeurons: result.finalNeuronCount,
+    finalSynapses: result.finalSynapseCount,
+    targetError: config.targetError,
+    timeoutMinutes: config.timeoutMinutes,
+  };
 }
 
 async function runDiscoveryExample(): Promise<void> {
@@ -433,62 +343,47 @@ async function runDiscoveryExample(): Promise<void> {
   );
 
   const result = await runMinimalSeedEvolution(seed, dataDir, config);
-  const finalRow = result.rows[result.rows.length - 1];
   console.log(
     `   Completed ${result.generations} generations in ` +
       `${(result.wallClockMs / 1000).toFixed(1)}s (final error ${
         Number.isFinite(result.finalError) ? result.finalError.toFixed(4) : "n/a"
       })`,
   );
-  if (finalRow) {
-    console.log(
-      `   Champion topology: ${finalRow.neuronCount} neurons, ` +
-        `${finalRow.synapseCount} synapses ` +
-        `(seed had ${result.seedNeuronCount} / ${result.seedSynapseCount})`,
-    );
-  }
+  console.log(
+    `   Champion topology: ${result.finalNeuronCount} neurons, ` +
+      `${result.finalSynapseCount} synapses ` +
+      `(seed had ${result.seedNeuronCount} / ${result.seedSynapseCount})`,
+  );
 
   // Save the evolved champion so reviewers can inspect it.
   const championPath = join(creaturesDir, "discovered.json");
   await safeWriteJson(championPath, result.champion.exportJSON());
   console.log(`   Saved evolved champion to ${championPath}`);
 
-  // Stage 3: Emit the per-generation telemetry artefacts.
-  stage("Stage 3/3: Writing per-generation telemetry (CSV + 2 SVGs)");
-  if (result.rows.length === 0) {
-    console.log("   ⚠️  No per-generation events captured — telemetry skipped.");
-  } else {
-    ensureDirSync("docs/data/discovery");
-    ensureDirSync("docs/screenshots/discovery");
-    await Deno.writeTextFile(EVOLUTION_CSV_PATH, formatEvolutionCsv(result.rows));
-    console.log(`   🗒️  Wrote ${EVOLUTION_CSV_PATH} (${result.rows.length} rows)`);
-
-    const fitnessSvg = renderFitnessChartSVG(rowsToFitnessSamples(result.rows), {
-      title: "Discovery — Best vs Mean Fitness",
-    });
-    await Deno.writeTextFile(FITNESS_SVG_PATH, fitnessSvg);
-    console.log(`   📈 Wrote ${FITNESS_SVG_PATH}`);
-
-    const topologySvg = renderEvolutionChartSVG(rowsToEvolutionSamples(result.rows), {
-      title: "Discovery — Score, Neurons, Synapses per Generation",
-    });
-    await Deno.writeTextFile(TOPOLOGY_SVG_PATH, topologySvg);
-    console.log(`   📈 Wrote ${TOPOLOGY_SVG_PATH}`);
-  }
+  // Stage 3: Emit the milestone-summary SVG sourced from the captured
+  // `evolveDir` return value (issue #304 — milestone telemetry only).
+  stage("Stage 3/3: Writing milestone summary SVG");
+  const summary = buildEvolveDirSummary(result, config);
+  ensureDirSync(dirname(EVOLUTION_SUMMARY_SVG_PATH));
+  await Deno.writeTextFile(
+    EVOLUTION_SUMMARY_SVG_PATH,
+    renderEvolveDirSummarySvg(summary, {
+      title: "Discovery — evolveDir Run Summary",
+    }),
+  );
+  console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
   // Summary line — quoted in the README so reviewers can see the
   // measured numbers from the latest run.
   console.log("\n== Summary ==");
   console.log(`   Reference creature: ${baselinePath}`);
   console.log(`   Evolved champion:   ${championPath}`);
-  if (finalRow) {
-    console.log(
-      `   Final generation ${finalRow.generation}: ` +
-        `bestFitness=${finalRow.bestFitness.toFixed(4)}  ` +
-        `meanFitness=${finalRow.meanFitness.toFixed(4)}  ` +
-        `neurons=${finalRow.neuronCount}  synapses=${finalRow.synapseCount}`,
-    );
-  }
+  console.log(
+    `   Final generation ${result.generations}: ` +
+      `finalScore=${result.finalScore.toFixed(4)}  ` +
+      `finalError=${result.finalError.toFixed(4)}  ` +
+      `neurons=${result.finalNeuronCount}  synapses=${result.finalSynapseCount}`,
+  );
   console.log(`   Wall-clock: ${(result.wallClockMs / 1000).toFixed(1)}s`);
 }
 
