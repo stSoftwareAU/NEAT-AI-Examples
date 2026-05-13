@@ -3,14 +3,11 @@
  *
  * Evolves a NEAT-AI creature to land a simplified 2D lunar lander on a
  * flat pad. The simulator (`physics.ts`) is pure TypeScript; the
- * evolutionary loop is now driven entirely by NEAT-AI's class-shaped
- * `Creature.evolveRL()` API (issue #240, depends on
- * `stSoftwareAU/NEAT-AI#2630` and library version `5.0.0`).
+ * evolutionary loop is driven entirely by NEAT-AI's class-shaped
+ * `Creature.evolveRL()` API (issue #292, supersedes #240).
  *
  * Inputs (per timestep): `[x, y, vx, vy, angle, angularV, fuel]`.
  * Outputs (3, thresholded at 0.5): `[main, left, right]`.
- * Score: a hand-tuned function rewarding gentle pad-centred landings
- * and remaining fuel, penalising crashes and out-of-bounds drift.
  *
  * 🌱 **Generation 1 starts from random noise.** The seed handed to
  * `Creature.evolveRL()` is a fresh `new Creature(INPUT_COUNT,
@@ -19,6 +16,13 @@
  * output bias. **No hand-crafted topology, no tuned weight init.**
  * Hidden neurons emerge only when NEAT-AI's structural mutation
  * operators (owned by the library) split an existing connection.
+ *
+ * 📈 **Progress is reported as milestone statistics.** Per issue #298
+ * NEAT-AI surfaces only milestone-cadence telemetry (`evolverl_milestone`
+ * events at generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then
+ * powers of ten). This example collects the milestone payloads emitted
+ * by `Creature.evolveRL()` and renders them via
+ * `renderMilestoneChartSVG` — no `onTrainingEvent` handler is registered.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -27,6 +31,7 @@ import {
   Creature,
   type CreatureExport,
   EpisodeAdapter,
+  type EvolveRLMilestone,
   type EvolveRLOptions,
   safeWriteJson,
   type StepResult,
@@ -34,14 +39,7 @@ import {
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import {
-  captureSnapshot,
-  loadSnapshots,
-  type SnapshotConfig,
-} from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
-import { type EvolutionSample, renderEvolutionChartSVG } from "../common/evolution_chart.ts";
-import { type FitnessSample, renderFitnessChartSVG } from "../common/fitness_chart.ts";
+import { type MilestoneSample, renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 import { renderOutcomeBarChartSVG, type ScenarioOutcome } from "../common/outcome_bar_chart.ts";
 import {
   classifyOutcome,
@@ -127,7 +125,11 @@ export interface EvolveOptions {
    * bounded only by `targetError` and `timeoutMinutes`.
    */
   iterations?: number;
-  /** Standard deviation of the weight/bias perturbation noise. */
+  /**
+   * Standard deviation of the weight/bias perturbation noise. Retained
+   * on the public API for backwards compatibility — NEAT-AI 5.0.0 owns
+   * mutation magnitude internally and ignores this value.
+   */
   mutationStrength: number;
   /** Probability that any given gene is perturbed each generation. */
   mutationRate: number;
@@ -158,17 +160,6 @@ export interface EvolveOptions {
    * for backwards compatibility.
    */
   trialSeed?: number;
-  /** Optional callback invoked once per generation with progress info. */
-  onGeneration?: (info: GenerationInfo) => void;
-  /**
-   * Optional snapshot configuration. When supplied, a snapshot of the
-   * seed creature is captured if generation `1` is a checkpoint, and a
-   * snapshot of the final champion is captured at the final
-   * generation. Mid-run intermediate generations are no longer captured
-   * because `Creature.evolveRL()` does not expose mid-run creature
-   * exports — see issue #240 for the migration trade-offs.
-   */
-  snapshotConfig?: SnapshotConfig;
 }
 
 /** Options controlling multi-trial perturbed scoring of a single creature. */
@@ -186,19 +177,6 @@ export interface ScoreOptions {
    * starts from the canonical entry).
    */
   initialPerturbation?: number;
-}
-
-/** Statistics emitted after each generation. */
-export interface GenerationInfo {
-  generation: number;
-  bestScore: number;
-  meanScore: number;
-  /** Fraction of the champion's trials that ended in `landed`. */
-  bestLandedRate: number;
-  /** Neuron count of the champion creature for this generation. */
-  neurons: number;
-  /** Synapse count of the champion creature for this generation. */
-  synapses: number;
 }
 
 /** Outcome and final-state record for a single trial within a batch. */
@@ -242,8 +220,6 @@ export interface EvolveResult {
   landedRate: number;
   /** Champion's outcome from the canonical starting state. */
   championOutcome: LanderOutcome;
-  /** Final-generation mean score (for sanity checks against baselines). */
-  finalMeanScore: number;
   /** Wall-clock duration of the evolution loop in milliseconds. */
   wallclockMs: number;
   /**
@@ -253,6 +229,14 @@ export interface EvolveResult {
    * - `"iterations"` — the optional generation cap was hit first.
    */
   stopReason: "target" | "timeout" | "iterations";
+  /**
+   * Milestone payloads collected via `evolveRL`'s `statistics: true`
+   * option, surfaced in the schedule documented by
+   * {@link MilestoneSample}. Per issue #298 this is the only telemetry
+   * channel NEAT-AI exposes — see {@link MILESTONE_SVG_PATH} for the
+   * rendered chart.
+   */
+  milestones: MilestoneSample[];
 }
 
 /** Sensible defaults for the demonstration runner. */
@@ -682,35 +666,43 @@ export function freeFallBaselineScore(maxSteps: number = MAX_STEPS): number {
   return scoreFinalState(state, classifyOutcome(state));
 }
 
-/** Per-generation aggregate accumulated from `onEpisodeTrials` events. */
-interface GenerationBucket {
-  /** Per-creature mean reward across this generation's episode batch. */
-  meanRewards: number[];
-  /** Best `meanReward` seen this generation. */
-  bestReward: number;
-  /** Best champion's neuron count (carried from the previous milestone). */
-  bestNeurons: number;
-  /** Best champion's synapse count (carried from the previous milestone). */
-  bestSynapses: number;
+/**
+ * Convert an `EvolveRLMilestone` from the library into the
+ * {@link MilestoneSample} shape consumed by
+ * `renderMilestoneChartSVG`. Both interfaces are structurally
+ * identical, but pinning the conversion keeps consumers from leaking
+ * the upstream type onto their own surfaces.
+ */
+function toMilestoneSample(m: EvolveRLMilestone): MilestoneSample {
+  return {
+    generation: m.generation,
+    bestScore: m.bestScore,
+    bestNeurons: m.bestNeurons,
+    bestSynapses: m.bestSynapses,
+    meanEpisodeSteps: m.meanEpisodeSteps,
+    generationWallClockMs: m.generationWallClockMs,
+  };
+}
+
+/** Clamp a value to `[0, 1]`. */
+function clamp01(value: number): number {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
 }
 
 /**
  * Run NEAT-AI's first-class reinforcement-learning evolution loop
  * against a {@link LanderAdapter}. Mutation, crossover, elitism,
  * plateau detection, and stop-condition handling are owned by
- * `Creature.evolveRL()` (issue #240).
+ * `Creature.evolveRL()` (issue #292, supersedes #240).
  *
- * Per-generation telemetry is reconstructed by:
- *
- * 1. Accumulating per-creature `meanReward` via `onEpisodeTrials`.
- * 2. Reading champion topology counts from the optional
- *    `evolverl_milestone` events when `statistics: true` is enabled.
- * 3. Firing the caller's `options.onGeneration` callback from each
- *    `generation_complete` training event with the aggregated data.
- *
- * Snapshot capture is reduced to gen-1 (the seed creature) and the
- * final generation (the champion after `evolveRL` returns) because the
- * upstream API does not expose mid-run creature exports.
+ * Telemetry is collected via NEAT-AI's `statistics: true` option, which
+ * surfaces an `EvolveRLMilestone[]` array on the run summary covering
+ * generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers
+ * of ten. Per issue #298 the example registers **no `onTrainingEvent`
+ * handler** — milestone statistics are the only telemetry channel
+ * NEAT-AI exposes.
  */
 export async function evolveLanderController(
   options: EvolveOptions = DEFAULT_EVOLVE_OPTIONS,
@@ -721,25 +713,6 @@ export async function evolveLanderController(
   });
 
   const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
-  const seedExport = seedCreature.exportJSON();
-  const seedNeurons = seedExport.neurons.length + (seedExport.input ?? INPUT_COUNT);
-  const seedSynapses = seedExport.synapses.length;
-
-  // Capture the seed creature as the gen-1 snapshot so the existing
-  // multi-panel SVG renderer still has at least one early-generation
-  // panel to draw alongside the final champion.
-  if (options.snapshotConfig?.checkpoints.includes(1)) {
-    captureSnapshot(options.snapshotConfig, 1, seedExport, 0);
-  }
-
-  const generationData = new Map<number, GenerationBucket>();
-  let latestBestNeurons = seedNeurons;
-  let latestBestSynapses = seedSynapses;
-  let bestScoreSeen = -Infinity;
-  let bestLandedRateSeen = 0;
-  let lastMeanScore = 0;
-  let lastObservedGeneration = 0;
-  let solvedAtGen = -1;
 
   // EvolveRL normalised target error — the adapter emits a binary
   // terminal reward in `{0, -1}`, so `defaultRewardToError` produces
@@ -765,90 +738,13 @@ export async function evolveLanderController(
     iterations: options.iterations,
     episodesPerCreature: options.trials ?? 1,
     statistics: true,
-    onEpisodeTrials: (event) => {
-      let bucket = generationData.get(event.generation);
-      if (!bucket) {
-        bucket = {
-          meanRewards: [],
-          bestReward: Number.NEGATIVE_INFINITY,
-          bestNeurons: latestBestNeurons,
-          bestSynapses: latestBestSynapses,
-        };
-        generationData.set(event.generation, bucket);
-      }
-      bucket.meanRewards.push(event.meanReward);
-      if (event.meanReward > bucket.bestReward) {
-        bucket.bestReward = event.meanReward;
-      }
-    },
-    onTrainingEvent: (event) => {
-      if (event.kind === "evolverl_milestone") {
-        latestBestNeurons = event.bestNeurons;
-        latestBestSynapses = event.bestSynapses;
-        const bucket = generationData.get(event.generation);
-        if (bucket) {
-          bucket.bestNeurons = event.bestNeurons;
-          bucket.bestSynapses = event.bestSynapses;
-        }
-        return;
-      }
-      if (event.kind !== "generation_complete") return;
-
-      lastObservedGeneration = event.generation;
-      const bucket = generationData.get(event.generation);
-      // Surface generation numbers as zero-based to match the historical
-      // GenerationInfo contract.
-      const generation0 = event.generation - 1;
-      let bestScoreThisGen: number;
-      let meanScoreThisGen: number;
-      let bestLandedRateThisGen: number;
-      let neurons: number;
-      let synapses: number;
-      if (bucket && bucket.meanRewards.length > 0) {
-        const sum = bucket.meanRewards.reduce((a, b) => a + b, 0);
-        const meanReward = sum / bucket.meanRewards.length;
-        // Cumulative reward sits in `[-1, 0]`; `score = 1 + reward`
-        // therefore sits in `[0, 1]` and corresponds to the landed
-        // rate. We surface `bestScore` and `meanScore` as the landed
-        // rate to match the historical contract (caller code prints
-        // and logs them as fractions in `[0, 1]`).
-        meanScoreThisGen = 1 + meanReward;
-        bestScoreThisGen = 1 + bucket.bestReward;
-        bestLandedRateThisGen = bestScoreThisGen;
-        neurons = bucket.bestNeurons;
-        synapses = bucket.bestSynapses;
-      } else {
-        // No data this generation (e.g. every creature was an elite cached
-        // from a previous round). Fall back to the last known stats.
-        meanScoreThisGen = lastMeanScore;
-        bestScoreThisGen = bestScoreSeen >= 0 ? bestScoreSeen : 0;
-        bestLandedRateThisGen = bestLandedRateSeen;
-        neurons = latestBestNeurons;
-        synapses = latestBestSynapses;
-      }
-      if (bestScoreThisGen > bestScoreSeen) {
-        bestScoreSeen = bestScoreThisGen;
-        bestLandedRateSeen = bestLandedRateThisGen;
-      }
-      lastMeanScore = meanScoreThisGen;
-      if (bestLandedRateThisGen >= 1 - absoluteTargetError && solvedAtGen < 0) {
-        solvedAtGen = generation0;
-      }
-      options.onGeneration?.({
-        generation: generation0,
-        bestScore: bestScoreThisGen,
-        meanScore: meanScoreThisGen,
-        bestLandedRate: bestLandedRateThisGen,
-        neurons,
-        synapses,
-      });
-    },
   };
 
   const result = await seedCreature.evolveRL(adapter, evolveOptions);
 
   const wallclockMs = Date.now() - loopStart;
-  const finalGeneration = Math.max(lastObservedGeneration, result.generation);
+
+  const milestones: MilestoneSample[] = (result.milestones ?? []).map(toMilestoneSample);
 
   // Replay the champion against the same perturbed trial batch the
   // adapter was driving so `landedRate`, `championOutcome`, and the
@@ -861,37 +757,20 @@ export async function evolveLanderController(
   });
   const championLandedRate = trialScore.landedRate;
   const championOutcome = trialScore.outcome;
-  if (trialScore.score > bestScoreSeen) bestScoreSeen = trialScore.score;
 
-  // Capture the final champion as the last snapshot if the caller asked
-  // for a checkpoint at the final generation (or used the default
-  // checkpoint list that includes the final gen).
-  if (options.snapshotConfig?.checkpoints.includes(finalGeneration)) {
-    captureSnapshot(
-      options.snapshotConfig,
-      finalGeneration,
-      seedCreature.exportJSON(),
-      trialScore.score,
-    );
-  } else if (options.snapshotConfig) {
-    // Always write a snapshot at the final generation so the multi-panel
-    // SVG has a closing frame even when no exact checkpoint matches.
-    captureSnapshot(
-      { ...options.snapshotConfig, checkpoints: [finalGeneration] },
-      finalGeneration,
-      seedCreature.exportJSON(),
-      trialScore.score,
-    );
-  }
-
-  const targetMet = championLandedRate >= 1 - absoluteTargetError ||
-    solvedAtGen >= 0;
+  // The champion's landed rate mirrors evolveRL's own assessment so
+  // that "the champion solved the task" agrees with `result.error <=
+  // targetError`. `error = 1 - landedRate` so `landedRate = 1 - error`.
+  const evolveLandedRate = clamp01(1 - Math.max(0, Math.min(1, result.error)));
+  const targetLandedRate = 1 - absoluteTargetError;
+  const targetMet = evolveLandedRate >= targetLandedRate ||
+    championLandedRate >= targetLandedRate;
 
   let stopReason: "target" | "timeout" | "iterations";
   if (targetMet) {
     stopReason = "target";
   } else if (
-    options.iterations !== undefined && finalGeneration >= options.iterations
+    options.iterations !== undefined && result.generation >= options.iterations
   ) {
     stopReason = "iterations";
   } else {
@@ -901,18 +780,28 @@ export async function evolveLanderController(
   return {
     champion: seedCreature,
     bestScore: trialScore.score,
-    generations: finalGeneration,
+    generations: result.generation,
     solved: targetMet,
     landedRate: championLandedRate,
     championOutcome,
-    finalMeanScore: lastMeanScore,
     wallclockMs,
     stopReason,
+    milestones,
   };
 }
 
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/lunar_lander.svg";
+
+/**
+ * Path to the milestone-statistics chart the runner emits — this is the
+ * canonical fitness-progression artefact under the milestone-only
+ * telemetry policy (issue #298). Replaces the legacy
+ * `lunar_lander_evolution.svg`, `lunar_lander/evolution.svg`,
+ * `lunar_lander/fitness.svg`, and the snapshot-driven evolution-progress
+ * strip that the per-generation snapshot pipeline used to emit.
+ */
+export const MILESTONE_SVG_PATH = "docs/screenshots/lunar_lander_milestones.svg";
 
 /**
  * Path to the validation results JSON written by the runner. Downstream
@@ -929,88 +818,11 @@ export const VALIDATION_RESULTS_PATH = ".synthetic-lunar-lander/validation/resul
 export const VALIDATION_BASE_SEED = 13579;
 
 /**
- * Generations at which the runner captures evolution snapshots. Under
- * the new `Creature.evolveRL()`-driven loop the upstream API only
- * exposes the seed creature and the final champion, so only the first
- * entry (`1`) and the run's terminal generation actually produce
- * snapshot files. The remaining entries are retained for backwards
- * compatibility — they are silently ignored.
- */
-export const EVOLUTION_CHECKPOINTS: number[] = [1, 10, 100, 500, 1000];
-
-/** Hidden directory under which snapshot files are written. */
-export const SNAPSHOTS_DIR = ".synthetic-lunar-lander/snapshots";
-
-/** Path to the multi-panel evolution-progression SVG the runner emits. */
-export const EVOLUTION_PROGRESS_SVG_PATH = "docs/screenshots/lunar_lander_evolution.svg";
-
-/** Path to the per-generation evolution-chart SVG the runner emits. */
-export const EVOLUTION_CHART_PATH = "docs/screenshots/lunar_lander/evolution.svg";
-
-/** Path to the per-generation fitness-chart SVG the runner emits. */
-export const FITNESS_CHART_PATH = "docs/screenshots/lunar_lander/fitness.svg";
-
-/**
  * Path to the per-validation-scenario outcome bar chart SVG the runner
- * emits. Pairs with the descent screenshot and fitness chart to give
+ * emits. Pairs with the descent screenshot and milestone chart to give
  * readers a one-glance view of how robustly the controller generalises.
  */
 export const VALIDATION_OUTCOME_SVG_PATH = "docs/screenshots/lunar_lander/validation.svg";
-
-/** Path to the per-generation evolution telemetry CSV the runner emits. */
-export const EVOLUTION_CSV_PATH = "docs/data/lunar_lander/evolution.csv";
-
-/** Header row written at the top of {@link EVOLUTION_CSV_PATH}. */
-export const EVOLUTION_CSV_HEADER = "generation,best_fitness,avg_fitness,landed_rate,wallclock_ms";
-
-/**
- * One row of per-generation evolution telemetry. Captured during a run
- * and serialised to {@link EVOLUTION_CSV_PATH} so downstream tools can
- * inspect how the population's fitness improved over time.
- */
-export interface EvolutionRow {
-  /** Zero-based generation index. */
-  generation: number;
-  /** Best fitness in this generation (max across the population). */
-  bestFitness: number;
-  /** Population mean fitness in this generation. */
-  avgFitness: number;
-  /** Fraction of the champion's perturbed-trial batch that landed. */
-  landedRate: number;
-  /** Milliseconds elapsed since the evolution loop began. */
-  wallclockMs: number;
-}
-
-/**
- * Format an evolution-telemetry table into a CSV string with the exact
- * {@link EVOLUTION_CSV_HEADER} header. Numeric fields use a fixed
- * representation so the file is byte-deterministic for identical inputs.
- */
-export function formatEvolutionCsv(rows: readonly EvolutionRow[]): string {
-  const lines: string[] = [EVOLUTION_CSV_HEADER];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.generation,
-        formatCsvNumber(r.bestFitness),
-        formatCsvNumber(r.avgFitness),
-        formatCsvNumber(r.landedRate),
-        Math.round(r.wallclockMs),
-      ].join(","),
-    );
-  }
-  return lines.join("\n") + "\n";
-}
-
-/**
- * Format a finite number with up to six decimal places, trimming trailing
- * zeros so deterministic inputs produce a single canonical string.
- * Non-finite values become "0" — the CSV must not leak NaN/Infinity.
- */
-function formatCsvNumber(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return Number(v.toFixed(6)).toString();
-}
 
 /**
  * Trivial `--name=value` CLI flag parser. Returns `undefined` when the
@@ -1031,26 +843,14 @@ function parseNumericFlag(args: string[], name: string): number | undefined {
  * CI/quality "quick mode" stop-condition overrides. When the runner is
  * invoked via `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag), the
  * standard 99% / 2-minute defaults are replaced with a deliberately
- * unreachable target and a 1-minute wall-clock budget so the example
- * always exits via the wall-clock backstop.
- *
- * NEAT-AI 5.0.0 requires `timeoutMinutes` to be an integer ≥ 1, so the
- * historical sub-minute budget is no longer expressible directly via
- * `timeoutMinutes`. Quick mode now uses `iterations` as the primary
- * short-circuit: the loop stops after a handful of generations, well
- * inside `quality.sh`'s per-section budget. Setting `timeoutMinutes = 1`
- * keeps the field schema-valid as a fallback.
- *
- * - `targetError = -1` is unreachable — the threshold becomes
- *   `landed-rate >= 1 - (-1) = 2`, but `landed-rate` is bounded by 1,
- *   so the loop never trips the `target` stop condition.
+ * unreachable target and a short iterations cap so the example always
+ * exits via the iterations backstop well inside `quality.sh`'s
+ * per-section budget.
  *
  * Quick mode also suppresses canonical artefact writes (champion JSON,
- * validation results JSON, descent SVG, evolution chart/strip, fitness
- * chart, telemetry CSV) so a CI run never overwrites the docs artefacts
- * checked into the repo. Snapshot files are written to a temp dir
- * scoped to the run so the snapshot loader still has something to read,
- * without disturbing `.synthetic-lunar-lander/snapshots/`.
+ * validation results JSON, descent SVG, milestone chart, validation
+ * outcome chart) so a CI run never overwrites the docs artefacts
+ * checked into the repo.
  */
 export const QUICK_TARGET_ERROR = -1;
 export const QUICK_TIMEOUT_MINUTES = 1;
@@ -1109,46 +909,12 @@ if (import.meta.main) {
       `timeoutMinutes=${timeoutMinutes}` +
       (iterations !== undefined ? `, iterations=${iterations}` : ""),
   );
-  // In quick mode, route snapshot files into a per-run temp dir so the
-  // checked-in `.synthetic-lunar-lander/snapshots/` is left untouched.
-  const snapshotsDir = quick
-    ? Deno.makeTempDirSync({ prefix: "lunar_lander_quick_snapshots_" })
-    : SNAPSHOTS_DIR;
-  ensureDirSync(snapshotsDir);
-  for (const entry of Deno.readDirSync(snapshotsDir)) {
-    if (entry.isFile) Deno.removeSync(join(snapshotsDir, entry.name));
-  }
-  const evolutionSamples: EvolutionSample[] = [];
-  const evolutionRows: EvolutionRow[] = [];
-  const evolutionStart = Date.now();
+
   const result = await evolveLanderController({
     ...DEFAULT_EVOLVE_OPTIONS,
     targetError,
     timeoutMinutes,
     iterations,
-    snapshotConfig: {
-      checkpoints: [...EVOLUTION_CHECKPOINTS],
-      outputDir: snapshotsDir,
-    },
-    onGeneration: ({ generation, bestScore, meanScore, bestLandedRate, neurons, synapses }) => {
-      evolutionSamples.push({ generation, score: bestScore, neurons, synapses });
-      evolutionRows.push({
-        generation,
-        bestFitness: bestScore,
-        avgFitness: meanScore,
-        landedRate: bestLandedRate,
-        wallclockMs: Date.now() - evolutionStart,
-      });
-      if (generation % 10 === 0) {
-        console.log(
-          `   Gen ${generation.toString().padStart(4)}  best=${
-            bestScore.toFixed(3).padStart(8)
-          }  mean=${meanScore.toFixed(3).padStart(8)}  ` +
-            `landed=${(bestLandedRate * 100).toFixed(0).padStart(3)}%  ` +
-            `neurons=${neurons}  synapses=${synapses}`,
-        );
-      }
-    },
   });
 
   const verdictIcon = result.solved ? "✅" : "⚠️";
@@ -1201,8 +967,8 @@ if (import.meta.main) {
   }
 
   // Render the per-validation-scenario outcome bar chart from the same
-  // report. Lives next to the fitness chart so the README can show the
-  // controller's journey (fitness chart) alongside its end-state spread
+  // report. Lives next to the milestone chart so the README can show the
+  // controller's journey (milestones) alongside its end-state spread
   // across all 200 unseen scenarios (this chart).
   const outcomeSamples: ScenarioOutcome[] = validationReport.scenarios.map((s) => ({
     scenarioIndex: s.index,
@@ -1245,74 +1011,34 @@ if (import.meta.main) {
     );
   }
 
-  // Render the per-generation evolution chart (score / neurons / synapses).
-  if (evolutionSamples.length > 0) {
-    const evolutionSvg = renderEvolutionChartSVG(evolutionSamples, {
-      title: "Lunar Lander — Evolution",
-      scoreLabel: "best score",
+  // Render the milestone-statistics chart — the canonical fitness
+  // progression artefact under issue #298's milestone-only telemetry
+  // policy. Replaces the legacy per-generation evolution chart,
+  // fitness chart, and evolution-progression strip.
+  if (result.milestones.length > 0) {
+    const milestoneSvg = renderMilestoneChartSVG(result.milestones, {
+      title: "Lunar Lander — evolveRL Milestones",
+      logX: true,
+      caption: true,
     });
     if (!quick) {
-      ensureDirSync("docs/screenshots/lunar_lander");
-      await Deno.writeTextFile(EVOLUTION_CHART_PATH, evolutionSvg);
-      console.log(`📈 Wrote evolution chart ${EVOLUTION_CHART_PATH}`);
-    }
-  }
-
-  // Per-generation evolution telemetry: CSV (source of truth) plus a
-  // best/avg fitness line chart rendered from the same rows. Both are
-  // emitted on every full run so downstream tools and the README can
-  // reuse the same data.
-  if (evolutionRows.length > 0) {
-    const csvText = formatEvolutionCsv(evolutionRows);
-    const fitnessSamples: FitnessSample[] = evolutionRows.map((r) => ({
-      generation: r.generation,
-      bestFitness: r.bestFitness,
-      avgFitness: r.avgFitness,
-    }));
-    const fitnessSvg = renderFitnessChartSVG(fitnessSamples, {
-      title: "Lunar Lander — Fitness vs Generation",
-      bestLabel: "best fitness",
-      avgLabel: "avg fitness",
-    });
-    if (!quick) {
-      ensureDirSync("docs/data/lunar_lander");
-      await Deno.writeTextFile(EVOLUTION_CSV_PATH, csvText);
-      console.log(`🗒️  Wrote evolution CSV ${EVOLUTION_CSV_PATH} (${evolutionRows.length} rows)`);
-
-      ensureDirSync("docs/screenshots/lunar_lander");
-      await Deno.writeTextFile(FITNESS_CHART_PATH, fitnessSvg);
-      console.log(`📈 Wrote fitness chart ${FITNESS_CHART_PATH}`);
-    }
-  }
-
-  // Render the multi-panel evolution-progression strip from the
-  // checkpoint snapshots captured during the run.
-  const snapshots = loadSnapshots(snapshotsDir);
-  if (snapshots.length > 0) {
-    const progressionSvg = renderEvolutionProgressSvg(snapshots, {
-      title: "Lunar Lander — Evolution Progress",
-      caption: {
-        finalScore: result.bestScore,
-        totalGenerations: result.generations,
-        wallClockMs: Date.now() - evolutionStart,
-      },
-    });
-    if (!quick) {
-      await Deno.writeTextFile(EVOLUTION_PROGRESS_SVG_PATH, progressionSvg);
+      ensureDirSync("docs/screenshots");
+      await Deno.writeTextFile(MILESTONE_SVG_PATH, milestoneSvg);
       console.log(
-        `🧬 Wrote evolution-progression strip ${EVOLUTION_PROGRESS_SVG_PATH} ` +
-          `(${snapshots.length} panels)`,
+        `📈 Wrote milestone chart ${MILESTONE_SVG_PATH} ` +
+          `(${result.milestones.length} milestones)`,
+      );
+    } else {
+      console.log(
+        `⏭️  Quick mode: skipped writing milestone chart ` +
+          `(rendered ${milestoneSvg.length} bytes in-memory, ${result.milestones.length} milestones)`,
       );
     }
-  }
-
-  // Tidy the per-run snapshot temp dir if quick mode created one.
-  if (quick && snapshotsDir !== SNAPSHOTS_DIR) {
-    try {
-      Deno.removeSync(snapshotsDir, { recursive: true });
-    } catch (_err) {
-      // Non-fatal — quick mode runs are best-effort about cleanup.
-    }
+  } else {
+    console.log(
+      "⚠️  No milestones returned by evolveRL — run did not reach the first " +
+        "milestone generation. Skipping milestone chart.",
+    );
   }
 
   console.log(

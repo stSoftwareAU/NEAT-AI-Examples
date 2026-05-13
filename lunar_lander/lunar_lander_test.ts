@@ -4,12 +4,20 @@
  * asserts on the observable outputs (scores, file contents, SVG
  * structure).
  *
- * Migration note (issue #240): the controller now evolves through
- * `Creature.evolveRL()`, so the tests for the removed
- * `buildRandomPopulation` and `mutateCreatureExport` internal helpers
- * have been dropped in favour of direct {@link LanderAdapter} and
- * controller tests. The remaining tests still assert on public
- * behaviour rather than implementation choices.
+ * Migration notes:
+ * - Issue #240 — the controller now evolves through
+ *   `Creature.evolveRL()`, so the tests for the removed
+ *   `buildRandomPopulation` and `mutateCreatureExport` internal helpers
+ *   have been dropped in favour of direct {@link LanderAdapter} and
+ *   controller tests.
+ * - Issue #292 — per-generation telemetry, snapshot capture, and the
+ *   evolution / fitness / evolution-progress strip artefacts have been
+ *   replaced by the milestone-statistics chart from #287. Tests covering
+ *   the removed surfaces (snapshot config, `GenerationInfo`,
+ *   `formatEvolutionCsv`, `EvolutionRow`) have been deleted in line with
+ *   the milestone-only telemetry decision recorded in #298; a new test
+ *   asserts the milestone-chart SVG round-trip via `evolveRL` +
+ *   `renderMilestoneChartSVG`.
  */
 import {
   assert,
@@ -22,20 +30,16 @@ import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 
-import { parse as parseCsv } from "@std/csv";
 import {
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
-  EVOLUTION_CSV_HEADER,
-  type EvolutionRow,
   evolveLanderController,
-  formatEvolutionCsv,
   freeFallBaselineScore,
-  type GenerationInfo,
   INPUT_COUNT,
   isQuickMode,
   LanderAdapter,
   MAX_STEPS,
+  MILESTONE_SVG_PATH,
   OUTPUT_COUNT,
   pickValidationSvgIndex,
   QUICK_ITERATIONS,
@@ -51,8 +55,7 @@ import {
 import { renderRunSVG } from "./svg.ts";
 import { DEFAULT_START_X, DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
 import { generateScenarioPools } from "./scenarios.ts";
-import { loadSnapshots } from "../common/evolution_snapshot.ts";
-import { renderEvolutionProgressSvg } from "../common/evolution_progress_svg.ts";
+import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 
 /**
  * A fast, deterministic configuration suitable for unit tests. Under
@@ -273,38 +276,38 @@ Deno.test("freeFallBaselineScore corresponds to a crash (negative score)", () =>
 });
 
 Deno.test({
-  name: "evolveLanderController generation-1 population is noise on average",
+  name: "evolveLanderController gen-1 milestone sits well below the solved threshold",
   // NEAT-AI 5.0.0 loads a Rust/WASM FFI library + Metal accelerator that
   // do not unload before the test ends — disable the sanitisers for the
   // evolve-driven tests.
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // Gen 1 must be noise. A fresh `new Creature(input, output)` seed
-    // and the library's uniform-random initial population almost never
-    // land — the gen-1 best landed rate must sit well below the default
-    // 99% target.
-    let firstGenLanded = 1;
-    let observed = false;
-    await evolveLanderController({
+    // Gen 1 must be noise: a fresh `new Creature(input, output)` seed
+    // and the library's uniform-random structural mutations cannot
+    // already solve lunar lander. Per #298 the only available telemetry
+    // is the milestone payload at generation 1.
+    const result = await evolveLanderController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
       populationSize: 30,
-      onGeneration: (info) => {
-        if (info.generation === 0 && !observed) {
-          firstGenLanded = info.bestLandedRate;
-          observed = true;
-        }
-      },
     });
-    assert(observed, "expected at least one onGeneration call");
-    // The default targetError of 0.01 implies a "solved" threshold of
-    // landed-rate ≥ 0.99, so gen-1 noise should be well below it.
-    assert(
-      firstGenLanded < 1 - DEFAULT_EVOLVE_OPTIONS.targetError,
-      `expected gen-1 best landed rate below the solved threshold ` +
-        `(${1 - DEFAULT_EVOLVE_OPTIONS.targetError}), got ${firstGenLanded}`,
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least the gen-1 milestone to be collected",
     );
+    const first = result.milestones[0];
+    assertEquals(
+      first.generation,
+      1,
+      `expected the first milestone to live at generation 1, got ${first.generation}`,
+    );
+    // The minimal seed has `INPUT_COUNT + OUTPUT_COUNT` neurons; NEAT-AI
+    // may grow topology under its own mutation policy, so the count can
+    // only be asserted as ≥ the seed value.
+    assertGreaterOrEqual(first.bestNeurons, INPUT_COUNT + OUTPUT_COUNT);
+    assertGreaterOrEqual(first.bestSynapses, 1);
   },
 });
 
@@ -614,123 +617,74 @@ Deno.test("renderRunSVG renders an animated fuel HUD bar", () => {
 });
 
 Deno.test({
-  name:
-    "evolveLanderController writes seed + final snapshots and the strip SVG embeds one panel per snapshot",
+  name: "evolveLanderController collects milestone samples and the chart SVG round-trips",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "lunar_lander_snapshots_test_" });
-    try {
-      // Under the new evolveRL-driven loop only the seed creature (gen 1)
-      // and the final champion are snapshot — mid-run intermediate
-      // checkpoints are no longer captured because the upstream API
-      // does not expose mid-run creature exports.
-      await evolveLanderController({
-        ...TEST_EVOLVE_OPTIONS,
-        mutationStrength: 0.01,
-        mutationRate: 0.01,
-        populationSize: 4,
-        iterations: 3,
-        snapshotConfig: { checkpoints: [1], outputDir: tmp },
-      });
-
-      const snapshots = loadSnapshots(tmp);
-      assertGreaterOrEqual(
-        snapshots.length,
-        2,
-        `expected at least seed + final snapshots, got ${snapshots.length}`,
-      );
-
-      const svg = renderEvolutionProgressSvg(snapshots, {
-        title: "Lunar Lander — Evolution Progress",
-      });
-      assert(svg.startsWith("<svg"), "must start with <svg>");
-      assert(svg.length > 0, "SVG must be non-empty");
-      const panels = svg.match(/<g class="panel"/g) ?? [];
-      assertEquals(panels.length, snapshots.length);
-    } finally {
-      Deno.removeSync(tmp, { recursive: true });
-    }
-  },
-});
-
-Deno.test({
-  name: "evolveLanderController emits GenerationInfo with sensible neuron and synapse counts",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    // The minimal seed has `INPUT_COUNT + OUTPUT_COUNT` neurons with
-    // `INPUT_COUNT * OUTPUT_COUNT` direct synapses. NEAT-AI may grow
-    // topology under its own mutation policy, so the counts can only
-    // be asserted as ≥ the seed values.
-    const events: GenerationInfo[] = [];
-    await evolveLanderController({
-      ...TEST_EVOLVE_OPTIONS,
-      mutationStrength: 0.01,
-      mutationRate: 0.01,
-      populationSize: 4,
-      iterations: 3,
-      onGeneration: (info) => events.push(info),
+    // Per #287/#292 the milestone chart is the only fitness-progression
+    // artefact the lunar-lander example emits. The first milestone fires
+    // at generation 1, so even a single-iteration run must collect at
+    // least one sample, and the chart must render to a well-formed SVG.
+    const result = await evolveLanderController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
+      populationSize: 6,
     });
-    assertGreater(events.length, 0, "expected at least one onGeneration call");
-    for (const info of events) {
-      assertGreaterOrEqual(info.neurons, INPUT_COUNT + OUTPUT_COUNT);
-      assertGreaterOrEqual(info.synapses, INPUT_COUNT);
-      assert(Number.isFinite(info.bestScore));
-      assert(Number.isFinite(info.meanScore));
-      assertGreaterOrEqual(info.bestLandedRate, 0);
-      assertGreaterOrEqual(1, info.bestLandedRate);
+    assertGreater(
+      result.milestones.length,
+      0,
+      "expected at least one milestone sample after iterations=1",
+    );
+    for (const m of result.milestones) {
+      assertGreater(m.generation, 0);
+      assertGreaterOrEqual(m.bestNeurons, INPUT_COUNT + OUTPUT_COUNT);
+      assertGreaterOrEqual(m.bestSynapses, 1);
+      assertGreaterOrEqual(m.meanEpisodeSteps, 0);
+      assertGreaterOrEqual(m.generationWallClockMs, 0);
+    }
+
+    const tmp = await Deno.makeTempDir({ prefix: "lunar_lander_milestone_" });
+    try {
+      const svg = renderMilestoneChartSVG(result.milestones, {
+        title: "Lunar Lander — evolveRL Milestones",
+        logX: true,
+        caption: true,
+      });
+      const path = join(tmp, "lunar_lander_milestones.svg");
+      await Deno.writeTextFile(path, svg);
+      const written = await Deno.readTextFile(path);
+      assert(written.startsWith("<svg"), "must start with <svg>");
+      assert(written.includes("</svg>"), "must contain </svg>");
+      assert(
+        written.includes("Lunar Lander &#x2014; evolveRL Milestones") ||
+          written.includes("Lunar Lander — evolveRL Milestones"),
+        "expected the chart title to appear in the SVG",
+      );
+      assert(
+        written.includes("best-score-line"),
+        "expected the best-score series",
+      );
+      assert(
+        written.includes("mean-steps-line"),
+        "expected the mean-steps series",
+      );
+      assert(
+        written.includes("neurons-line"),
+        "expected the neurons series",
+      );
+      assert(
+        written.includes("synapses-line"),
+        "expected the synapses series",
+      );
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
     }
   },
 });
 
-Deno.test(
-  "formatEvolutionCsv: header is exact and rows parse cleanly with @std/csv (issue #199)",
-  () => {
-    const rows: EvolutionRow[] = [
-      { generation: 0, bestFitness: 0, avgFitness: 0, landedRate: 0, wallclockMs: 12 },
-      { generation: 1, bestFitness: 0.5, avgFitness: 0.25, landedRate: 0.3, wallclockMs: 45 },
-      { generation: 2, bestFitness: 1, avgFitness: 0.75, landedRate: 1, wallclockMs: 100 },
-    ];
-    const csv = formatEvolutionCsv(rows);
-
-    // Exact header — downstream tools key on this verbatim.
-    assert(
-      csv.startsWith(EVOLUTION_CSV_HEADER + "\n"),
-      `expected CSV to start with ${EVOLUTION_CSV_HEADER}, got ${csv.slice(0, 100)}`,
-    );
-    assertEquals(
-      EVOLUTION_CSV_HEADER,
-      "generation,best_fitness,avg_fitness,landed_rate,wallclock_ms",
-    );
-
-    // The CSV must parse cleanly with @std/csv into an array of objects
-    // keyed by header.
-    const parsed = parseCsv(csv, { skipFirstRow: true });
-    assertEquals(parsed.length, rows.length);
-
-    // Spot-check round-trip values.
-    for (let i = 0; i < rows.length; i++) {
-      const r = parsed[i] as Record<string, string>;
-      assertEquals(Number(r.generation), rows[i].generation);
-      assertEquals(Number(r.best_fitness), rows[i].bestFitness);
-      assertEquals(Number(r.avg_fitness), rows[i].avgFitness);
-      assertEquals(Number(r.landed_rate), rows[i].landedRate);
-      assertEquals(Number(r.wallclock_ms), rows[i].wallclockMs);
-    }
-
-    // Determinism — identical inputs produce byte-identical output.
-    assertEquals(formatEvolutionCsv(rows), csv);
-  },
-);
-
-Deno.test(
-  "formatEvolutionCsv: empty input emits header only (issue #199)",
-  () => {
-    const csv = formatEvolutionCsv([]);
-    assertEquals(csv, EVOLUTION_CSV_HEADER + "\n");
-  },
-);
+Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
+  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/lunar_lander_milestones.svg");
+});
 
 Deno.test({
   name: "validateChampion produces one entry per validation scenario (issue #198)",
@@ -1180,46 +1134,6 @@ Deno.test("renderRunSVG marks the landing pad with a TARGET indicator", () => {
   const svg = renderRunSVG(trace);
   assert(svg.includes('class="target-marker"'), "expected a target-marker group");
   assert(svg.includes(">TARGET<"), "expected a 'TARGET' label on the pad indicator");
-});
-
-Deno.test({
-  name: "evolveLanderController: CSV row count equals the number of generation events (issue #199)",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    // Run a tiny evolve with a fixed iterations cap and capture one
-    // EvolutionRow per onGeneration callback. With `iterations: 3` the
-    // loop runs exactly three generations so the row count is
-    // deterministic regardless of host speed.
-    const events: GenerationInfo[] = [];
-    const rows: EvolutionRow[] = [];
-    const start = Date.now();
-    await evolveLanderController({
-      ...TEST_EVOLVE_OPTIONS,
-      mutationStrength: 0.01,
-      mutationRate: 0.01,
-      populationSize: 4,
-      iterations: 3,
-      onGeneration: (info) => {
-        events.push(info);
-        rows.push({
-          generation: info.generation,
-          bestFitness: info.bestScore,
-          avgFitness: info.meanScore,
-          landedRate: info.bestLandedRate,
-          wallclockMs: Date.now() - start,
-        });
-      },
-    });
-    assertEquals(rows.length, events.length);
-    assertGreater(rows.length, 0);
-
-    const csv = formatEvolutionCsv(rows);
-    const csvLines = csv.trimEnd().split("\n");
-    // Header + one row per generation.
-    assertEquals(csvLines.length, rows.length + 1);
-    assertEquals(csvLines[0], EVOLUTION_CSV_HEADER);
-  },
 });
 
 // ---------------------------------------------------------------------------

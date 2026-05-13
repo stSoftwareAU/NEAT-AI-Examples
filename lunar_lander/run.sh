@@ -20,9 +20,9 @@ echo "🚀 Lunar Lander Descent Example"
 echo ""
 
 # `LUNAR_QUICK=1` (or `--quick`) forces the runner into the CI/quality
-# fast path: ~6-second wall-clock budget, no canonical-artefact writes,
-# so quality.sh stays inside its tight per-section budget without
-# overwriting the docs SVGs / CSVs checked into the repo.
+# fast path: tiny iterations cap, no canonical-artefact writes, so
+# quality.sh stays inside its tight per-section budget without
+# overwriting the docs SVGs checked into the repo.
 deno run \
   --v8-flags=--max-old-space-size=4096 \
   --allow-read \
@@ -32,25 +32,16 @@ deno run \
   lunar_lander/lunar_lander.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
+# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
 # stay clean — the renderer emits compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines. Quick mode
 # does not write these files, so the existence guards are no-ops there.
 if [[ -f "docs/screenshots/lunar_lander.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/lunar_lander_evolution.svg" ]]; then
-  deno fmt docs/screenshots/lunar_lander_evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/lunar_lander/evolution.svg" ]]; then
-  deno fmt docs/screenshots/lunar_lander/evolution.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/lunar_lander/fitness.svg" ]]; then
-  deno fmt docs/screenshots/lunar_lander/fitness.svg > /dev/null
+if [[ -f "docs/screenshots/lunar_lander_milestones.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander_milestones.svg > /dev/null
 fi
 if [[ -f "docs/screenshots/lunar_lander/validation.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander/validation.svg > /dev/null
-fi
-if [[ -f "docs/data/lunar_lander/evolution.csv" ]]; then
-  deno fmt docs/data/lunar_lander/evolution.csv > /dev/null 2>&1 || true
 fi
