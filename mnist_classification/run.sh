@@ -41,3 +41,6 @@ deno run \
 if [[ -f "docs/screenshots/mnist_classification.svg" ]]; then
   deno fmt "docs/screenshots/mnist_classification.svg" > /dev/null
 fi
+if [[ -f "docs/screenshots/mnist_classification/evolution_summary.svg" ]]; then
+  deno fmt "docs/screenshots/mnist_classification/evolution_summary.svg" > /dev/null
+fi

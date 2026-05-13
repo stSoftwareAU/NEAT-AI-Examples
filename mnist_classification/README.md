@@ -35,7 +35,9 @@ Numbers below come from a single [`./mnist_classification/run.sh`](./run.sh) exe
 alongside this README. The runner also writes them to
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
 so reviewers (and the [`readme_screenshot_honesty_test.ts`](./readme_screenshot_honesty_test.ts)
-audit) can verify every value.
+audit) can verify every value. The "📈 Evolution milestone stats" chart below is sourced **directly
+from `Creature.evolveDir`'s return value** (`error`, `score`, `generation`) — no per-generation
+telemetry is captured.
 
 | Metric                           | Value                                                              |
 | -------------------------------- | ------------------------------------------------------------------ |
@@ -53,8 +55,19 @@ argmax above chance on full 28×28 MNIST — the run quotes the measurement exac
 ("results are the results"). For a competent MNIST classifier reach for NEAT-AI's hybrid memetic
 evolution; see the footer for links.
 
-📈 Per-generation telemetry — deferred until upstream NEAT-AI exposes hooks for `evolveDir`; tracked
-in #273.
+### 📈 Evolution milestone stats
+
+The chart below is rendered directly from the value returned by
+[`Creature.evolveDir`](https://github.com/stSoftwareAU/NEAT-AI) — the **milestone-level** stats
+(final error, final score, generations completed, wall-clock time) plus the seed vs final topology
+counts. These are the only telemetry signals the upstream library currently exposes for `evolveDir`;
+no per-generation hooks are used, in line with the parent audit's accepted scope
+([#272](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/272)) and the milestone-only
+decision record in [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298). The numeric
+fields also surface in [`run_summary.json`](../docs/data/mnist_classification/run_summary.json) as
+`evolveDirError`, `evolveDirScore`, and `evolveDirGenerations`.
+
+![MNIST evolveDir milestone summary chart — final error, score, generations, wall-clock, seed vs final topology](../docs/screenshots/mnist_classification/evolution_summary.svg)
 
 ### Champion prediction grid (held-out test set)
 

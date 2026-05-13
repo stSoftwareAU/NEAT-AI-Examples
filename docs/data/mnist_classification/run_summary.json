@@ -9,5 +9,8 @@
   "finalSynapses": 7841,
   "validationAccuracy": 0.109,
   "testAccuracy": 0.1037,
-  "stopCondition": "timeoutMinutes"
+  "stopCondition": "timeoutMinutes",
+  "evolveDirError": 0.0901,
+  "evolveDirScore": 0.9099,
+  "evolveDirGenerations": 12
 }
