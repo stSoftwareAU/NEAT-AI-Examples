@@ -18,25 +18,24 @@ external dependency is NEAT-AI's `Creature.activate` to compute each step's thru
 
 ## 📊 Real Run Statistics
 
-On a default run (seed-driven, `targetError=0.01`, `timeoutMinutes=2`) we evolved for **135
-generations in 120.7 seconds**, reaching **4.5% validation landed-rate** (9 of 200 held-out
-scenarios) — the loop exited via `timeout` rather than `target`, with a champion of **11 neurons /
-22 synapses** and a best training fitness of `-168.0` against a free-fall baseline of `-984.7`.
-These numbers are reproduced verbatim from `./lunar_lander/run.sh` output and the
-[`docs/data/lunar_lander/evolution.csv`](../docs/data/lunar_lander/evolution.csv) artefact; the
-two-minute budget is intentionally tight so the example terminates predictably, so the captured
-champion is a partial controller — gen 1 is noise, training landed-rate climbs to ~10%, and the
-validation chart shows where the controller still crashes or drifts.
+On a default run (seed-driven, `targetError=0.01`, `timeoutMinutes=2`) the example exits via the
+`timeout` stop condition before reaching a 99% landed-rate target. Per
+[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only milestone
+statistics, so the canonical fitness-progression artefact is the milestone chart embedded below. The
+two-minute wall-clock budget is intentionally tight so the example terminates predictably; the
+captured champion is a partial controller — gen 1 is noise, and the validation chart shows where the
+controller still crashes or drifts.
 
 The topology genuinely grows during the run rather than being memorised from a hand-crafted seed:
-the gen-1 snapshot is **10 neurons / 21 synapses** (NEAT-AI's minimal `(input, output)` seed — seven
-inputs and three outputs, fully connected with no hidden layer) and the final-generation champion is
-**11 neurons / 22 synapses** (one hidden neuron and one extra synapse spliced in by an add-neuron
-structural mutation). The neuron/synapse evolution chart below renders this growth from the same
-per-generation telemetry stream.
+the gen-1 milestone records NEAT-AI's minimal `(input, output)` seed (seven inputs and three
+outputs, fully connected with no hidden layer) and subsequent milestones capture the neuron and
+synapse counts as NEAT-AI's structural-mutation operators splice in hidden neurons. The milestone
+chart below renders this growth — best score, mean episode steps, and champion neuron / synapse
+counts — at the canonical milestone cadence (generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000,
+then powers of ten).
 
 > Continuous Integration runs the example in **quick mode** (`LUNAR_QUICK=1`, ~6 seconds) so
-> `quality.sh` finishes in seconds and never overwrites the canonical artefacts. The four artefacts
+> `quality.sh` finishes in seconds and never overwrites the canonical artefacts. The artefacts
 > listed below come from a **manual full-budget run** of `./lunar_lander/run.sh`.
 
 ## 🔧 How It Works
@@ -55,8 +54,7 @@ flowchart LR
     PICK["🎯 Pick representative validation scenario<br/>(median score; index 0 if all landed)"]
     RUN["▶️ Replay champion from validation start"]
     JSON["📝 validation/results.json"]
-    CSV["🗒️ docs/data/lunar_lander/<br/>evolution.csv"]
-    FITN["📈 docs/screenshots/lunar_lander/<br/>fitness.svg<br/>(line chart)"]
+    MILES["📈 docs/screenshots/<br/>lunar_lander_milestones.svg<br/>(milestone chart)"]
     BARS["📊 docs/screenshots/lunar_lander/<br/>validation.svg<br/>(bar chart)"]
     SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg<br/>(validation episode)"]
 
@@ -67,11 +65,10 @@ flowchart LR
     TRAIN --> SELECT
     SELECT --> MUTATE
     MUTATE --> TRAIN
-    TRAIN --> CSV
+    TRAIN --> MILES
     TRAIN --> STOP
     STOP -- "no, time remaining" --> SELECT
     STOP -- "yes (target or timeout)" --> CHAMP
-    CSV --> FITN
     CHAMP --> VALID
     VALID --> JSON
     VALID --> BARS
@@ -91,8 +88,7 @@ flowchart LR
     style PICK fill:#16a085,stroke:#333,color:#fff
     style RUN fill:#bd10e0,stroke:#333,color:#fff
     style JSON fill:#34495e,stroke:#333,color:#fff
-    style CSV fill:#34495e,stroke:#333,color:#fff
-    style FITN fill:#50e3c2,stroke:#333,color:#fff
+    style MILES fill:#50e3c2,stroke:#333,color:#fff
     style BARS fill:#50e3c2,stroke:#333,color:#fff
     style SVG fill:#50e3c2,stroke:#333,color:#fff
 ```
@@ -117,8 +113,10 @@ The aggregate per-scenario outcome distribution is drawn alongside the descent S
 
 ![Lunar-Lander validation outcome bar chart — count of landed / crashed / out_of_bounds / flying outcomes across the 200 held-out validation scenarios](../docs/screenshots/lunar_lander/validation.svg)
 
-On the captured run the 200 validation scenarios broke down as 9 `landed`, 156 `crashed`, 32
-`out_of_bounds`, and 3 `flying`, with a mean validation fitness of `-526.2`.
+The validation outcome counts (`landed` / `crashed` / `out_of_bounds` / `flying`) and the mean
+validation fitness vary between runs because the upstream library makes no byte-level
+reproducibility guarantee on `Creature.evolveRL()`'s training trajectory; the bar chart is
+regenerated from the current champion on every full-budget run.
 
 ## 🎯 NEAT-AI Standard Stop Conditions
 
@@ -202,8 +200,6 @@ defaults — that is the path users invoke directly when they want a champion + 
 Artefacts:
 
 - `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the run
-- `.synthetic-lunar-lander/snapshots/snapshot-gen-*.json` — running-champion snapshots captured at
-  the configured checkpoints
 - `.synthetic-lunar-lander/validation/results.json` — per-scenario outcomes from replaying the
   champion against every held-out validation scenario (one entry per scenario plus aggregate counts;
   consumed by downstream charts)
@@ -217,40 +213,29 @@ Artefacts:
   colour-coded outcome badge (`✓ LANDED` / `✗ CRASHED` / `✗ OUT OF BOUNDS` / `… TIMED OUT`) sits in
   the top-right corner so the result is unmistakable
   ([issue #177](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/177)).
-- `docs/screenshots/lunar_lander_evolution.svg` — multi-panel evolution-progression strip rendered
-  from the captured snapshots
-- `docs/screenshots/lunar_lander/evolution.svg` — dual-axis evolution chart plotting best score and
-  champion neuron / synapse counts against generation
-- `docs/screenshots/lunar_lander/fitness.svg` — best vs average training fitness line chart per
-  generation (rendered from `evolution.csv`)
+- `docs/screenshots/lunar_lander_milestones.svg` — dual-axis milestone chart plotting best score and
+  mean episode steps (left axis) against champion neuron and synapse counts (right axis) at the
+  canonical milestone cadence (generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of
+  ten). Replaces the legacy per-generation `evolution.svg`, `fitness.svg`, and the snapshot-driven
+  `lunar_lander_evolution.svg` strip — per
+  [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI only surfaces
+  milestone-cadence telemetry.
 - `docs/screenshots/lunar_lander/validation.svg` — per-validation-scenario outcome bar chart
   (`landed` / `crashed` / `out_of_bounds` / `flying` counts across the 200 held-out scenarios)
-- `docs/data/lunar_lander/evolution.csv` — per-generation CSV
-  (`generation,best_fitness,avg_fitness,landed_rate,wallclock_ms`) consumed by the fitness chart and
-  by anyone who wants to plot the run themselves
 
 ## Evolution Progress
 
-![Lunar-Lander evolution-progression strip — one panel per checkpoint generation showing the running champion's topology and score, linked by a score-progression polyline](../docs/screenshots/lunar_lander_evolution.svg)
+![Lunar-Lander evolveRL milestone chart — best score and mean episode steps on the left axis, champion neuron and synapse counts on the right axis, plotted at the milestone cadence](../docs/screenshots/lunar_lander_milestones.svg)
 
-![Lunar-Lander evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/lunar_lander/evolution.svg)
-
-![Lunar-Lander training-fitness line chart — best and average per-generation fitness across the run, sourced from evolution.csv](../docs/screenshots/lunar_lander/fitness.svg)
-
-The runner captures a snapshot of the **running champion** at the canonical checkpoint generations
-`[1, 10, 100, 500, 1000]` (those reached before the `timeoutMinutes` budget elapses — on the
-captured 135-generation run only the first three panels were captured before the 2-minute budget ran
-out). The cadence is wider than the previous fixed-topology demo because variable-topology evolution
-from uniform-random noise typically needs more generations to find structure.
-
-Each panel displays the champion's topology (inputs → hidden → outputs), the generation label, and
-the score at that checkpoint; the bottom strip charts the score over the captured generations. The
-narrative the panels tell is consistent: **gen 1 is random noise** (the panel-1 lander crashes every
-attempt and the topology is the bare 10-neuron / 21-synapse minimal seed), the middle panels show
-the controller starting to throttle and orient, and the final panel is the champion the runner saved
-when the timeout fired — an 11-neuron / 22-synapse network that lands ~10% of training trials and
-4.5% of the held-out validation pool, which is exactly why the validation bar chart is dominated by
-`crashed` rather than `landed`.
+The runner collects `evolverl_milestone` events from `Creature.evolveRL()` (emitted at the canonical
+milestone cadence — generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of ten) and
+renders them via the shared [`common/milestone_chart.ts`](../common/milestone_chart.ts) helper. The
+blue and orange lines on the left axis track the best score and mean episode steps across the
+milestone evaluation; the green and red lines on the right axis track the champion's neuron and
+synapse counts. The narrative is the same one the legacy snapshot strip used to tell: **gen 1 is
+random noise** (the 10-neuron / 21-synapse minimal seed), later milestones capture the controller
+starting to throttle and orient, and the final milestone is the champion the runner saved when the
+timeout fired.
 
 ## 🛬 Entry Profile
 
