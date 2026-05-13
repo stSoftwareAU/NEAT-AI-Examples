@@ -1,9 +1,9 @@
 # 🐍 Snake — Evolved Controller for the Classic Grid Game
 
-> 🌱 **Generation 1 starts from random noise.** The initial population is built by NEAT-AI's
-> uniform-random `Creature(8, 4)` constructor — direct input → output connections with weights and
-> biases drawn by the library's RNG. **No hand-crafted topology, no tuned weight init.** Hidden
-> neurons emerge only from the add-neuron structural mutation operator during evolution.
+> 🌱 **Generation 1 starts from random noise.** `Creature.evolveRL()` is seeded with a brand-new
+> `new Creature(8, 4)` — the library's uniform-random minimal genome with direct input → output
+> connections, random weights, and a random output bias. **No hand-crafted topology, no tuned weight
+> init.** Hidden neurons emerge only from NEAT-AI's structural mutation operators during evolution.
 
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _RL_ = reinforcement learning. _XOR_
 = exclusive OR. _MNIST_ = Modified National Institute of Standards and Technology handwritten-digit
@@ -11,64 +11,27 @@ dataset (referenced from the supervised-vs-agent comparison).
 
 `snake_game.ts` evolves a NEAT-AI controller that plays the classic Snake grid game on a 12×12
 board. The snake starts three segments long, must eat food cells to grow, and dies the moment it
-runs into a wall or its own body. Both the simulator (`snake.ts`) and the evolutionary loop run
-entirely in pure TypeScript; the only external dependency is NEAT-AI's `Creature.activate` to
-compute each step's heading.
+runs into a wall or its own body. The simulator (`snake.ts`) is pure TypeScript; the evolutionary
+loop is driven entirely by NEAT-AI's class-shaped `Creature.evolveRL()` API (issue #291, replaces
+#238).
 
 ![Champion playthrough](../docs/screenshots/snake_game.svg)
 
-## 🧬 Evolution Progress
+## 📈 Milestone Statistics
 
-The runner captures snapshots of the running champion at five checkpoints (generations
-`[1, 10, 50, 100, 200]`, those that fall inside the configured `maxGenerations`) and renders them
-into a multi-panel SMIL-animated strip — so you can see the topology and score grow as the
-controller learns to eat food. **Gen 1 is uniform-random NEAT noise that bumps into walls;** the
-intermediate milestones at gens 10 / 50 / 100 show the controller learning to chase food as
-add-neuron mutations grow hidden structure; the final captured snapshot meets the food-count
-threshold.
+Per [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI exposes only
+**milestone-cadence** telemetry — `evolverl_milestone` events at generations
+`1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten. The runner captures every milestone
+payload returned by `Creature.evolveRL()` and renders them as a dual-axis SVG chart via
+[`common/milestone_chart.ts`](../common/milestone_chart.ts) (from
+[#287](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/287)).
 
-![Evolution progress](../docs/screenshots/snake_game_evolution.svg)
+**Left axis:** best score and mean episode steps. **Right axis:** champion neuron and synapse
+counts. The chart replaces the legacy per-generation snake_game_evolution.svg / evolution.svg /
+fitness.svg / topology.svg artefacts — those required a per-generation handler that NEAT-AI no
+longer surfaces.
 
-## 📈 Evolution Chart
-
-The runner also emits a dual-axis chart plotting the per-generation best score (left axis) alongside
-the champion's neuron and synapse counts (right axis) for the full run. Because the topology starts
-minimal (no hidden neurons) and grows gradually through structural mutation, the neuron and synapse
-curves climb visibly across the run.
-
-![Snake-game evolution chart — best score on the left axis with champion neuron and synapse counts on the right axis, plotted against generation](../docs/screenshots/snake_game/evolution.svg)
-
-![Snake best vs mean fitness against generation](../docs/screenshots/snake_game/fitness.svg)
-
-![Snake champion neuron and synapse counts against generation](../docs/screenshots/snake_game/topology.svg)
-
-The per-generation telemetry source-of-truth is
-[`docs/data/snake_game/evolution.csv`](../docs/data/snake_game/evolution.csv) with the canonical
-`generation,best_fitness,mean_fitness,neuron_count,synapse_count` schema used by every audited
-example.
-
-### Latest measured run (audit issue #222)
-
-Numbers below are quoted **from the latest end-to-end run** with `seed=12345` on a commodity Apple
-M-series laptop. Re-run `./snake_game/run.sh` to refresh them.
-
-| Metric                    | Measured value                                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Wall-clock                | 21.4 s (well below the 5 min `timeoutMinutes` backstop)                                                    |
-| Generations executed      | 200 (loop kept running so all checkpoints — `[1, 10, 50, 100, 200]` — could fire after the target was met) |
-| Champion best score       | 108.42 (mean raw game score across the five evaluation seeds)                                              |
-| Champion best replay      | 4 food on the strongest evaluation seed (`pickBestReplaySeed`) — clears the `SOLVED_THRESHOLD` of 3        |
-| Champion mean food eaten  | 1.60 across the five evaluation seeds — clears `(1 - targetError) × 3 = 1.5`                               |
-| First topology change     | gen 47 (add-neuron mutation: 12 → 14 neurons, 32 → 34 synapses)                                            |
-| Initial topology (gen 0)  | 12 neurons, 32 synapses (`new Creature(8, 4)` minimal seed: 8 inputs + 4 outputs + library-supplied bias)  |
-| Final topology (champion) | 16 neurons, 36 synapses                                                                                    |
-| Stop reason               | `target` — best per-seed eaten ≥ 3 with mean ≥ 1.5 before the timeout                                      |
-
-**The final creature solves the environment** — it eats four food cells on its strongest replay seed
-and averages 1.60 food across the five evaluation seeds (above the audit-mandated mean floor of 1.5
-food). The `evolution.csv` shows the topology genuinely growing from 12 neurons / 32 synapses at gen
-0 to 16 neurons / 36 synapses at the champion (changes at gens 47, 59, and 116) — the seed is not
-memorising a hand-crafted shape; structural mutation is discovering it.
+![Snake-game evolveRL milestone chart](../docs/screenshots/snake_game_milestones.svg)
 
 ## 🔧 How It Works
 
@@ -132,28 +95,22 @@ out of reach.
 
 The task is "solved" when the champion's **best per-seed food eaten reaches `SOLVED_THRESHOLD = 3`**
 — the same number the SVG playthrough renders after picking the strongest replay seed — **and** the
-running champion's mean across the five evaluation seeds is at least
-`(1 - targetError) ×
-SOLVED_THRESHOLD = 1.5` (so the early stop cannot fire on a fragile elite that
-aces a single seed and fails the rest).
+running champion's mean across the five evaluation seeds is at least `SOLVED_AVG_FLOOR = 1.5` (so a
+fragile elite that aces a single seed and fails the rest cannot be flagged as solved).
 
-### Stop conditions (audit issue #222)
+### Stop conditions
 
-Evolution uses the standard NEAT-AI stop conditions:
+Evolution uses NEAT-AI's standard stop conditions, fed straight into `EvolveRLOptions`:
 
-- **`targetError = 0.5`** — halt as soon as the champion's mean food eaten across the evaluation
-  seeds reaches `(1 - targetError) × SOLVED_THRESHOLD = 1.5` **and** its best per-seed eaten count
-  reaches `SOLVED_THRESHOLD = 3`. The two-condition gate stops a fragile elite that aces a single
-  seed from short-circuiting the run.
+- **`targetError = 0.05`** — halt as soon as the mean cumulative episode reward across the
+  per-generation seed batch reaches `-0.05`. Under `SnakeAdapter`'s reward shaping (terminal `-1`
+  baseline, `+1 / SOLVED_THRESHOLD` per food eaten, Manhattan-distance shaping bounded by ~`±0.5`)
+  this is a strict gate that only fires when the champion is reliably eating food.
 - **`timeoutMinutes = 5`** — wall-clock backstop in case the target is never reached.
 
-Whichever fires first wins. The default seed reaches the target in ~21 s on a commodity laptop, so
-the backstop is never hit in practice. **Per-step `Creature.activate()` is retained because the
-environment is interactive** — there is no pre-generated binary training set that
-`Creature.evolveDir(...)` could consume; each step's action depends on the previous step's state.
-This matches closed issue #137's "champion ate at least three food on the replay episode" target —
-but the bar means more here because the controller now starts from uniform-random NEAT noise (no
-hand-crafted layered seed).
+Whichever fires first wins. The post-evolution `solved` flag is computed independently from the
+held-out `DEFAULT_EVAL_SEEDS` so a champion that overfits to evolveRL's per-generation seed rotation
+is not flagged solved by mistake.
 
 ## 🚀 Running the Example
 
@@ -164,17 +121,10 @@ hand-crafted layered seed).
 Artefacts:
 
 - `.synthetic-snake/creatures/champion.json` – the fittest controller from the run
-- `.synthetic-snake/snapshots/snapshot-gen-N.json` – champion captured at each checkpoint
 - `docs/screenshots/snake_game.svg` – animated SVG of the champion's playthrough
-- `docs/screenshots/snake_game_evolution.svg` – multi-panel evolution-progress strip
-- `docs/screenshots/snake_game/evolution.svg` – dual-axis evolution chart plotting best score and
-  champion neuron / synapse counts against generation
-- [`docs/screenshots/snake_game/fitness.svg`](../docs/screenshots/snake_game/fitness.svg) – best vs
-  mean fitness against generation
-- [`docs/screenshots/snake_game/topology.svg`](../docs/screenshots/snake_game/topology.svg) –
-  champion neuron and synapse counts against generation
-- [`docs/data/snake_game/evolution.csv`](../docs/data/snake_game/evolution.csv) – the per-generation
-  telemetry source-of-truth (`generation,best_fitness,mean_fitness,neuron_count,synapse_count`)
+- `docs/screenshots/snake_game_milestones.svg` – `Creature.evolveRL()` milestone-statistics chart
+  (best score and mean episode steps on the left axis; champion neuron and synapse counts on the
+  right axis)
 
 ## ❓ FAQ — Streaming observations vs batch supervised training
 
@@ -188,16 +138,16 @@ owns the world state and decides what the next observation looks like; the creat
 and produces an action. There is no built-in `for row of dataset` loop assumed anywhere.
 
 **How is this normally done?** Episode rollout — for each tick: observe → activate → decode action →
-step the world; break on terminal. The `scoreController` function in `snake_game.ts` is a 15-line
-implementation of exactly that loop. Every agent example in this repo (`cart_pole`, `lunar_lander`,
-`mountain_car`, `maze_navigation`) follows the same shape with different physics.
+step the world; break on terminal. `SnakeAdapter.step` in `snake_game.ts` is one screenful of
+exactly that loop, wired up to satisfy NEAT-AI's `EpisodeAdapter` contract. Every agent example in
+this repo (`cart_pole`, `lunar_lander`, `mountain_car`, `maze_navigation`) follows the same shape
+with different physics.
 
 **Does each creature in the population get a different observation stream?** Yes — once two
 creatures pick different actions on tick 1, their state trajectories diverge, so every later
-observation differs. To keep the comparison fair, the _initial_ state and food sequence are derived
-from a per-generation seed shared across creatures (the `episodeSeed` argument threaded into
-`scoreController`), so all creatures face the same world setup before they start acting; the
-divergence is entirely on them.
+observation differs. To keep the comparison fair, NEAT-AI rotates a per-generation seed set derived
+from `EvolveRLOptions.seed`; every creature in a given generation faces the same initial state and
+food sequence (given equivalent decisions), so the divergence is entirely on them.
 
 **How does this work elsewhere — and is it different from "20 GiB of training data"?** Yes,
 fundamentally. This is a Reinforcement-Learning-shaped problem, not batch supervised learning.
@@ -214,18 +164,17 @@ section in the top-level README.
 
 A few things that are not obvious from the code alone:
 
-- **No hand-crafted topology.** `snake_game.ts` never hard-codes neurons or synapses. The initial
-  population is built with `createSeededPopulation({ inputCount: 8, outputCount: 4, ... })` which
-  delegates to `new Creature(8, 4)` for every member — direct input → output connections with random
-  weights and a random output bias. Hidden neurons appear only when the add-neuron mutation operator
-  splits an existing connection during evolution; structural mutation discovers them.
-- **Multi-episode fitness.** Each creature is evaluated across five distinct food-spawn seeds and
-  ranked by mean fitness, so a controller has to generalise rather than overfit to a single
-  playthrough.
-- **Distance shaping.** Fitness includes a small Manhattan-distance shaping reward (`±0.5` per cell
-  of progress toward the food). This breaks the flat fitness landscape that previously trapped the
-  population at "ate one food" — mutations that nudge the head closer get credit even before the
-  snake actually reaches food.
+- **No hand-crafted topology.** `snake_game.ts` never hard-codes neurons or synapses. The seed
+  creature is a vanilla `new Creature(8, 4)` — direct input → output connections with random weights
+  and a random output bias. Hidden neurons appear only when NEAT-AI's structural mutation operators
+  split an existing connection during evolution.
+- **Multi-episode fitness.** Each creature is evaluated across `episodesPerCreature = 5` distinct
+  food-spawn seeds and ranked by mean cumulative reward, so a controller has to generalise rather
+  than overfit to a single playthrough.
+- **Distance shaping.** `SnakeAdapter.step` includes a tiny Manhattan-distance shaping reward
+  (`±ADAPTER_SHAPING_COEFF ≈ 1e-3` per cell of progress). This breaks the flat fitness landscape
+  that would otherwise trap the population at "ate no food" — mutations that nudge the head closer
+  get credit even before the snake actually reaches food.
 - **Argmax discretisation.** The four outputs are passed through `argmax` — the controller commits
   to one of four headings every step. Ties favour lower indices but in practice the outputs differ
   enough that ties are vanishingly rare.
@@ -234,24 +183,24 @@ A few things that are not obvious from the code alone:
 - **Tail moves before collision check.** When the snake does not eat, the tail cell is freed before
   the head's new cell is checked for body overlap — so the snake can chase its own tail safely,
   matching classic Snake semantics.
-- **`targetError` + `timeoutMinutes` stop conditions.** Audit issue #222 replaced the old
-  `maxGenerations` cap with the standard NEAT-AI pair: evolution halts as soon as the running
-  champion's mean food eaten across the evaluation seeds reaches
-  `(1 - targetError) ×
-  SOLVED_THRESHOLD` (default `targetError = 0.5` → mean ≥ 1.5) **and** its
-  best per-seed eaten count reaches `SOLVED_THRESHOLD`, or the wall-clock backstop `timeoutMinutes`
-  (default `5`) elapses. `evolveSnakeController` returns `stopReason` (`"target"`, `"timeout"`, or
-  `"cap"`) so callers can tell which fired. An optional `maxGenerations` field is retained as a
-  tests-only safety override so unit tests can pin specific code paths without waiting on the wall
-  clock.
-- **Per-step `Creature.activate()`, not `evolveDir`.** Snake is interactive — each step's action
-  depends on the previous step's state — so we cannot pre-generate a binary `.bin` training set.
-  Evolution scores every candidate by rolling the simulator forward step-by-step inside the
-  evolution loop. See parent issue #203 for the broader audit context.
-- **Reproducibility.** All randomness flows through `common/deterministic_random.ts` and the
-  library's seeded RNG. With a fixed seed the same champion is produced on every run.
-- **Per-episode seed is shared.** Every creature in a generation faces the same initial state and
-  the same food sequence (given equivalent decisions), so fitness comparisons are fair.
+- **`targetError` + `timeoutMinutes` stop conditions.** Evolution is delegated to
+  `Creature.evolveRL()` with the standard NEAT-AI stop conditions: evolution halts as soon as the
+  mean cumulative episode reward reaches `-targetError` (default `0.05`), or the wall-clock backstop
+  `timeoutMinutes` (default `5`) elapses. `evolveSnakeController` returns `stopReason` (`"target"`,
+  `"timeout"`, or `"iterations"`) so callers can tell which fired. The `iterations` cap is exposed
+  for fast unit tests that need a deterministic generation count without depending on wall-clock
+  timing.
+- **`Creature.evolveRL()` owns the GA.** Snake is interactive (each step's action depends on the
+  previous state), so the loop runs through NEAT-AI's first-class reinforcement-learning evolver
+  rather than `evolveDir`. Mutation, crossover, elitism, plateau detection, and stop-condition
+  handling are all NEAT-AI's responsibility under `evolveRL()` (#291, replaces #238).
+- **No `onTrainingEvent` handler.** Per
+  [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
+  milestone-cadence telemetry — the example collects the milestone payloads via
+  `EvolveRLOptions.statistics = true` and renders them via `renderMilestoneChartSVG`.
+- **Per-episode seed.** Every simulator episode (initial state + food sequence) is driven by a
+  deterministic PRNG seeded from `SnakeAdapter.reset(rngSeed)`. NEAT-AI rotates the per-generation
+  seed set internally derived from `EvolveRLOptions.seed`.
 
 ## 🧰 NEAT-AI Features Used
 
