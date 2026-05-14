@@ -3,18 +3,13 @@
  * each test calls a real function and asserts on observable outputs
  * (predictions, fitness, file contents, SVG structure).
  *
- * Per issue #301, per-generation telemetry, snapshot strips, and the
- * deprecated CSV / fitness / topology SVG renderers were removed in
- * favour of the milestone-summary SVG built from `evolveDir`'s return
- * value.
+ * Per issue #326, the legacy single-run `EvolveDirSummary` SVG was
+ * replaced with the multi-run persistence + chart pipeline shared with
+ * the other in-scope examples. Older per-generation telemetry, snapshot
+ * strips, and the deprecated CSV / fitness / topology SVG renderers
+ * remain absent.
  */
-import {
-  assert,
-  assertEquals,
-  assertGreater,
-  assertGreaterOrEqual,
-  assertThrows,
-} from "@std/assert";
+import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
@@ -24,16 +19,19 @@ import {
   correctCount,
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
+  evolveResultToMultiRunSample,
   evolveXorController,
+  EXAMPLE_SLUG,
   INPUT_COUNT,
   meanSquaredError,
   OUTPUT_COUNT,
   predict,
+  runMultiRunXor,
   writeXorDataset,
   xorSamples,
 } from "./xor_classification.ts";
-import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderDecisionBoundarySVG, shadeColour } from "./svg.ts";
+import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
 
 Deno.test("xorSamples returns the four canonical truth-table rows", () => {
   const samples = xorSamples();
@@ -209,7 +207,7 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveXorController returns a milestone EvolveDirSummary with finite numeric fields",
+  "evolveXorController exposes finite seed and wall-clock fields on the result",
   async () => {
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
@@ -218,24 +216,19 @@ Deno.test(
       errorThreshold: 0,
       timeoutMinutes: 0,
     });
-    const s = result.summary;
-    assert(Number.isFinite(s.finalError));
-    assert(Number.isFinite(s.finalScore));
-    assert(Number.isFinite(s.wallClockMs));
-    assert(Number.isInteger(s.generations));
-    assertGreaterOrEqual(s.generations, 1);
-    assertGreater(s.seedNeurons, 0);
-    assertGreaterOrEqual(s.seedSynapses, 0);
-    assertGreater(s.finalNeurons, 0);
-    assertGreaterOrEqual(s.finalSynapses, 0);
-    assertEquals(s.targetError, 0);
-    // Tests pass timeoutMinutes=0 so the field should be omitted.
-    assertEquals(s.timeoutMinutes, undefined);
+    assert(Number.isFinite(result.bestError));
+    assert(Number.isFinite(result.bestFitness));
+    assert(Number.isFinite(result.wallClockMs));
+    assertGreaterOrEqual(result.wallClockMs, 0);
+    assertGreater(result.seedNeurons, 0);
+    assertGreaterOrEqual(result.seedSynapses, 0);
+    assert(Number.isInteger(result.generations));
+    assertGreaterOrEqual(result.generations, 1);
   },
 );
 
 Deno.test(
-  "evolveXorController milestone summary renders an SVG containing each numeric callout",
+  "evolveResultToMultiRunSample carries error/fitness/topology onto the milestone shape",
   async () => {
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
@@ -244,43 +237,14 @@ Deno.test(
       errorThreshold: 0,
       timeoutMinutes: 0,
     });
-    const svg = renderEvolveDirSummarySvg(result.summary, {
-      title: "XOR Classification — evolveDir Run Summary",
-    });
-    assert(svg.startsWith("<svg"));
-    assert(svg.includes("</svg>"));
-    // Each numeric callout from the summary surfaces in the SVG.
-    assert(svg.includes(String(result.summary.generations)));
-    assert(svg.includes(String(result.summary.seedNeurons)));
-    assert(svg.includes(String(result.summary.seedSynapses)));
-    assert(svg.includes(String(result.summary.finalNeurons)));
-    assert(svg.includes(String(result.summary.finalSynapses)));
-    assert(svg.includes("final error"));
-    assert(svg.includes("final score"));
-    assert(svg.includes("wall clock"));
-    assert(!svg.includes("NaN"));
-    assert(!svg.includes("Infinity"));
-  },
-);
-
-Deno.test(
-  "renderEvolveDirSummarySvg rejects a summary with missing numeric fields",
-  () => {
-    const badSummary = {
-      finalError: Number.NaN,
-      finalScore: 0.5,
-      wallClockMs: 100,
-      generations: 10,
-      seedNeurons: 3,
-      seedSynapses: 2,
-      finalNeurons: 5,
-      finalSynapses: 6,
-    } as EvolveDirSummary;
-    assertThrows(
-      () => renderEvolveDirSummarySvg(badSummary),
-      Error,
-      "finalError",
-    );
+    const sample = evolveResultToMultiRunSample(result);
+    assertEquals(sample.runGen, result.generations);
+    assertGreaterOrEqual(sample.error, 0);
+    assertGreaterOrEqual(1, sample.error);
+    assertEquals(sample.bestScore, result.bestFitness);
+    assertEquals(sample.neurons, result.champion.neurons.length);
+    assertEquals(sample.synapses, result.champion.synapses.length);
+    assertEquals(sample.generationWallClockMs, result.wallClockMs);
   },
 );
 
@@ -380,8 +344,6 @@ Deno.test(
       timeoutMinutes: 5,
     });
     assertGreaterOrEqual(result.generations, 1);
-    // timeoutMinutes is forwarded to the summary caption.
-    assertEquals(result.summary.timeoutMinutes, 5);
     const out = predict(result.champion, [0, 1]);
     assert(Number.isFinite(out));
   },
@@ -397,4 +359,164 @@ Deno.test("renderDecisionBoundarySVG output uses the canonical screenshot resolu
   const end = svg.indexOf("</g>", start);
   const cellRects = svg.slice(start, end).match(/<rect /g) ?? [];
   assertEquals(cellRects.length, DECISION_BOUNDARY_GRID * DECISION_BOUNDARY_GRID);
+});
+
+Deno.test({
+  name:
+    "runMultiRunXor resume flow loads prior creature, appends a milestone, and renders both charts",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "xor_resume_" });
+    try {
+      const slug = EXAMPLE_SLUG;
+
+      // Pre-seed multi-run state with a prior champion + a synthetic
+      // milestone so loadMultiRunState reports nextRunIndex=2.
+      const priorCreatureExport = buildRandomSeedCreature(12345);
+      await appendMultiRunRun(slug, {
+        creatureExport: priorCreatureExport,
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: 0.5,
+          neurons: INPUT_COUNT + OUTPUT_COUNT,
+          synapses: INPUT_COUNT,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      // Drive the multi-run flow with a tiny iterations cap so the test
+      // completes in seconds and never depends on wall-clock timing.
+      const outcome = await runMultiRunXor({
+        argv: [],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 6,
+          errorThreshold: 0,
+          timeoutMinutes: 0,
+        },
+      });
+
+      // Prior champion must have been reloaded as the evolveDir seed.
+      assertEquals(outcome.resumed, true);
+      assertEquals(outcome.runIndex, 2);
+
+      // Persisted history now contains both the pre-seeded milestone and
+      // the new run's milestone, all with monotonic cumulativeGen.
+      const state = await loadMultiRunState(slug, tmp);
+      assertGreater(state.milestones.length, 1);
+      assertEquals(state.nextRunIndex, 3);
+      assertEquals(state.creatureExport !== undefined, true);
+      const newRunMilestones = state.milestones.filter((m) => m.runIndex === 2);
+      assertGreater(newRunMilestones.length, 0);
+      for (let i = 1; i < state.milestones.length; i++) {
+        const prev = state.milestones[i - 1].cumulativeGen;
+        const curr = state.milestones[i].cumulativeGen;
+        assert(curr >= prev, `cumulativeGen must be monotonic (${prev} → ${curr})`);
+      }
+
+      // Both chart SVGs were written under the baseDir override.
+      const errorSvg = join(tmp, "screenshots", slug, "milestones.svg");
+      const complexitySvg = join(tmp, "screenshots", slug, "complexity.svg");
+      assertEquals(existsSync(errorSvg), true, "error chart SVG should exist");
+      assertEquals(existsSync(complexitySvg), true, "complexity chart SVG should exist");
+      const errorText = await Deno.readTextFile(errorSvg);
+      const complexityText = await Deno.readTextFile(complexitySvg);
+      assert(errorText.startsWith("<svg"), "error chart must be an SVG");
+      assert(complexityText.startsWith("<svg"), "complexity chart must be an SVG");
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "runMultiRunXor --fresh wipes prior artefacts before running",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "xor_fresh_" });
+    try {
+      const slug = EXAMPLE_SLUG;
+      // Pre-seed with a prior run's state.
+      await appendMultiRunRun(slug, {
+        creatureExport: buildRandomSeedCreature(12345),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: 0.5,
+          neurons: INPUT_COUNT + OUTPUT_COUNT,
+          synapses: INPUT_COUNT,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const outcome = await runMultiRunXor({
+        argv: ["--fresh"],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 6,
+          errorThreshold: 0,
+          timeoutMinutes: 0,
+        },
+      });
+
+      // `--fresh` wiped the prior state, so this is run 1 and there was
+      // no prior champion to resume from.
+      assertEquals(outcome.resumed, false);
+      assertEquals(outcome.runIndex, 1);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.nextRunIndex, 2);
+      for (const m of state.milestones) {
+        assertEquals(m.runIndex, 1);
+      }
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "runMultiRunXor honours --target-error override via the persisted milestone",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "xor_overrides_" });
+    try {
+      // A trivial target (0.9) means evolveDir's early-exit threshold is
+      // already satisfied by the random seed, so the run completes
+      // almost immediately. We assert the milestone's error sits at or
+      // under that threshold to confirm the override flowed through.
+      const outcome = await runMultiRunXor({
+        argv: ["--target-error=0.9"],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 6,
+          // Test skips the wall-clock backstop — the override path is
+          // covered by the dedicated `timeoutMinutes` test above.
+          timeoutMinutes: 0,
+        },
+      });
+      // bestError must be a finite number in [0, 1] and ≤ the override.
+      const err = outcome.evolveResult.bestError;
+      assert(Number.isFinite(err));
+      assertGreaterOrEqual(err, 0);
+      assertGreaterOrEqual(0.9, err);
+      // The merged history captured exactly one milestone for this run.
+      const state = await loadMultiRunState(EXAMPLE_SLUG, tmp);
+      assertEquals(state.milestones.length, 1);
+      assertEquals(state.milestones[0].runIndex, 1);
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
 });

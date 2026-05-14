@@ -7,8 +7,10 @@ set -euo pipefail
 # the champion creature, and writes:
 #
 #   - docs/screenshots/xor_decision_boundary.svg
-#   - docs/screenshots/xor_classification/evolution_summary.svg
-#     (milestone summary, sourced from `evolveDir`'s return value — issue #301).
+#   - docs/screenshots/xor_classification/milestones.svg
+#       (multi-run error-curve chart — issue #326).
+#   - docs/screenshots/xor_classification/complexity.svg
+#       (multi-run creature complexity chart — issue #326).
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -37,6 +39,9 @@ deno run \
 if [[ -f "docs/screenshots/xor_decision_boundary.svg" ]]; then
   deno fmt docs/screenshots/xor_decision_boundary.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/xor_classification/evolution_summary.svg" ]]; then
-  deno fmt docs/screenshots/xor_classification/evolution_summary.svg > /dev/null
+if [[ -f "docs/screenshots/xor_classification/milestones.svg" ]]; then
+  deno fmt docs/screenshots/xor_classification/milestones.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/xor_classification/complexity.svg" ]]; then
+  deno fmt docs/screenshots/xor_classification/complexity.svg > /dev/null
 fi

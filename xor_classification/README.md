@@ -16,7 +16,7 @@ are well-defined; everything else (hidden topology, weights, biases) is invented
 mutation — add-neuron, add-synapse and weight tuning — is delegated to `creature.evolveDir(...)`.
 XOR is not linearly separable, so the random direct-only gen-1 seed cannot solve the task; NEAT must
 invent at least one hidden neuron during evolution (issues #131, #148, audited under #205, telemetry
-rewired under #301).
+rewired under #301, multi-run wiring under #326).
 
 Stop conditions: `targetError` plus a `timeoutMinutes: 5` safety backstop (the tiny XOR problem
 typically converges in well under a minute, but the backstop is mandatory so the runner cannot
@@ -29,27 +29,30 @@ wedge).
 ```mermaid
 flowchart LR
     DATA["📊 XOR Samples<br/>4 truth-table rows<br/>(written as Float32 binary)"]
-    SEED["🎲 Uniform-Random NEAT<br/>new Creature(2, 1)<br/>random weights and bias<br/>(no hand-crafted topology)"]
-    EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE (add-neuron),<br/>ADD_CONN (add-synapse),<br/>MOD_WEIGHT, …"]
+    LOAD["💾 loadMultiRunState<br/>prior champion if any"]
+    SEED["🎲 Uniform-Random NEAT<br/>new Creature(2, 1)<br/>(only when no prior state)"]
+    EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE, ADD_CONN, MOD_WEIGHT, …"]
     RETURN["🏁 evolveDir return value<br/>{ error, score, time, generation }"]
-    CHAMP["💾 Save champion.json"]
-    RENDER["🖼️ Decision Boundary SVG"]
-    SUMMARY["📈 Milestone Summary SVG<br/>(from evolveDir return value)"]
+    APPEND["📝 appendMultiRunRun<br/>persist champion + milestone"]
+    CHARTS["📈 milestones.svg + complexity.svg"]
+    BOUNDARY["🖼️ Decision Boundary SVG"]
 
     DATA --> EVOLVE
+    LOAD --> EVOLVE
     SEED --> EVOLVE
     EVOLVE --> RETURN
-    RETURN --> CHAMP
-    RETURN --> SUMMARY
-    CHAMP --> RENDER
+    RETURN --> APPEND
+    APPEND --> CHARTS
+    RETURN --> BOUNDARY
 
     style DATA fill:#4a90d9,stroke:#333,color:#fff
+    style LOAD fill:#9b59b6,stroke:#333,color:#fff
     style SEED fill:#f5a623,stroke:#333,color:#fff
     style EVOLVE fill:#e74c3c,stroke:#333,color:#fff
     style RETURN fill:#bd10e0,stroke:#333,color:#fff
-    style CHAMP fill:#7ed321,stroke:#333,color:#fff
-    style RENDER fill:#50e3c2,stroke:#333,color:#fff
-    style SUMMARY fill:#50e3c2,stroke:#333,color:#fff
+    style APPEND fill:#7ed321,stroke:#333,color:#fff
+    style CHARTS fill:#50e3c2,stroke:#333,color:#fff
+    style BOUNDARY fill:#50e3c2,stroke:#333,color:#fff
 ```
 
 ## 🎯 Inputs and Outputs
@@ -82,30 +85,88 @@ artefacts are still written.
 > [`docs/binary_training_stream.md`](../docs/binary_training_stream.md).
 
 ```bash
+# First run — random seed, writes creature + milestones + both charts.
+./xor_classification/run.sh --fresh
+
+# Subsequent runs — resume from the saved champion and append a milestone.
 ./xor_classification/run.sh
+
+# Override the wall-clock budget and / or early-stop target error.
+./xor_classification/run.sh --timeout=10 --target-error=0.005
 ```
+
+The runner forwards every flag to the underlying Deno program, which parses them via
+`parseMultiRunFlags` from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
+
+| Flag                  | Default | Meaning                                                               |
+| --------------------- | ------- | --------------------------------------------------------------------- |
+| `--fresh`             | absent  | Wipe prior creature, milestones, and both chart SVGs before evolving. |
+| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
+| `--target-error=<v>`  | 0.05    | Stop as soon as the champion's mean-squared error falls below `v`.    |
 
 Artefacts:
 
-- `.synthetic-xor/creatures/champion.json` – the fittest classifier from the run
+- `.synthetic-xor/creatures/champion.json` – the fittest classifier from this invocation
+  (working-directory copy for ad-hoc inspection)
 - `docs/screenshots/xor_decision_boundary.svg` – the committed decision-boundary plot
-- `docs/screenshots/xor_classification/evolution_summary.svg` – milestone summary chart sourced from
-  `Creature.evolveDir`'s return value (final error/score, generations, wall-clock, seed vs final
-  topology counts)
+- [`docs/data/xor_classification/creature.json`](../docs/data/xor_classification/creature.json) –
+  persisted champion that subsequent runs reload as the next seed
+- [`docs/data/xor_classification/milestones.json`](../docs/data/xor_classification/milestones.json)
+  – merged milestone history across every run, with both `runGen` and `cumulativeGen`
+- [`docs/screenshots/xor_classification/milestones.svg`](../docs/screenshots/xor_classification/milestones.svg)
+  – multi-run error-curve chart: error vs cumulative generation, with faint run-boundary guide lines
+  (`renderMultiRunErrorChartSVG` from
+  [`common/multi_run_error_chart.ts`](../common/multi_run_error_chart.ts))
+- [`docs/screenshots/xor_classification/complexity.svg`](../docs/screenshots/xor_classification/complexity.svg)
+  – multi-run complexity chart: neuron and synapse counts vs cumulative generation
+  (`renderMultiRunComplexityChartSVG` from
+  [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
 > [!TIP]
 > The script writes its working data to `.synthetic-xor/`, a hidden directory ignored by git.
 
-## 📈 Evolution milestone stats
+## 📈 Evolution Progress (Multi-Run)
 
-The milestone summary chart below is generated **directly from the return value of
-`Creature.evolveDir`**. The chart shows the seed and final topology counts side by side and the
-numeric callouts for final error, final score, generations completed, and wall-clock time — i.e. the
-canonical milestone surface called out in
-[issue #298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298). No per-generation
-telemetry is captured or emitted by this example any more (per issue #301).
+Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
+milestone-cadence telemetry. For the supervised XOR run, `Creature.evolveDir` returns a single
+end-of-run summary `{ error, score, time, generation }` — so each invocation contributes one
+milestone to the merged history. The legacy single-run summary chart
+(`docs/screenshots/xor_classification/evolution_summary.svg`) was superseded by the multi-run chart
+pair under issue [#326](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/326). Each
+subsequent run reloads the saved champion via
+[`common/multi_run_state.ts`](../common/multi_run_state.ts), evolves further, and appends a fresh
+milestone with a monotonically-increasing `cumulativeGen` — so the charts show one continuous noise
+→ competent arc across every run combined.
 
-![Milestone summary chart](../docs/screenshots/xor_classification/evolution_summary.svg)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as run.sh
+    participant State as multi_run_state.ts
+    participant Xor as xor_classification.ts
+    participant Charts as multi_run_*_chart.ts
+    CLI->>State: parseMultiRunFlags(argv)
+    alt --fresh
+        CLI->>State: wipeMultiRunState()
+    end
+    CLI->>State: loadMultiRunState()
+    alt prior champion exists
+        State-->>Xor: Creature.fromJSON(creatureExport)
+    else first run
+        State-->>Xor: new Creature(2, 1) — random noise
+    end
+    Xor->>Xor: Creature.evolveDir(dataDir, opts)
+    Xor->>State: appendMultiRunRun({champion, milestone})
+    State->>Charts: renderMultiRunErrorChartSVG()
+    State->>Charts: renderMultiRunComplexityChartSVG()
+    Charts-->>CLI: milestones.svg + complexity.svg
+```
+
+![XOR multi-run error chart — error vs cumulative generation across every run, with faint run-boundary guide lines](../docs/screenshots/xor_classification/milestones.svg)
+
+![XOR multi-run complexity chart — best-creature neuron and synapse counts vs cumulative generation](../docs/screenshots/xor_classification/complexity.svg)
+
+Re-run `./xor_classification/run.sh` (without `--fresh`) to extend both charts with another run.
 
 ## 🧠 Tacit Knowledge
 
@@ -117,15 +178,19 @@ A few things that are not obvious from the code alone:
   proof that structural mutation (`ADD_NODE`, `ADD_CONN`) actually fired during the run. The random
   direct-only gen-1 seed plateaus near MSE ≈ 0.25; NEAT must invent at least one hidden neuron to
   break out of that plateau.
+- **Multi-run resume.** With no prior state the run starts from random noise and writes a new
+  champion. Re-run without `--fresh` and the saved champion is reloaded as the seed creature, so
+  evolution continues from where it left off and the multi-run charts gain another run-boundary
+  marker.
 - **Solved-vs-cap.** The runner stops as soon as MSE drops below `errorThreshold` _and_ all four
   rows are classified correctly. If neither happens within `maxGenerations`, the run is reported as
-  "did not solve" — but the milestone summary SVG is still written. The hard cap exists specifically
-  to keep the screenshot regeneration pipeline from wedging indefinitely.
+  "did not solve" — but the milestone and chart SVGs are still written. The hard cap exists
+  specifically to keep the screenshot regeneration pipeline from wedging indefinitely.
 - **Mutation rate matters.** The library defaults (`mutationRate = 0.3`, `mutationAmount = 1`) are
   too conservative for a problem this small; the runner sets them to `0.6` and `3` so structural
   mutations fire often enough to bootstrap a hidden neuron in the early generations.
 - **Reproducibility.** The seed flows through `NeatOptions.seed`, so two runs with the same seed
-  produce the same champion JSON.
+  (and the same prior state) produce the same champion JSON.
 - **Decision boundary, not just labels.** The SVG shades the entire input square `[0, 1]²` by the
   network's continuous output, so you can see the boundary curve. Cleanly-separated XOR shows up as
   four diagonal "quadrants" of alternating colour.
@@ -138,7 +203,9 @@ A few things that are not obvious from the code alone:
 > neuron and synapse counts never changed. This page (and the screenshots) reflects the rewrite that
 > replaced the hand-rolled loop with real NEAT structural mutation from a minimal random seed. Issue
 > [#301](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/301) then retired the
-> per-generation charts and checkpoint strip in favour of the milestone summary above.
+> per-generation charts and checkpoint strip in favour of the milestone summary, and issue
+> [#326](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/326) replaced that single-run
+> summary with the multi-run persistence + chart pipeline shared by the other in-scope examples.
 
 ## 🧰 NEAT-AI Features Used
 
