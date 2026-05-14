@@ -204,6 +204,65 @@ Deno.test("renderMultiRunErrorChartSVG: caption summarises final error, runs, cu
   assertStringIncludes(svg, `${totalMs} ms`);
 });
 
+Deno.test(
+  "renderMultiRunErrorChartSVG: caption surfaces generations per minute (issue #344)",
+  () => {
+    // Build a deterministic two-sample series so the gen/min arithmetic
+    // is easy to verify by hand: 60 cumulative generations over 60 seconds
+    // (60_000 ms) → exactly 60 gen/min.
+    const samples: MultiRunMilestone[] = [
+      {
+        runIndex: 1,
+        runGen: 1,
+        cumulativeGen: 1,
+        error: 0.9,
+        bestScore: 0.1,
+        neurons: 4,
+        synapses: 6,
+        generationWallClockMs: 30_000,
+      },
+      {
+        runIndex: 1,
+        runGen: 60,
+        cumulativeGen: 60,
+        error: 0.1,
+        bestScore: 0.9,
+        neurons: 7,
+        synapses: 10,
+        generationWallClockMs: 30_000,
+      },
+    ];
+    const svg = renderMultiRunErrorChartSVG(samples, { caption: true });
+
+    // 60 gens / 60_000 ms * 60_000 = 60 gen/min.
+    assertStringIncludes(svg, "60 gen/min");
+  },
+);
+
+Deno.test(
+  "renderMultiRunErrorChartSVG: caption gen/min handles zero total wall-clock",
+  () => {
+    // Defensive: if every milestone reports a 0 ms generation duration we
+    // must not produce NaN or Infinity in the caption.
+    const samples: MultiRunMilestone[] = [
+      {
+        runIndex: 1,
+        runGen: 1,
+        cumulativeGen: 1,
+        error: 0.5,
+        bestScore: 0.5,
+        neurons: 4,
+        synapses: 6,
+        generationWallClockMs: 0,
+      },
+    ];
+    const svg = renderMultiRunErrorChartSVG(samples, { caption: true });
+    assertStringIncludes(svg, "0 gen/min");
+    assert(!svg.includes("NaN"));
+    assert(!svg.includes("Infinity"));
+  },
+);
+
 Deno.test("renderMultiRunErrorChartSVG: caption defaults to off", () => {
   const samples = makeMultiRunSeries();
   const svg = renderMultiRunErrorChartSVG(samples);

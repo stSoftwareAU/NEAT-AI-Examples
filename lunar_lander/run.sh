@@ -49,3 +49,10 @@ fi
 if [[ -f "docs/screenshots/lunar_lander/validation.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander/validation.svg > /dev/null
 fi
+# Multi-run chart artefacts written by `runMultiRunLunarLander` (issue #344).
+if [[ -f "docs/screenshots/lunar_lander/milestones.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander/milestones.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/lunar_lander/complexity.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander/complexity.svg > /dev/null
+fi
