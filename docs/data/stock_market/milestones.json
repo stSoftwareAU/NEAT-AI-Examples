@@ -1,0 +1,12 @@
+[
+ {
+  "runGen": 4805,
+  "bestScore": 0.7958369068720261,
+  "error": 0.20416309312797384,
+  "neurons": 65,
+  "synapses": 239,
+  "generationWallClockMs": 300038,
+  "runIndex": 1,
+  "cumulativeGen": 4805
+ }
+]

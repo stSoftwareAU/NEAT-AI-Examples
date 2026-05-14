@@ -8,8 +8,16 @@ set -euo pipefail
 # champion creature, writes a per-day signal log, and renders:
 #
 #   - docs/screenshots/stock_market.svg
-#   - docs/screenshots/stock_market/evolution_summary.svg
-#     (milestone summary, sourced from `evolveDir`'s return value — issue #301).
+#   - docs/screenshots/stock_market/milestones.svg
+#     (multi-run error-curve chart — error vs cumulative generation)
+#   - docs/screenshots/stock_market/complexity.svg
+#     (multi-run complexity chart — neurons + synapses vs cumulative
+#     generation)
+#
+# Multi-run flags (forwarded verbatim — issue #328):
+#   --fresh                 wipe prior creature, milestones, and both chart SVGs
+#   --timeout=<minutes>     wall-clock budget for this invocation (default 5)
+#   --target-error=<value>  early-exit threshold (default 0.01)
 #
 # ⚠️ Teaching example only — not investment advice.
 
@@ -40,6 +48,9 @@ deno run \
 if [[ -f "docs/screenshots/stock_market.svg" ]]; then
   deno fmt docs/screenshots/stock_market.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/stock_market/evolution_summary.svg" ]]; then
-  deno fmt docs/screenshots/stock_market/evolution_summary.svg > /dev/null
+if [[ -f "docs/screenshots/stock_market/milestones.svg" ]]; then
+  deno fmt docs/screenshots/stock_market/milestones.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/stock_market/complexity.svg" ]]; then
+  deno fmt docs/screenshots/stock_market/complexity.svg > /dev/null
 fi
