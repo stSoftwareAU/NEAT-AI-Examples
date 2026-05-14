@@ -61,7 +61,7 @@
         font-size="11"
         fill="#444"
         font-style="italic"
-      >archive seed @ gen 13</text>
+      >archive seed @ gen 19</text>
       <text
         x="70.00"
         y="135.00"
@@ -77,7 +77,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >0.998</text>
+      >0.997</text>
       <text
         x="70.00"
         y="181.00"
@@ -93,7 +93,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >0.002</text>
+      >0.003</text>
       <text
         x="70.00"
         y="227.00"
@@ -109,7 +109,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >13</text>
+      >19</text>
       <text
         x="70.00"
         y="273.00"
@@ -157,7 +157,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >697ms</text>
+      >665ms</text>
     </g>
     <g class="control-column">
       <rect
@@ -211,7 +211,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >0.988</text>
+      >0.955</text>
       <text
         x="474.00"
         y="181.00"
@@ -227,7 +227,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >0.012</text>
+      >0.045</text>
       <text
         x="474.00"
         y="227.00"
@@ -291,7 +291,7 @@
         font-size="11"
         font-weight="bold"
         fill="#222"
-      >1s</text>
+      >941ms</text>
     </g>
     <text x="454.00" y="218.00" text-anchor="middle" font-size="10" fill="#555">fitness lift</text>
     <text
@@ -301,6 +301,6 @@
       font-size="14"
       font-weight="bold"
       fill="#27ae60"
-    >+0.01</text>
+    >+0.043</text>
   </g>
 </svg>

@@ -43,27 +43,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#444"
-    >34 synapses · score -0.3285</text>
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="108.00"
-      x2="170.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="108.00"
-      x2="170.67"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
+    >11 synapses · score -0.3088</text>
     <line
       class="synapse-original"
       x1="38.00"
@@ -80,46 +60,6 @@
       y1="108.00"
       x2="303.33"
       y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="147.50"
-      x2="170.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="147.50"
-      x2="170.67"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="147.50"
-      x2="170.67"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="147.50"
-      x2="170.67"
-      y2="226.50"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -148,36 +88,6 @@
       class="synapse-original"
       x1="38.00"
       y1="187.00"
-      x2="170.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="187.00"
-      x2="170.67"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="187.00"
-      x2="170.67"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="187.00"
       x2="303.33"
       y2="108.00"
       stroke="#555"
@@ -190,36 +100,6 @@
       y1="187.00"
       x2="303.33"
       y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="226.50"
-      x2="170.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="226.50"
-      x2="170.67"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="226.50"
-      x2="170.67"
-      y2="226.50"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -248,26 +128,6 @@
       class="synapse-original"
       x1="38.00"
       y1="266.00"
-      x2="170.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="266.00"
-      x2="170.67"
-      y2="226.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="38.00"
-      y1="266.00"
       x2="303.33"
       y2="108.00"
       stroke="#555"
@@ -280,96 +140,6 @@
       y1="266.00"
       x2="303.33"
       y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="108.00"
-      x2="170.67"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="108.00"
-      x2="170.67"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="108.00"
-      x2="303.33"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="147.50"
-      x2="303.33"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="147.50"
-      x2="303.33"
-      y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="187.00"
-      x2="170.67"
-      y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="187.00"
-      x2="303.33"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="226.50"
-      x2="303.33"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="170.67"
-      y1="266.00"
-      x2="303.33"
-      y2="108.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -389,11 +159,6 @@
     <circle cx="38.00" cy="187.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="38.00" cy="226.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="38.00" cy="266.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
-    <circle cx="170.67" cy="108.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="170.67" cy="147.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="170.67" cy="187.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="170.67" cy="226.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="170.67" cy="266.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
     <circle cx="303.33" cy="108.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4" />
     <circle cx="303.33" cy="266.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4" />
   </g>
@@ -423,27 +188,7 @@
       font-family="sans-serif"
       font-size="11"
       fill="#444"
-    >49 synapses · score -0.3285</text>
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="108.00"
-      x2="480.00"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="108.00"
-      x2="480.00"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
+    >11 synapses · score -0.3088</text>
     <line
       class="synapse-original"
       x1="347.33"
@@ -460,46 +205,6 @@
       y1="108.00"
       x2="612.67"
       y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="147.50"
-      x2="480.00"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="147.50"
-      x2="480.00"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="147.50"
-      x2="480.00"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="147.50"
-      x2="480.00"
-      y2="226.50"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -528,36 +233,6 @@
       class="synapse-original"
       x1="347.33"
       y1="187.00"
-      x2="480.00"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="187.00"
-      x2="480.00"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="187.00"
-      x2="480.00"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="187.00"
       x2="612.67"
       y2="108.00"
       stroke="#555"
@@ -570,36 +245,6 @@
       y1="187.00"
       x2="612.67"
       y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="226.50"
-      x2="480.00"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="226.50"
-      x2="480.00"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="226.50"
-      x2="480.00"
-      y2="226.50"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -628,26 +273,6 @@
       class="synapse-original"
       x1="347.33"
       y1="266.00"
-      x2="480.00"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="266.00"
-      x2="480.00"
-      y2="226.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="347.33"
-      y1="266.00"
       x2="612.67"
       y2="108.00"
       stroke="#555"
@@ -660,96 +285,6 @@
       y1="266.00"
       x2="612.67"
       y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="108.00"
-      x2="480.00"
-      y2="147.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="108.00"
-      x2="480.00"
-      y2="187.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="108.00"
-      x2="612.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="147.50"
-      x2="612.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="147.50"
-      x2="612.67"
-      y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="187.00"
-      x2="480.00"
-      y2="266.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="187.00"
-      x2="612.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="226.50"
-      x2="612.67"
-      y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="480.00"
-      y1="266.00"
-      x2="612.67"
-      y2="108.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -764,166 +299,11 @@
       stroke-width="0.7"
       stroke-opacity="0.7"
     />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="108.00"
-      x2="480.00"
-      y2="187.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="108.00"
-      x2="480.00"
-      y2="226.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="108.00"
-      x2="480.00"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="147.50"
-      x2="480.00"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="187.00"
-      x2="480.00"
-      y2="226.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="187.00"
-      x2="480.00"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="226.50"
-      x2="480.00"
-      y2="147.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="226.50"
-      x2="480.00"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="266.00"
-      x2="480.00"
-      y2="147.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="266.00"
-      x2="480.00"
-      y2="187.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="347.33"
-      y1="266.00"
-      x2="480.00"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="480.00"
-      y1="108.00"
-      x2="612.67"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="480.00"
-      y1="187.00"
-      x2="612.67"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="480.00"
-      y1="226.50"
-      x2="612.67"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="480.00"
-      y1="266.00"
-      x2="612.67"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
     <circle cx="347.33" cy="108.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="347.33" cy="147.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="347.33" cy="187.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="347.33" cy="226.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="347.33" cy="266.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
-    <circle cx="480.00" cy="108.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="480.00" cy="147.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="480.00" cy="187.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="480.00" cy="226.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="480.00" cy="266.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
     <circle cx="612.67" cy="108.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4" />
     <circle cx="612.67" cy="266.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4" />
   </g>
@@ -953,13 +333,13 @@
       font-family="sans-serif"
       font-size="11"
       fill="#444"
-    >34 synapses · score -0.3279</text>
+    >27 synapses · score -0.1349</text>
     <line
       class="synapse-original"
       x1="656.67"
       y1="108.00"
       x2="789.33"
-      y2="147.50"
+      y2="108.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -990,16 +370,6 @@
       y1="147.50"
       x2="789.33"
       y2="108.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="656.67"
-      y1="147.50"
-      x2="789.33"
-      y2="147.50"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1019,7 +389,7 @@
       x1="656.67"
       y1="147.50"
       x2="789.33"
-      y2="226.50"
+      y2="266.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1049,7 +419,7 @@
       x1="656.67"
       y1="187.00"
       x2="789.33"
-      y2="147.50"
+      y2="108.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1068,6 +438,16 @@
       class="synapse-original"
       x1="656.67"
       y1="187.00"
+      x2="789.33"
+      y2="266.00"
+      stroke="#555"
+      stroke-width="0.7"
+      stroke-opacity="0.7"
+    />
+    <line
+      class="synapse-original"
+      x1="656.67"
+      y1="187.00"
       x2="922.00"
       y2="108.00"
       stroke="#555"
@@ -1089,7 +469,17 @@
       x1="656.67"
       y1="226.50"
       x2="789.33"
-      y2="226.50"
+      y2="108.00"
+      stroke="#555"
+      stroke-width="0.7"
+      stroke-opacity="0.7"
+    />
+    <line
+      class="synapse-original"
+      x1="656.67"
+      y1="226.50"
+      x2="789.33"
+      y2="266.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1109,6 +499,26 @@
       x1="656.67"
       y1="226.50"
       x2="922.00"
+      y2="266.00"
+      stroke="#555"
+      stroke-width="0.7"
+      stroke-opacity="0.7"
+    />
+    <line
+      class="synapse-original"
+      x1="656.67"
+      y1="266.00"
+      x2="789.33"
+      y2="108.00"
+      stroke="#555"
+      stroke-width="0.7"
+      stroke-opacity="0.7"
+    />
+    <line
+      class="synapse-original"
+      x1="656.67"
+      y1="266.00"
+      x2="789.33"
       y2="266.00"
       stroke="#555"
       stroke-width="0.7"
@@ -1139,7 +549,7 @@
       x1="789.33"
       y1="108.00"
       x2="789.33"
-      y2="226.50"
+      y2="266.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1147,9 +557,9 @@
     <line
       class="synapse-original"
       x1="789.33"
-      y1="147.50"
-      x2="789.33"
-      y2="187.00"
+      y1="108.00"
+      x2="922.00"
+      y2="108.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1157,17 +567,7 @@
     <line
       class="synapse-original"
       x1="789.33"
-      y1="147.50"
-      x2="789.33"
-      y2="226.50"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.7"
-    />
-    <line
-      class="synapse-original"
-      x1="789.33"
-      y1="147.50"
+      y1="187.00"
       x2="922.00"
       y2="266.00"
       stroke="#555"
@@ -1177,7 +577,7 @@
     <line
       class="synapse-original"
       x1="789.33"
-      y1="226.50"
+      y1="266.00"
       x2="922.00"
       y2="108.00"
       stroke="#555"
@@ -1189,7 +589,7 @@
       x1="789.33"
       y1="266.00"
       x2="922.00"
-      y2="108.00"
+      y2="266.00"
       stroke="#555"
       stroke-width="0.7"
       stroke-opacity="0.7"
@@ -1204,105 +604,13 @@
       stroke-width="0.7"
       stroke-opacity="0.7"
     />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="108.00"
-      x2="789.33"
-      y2="187.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="147.50"
-      x2="789.33"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="187.00"
-      x2="789.33"
-      y2="226.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="226.50"
-      x2="789.33"
-      y2="147.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="226.50"
-      x2="789.33"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="266.00"
-      x2="789.33"
-      y2="147.50"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="266.00"
-      x2="789.33"
-      y2="187.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="656.67"
-      y1="266.00"
-      x2="789.33"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
-    <line
-      class="synapse-synthetic"
-      x1="789.33"
-      y1="187.00"
-      x2="922.00"
-      y2="266.00"
-      stroke="#e57373"
-      stroke-width="0.6"
-      stroke-opacity="0.55"
-    />
     <circle cx="656.67" cy="108.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="656.67" cy="147.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="656.67" cy="187.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="656.67" cy="226.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="656.67" cy="266.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4" />
     <circle cx="789.33" cy="108.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="789.33" cy="147.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
     <circle cx="789.33" cy="187.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
-    <circle cx="789.33" cy="226.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
     <circle cx="789.33" cy="266.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4" />
     <circle cx="922.00" cy="108.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4" />
     <circle cx="922.00" cy="266.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4" />
@@ -1335,7 +643,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >12</text>
+      >7</text>
       <line x1="76.00" y1="410.00" x2="80.00" y2="410.00" stroke="#666" stroke-width="0.6" />
       <text
         x="74.00"
@@ -1344,7 +652,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >25</text>
+      >14</text>
       <line x1="76.00" y1="375.00" x2="80.00" y2="375.00" stroke="#666" stroke-width="0.6" />
       <text
         x="74.00"
@@ -1353,7 +661,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >37</text>
+      >20</text>
       <line x1="76.00" y1="340.00" x2="80.00" y2="340.00" stroke="#666" stroke-width="0.6" />
       <text
         x="74.00"
@@ -1362,7 +670,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >49</text>
+      >27</text>
       <text
         x="40.00"
         y="410.00"
@@ -1382,7 +690,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >-0.329</text>
+      >-0.326</text>
       <line x1="872.00" y1="445.00" x2="876.00" y2="445.00" stroke="#666" stroke-width="0.6" />
       <text
         x="878.00"
@@ -1391,7 +699,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >-0.328</text>
+      >-0.274</text>
       <line x1="872.00" y1="410.00" x2="876.00" y2="410.00" stroke="#666" stroke-width="0.6" />
       <text
         x="878.00"
@@ -1400,7 +708,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >-0.328</text>
+      >-0.222</text>
       <line x1="872.00" y1="375.00" x2="876.00" y2="375.00" stroke="#666" stroke-width="0.6" />
       <text
         x="878.00"
@@ -1409,7 +717,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >-0.328</text>
+      >-0.170</text>
       <line x1="872.00" y1="340.00" x2="876.00" y2="340.00" stroke="#666" stroke-width="0.6" />
       <text
         x="878.00"
@@ -1418,7 +726,7 @@
         font-family="sans-serif"
         font-size="10"
         fill="#333"
-      >-0.328</text>
+      >-0.118</text>
       <text
         x="922.00"
         y="410.00"
@@ -1432,24 +740,42 @@
     <rect
       class="bar-synapse"
       x="124.55"
-      y="382.86"
+      y="422.96"
       width="108.90"
-      height="97.14"
+      height="57.04"
       fill="#90caf9"
       stroke="#1976d2"
       stroke-width="0.6"
     />
     <text
       x="179.00"
-      y="378.86"
+      y="418.96"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="11"
       fill="#222"
-    >34</text>
+    >11</text>
     <rect
       class="bar-synapse"
       x="322.55"
+      y="422.96"
+      width="108.90"
+      height="57.04"
+      fill="#90caf9"
+      stroke="#1976d2"
+      stroke-width="0.6"
+    />
+    <text
+      x="377.00"
+      y="418.96"
+      text-anchor="middle"
+      font-family="sans-serif"
+      font-size="11"
+      fill="#222"
+    >11</text>
+    <rect
+      class="bar-synapse"
+      x="520.55"
       y="340.00"
       width="108.90"
       height="140.00"
@@ -1458,37 +784,19 @@
       stroke-width="0.6"
     />
     <text
-      x="377.00"
+      x="575.00"
       y="336.00"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="11"
       fill="#222"
-    >49</text>
-    <rect
-      class="bar-synapse"
-      x="520.55"
-      y="382.86"
-      width="108.90"
-      height="97.14"
-      fill="#90caf9"
-      stroke="#1976d2"
-      stroke-width="0.6"
-    />
-    <text
-      x="575.00"
-      y="378.86"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#222"
-    >34</text>
+    >27</text>
     <rect
       class="bar-control"
       x="718.55"
-      y="382.86"
+      y="422.96"
       width="108.90"
-      height="97.14"
+      height="57.04"
       fill="#bdbdbd"
       stroke="#616161"
       stroke-width="0.6"
@@ -1496,12 +804,12 @@
     />
     <text
       x="773.00"
-      y="378.86"
+      y="418.96"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="11"
       fill="#222"
-    >34</text>
+    >11</text>
     <polyline
       class="score-line"
       fill="none"

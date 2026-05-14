@@ -193,14 +193,14 @@
     <rect
       class="topo-bar topo-bar-seed-neurons"
       x="125.69"
-      y="464.81"
+      y="458.09"
       width="91.13"
-      height="67.19"
+      height="73.91"
       fill="#9ecae1"
     />
     <text
       x="171.25"
-      y="460.81"
+      y="454.09"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="11"
@@ -231,7 +231,7 @@
       font-size="11"
       font-weight="bold"
       fill="#222"
-    >11</text>
+    >10</text>
     <text
       x="373.75"
       y="546.00"
@@ -252,14 +252,14 @@
     <rect
       class="topo-bar topo-bar-seed-synapses"
       x="530.69"
-      y="495.04"
+      y="497.22"
       width="91.13"
-      height="36.96"
+      height="34.78"
       fill="#9ecae1"
     />
     <text
       x="576.25"
-      y="491.04"
+      y="493.22"
       text-anchor="middle"
       font-family="sans-serif"
       font-size="11"
@@ -290,7 +290,7 @@
       font-size="11"
       font-weight="bold"
       fill="#222"
-    >16</text>
+    >17</text>
     <text
       x="778.75"
       y="546.00"
@@ -324,28 +324,28 @@
     font-family="sans-serif"
     font-size="11"
     fill="#222"
-  >Generations: 313 (solved)</text>
+  >Generations: 386 (solved)</text>
   <text
     x="90.00"
     y="112.00"
     font-family="sans-serif"
     font-size="11"
     fill="#222"
-  >Wall-clock: 5.5s</text>
+  >Wall-clock: 7.2s</text>
   <text
     x="90.00"
     y="126.00"
     font-family="sans-serif"
     font-size="11"
     fill="#222"
-  >Final error: 0.0374</text>
+  >Final error: 0.0224</text>
   <text
     x="90.00"
     y="140.00"
     font-family="sans-serif"
     font-size="11"
     fill="#222"
-  >Held-out -MSE: -0.0325</text>
+  >Held-out -MSE: -0.0260</text>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#333">
     <line
       x1="260"
