@@ -122,11 +122,10 @@ regenerated from the current champion on every full-budget run.
 
 Two stop conditions bound the search — the same two fields used across NEAT-AI's `NeatOptions`:
 
-- **`targetError`** (default `0.01`) — the champion must achieve a **landed-on-pad rate ≥
-  `1 − targetError`** across a fixed deterministic batch of perturbed-start trials. The default
-  threshold is `landed-rate ≥ 99%`. Each landed trial obeys the safe-landing limits (≤ 11.5° tilt, ≤
-  2 m/s vertical and ≤ 2 m/s horizontal speed at touchdown), so the threshold checks both pad
-  accuracy _and_ gentleness, not just one.
+- **`targetError`** (default `0.01`) — passed to NEAT-AI's RL loop as the normalised reward-error
+  target. The runner reports `solved` only when the replayed champion's measured landed rate across
+  the deterministic training trial batch reaches `1 − targetError`; graded near-miss error alone is
+  not treated as proof of landing success.
 - **`timeoutMinutes`** (default `2`) — the evolver stops once `timeoutMinutes` minutes have elapsed
   since the loop began, even when the target is not reached, so the example terminates predictably.
 
@@ -151,11 +150,9 @@ flowchart LR
 Implication for `targetError`: because non-landed crashes can now contribute less than `1` to the
 error sum, `error = 1 − landedRate` is now an **upper bound** rather than an exact identity. A
 landed rate of e.g. 50% can produce a mean error well below 0.5 if the non-landed crashes are soft.
-So `targetError = 0.01` still guarantees the loop stops at **≥ 99% landed rate** in the worst case,
-and may stop earlier when the non-landed trials are graded mildly. The graded shape gives the
-evolutionary search a smooth gradient to climb — a controller that drifts within metres of the pad
-scores measurably better than one that explodes out of bounds, so selection can reward incremental
-improvement instead of waiting for the first successful landing.
+To keep near-misses from masquerading as success, every non-landed terminal outcome now carries a
+minimum penalty. A soft crash near the pad is still better than exploding out of bounds, but it is
+not allowed to score like a safe touchdown.
 
 Whichever condition fires first wins. The runner reports `result.stopReason` (`"target"`,
 `"timeout"`, or `"iterations"`) and `result.wallclockMs` so callers can distinguish the outcomes.
@@ -172,18 +169,18 @@ starts.
 
 ## 🎯 Inputs and Outputs
 
-| Channel  | Type       | Symbol     | Meaning                                           |
-| -------- | ---------- | ---------- | ------------------------------------------------- |
-| Input 0  | observable | `x`        | Horizontal position (metres, 0 above the pad)     |
-| Input 1  | observable | `y`        | Altitude (metres, 0 at ground level)              |
-| Input 2  | observable | `vx`       | Horizontal velocity (m/s)                         |
-| Input 3  | observable | `vy`       | Vertical velocity (m/s, negative = falling)       |
-| Input 4  | observable | `angle`    | Tilt from upright (radians, positive = tilt left) |
-| Input 5  | observable | `angularV` | Angular velocity (rad/s)                          |
-| Input 6  | observable | `fuel`     | Remaining propellant (units, never negative)      |
-| Output 0 | action     | main       | `>= 0.5` fires the main engine                    |
-| Output 1 | action     | left       | `>= 0.5` fires the left RCS thruster              |
-| Output 2 | action     | right      | `>= 0.5` fires the right RCS thruster             |
+| Channel  | Type       | Symbol      | Meaning                                       |
+| -------- | ---------- | ----------- | --------------------------------------------- |
+| Input 0  | observable | `relativeX` | Normalised horizontal error to the active pad |
+| Input 1  | observable | `y`         | Normalised altitude above the ground          |
+| Input 2  | observable | `vx`        | Normalised horizontal velocity                |
+| Input 3  | observable | `vy`        | Normalised vertical velocity                  |
+| Input 4  | observable | `angle`     | Normalised tilt from upright                  |
+| Input 5  | observable | `angularV`  | Normalised angular velocity                   |
+| Input 6  | observable | `fuel`      | Normalised remaining propellant               |
+| Output 0 | action     | main        | `>= 0.5` fires the main engine                |
+| Output 1 | action     | left        | `>= 0.5` fires the left RCS thruster          |
+| Output 2 | action     | right       | `>= 0.5` fires the right RCS thruster         |
 
 The action space is intentionally small and discrete: each timestep the controller chooses any
 combination of three boolean thrusters. The main engine accelerates the lander along its local "up"
@@ -207,6 +204,29 @@ A run terminates as soon as one of these conditions holds:
 ./lunar_lander/run.sh
 ```
 
+The runner is resumable by default. Each normal invocation loads the latest saved champion from
+`docs/data/lunar_lander/creature.json`, trains for the requested budget, appends new milestone
+statistics, validates the champion against the 200 held-out scenarios, and rewrites the charts and
+validation artefacts.
+
+Use `--timeout=<minutes>` to choose how long a single training invocation may run:
+
+```bash
+./lunar_lander/run.sh --timeout=30
+./lunar_lander/run.sh --timeout=120
+```
+
+Run the same command again to continue training from the saved champion and extend the cumulative
+charts. Use `--fresh` when you deliberately want to discard the saved champion and milestone history
+and start the noise → competent story again from a random seed:
+
+```bash
+./lunar_lander/run.sh --fresh --timeout=30
+```
+
+`--target-error=<value>` is also accepted for the NEAT-AI early-stop threshold, but the example's
+reported success is based on the replayed landed rate over deterministic scenarios.
+
 ### CI/quality fast path
 
 `quality.sh` invokes the runner with `LUNAR_QUICK=1` so the lunar-lander section finishes in
@@ -222,8 +242,8 @@ LUNAR_QUICK=1 ./lunar_lander/run.sh   # env var
 ./lunar_lander/run.sh --quick         # CLI flag (equivalent)
 ```
 
-Without quick mode, the runner uses the realistic `targetError = 0.01`, `timeoutMinutes = 2`
-defaults — that is the path users invoke directly when they want a champion + canonical artefacts.
+Without quick mode, the single-run path uses `targetError = 0.01` and the multi-run timeout default
+of 5 minutes.
 
 Artefacts:
 
