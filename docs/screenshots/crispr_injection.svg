@@ -1,318 +1,55 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 880 540"
-  width="880"
-  height="540"
-  role="img"
-  aria-label="CRISPR gene injection — gene topology and before-vs-after milestone summary"
->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 540" width="880" height="540" role="img" aria-label="CRISPR gene injection — gene topology and before-vs-after milestone summary">
   <title>CRISPR Gene Injection — Topology and Before-vs-After Milestone Summary</title>
-  <rect width="880" height="540" fill="#fafafa" />
-  <text
-    x="440"
-    y="28"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="16"
-    font-weight="bold"
-    fill="#222"
-  >CRISPR Gene Injection — Topology and Fitness Lift</text>
+  <rect width="880" height="540" fill="#fafafa"/>
+  <text x="440" y="28" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">CRISPR Gene Injection — Topology and Fitness Lift</text>
   <g class="gene-topology" font-family="sans-serif">
     <text x="60" y="34" font-size="13" font-weight="bold" fill="#222">Injected gene topology</text>
-    <line
-      x1="100.00"
-      y1="70.00"
-      x2="454.00"
-      y2="70.00"
-      stroke="#27ae60"
-      stroke-width="3.00"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="100.00"
-      y1="200.00"
-      x2="454.00"
-      y2="70.00"
-      stroke="#e74c3c"
-      stroke-width="3.00"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="100.00"
-      y1="70.00"
-      x2="454.00"
-      y2="200.00"
-      stroke="#e74c3c"
-      stroke-width="3.00"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="100.00"
-      y1="200.00"
-      x2="454.00"
-      y2="200.00"
-      stroke="#27ae60"
-      stroke-width="3.00"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="454.00"
-      y1="70.00"
-      x2="808.00"
-      y2="135.00"
-      stroke="#27ae60"
-      stroke-width="3.00"
-      stroke-opacity="0.7"
-    />
-    <line
-      x1="454.00"
-      y1="200.00"
-      x2="808.00"
-      y2="135.00"
-      stroke="#27ae60"
-      stroke-width="3.00"
-      stroke-opacity="0.7"
-    />
-    <circle cx="100.00" cy="70.00" r="14" fill="#4a90d9" stroke="#222" stroke-width="1" />
-    <text
-      x="100.00"
-      y="74.00"
-      text-anchor="middle"
-      font-size="10"
-      fill="#fff"
-      font-weight="bold"
-    >in[0]</text>
-    <circle cx="100.00" cy="200.00" r="14" fill="#4a90d9" stroke="#222" stroke-width="1" />
-    <text
-      x="100.00"
-      y="204.00"
-      text-anchor="middle"
-      font-size="10"
-      fill="#fff"
-      font-weight="bold"
-    >in[1]</text>
-    <circle cx="454.00" cy="70.00" r="14" fill="#bd10e0" stroke="#222" stroke-width="1" />
-    <text
-      x="454.00"
-      y="74.00"
-      text-anchor="middle"
-      font-size="10"
-      fill="#fff"
-      font-weight="bold"
-    >TANH</text>
-    <circle cx="454.00" cy="200.00" r="14" fill="#bd10e0" stroke="#222" stroke-width="1" />
-    <text
-      x="454.00"
-      y="204.00"
-      text-anchor="middle"
-      font-size="10"
-      fill="#fff"
-      font-weight="bold"
-    >TANH</text>
-    <circle cx="808.00" cy="135.00" r="14" fill="#16a085" stroke="#222" stroke-width="1" />
-    <text
-      x="808.00"
-      y="139.00"
-      text-anchor="middle"
-      font-size="10"
-      fill="#fff"
-      font-weight="bold"
-    >out</text>
+    <line x1="100.00" y1="70.00" x2="454.00" y2="70.00" stroke="#27ae60" stroke-width="3.00" stroke-opacity="0.7"/>
+    <line x1="100.00" y1="200.00" x2="454.00" y2="70.00" stroke="#e74c3c" stroke-width="3.00" stroke-opacity="0.7"/>
+    <line x1="100.00" y1="70.00" x2="454.00" y2="200.00" stroke="#e74c3c" stroke-width="3.00" stroke-opacity="0.7"/>
+    <line x1="100.00" y1="200.00" x2="454.00" y2="200.00" stroke="#27ae60" stroke-width="3.00" stroke-opacity="0.7"/>
+    <line x1="454.00" y1="70.00" x2="808.00" y2="135.00" stroke="#27ae60" stroke-width="3.00" stroke-opacity="0.7"/>
+    <line x1="454.00" y1="200.00" x2="808.00" y2="135.00" stroke="#27ae60" stroke-width="3.00" stroke-opacity="0.7"/>
+    <circle cx="100.00" cy="70.00" r="14" fill="#4a90d9" stroke="#222" stroke-width="1"/>
+    <text x="100.00" y="74.00" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">in[0]</text>
+    <circle cx="100.00" cy="200.00" r="14" fill="#4a90d9" stroke="#222" stroke-width="1"/>
+    <text x="100.00" y="204.00" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">in[1]</text>
+    <circle cx="454.00" cy="70.00" r="14" fill="#bd10e0" stroke="#222" stroke-width="1"/>
+    <text x="454.00" y="74.00" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">TANH</text>
+    <circle cx="454.00" cy="200.00" r="14" fill="#bd10e0" stroke="#222" stroke-width="1"/>
+    <text x="454.00" y="204.00" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">TANH</text>
+    <circle cx="808.00" cy="135.00" r="14" fill="#16a085" stroke="#222" stroke-width="1"/>
+    <text x="808.00" y="139.00" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">out</text>
   </g>
   <g class="milestone-panel" font-family="sans-serif">
-    <text
-      x="60"
-      y="232.00"
-      font-size="13"
-      font-weight="bold"
-      fill="#222"
-    >Before vs after gene injection</text>
-    <rect
-      x="60.00"
-      y="240.00"
-      width="384.00"
-      height="260.00"
-      fill="#ffffff"
-      stroke="#333"
-      stroke-width="1"
-    />
-    <rect x="60.00" y="240.00" width="384.00" height="28.00" fill="#9ecae1" />
-    <text
-      x="252.00"
-      y="258.00"
-      text-anchor="middle"
-      font-size="12"
-      font-weight="bold"
-      fill="#ffffff"
-    >pre-injection</text>
-    <text
-      x="70.00"
-      y="290.40"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >final score</text>
-    <text
-      x="434.00"
-      y="290.40"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >0.986</text>
-    <text
-      x="70.00"
-      y="335.20"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >final error</text>
-    <text
-      x="434.00"
-      y="335.20"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >0.014</text>
-    <text
-      x="70.00"
-      y="380.00"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >generations</text>
-    <text
-      x="434.00"
-      y="380.00"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >603</text>
+    <text x="60" y="232.00" font-size="13" font-weight="bold" fill="#222">Before vs after gene injection</text>
+    <rect x="60.00" y="240.00" width="384.00" height="260.00" fill="#ffffff" stroke="#333" stroke-width="1"/>
+    <rect x="60.00" y="240.00" width="384.00" height="28.00" fill="#9ecae1"/>
+    <text x="252.00" y="258.00" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">pre-injection</text>
+    <text x="70.00" y="290.40" dominant-baseline="middle" font-size="11" fill="#333">final score</text>
+    <text x="434.00" y="290.40" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.99</text>
+    <text x="70.00" y="335.20" dominant-baseline="middle" font-size="11" fill="#333">final error</text>
+    <text x="434.00" y="335.20" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.01</text>
+    <text x="70.00" y="380.00" dominant-baseline="middle" font-size="11" fill="#333">generations</text>
+    <text x="434.00" y="380.00" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">603</text>
     <text x="70.00" y="424.80" dominant-baseline="middle" font-size="11" fill="#333">neurons</text>
-    <text
-      x="434.00"
-      y="424.80"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >3</text>
+    <text x="434.00" y="424.80" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">9</text>
     <text x="70.00" y="469.60" dominant-baseline="middle" font-size="11" fill="#333">synapses</text>
-    <text
-      x="434.00"
-      y="469.60"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >2</text>
-    <rect
-      x="464.00"
-      y="240.00"
-      width="384.00"
-      height="260.00"
-      fill="#ffffff"
-      stroke="#333"
-      stroke-width="1"
-    />
-    <rect x="464.00" y="240.00" width="384.00" height="28.00" fill="#1f77b4" />
-    <text
-      x="656.00"
-      y="258.00"
-      text-anchor="middle"
-      font-size="12"
-      font-weight="bold"
-      fill="#ffffff"
-    >post-injection</text>
-    <text
-      x="474.00"
-      y="290.40"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >final score</text>
-    <text
-      x="838.00"
-      y="290.40"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >0.996</text>
-    <text
-      x="474.00"
-      y="335.20"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >final error</text>
-    <text
-      x="838.00"
-      y="335.20"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >0.004</text>
-    <text
-      x="474.00"
-      y="380.00"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >generations</text>
-    <text
-      x="838.00"
-      y="380.00"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >603</text>
+    <text x="434.00" y="469.60" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">18</text>
+    <rect x="464.00" y="240.00" width="384.00" height="260.00" fill="#ffffff" stroke="#333" stroke-width="1"/>
+    <rect x="464.00" y="240.00" width="384.00" height="28.00" fill="#1f77b4"/>
+    <text x="656.00" y="258.00" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">post-injection</text>
+    <text x="474.00" y="290.40" dominant-baseline="middle" font-size="11" fill="#333">final score</text>
+    <text x="838.00" y="290.40" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.998</text>
+    <text x="474.00" y="335.20" dominant-baseline="middle" font-size="11" fill="#333">final error</text>
+    <text x="838.00" y="335.20" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.002</text>
+    <text x="474.00" y="380.00" dominant-baseline="middle" font-size="11" fill="#333">generations</text>
+    <text x="838.00" y="380.00" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">603</text>
     <text x="474.00" y="424.80" dominant-baseline="middle" font-size="11" fill="#333">neurons</text>
-    <text
-      x="838.00"
-      y="424.80"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >12</text>
-    <text
-      x="474.00"
-      y="469.60"
-      dominant-baseline="middle"
-      font-size="11"
-      fill="#333"
-    >synapses</text>
-    <text
-      x="838.00"
-      y="469.60"
-      text-anchor="end"
-      dominant-baseline="middle"
-      font-size="11"
-      font-weight="bold"
-      fill="#222"
-    >36</text>
+    <text x="838.00" y="424.80" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">12</text>
+    <text x="474.00" y="469.60" dominant-baseline="middle" font-size="11" fill="#333">synapses</text>
+    <text x="838.00" y="469.60" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">30</text>
     <text x="454.00" y="362.00" text-anchor="middle" font-size="10" fill="#555">fitness lift</text>
-    <text
-      x="454.00"
-      y="380.00"
-      text-anchor="middle"
-      font-size="14"
-      font-weight="bold"
-      fill="#27ae60"
-    >+0.009</text>
+    <text x="454.00" y="380.00" text-anchor="middle" font-size="14" font-weight="bold" fill="#27ae60">+0.008</text>
   </g>
 </svg>

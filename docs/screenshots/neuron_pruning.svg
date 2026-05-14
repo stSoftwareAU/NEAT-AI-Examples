@@ -1,491 +1,81 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 960 540"
-  width="960"
-  height="540"
-  role="img"
-  aria-label="Neuron pruning: constant-activation removal with bias fold"
->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="960" height="540" role="img" aria-label="Neuron pruning: constant-activation removal with bias fold">
   <title>Neuron Pruning — Constant-Activation Removal With Bias Fold</title>
   <defs>
-    <marker
-      id="bias-arrow"
-      viewBox="0 0 10 10"
-      refX="9"
-      refY="5"
-      markerWidth="6"
-      markerHeight="6"
-      orient="auto-start-reverse"
-    >
-      <path d="M0,0 L10,5 L0,10 z" fill="#e57373" />
+    <marker id="bias-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e57373"/>
     </marker>
   </defs>
-  <rect width="960" height="540" fill="#fafafa" />
-  <text
-    x="480"
-    y="32"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="18"
-    font-weight="bold"
-    fill="#222"
-  >Neuron Pruning — Constant-Activation Removal With Bias Fold</text>
+  <rect width="960" height="540" fill="#fafafa"/>
+  <text x="480" y="32" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#222">Neuron Pruning — Constant-Activation Removal With Bias Fold</text>
   <g class="topology">
-    <rect
-      x="24.00"
-      y="60.00"
-      width="565.44"
-      height="380.00"
-      fill="#ffffff"
-      stroke="#cccccc"
-      stroke-width="0.8"
-    />
-    <text
-      x="306.72"
-      y="78.00"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="13"
-      font-weight="bold"
-      fill="#222"
-    >Topology — pruned neurons greyed out, bias-fold arrows in coral</text>
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="100.00"
-      x2="571.44"
-      y2="100.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="100.00"
-      x2="571.44"
-      y2="422.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="207.33"
-      x2="571.44"
-      y2="100.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="207.33"
-      x2="571.44"
-      y2="422.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="314.67"
-      x2="571.44"
-      y2="100.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="314.67"
-      x2="571.44"
-      y2="422.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="422.00"
-      x2="571.44"
-      y2="100.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="42.00"
-      y1="422.00"
-      x2="571.44"
-      y2="422.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-original"
-      x1="571.44"
-      y1="100.00"
-      x2="571.44"
-      y2="422.00"
-      stroke="#555"
-      stroke-width="0.7"
-      stroke-opacity="0.8"
-    />
-    <line
-      class="edge-pruned"
-      x1="306.72"
-      y1="100.00"
-      x2="571.44"
-      y2="422.00"
-      stroke="#bdbdbd"
-      stroke-width="0.6"
-      stroke-opacity="0.5"
-      stroke-dasharray="2 2"
-    />
-    <line
-      class="edge-pruned"
-      x1="306.72"
-      y1="261.00"
-      x2="571.44"
-      y2="100.00"
-      stroke="#bdbdbd"
-      stroke-width="0.6"
-      stroke-opacity="0.5"
-      stroke-dasharray="2 2"
-    />
-    <line
-      class="edge-pruned"
-      x1="306.72"
-      y1="261.00"
-      x2="571.44"
-      y2="422.00"
-      stroke="#bdbdbd"
-      stroke-width="0.6"
-      stroke-opacity="0.5"
-      stroke-dasharray="2 2"
-    />
-    <line
-      class="edge-pruned"
-      x1="306.72"
-      y1="422.00"
-      x2="571.44"
-      y2="100.00"
-      stroke="#bdbdbd"
-      stroke-width="0.6"
-      stroke-opacity="0.5"
-      stroke-dasharray="2 2"
-    />
-    <line
-      class="edge-pruned"
-      x1="306.72"
-      y1="422.00"
-      x2="571.44"
-      y2="422.00"
-      stroke="#bdbdbd"
-      stroke-width="0.6"
-      stroke-opacity="0.5"
-      stroke-dasharray="2 2"
-    />
-    <path
-      class="bias-fold"
-      d="M306.72,100.00 Q428.27,269.89 571.44,422.00"
-      fill="none"
-      stroke="#e57373"
-      stroke-width="1.2"
-      stroke-opacity="0.85"
-      marker-end="url(#bias-arrow)"
-    />
-    <path
-      class="bias-fold"
-      d="M306.72,261.00 Q446.35,192.46 571.44,100.00"
-      fill="none"
-      stroke="#e57373"
-      stroke-width="1.2"
-      stroke-opacity="0.85"
-      marker-end="url(#bias-arrow)"
-    />
-    <path
-      class="bias-fold"
-      d="M306.72,261.00 Q431.81,353.46 571.44,422.00"
-      fill="none"
-      stroke="#e57373"
-      stroke-width="1.2"
-      stroke-opacity="0.85"
-      marker-end="url(#bias-arrow)"
-    />
-    <path
-      class="bias-fold"
-      d="M306.72,422.00 Q449.89,269.89 571.44,100.00"
-      fill="none"
-      stroke="#e57373"
-      stroke-width="1.2"
-      stroke-opacity="0.85"
-      marker-end="url(#bias-arrow)"
-    />
-    <path
-      class="bias-fold"
-      d="M306.72,422.00 Q439.08,436.00 571.44,422.00"
-      fill="none"
-      stroke="#e57373"
-      stroke-width="1.2"
-      stroke-opacity="0.85"
-      marker-end="url(#bias-arrow)"
-    />
-    <circle
-      class="neuron-kept"
-      cx="42.00"
-      cy="100.00"
-      r="6"
-      fill="#4d82a3"
-      stroke="#222"
-      stroke-width="0.8"
-    />
-    <circle
-      class="neuron-kept"
-      cx="42.00"
-      cy="207.33"
-      r="6"
-      fill="#4d82a3"
-      stroke="#222"
-      stroke-width="0.8"
-    />
-    <circle
-      class="neuron-kept"
-      cx="42.00"
-      cy="314.67"
-      r="6"
-      fill="#4d82a3"
-      stroke="#222"
-      stroke-width="0.8"
-    />
-    <circle
-      class="neuron-kept"
-      cx="42.00"
-      cy="422.00"
-      r="6"
-      fill="#4d82a3"
-      stroke="#222"
-      stroke-width="0.8"
-    />
-    <circle
-      class="neuron-pruned"
-      cx="306.72"
-      cy="100.00"
-      r="6"
-      fill="#e0e0e0"
-      stroke="#9e9e9e"
-      stroke-width="0.8"
-      stroke-dasharray="2 2"
-    />
-    <circle
-      class="neuron-pruned"
-      cx="306.72"
-      cy="261.00"
-      r="6"
-      fill="#e0e0e0"
-      stroke="#9e9e9e"
-      stroke-width="0.8"
-      stroke-dasharray="2 2"
-    />
-    <circle
-      class="neuron-pruned"
-      cx="306.72"
-      cy="422.00"
-      r="6"
-      fill="#e0e0e0"
-      stroke="#9e9e9e"
-      stroke-width="0.8"
-      stroke-dasharray="2 2"
-    />
-    <circle
-      class="neuron-kept"
-      cx="571.44"
-      cy="100.00"
-      r="6"
-      fill="#d18b48"
-      stroke="#222"
-      stroke-width="0.8"
-    />
-    <circle
-      class="neuron-kept"
-      cx="571.44"
-      cy="422.00"
-      r="6"
-      fill="#d18b48"
-      stroke="#222"
-      stroke-width="0.8"
-    />
-    <text
-      x="306.72"
-      y="91.00"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="9"
-      fill="#666"
-    >#4</text>
-    <text
-      x="306.72"
-      y="252.00"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="9"
-      fill="#666"
-    >#5</text>
-    <text
-      x="306.72"
-      y="413.00"
-      text-anchor="middle"
-      font-family="sans-serif"
-      font-size="9"
-      fill="#666"
-    >#6</text>
+    <rect x="24.00" y="60.00" width="565.44" height="380.00" fill="#ffffff" stroke="#cccccc" stroke-width="0.8"/>
+    <text x="306.72" y="78.00" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="bold" fill="#222">Topology — pruned neurons greyed out, bias-fold arrows in coral</text>
+    <line class="edge-original" x1="42.00" y1="100.00" x2="571.44" y2="100.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="100.00" x2="571.44" y2="422.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="207.33" x2="571.44" y2="100.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="207.33" x2="571.44" y2="422.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="314.67" x2="571.44" y2="100.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="314.67" x2="571.44" y2="422.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="422.00" x2="571.44" y2="100.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="42.00" y1="422.00" x2="571.44" y2="422.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-original" x1="571.44" y1="100.00" x2="571.44" y2="422.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.8"/>
+    <line class="edge-pruned" x1="42.00" y1="207.33" x2="306.72" y2="100.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <line class="edge-pruned" x1="42.00" y1="422.00" x2="306.72" y2="100.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <line class="edge-pruned" x1="306.72" y1="207.33" x2="571.44" y2="100.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <line class="edge-pruned" x1="306.72" y1="207.33" x2="571.44" y2="422.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <line class="edge-pruned" x1="306.72" y1="314.67" x2="571.44" y2="100.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <line class="edge-pruned" x1="306.72" y1="422.00" x2="571.44" y2="100.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <line class="edge-pruned" x1="306.72" y1="422.00" x2="571.44" y2="422.00" stroke="#bdbdbd" stroke-width="0.6" stroke-opacity="0.5" stroke-dasharray="2 2"/>
+    <path class="bias-fold" d="M306.72,207.33 Q444.34,166.64 571.44,100.00" fill="none" stroke="#e57373" stroke-width="1.2" stroke-opacity="0.85" marker-end="url(#bias-arrow)"/>
+    <path class="bias-fold" d="M306.72,207.33 Q430.26,325.54 571.44,422.00" fill="none" stroke="#e57373" stroke-width="1.2" stroke-opacity="0.85" marker-end="url(#bias-arrow)"/>
+    <path class="bias-fold" d="M306.72,314.67 Q447.90,218.21 571.44,100.00" fill="none" stroke="#e57373" stroke-width="1.2" stroke-opacity="0.85" marker-end="url(#bias-arrow)"/>
+    <path class="bias-fold" d="M306.72,422.00 Q449.89,269.89 571.44,100.00" fill="none" stroke="#e57373" stroke-width="1.2" stroke-opacity="0.85" marker-end="url(#bias-arrow)"/>
+    <path class="bias-fold" d="M306.72,422.00 Q439.08,436.00 571.44,422.00" fill="none" stroke="#e57373" stroke-width="1.2" stroke-opacity="0.85" marker-end="url(#bias-arrow)"/>
+    <circle class="neuron-kept" cx="42.00" cy="100.00" r="6" fill="#4d82a3" stroke="#222" stroke-width="0.8"/>
+    <circle class="neuron-kept" cx="42.00" cy="207.33" r="6" fill="#4d82a3" stroke="#222" stroke-width="0.8"/>
+    <circle class="neuron-kept" cx="42.00" cy="314.67" r="6" fill="#4d82a3" stroke="#222" stroke-width="0.8"/>
+    <circle class="neuron-kept" cx="42.00" cy="422.00" r="6" fill="#4d82a3" stroke="#222" stroke-width="0.8"/>
+    <circle class="neuron-pruned" cx="306.72" cy="100.00" r="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="0.8" stroke-dasharray="2 2"/>
+    <circle class="neuron-pruned" cx="306.72" cy="207.33" r="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="0.8" stroke-dasharray="2 2"/>
+    <circle class="neuron-pruned" cx="306.72" cy="314.67" r="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="0.8" stroke-dasharray="2 2"/>
+    <circle class="neuron-pruned" cx="306.72" cy="422.00" r="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="0.8" stroke-dasharray="2 2"/>
+    <circle class="neuron-kept" cx="571.44" cy="100.00" r="6" fill="#d18b48" stroke="#222" stroke-width="0.8"/>
+    <circle class="neuron-kept" cx="571.44" cy="422.00" r="6" fill="#d18b48" stroke="#222" stroke-width="0.8"/>
+    <text x="306.72" y="91.00" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">#4</text>
+    <text x="306.72" y="198.33" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">#5</text>
+    <text x="306.72" y="305.67" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">#6</text>
+    <text x="306.72" y="413.00" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">#7</text>
   </g>
   <g class="summary">
-    <rect
-      x="601.44"
-      y="60.00"
-      width="334.56"
-      height="380.00"
-      fill="#ffffff"
-      stroke="#cccccc"
-      stroke-width="0.8"
-    />
-    <text
-      x="615.44"
-      y="82.00"
-      font-family="sans-serif"
-      font-size="13"
-      font-weight="bold"
-      fill="#222"
-    >Summary</text>
-    <text
-      x="615.44"
-      y="104.00"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#333"
-    >pre-prune  neurons = 9</text>
-    <text
-      x="615.44"
-      y="120.00"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#333"
-    >post-prune neurons = 6</text>
-    <text
-      x="615.44"
-      y="136.00"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#333"
-    >Δ neurons = 3</text>
-    <text
-      x="615.44"
-      y="152.00"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#333"
-    >pre-prune  score = -0.013192</text>
-    <text
-      x="615.44"
-      y="168.00"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#333"
-    >post-prune score = -0.013192</text>
-    <text
-      x="615.44"
-      y="184.00"
-      font-family="sans-serif"
-      font-size="11"
-      fill="#333"
-    >Δ score = 0.000000</text>
-    <text
-      x="615.44"
-      y="214.00"
-      font-family="sans-serif"
-      font-size="12"
-      font-weight="bold"
-      fill="#222"
-    >Pruned neurons (idx → bias-fold targets)</text>
-    <text
-      x="615.44"
-      y="232.00"
-      font-family="monospace"
-      font-size="10.5"
-      fill="#444"
-    >#4 (out=0.284) → [8]</text>
-    <text
-      x="615.44"
-      y="248.00"
-      font-family="monospace"
-      font-size="10.5"
-      fill="#444"
-    >#5 (out=-0.497) → [7, 8]</text>
-    <text
-      x="615.44"
-      y="264.00"
-      font-family="monospace"
-      font-size="10.5"
-      fill="#444"
-    >#6 (out=-0.278) → [7, 8]</text>
+    <rect x="601.44" y="60.00" width="334.56" height="380.00" fill="#ffffff" stroke="#cccccc" stroke-width="0.8"/>
+    <text x="615.44" y="82.00" font-family="sans-serif" font-size="13" font-weight="bold" fill="#222">Summary</text>
+    <text x="615.44" y="104.00" font-family="sans-serif" font-size="11" fill="#333">pre-prune  neurons = 10</text>
+    <text x="615.44" y="120.00" font-family="sans-serif" font-size="11" fill="#333">post-prune neurons = 6</text>
+    <text x="615.44" y="136.00" font-family="sans-serif" font-size="11" fill="#333">Δ neurons = 4</text>
+    <text x="615.44" y="152.00" font-family="sans-serif" font-size="11" fill="#333">pre-prune  score = -3.864489</text>
+    <text x="615.44" y="168.00" font-family="sans-serif" font-size="11" fill="#333">post-prune score = -3.864489</text>
+    <text x="615.44" y="184.00" font-family="sans-serif" font-size="11" fill="#333">Δ score = 0.000000</text>
+    <text x="615.44" y="214.00" font-family="sans-serif" font-size="12" font-weight="bold" fill="#222">Pruned neurons (idx → bias-fold targets)</text>
+    <text x="615.44" y="232.00" font-family="monospace" font-size="10.5" fill="#444">#4 (out=-1.000) → []</text>
+    <text x="615.44" y="248.00" font-family="monospace" font-size="10.5" fill="#444">#5 (out=-0.497) → [8, 9]</text>
+    <text x="615.44" y="264.00" font-family="monospace" font-size="10.5" fill="#444">#6 (out=-0.278) → [8]</text>
+    <text x="615.44" y="280.00" font-family="monospace" font-size="10.5" fill="#444">#7 (out=-0.584) → [8, 9]</text>
   </g>
   <g class="legend" font-family="sans-serif" font-size="10" fill="#222">
-    <rect
-      x="36.00"
-      y="464.00"
-      width="540"
-      height="62"
-      fill="#ffffff"
-      fill-opacity="0.92"
-      stroke="#cccccc"
-      stroke-width="0.5"
-    />
-    <line x1="48.00" y1="480.00" x2="74.00" y2="480.00" stroke="#555" stroke-width="0.9" />
+    <rect x="36.00" y="464.00" width="540" height="62" fill="#ffffff" fill-opacity="0.92" stroke="#cccccc" stroke-width="0.5"/>
+    <line x1="48.00" y1="480.00" x2="74.00" y2="480.00" stroke="#555" stroke-width="0.9"/>
     <text x="82.00" y="483.00">original synapse (kept)</text>
-    <line
-      x1="48.00"
-      y1="496.00"
-      x2="74.00"
-      y2="496.00"
-      stroke="#bdbdbd"
-      stroke-width="0.9"
-      stroke-dasharray="2 2"
-    />
+    <line x1="48.00" y1="496.00" x2="74.00" y2="496.00" stroke="#bdbdbd" stroke-width="0.9" stroke-dasharray="2 2"/>
     <text x="82.00" y="499.00">edge incident on pruned neuron (removed)</text>
-    <line
-      x1="48.00"
-      y1="512.00"
-      x2="74.00"
-      y2="512.00"
-      stroke="#e57373"
-      stroke-width="1.4"
-      marker-end="url(#bias-arrow)"
-    />
+    <line x1="48.00" y1="512.00" x2="74.00" y2="512.00" stroke="#e57373" stroke-width="1.4" marker-end="url(#bias-arrow)"/>
     <text x="82.00" y="515.00">bias-fold contribution to downstream neuron</text>
-    <circle cx="316.00" cy="480.00" r="5" fill="#7fb069" stroke="#222" stroke-width="0.6" />
+    <circle cx="316.00" cy="480.00" r="5" fill="#7fb069" stroke="#222" stroke-width="0.6"/>
     <text x="328.00" y="483.00">kept hidden neuron</text>
-    <circle
-      cx="316.00"
-      cy="496.00"
-      r="5"
-      fill="#e0e0e0"
-      stroke="#9e9e9e"
-      stroke-width="0.6"
-      stroke-dasharray="2 2"
-    />
+    <circle cx="316.00" cy="496.00" r="5" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="0.6" stroke-dasharray="2 2"/>
     <text x="328.00" y="499.00">pruned neuron (constant activation)</text>
-    <circle cx="316.00" cy="512.00" r="5" fill="#4d82a3" stroke="#222" stroke-width="0.6" />
+    <circle cx="316.00" cy="512.00" r="5" fill="#4d82a3" stroke="#222" stroke-width="0.6"/>
     <text x="328.00" y="515.00">input</text>
-    <circle cx="396.00" cy="512.00" r="5" fill="#d18b48" stroke="#222" stroke-width="0.6" />
+    <circle cx="396.00" cy="512.00" r="5" fill="#d18b48" stroke="#222" stroke-width="0.6"/>
     <text x="408.00" y="515.00">output</text>
   </g>
 </svg>
