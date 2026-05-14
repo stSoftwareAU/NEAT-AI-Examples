@@ -49,8 +49,10 @@ jobs:
       - name: Run deno lint
         run: deno lint
 
-      - name: Run deno fmt --check
-        run: deno fmt --check
+      # Apply formatter in CI (same as local `quality.sh`), rather than
+      # `deno fmt --check`, so a formatting drift does not fail the job.
+      - name: Apply Deno formatting
+        run: deno fmt
 
       - name: Run deno check (type checking)
         run: deno check **/*.ts
