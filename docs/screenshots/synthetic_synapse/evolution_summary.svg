@@ -23,12 +23,12 @@
     <rect
       class="topo-bar topo-bar-seed-neurons"
       x="47.06"
-      y="117.69"
+      y="90"
       width="46.13"
-      height="152.31"
+      height="180"
       fill="#9ecae1"
     />
-    <text x="70.13" y="113.69" text-anchor="middle" font-weight="bold">11</text>
+    <text x="70.13" y="86" text-anchor="middle" font-weight="bold">7</text>
     <text x="70.13" y="282" text-anchor="middle">seed</text>
     <rect
       class="topo-bar topo-bar-final-neurons"
@@ -38,7 +38,7 @@
       height="180"
       fill="#1f77b4"
     />
-    <text x="162.38" y="86" text-anchor="middle" font-weight="bold">13</text>
+    <text x="162.38" y="86" text-anchor="middle" font-weight="bold">7</text>
     <text x="162.38" y="282" text-anchor="middle">final</text>
     <text x="116.25" y="292" text-anchor="middle" font-weight="bold">neurons</text>
     <rect
@@ -49,17 +49,17 @@
       height="180"
       fill="#9ecae1"
     />
-    <text x="254.63" y="86" text-anchor="middle" font-weight="bold">43</text>
+    <text x="254.63" y="86" text-anchor="middle" font-weight="bold">11</text>
     <text x="254.63" y="282" text-anchor="middle">seed</text>
     <rect
       class="topo-bar topo-bar-final-synapses"
       x="323.81"
-      y="102.56"
+      y="90"
       width="46.13"
-      height="167.44"
+      height="180"
       fill="#1f77b4"
     />
-    <text x="346.88" y="98.56" text-anchor="middle" font-weight="bold">40</text>
+    <text x="346.88" y="86" text-anchor="middle" font-weight="bold">11</text>
     <text x="346.88" y="282" text-anchor="middle">final</text>
     <text x="300.75" y="292" text-anchor="middle" font-weight="bold">synapses</text>
   </g>
@@ -75,7 +75,7 @@
       dominant-baseline="middle"
       font-weight="bold"
       fill="#2ca02c"
-    >0.07</text>
+    >0.004</text>
     <text class="callout-label" x="421" y="158.5" dominant-baseline="middle">final score</text>
     <text
       class="callout-value"
@@ -85,7 +85,7 @@
       dominant-baseline="middle"
       font-weight="bold"
       fill="#2ca02c"
-    >0.93</text>
+    >0.996</text>
     <text class="callout-label" x="421" y="213.5" dominant-baseline="middle">generations</text>
     <text
       class="callout-value"
@@ -95,7 +95,7 @@
       dominant-baseline="middle"
       font-weight="bold"
       fill="#2ca02c"
-    >253</text>
+    >4</text>
     <text class="callout-label" x="421" y="268.5" dominant-baseline="middle">wall clock</text>
     <text
       class="callout-value"
@@ -105,7 +105,7 @@
       dominant-baseline="middle"
       font-weight="bold"
       fill="#2ca02c"
-    >5s</text>
+    >300ms</text>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#555">
     <text

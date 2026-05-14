@@ -24,9 +24,9 @@ Backend / CLI change with no web interface to screenshot. Verified by:
     seed=3/2 → final=5/8.
   - `./stock_market/run.sh` → 202 generations, fitness 0.7686, test balanced accuracy 55.20%.
   - `./evolution_showcase/run.sh` → 3003 generations, final error 0.1621, seed=5/4 → final=32/117.
-- `./quality.sh` passes for every changed example. The only failing item in the local quality run
-  is the pre-existing `docs/archive_test.ts::"No PR summary files remain in docs/ root"` check,
-  which is unrelated to this issue.
+- `./quality.sh` passes for every changed example. The only failing item in the local quality run is
+  the pre-existing `docs/archive_test.ts::"No PR summary files remain in docs/ root"` check, which
+  is unrelated to this issue.
 
 ### Data-flow change (gitGraph)
 
@@ -49,15 +49,21 @@ flowchart LR
 
 ## Test Plan
 
-- [x] Added/updated `evolveXorController returns a milestone EvolveDirSummary with finite numeric fields`
-- [x] Added/updated `evolveXorController milestone summary renders an SVG containing each numeric callout`
+- [x] Added/updated
+      `evolveXorController returns a milestone EvolveDirSummary with finite numeric fields`
+- [x] Added/updated
+      `evolveXorController milestone summary renders an SVG containing each numeric callout`
 - [x] Added/updated `renderEvolveDirSummarySvg rejects a summary with missing numeric fields` (XOR)
 - [x] Added/updated `evolveStockController returns a milestone EvolveDirSummary with finite fields`
-- [x] Added/updated `evolveStockController milestone summary renders an SVG containing each numeric callout`
+- [x] Added/updated
+      `evolveStockController milestone summary renders an SVG containing each numeric callout`
 - [x] Added/updated `evolveStockController throws when dataDir is missing`
-- [x] Added/updated `runMinimalSeedShowcase returns a milestone EvolveDirSummary built from evolveDir's return value`
-- [x] Added/updated `runMinimalSeedShowcase milestone summary renders an SVG containing each numeric callout`
-- [x] Added/updated `renderEvolveDirSummarySvg rejects a summary with missing numeric fields` (evolution_showcase)
+- [x] Added/updated
+      `runMinimalSeedShowcase returns a milestone EvolveDirSummary built from evolveDir's return value`
+- [x] Added/updated
+      `runMinimalSeedShowcase milestone summary renders an SVG containing each numeric callout`
+- [x] Added/updated `renderEvolveDirSummarySvg rejects a summary with missing numeric fields`
+      (evolution_showcase)
 - [x] Removed tests that asserted on per-generation CSV rows, the deprecated snapshot-strip panel
       count, and the deprecated fitness / topology SVG renderers.
 - [x] `deno fmt`, `deno lint`, and `deno check **/*.ts` all clean for the three changed packages.
@@ -68,10 +74,12 @@ flowchart LR
   preserved. `buildRandomSeedCreature` in `xor_classification` and `stock_market` continues to seed
   the library's PRNG and defer to `new Creature(...)`; `evolution_showcase` continues to pass
   `new Creature(INPUT_COUNT, OUTPUT_COUNT)` straight into `runMinimalSeedShowcase`.
-- Deprecated artefact files under `docs/screenshots/{xor_classification,stock_market,evolution_showcase}/`
-  (`evolution.csv`, `evolution.svg`, `fitness.svg`, `topology.svg`) and the top-level strip SVGs
-  (`xor_classification_evolution.svg`, `stock_market_evolution.svg`, `evolution_showcase_evolution.svg`)
-  are deleted; the regenerated `evolution_summary.svg` for each example is committed.
+- Deprecated artefact files under
+  `docs/screenshots/{xor_classification,stock_market,evolution_showcase}/` (`evolution.csv`,
+  `evolution.svg`, `fitness.svg`, `topology.svg`) and the top-level strip SVGs
+  (`xor_classification_evolution.svg`, `stock_market_evolution.svg`,
+  `evolution_showcase_evolution.svg`) are deleted; the regenerated `evolution_summary.svg` for each
+  example is committed.
 - Shared helpers (`common/evolution_chart.ts`, `common/fitness_chart.ts`,
   `common/evolution_snapshot.ts`, `common/evolution_progress_svg.ts`) are still in use by other
   examples and are intentionally left untouched.
