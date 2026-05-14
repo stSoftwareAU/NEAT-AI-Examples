@@ -95,7 +95,7 @@
       dominant-baseline="middle"
       font-weight="bold"
       fill="#2ca02c"
-    >271</text>
+    >89</text>
     <text class="callout-label" x="421" y="268.5" dominant-baseline="middle">wall clock</text>
     <text
       class="callout-value"
@@ -105,7 +105,7 @@
       dominant-baseline="middle"
       font-weight="bold"
       fill="#2ca02c"
-    >3s</text>
+    >1s</text>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#555">
     <text
