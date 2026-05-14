@@ -29,10 +29,3 @@ deno run \
   --allow-ffi \
   crispr_injection/crispr_injection.ts \
   "$@"
-
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/crispr_injection.svg" ]]; then
-  deno fmt docs/screenshots/crispr_injection.svg > /dev/null
-fi

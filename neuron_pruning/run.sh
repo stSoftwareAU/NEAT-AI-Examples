@@ -30,16 +30,3 @@ deno run \
   --allow-run \
   neuron_pruning/neuron_pruning.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/neuron_pruning.svg" ]]; then
-  deno fmt docs/screenshots/neuron_pruning.svg > /dev/null
-fi
-if [[ -f ".neuron-pruning/output/neuron_pruning.svg" ]]; then
-  deno fmt .neuron-pruning/output/neuron_pruning.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/neuron_pruning/evolution_summary.svg" ]]; then
-  deno fmt docs/screenshots/neuron_pruning/evolution_summary.svg > /dev/null
-fi

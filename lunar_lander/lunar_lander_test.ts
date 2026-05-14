@@ -967,6 +967,69 @@ Deno.test("appendFinalMilestone clamps the synthetic milestone's error into [0, 
   assertEquals(low[low.length - 1].bestScore, 0);
 });
 
+Deno.test("appendFinalMilestone attributes leftover wallclock to the synthetic milestone (#353)", () => {
+  // Issue #353: the chart caption sums `generationWallClockMs` across
+  // every milestone to display "X ms total". Without crediting the gap
+  // between the last canonical milestone and the run's terminal
+  // generation to the synthetic final milestone, a 5-minute run reads
+  // as a sub-second total in the chart.
+  const milestones = [
+    {
+      generation: 1,
+      bestScore: -0.4,
+      bestNeurons: 10,
+      bestSynapses: 21,
+      meanEpisodeSteps: 100,
+      generationWallClockMs: 50,
+    },
+    {
+      generation: 1000,
+      bestScore: -0.13,
+      bestNeurons: 33,
+      bestSynapses: 51,
+      meanEpisodeSteps: 127,
+      generationWallClockMs: 100,
+    },
+  ];
+  const champion = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  // Total run wallclock: 300_000 ms (5 minutes). Already attributed via
+  // milestone wallclocks: 150 ms. Leftover the synthetic should carry:
+  // 299_850 ms.
+  const augmented = appendFinalMilestone(
+    milestones,
+    1487,
+    0.08,
+    champion,
+    300_000,
+  );
+  const tail = augmented[augmented.length - 1];
+  assertEquals(tail.generation, 1487);
+  assertEquals(tail.generationWallClockMs, 299_850);
+  // Sum of all milestone wallclocks should now equal the supplied total.
+  const summed = augmented.reduce((acc, m) => acc + m.generationWallClockMs, 0);
+  assertEquals(summed, 300_000);
+});
+
+Deno.test("appendFinalMilestone clamps wallclock attribution to >= 0 (#353)", () => {
+  // Defensive: if accumulated milestone wallclocks somehow exceed the
+  // supplied total (clock skew, pre-recorded fixtures), the synthetic
+  // milestone must not contribute a negative duration.
+  const milestones = [
+    {
+      generation: 1000,
+      bestScore: -0.13,
+      bestNeurons: 33,
+      bestSynapses: 51,
+      meanEpisodeSteps: 127,
+      generationWallClockMs: 5_000,
+    },
+  ];
+  const champion = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const augmented = appendFinalMilestone(milestones, 1487, 0.08, champion, 1_000);
+  const tail = augmented[augmented.length - 1];
+  assertEquals(tail.generationWallClockMs, 0);
+});
+
 Deno.test("milestoneToMultiRunSample maps cumulative reward to normalised error", () => {
   // The lunar-lander adapter emits graded terminal reward in `[-1, 0]`,
   // so `error = -bestScore` is an upper bound on `1 - landedRate`.
@@ -1664,6 +1727,70 @@ Deno.test("quick-mode overrides force an unreachable target and a tight iteratio
   assertGreaterOrEqual(QUICK_TIMEOUT_MINUTES, 1);
   assertGreater(QUICK_ITERATIONS, 0);
   assertGreaterOrEqual(10, QUICK_ITERATIONS);
+});
+
+// Issue #353: PR #352 added `appendFinalMilestone` so the multi-run chart
+// stops at the run's true final generation rather than the previous
+// canonical schedule point (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000,
+// then powers of ten). The persisted artefact `docs/data/lunar_lander/
+// milestones.json` must therefore reflect a non-canonical terminal
+// generation (i.e. the synthetic final milestone has been appended).
+//
+// The user-reported bug was a chart whose caption read "1000 cumulative
+// generations" — the exact value the canonical schedule emits — even
+// after a multi-minute run. The probability of a real timeout-driven
+// run terminating exactly at 1000 generations is ~1 in 100, so a
+// persisted final cumulativeGen of 1000 is overwhelmingly diagnostic of
+// a stale artefact: the appendFinalMilestone fix has not been applied.
+//
+// Fail the build when that happens. Closes #353.
+Deno.test("persisted multi-run milestones.json reflects the true final generation (#353)", async () => {
+  const path = "docs/data/lunar_lander/milestones.json";
+  if (!existsSync(path)) {
+    // Test is a no-op when the artefact has not yet been generated
+    // (e.g. a fresh checkout that has never invoked the runner). The
+    // canonical artefact ships with the repository, so the file is
+    // present on every CI checkout.
+    return;
+  }
+  const text = await Deno.readTextFile(path);
+  const milestones = JSON.parse(text) as Array<{
+    cumulativeGen: number;
+    runGen: number;
+    runIndex: number;
+  }>;
+  assertGreater(
+    milestones.length,
+    0,
+    `expected at least one persisted milestone in ${path}`,
+  );
+  const last = milestones[milestones.length - 1];
+  // The user-reported failure mode: the chart caption reads "1000
+  // cumulative generations" because the synthetic final milestone was
+  // never appended. A real run of any non-trivial length lands at a
+  // non-canonical terminal generation in roughly 99% of cases, so a
+  // persisted value of exactly 1000 is the tell-tale sign of staleness.
+  assert(
+    last.cumulativeGen !== 1000,
+    `persisted milestones.json final cumulativeGen is 1000 — the chart still ` +
+      `claims "1000 cumulative generations" because the appendFinalMilestone ` +
+      `fix from PR #352 has not been applied to the persisted artefact. ` +
+      `Re-run lunar_lander/run.sh to regenerate ${path}.`,
+  );
+  // Also reject any other canonical schedule point at the head of the
+  // distribution — these are exactly the values evolveRL emits, so a
+  // terminal cumulativeGen sitting on one of them is diagnostic of the
+  // same staleness pattern. Powers of ten beyond 1000 (10000, 100000)
+  // are excluded because a long run could legitimately fire its
+  // milestone at that exact value while still terminating immediately
+  // afterwards.
+  const canonicalScheduleHead = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+  assert(
+    !canonicalScheduleHead.includes(last.cumulativeGen),
+    `persisted milestones.json final cumulativeGen is ${last.cumulativeGen}, ` +
+      `which is exactly a canonical evolveRL schedule point — the ` +
+      `appendFinalMilestone fix from PR #352 has not been applied.`,
+  );
 });
 
 Deno.test({

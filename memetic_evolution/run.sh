@@ -28,10 +28,3 @@ deno run \
   --allow-ffi \
   memetic_evolution/memetic_evolution.ts \
   "$@"
-
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/memetic_evolution.svg" ]]; then
-  deno fmt docs/screenshots/memetic_evolution.svg > /dev/null
-fi

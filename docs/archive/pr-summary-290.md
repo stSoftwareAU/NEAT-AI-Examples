@@ -37,8 +37,8 @@ flowchart LR
 - New / migrated tests:
   - `evolveMountainCarController gen-1 milestone sits well below the threshold` — replaces the old
     per-generation noise test; reads from `result.milestones[0]`.
-  - `evolveMountainCarController collects milestone samples and the chart SVG round-trips` —
-    renders `renderMilestoneChartSVG` over the run output and asserts every series is present.
+  - `evolveMountainCarController collects milestone samples and the chart SVG round-trips` — renders
+    `renderMilestoneChartSVG` over the run output and asserts every series is present.
   - `MILESTONE_SVG_PATH points at the documented milestone chart`.
 - Adapter-level tests (`observationLength`, `maxSteps`, deterministic `reset`, terminal-step reward
   shaping, `decodeAction`, `assertContract` compliance) kept green.

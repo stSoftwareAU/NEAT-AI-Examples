@@ -37,10 +37,3 @@ deno run \
   --allow-ffi \
   evolution_showcase/evolution_showcase.ts \
   "$@"
-
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/evolution_showcase/evolution_summary.svg" ]]; then
-  deno fmt docs/screenshots/evolution_showcase/evolution_summary.svg > /dev/null
-fi

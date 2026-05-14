@@ -21,12 +21,14 @@
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1" />
     <text x="70" y="358" text-anchor="middle">1</text>
-    <line x1="290" y1="340" x2="290" y2="344" stroke="#333333" stroke-width="1" />
-    <text x="290" y="358" text-anchor="middle">10</text>
-    <line x1="510" y1="340" x2="510" y2="344" stroke="#333333" stroke-width="1" />
-    <text x="510" y="358" text-anchor="middle">100</text>
+    <line x1="257.79" y1="340" x2="257.79" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="257.79" y="358" text-anchor="middle">10</text>
+    <line x1="445.58" y1="340" x2="445.58" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="445.58" y="358" text-anchor="middle">100</text>
+    <line x1="633.37" y1="340" x2="633.37" y2="344" stroke="#333333" stroke-width="1" />
+    <text x="633.37" y="358" text-anchor="middle">1000</text>
     <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1" />
-    <text x="730" y="358" text-anchor="middle">1000</text>
+    <text x="730" y="358" text-anchor="middle">3270</text>
     <text
       x="400"
       y="376"
@@ -37,16 +39,16 @@
   <g class="left-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="66" y1="340" x2="70" y2="340" stroke="#333333" stroke-width="1" />
     <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0</text>
-    <line x1="66" y1="278.48" x2="70" y2="278.48" stroke="#333333" stroke-width="1" />
-    <text x="62" y="278.48" text-anchor="end" dominant-baseline="middle">7</text>
-    <line x1="66" y1="216.97" x2="70" y2="216.97" stroke="#333333" stroke-width="1" />
-    <text x="62" y="216.97" text-anchor="end" dominant-baseline="middle">14</text>
-    <line x1="66" y1="155.45" x2="70" y2="155.45" stroke="#333333" stroke-width="1" />
-    <text x="62" y="155.45" text-anchor="end" dominant-baseline="middle">21</text>
-    <line x1="66" y1="93.94" x2="70" y2="93.94" stroke="#333333" stroke-width="1" />
-    <text x="62" y="93.94" text-anchor="end" dominant-baseline="middle">28</text>
+    <line x1="66" y1="282" x2="70" y2="282" stroke="#333333" stroke-width="1" />
+    <text x="62" y="282" text-anchor="end" dominant-baseline="middle">9</text>
+    <line x1="66" y1="224" x2="70" y2="224" stroke="#333333" stroke-width="1" />
+    <text x="62" y="224" text-anchor="end" dominant-baseline="middle">18</text>
+    <line x1="66" y1="166" x2="70" y2="166" stroke="#333333" stroke-width="1" />
+    <text x="62" y="166" text-anchor="end" dominant-baseline="middle">27</text>
+    <line x1="66" y1="108" x2="70" y2="108" stroke="#333333" stroke-width="1" />
+    <text x="62" y="108" text-anchor="end" dominant-baseline="middle">36</text>
     <line x1="66" y1="50" x2="70" y2="50" stroke="#333333" stroke-width="1" />
-    <text x="62" y="50" text-anchor="end" dominant-baseline="middle">33</text>
+    <text x="62" y="50" text-anchor="end" dominant-baseline="middle">45</text>
     <text
       x="22"
       y="195"
@@ -59,18 +61,16 @@
   <g class="right-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="730" y1="340" x2="734" y2="340" stroke="#333333" stroke-width="1" />
     <text x="738" y="340" text-anchor="start" dominant-baseline="middle">0</text>
-    <line x1="730" y1="283.14" x2="734" y2="283.14" stroke="#333333" stroke-width="1" />
-    <text x="738" y="283.14" text-anchor="start" dominant-baseline="middle">10</text>
-    <line x1="730" y1="226.27" x2="734" y2="226.27" stroke="#333333" stroke-width="1" />
-    <text x="738" y="226.27" text-anchor="start" dominant-baseline="middle">20</text>
-    <line x1="730" y1="169.41" x2="734" y2="169.41" stroke="#333333" stroke-width="1" />
-    <text x="738" y="169.41" text-anchor="start" dominant-baseline="middle">30</text>
-    <line x1="730" y1="112.55" x2="734" y2="112.55" stroke="#333333" stroke-width="1" />
-    <text x="738" y="112.55" text-anchor="start" dominant-baseline="middle">40</text>
-    <line x1="730" y1="55.69" x2="734" y2="55.69" stroke="#333333" stroke-width="1" />
-    <text x="738" y="55.69" text-anchor="start" dominant-baseline="middle">50</text>
+    <line x1="730" y1="282" x2="734" y2="282" stroke="#333333" stroke-width="1" />
+    <text x="738" y="282" text-anchor="start" dominant-baseline="middle">18</text>
+    <line x1="730" y1="224" x2="734" y2="224" stroke="#333333" stroke-width="1" />
+    <text x="738" y="224" text-anchor="start" dominant-baseline="middle">36</text>
+    <line x1="730" y1="166" x2="734" y2="166" stroke="#333333" stroke-width="1" />
+    <text x="738" y="166" text-anchor="start" dominant-baseline="middle">54</text>
+    <line x1="730" y1="108" x2="734" y2="108" stroke="#333333" stroke-width="1" />
+    <text x="738" y="108" text-anchor="start" dominant-baseline="middle">72</text>
     <line x1="730" y1="50" x2="734" y2="50" stroke="#333333" stroke-width="1" />
-    <text x="738" y="50" text-anchor="start" dominant-baseline="middle">51</text>
+    <text x="738" y="50" text-anchor="start" dominant-baseline="middle">90</text>
     <text
       x="778"
       y="195"
@@ -86,17 +86,18 @@
       fill="none"
       stroke="#2ca02c"
       stroke-width="1.5"
-      points="70,252.12 136.23,252.12 223.77,252.12 290,252.12 356.23,252.12 443.77,252.12 510,252.12 576.23,252.12 663.77,208.18 730,50"
+      points="70,275.56 126.53,275.56 201.26,275.56 257.79,275.56 314.32,269.11 389.05,262.67 445.58,262.67 502.11,217.56 576.84,185.33 633.37,166 730,50"
     />
-    <circle class="neurons-point" cx="70" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="136.23" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="223.77" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="290" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="356.23" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="443.77" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="510" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="576.23" cy="252.12" r="2.4" fill="#2ca02c" />
-    <circle class="neurons-point" cx="663.77" cy="208.18" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="70" cy="275.56" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="126.53" cy="275.56" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="201.26" cy="275.56" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="257.79" cy="275.56" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="314.32" cy="269.11" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="389.05" cy="262.67" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="445.58" cy="262.67" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="502.11" cy="217.56" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="576.84" cy="185.33" r="2.4" fill="#2ca02c" />
+    <circle class="neurons-point" cx="633.37" cy="166" r="2.4" fill="#2ca02c" />
     <circle class="neurons-point" cx="730" cy="50" r="2.4" fill="#2ca02c" />
   </g>
   <g class="synapses-line">
@@ -104,17 +105,18 @@
       fill="none"
       stroke="#d62728"
       stroke-width="1.5"
-      points="70,220.59 136.23,220.59 223.77,220.59 290,220.59 356.23,220.59 443.77,226.27 510,226.27 576.23,226.27 663.77,243.33 730,50"
+      points="70,272.33 126.53,272.33 201.26,272.33 257.79,272.33 314.32,262.67 389.05,256.22 445.58,259.44 502.11,211.11 576.84,172.44 633.37,140.22 730,50"
     />
-    <circle class="synapses-point" cx="70" cy="220.59" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="136.23" cy="220.59" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="223.77" cy="220.59" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="290" cy="220.59" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="356.23" cy="220.59" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="443.77" cy="226.27" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="510" cy="226.27" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="576.23" cy="226.27" r="2.4" fill="#d62728" />
-    <circle class="synapses-point" cx="663.77" cy="243.33" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="70" cy="272.33" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="126.53" cy="272.33" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="201.26" cy="272.33" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="257.79" cy="272.33" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="314.32" cy="262.67" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="389.05" cy="256.22" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="445.58" cy="259.44" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="502.11" cy="211.11" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="576.84" cy="172.44" r="2.4" fill="#d62728" />
+    <circle class="synapses-point" cx="633.37" cy="140.22" r="2.4" fill="#d62728" />
     <circle class="synapses-point" cx="730" cy="50" r="2.4" fill="#d62728" />
   </g>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
@@ -138,6 +140,6 @@
       x="400"
       y="394"
       text-anchor="middle"
-    >final 33 neurons · 51 synapses · 1 runs · 1000 cumulative generations</text>
+    >final 45 neurons · 90 synapses · 1 runs · 3270 cumulative generations</text>
   </g>
 </svg>

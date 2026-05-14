@@ -849,6 +849,7 @@ export function appendFinalMilestone(
   finalGeneration: number,
   finalError: number,
   champion: Creature,
+  totalWallClockMs?: number,
 ): MilestoneSample[] {
   const out = milestones.slice();
   if (out.length === 0) return out;
@@ -857,6 +858,20 @@ export function appendFinalMilestone(
     return out;
   }
   const clampedError = clamp01(Math.max(0, finalError));
+  // Issue #353: attribute the remaining wall-clock (total run wallclock
+  // minus the sum of every prior milestone's `generationWallClockMs`)
+  // to the synthetic final milestone. The multi-run chart caption sums
+  // these values to display a "total ms" figure — without this fix the
+  // sum only covers the handful of generations evolveRL emits at the
+  // canonical schedule (typically ~10 milestones), so a 5-minute run
+  // displayed "597 ms total · 248141 gen/min" instead of the real
+  // ~300_000 ms / ~500 gen/min. Attributing the gap here keeps the
+  // chart's reported totals faithful to the actual run cost.
+  let synthWallClockMs = 0;
+  if (totalWallClockMs !== undefined && Number.isFinite(totalWallClockMs)) {
+    const accountedMs = out.reduce((acc, m) => acc + m.generationWallClockMs, 0);
+    synthWallClockMs = Math.max(0, Math.floor(totalWallClockMs - accountedMs));
+  }
   out.push({
     generation: Math.floor(finalGeneration),
     bestScore: -clampedError,
@@ -867,9 +882,7 @@ export function appendFinalMilestone(
     // milestone's value forward so the rendered chart keeps a
     // monotonically reasonable curve without inventing a fresh number.
     meanEpisodeSteps: last.meanEpisodeSteps,
-    // No per-generation wall-clock cost is available at termination,
-    // so attribute zero ms to the synthetic milestone.
-    generationWallClockMs: 0,
+    generationWallClockMs: synthWallClockMs,
   });
   return out;
 }
@@ -951,6 +964,7 @@ export async function evolveLanderController(
     result.generation,
     result.error,
     seedCreature,
+    wallclockMs,
   );
 
   // Replay the champion against the same perturbed trial batch the

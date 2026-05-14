@@ -29,16 +29,3 @@ deno run \
   --allow-net \
   maze_navigation/maze_navigation.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderers emit compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/maze_navigation.svg" ]]; then
-  deno fmt docs/screenshots/maze_navigation.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/maze_navigation/milestones.svg" ]]; then
-  deno fmt docs/screenshots/maze_navigation/milestones.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/maze_navigation/complexity.svg" ]]; then
-  deno fmt docs/screenshots/maze_navigation/complexity.svg > /dev/null
-fi

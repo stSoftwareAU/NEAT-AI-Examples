@@ -36,15 +36,3 @@ deno run \
   --allow-ffi \
   discovery_at_scale/discovery_at_scale.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean.
-if [[ -f "docs/screenshots/discovery_at_scale.svg" ]]; then
-  deno fmt docs/screenshots/discovery_at_scale.svg > /dev/null
-fi
-if [[ -f ".discovery-at-scale/output/discovery_at_scale.svg" ]]; then
-  deno fmt .discovery-at-scale/output/discovery_at_scale.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/discovery_at_scale/evolution_summary.svg" ]]; then
-  deno fmt docs/screenshots/discovery_at_scale/evolution_summary.svg > /dev/null
-fi
