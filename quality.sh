@@ -220,8 +220,14 @@ run_example_with_env "Maze Navigation Example" "./maze_navigation/run.sh" "MAZE_
 # 5-minute / target-error=0.05 defaults.
 run_example_with_env "XOR Classification Example" "./xor_classification/run.sh" "XOR_QUICK=1"
 
-# Run the Stock Market Direction Prediction example
-run_example "Stock Market Direction Prediction Example" "./stock_market/run.sh"
+# Run the Stock Market Direction Prediction example. The CI/quality
+# budget caps the section via `STOCK_QUICK=1` (issue #328): the runner
+# forces a low iterations cap, writes its artefacts under a temp
+# directory, and never overwrites the canonical docs
+# creature/milestones/charts. A direct `./stock_market/run.sh`
+# invocation still uses the realistic 5-minute / target-error=0.01
+# defaults.
+run_example_with_env "Stock Market Direction Prediction Example" "./stock_market/run.sh" "STOCK_QUICK=1"
 
 # Run the MNIST Handwritten-Digit Classification example. The
 # CI/quality budget caps the section via `MNIST_QUICK=1` (issue #327):

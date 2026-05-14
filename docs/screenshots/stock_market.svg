@@ -82,15 +82,15 @@
     <title>2003-03-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="62.29"
-    y="286.86"
+    y="308.86"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2003-04-01: Up — correct</title>▲
+    <title>2003-04-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -214,15 +214,15 @@
     <title>2004-03-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="89.74"
-    y="299.44"
+    y="277.44"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2004-04-01: Down — wrong</title>▼
+    <title>2004-04-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_miss"
@@ -291,15 +291,15 @@
     <title>2004-10-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="105.76"
-    y="276.06"
+    y="298.06"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2004-11-01: Up — correct</title>▲
+    <title>2004-11-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -313,15 +313,15 @@
     <title>2004-12-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="110.33"
-    y="275.58"
+    y="297.58"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2005-01-01: Up — wrong</title>▲
+    <title>2005-01-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -346,15 +346,15 @@
     <title>2005-03-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="117.19"
-    y="276.23"
+    y="298.23"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2005-04-01: Up — wrong</title>▲
+    <title>2005-04-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -368,15 +368,15 @@
     <title>2005-05-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="121.77"
-    y="274.77"
+    y="296.77"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2005-06-01: Up — correct</title>▲
+    <title>2005-06-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -390,37 +390,37 @@
     <title>2005-07-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="126.35"
-    y="273.92"
+    y="295.92"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2005-08-01: Up — correct</title>▲
+    <title>2005-08-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="128.63"
-    y="273.85"
+    y="295.85"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2005-09-01: Up — correct</title>▲
+    <title>2005-09-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="130.92"
-    y="275.17"
+    y="297.17"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2005-10-01: Up — wrong</title>▲
+    <title>2005-10-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -445,59 +445,59 @@
     <title>2005-12-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="137.78"
-    y="271.81"
+    y="293.81"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2006-01-01: Up — correct</title>▲
+    <title>2006-01-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="140.07"
-    y="271.89"
+    y="293.89"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2006-02-01: Up — wrong</title>▲
+    <title>2006-02-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="142.36"
-    y="271.23"
+    y="293.23"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2006-03-01: Up — correct</title>▲
+    <title>2006-03-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="144.65"
-    y="270.90"
+    y="292.90"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2006-04-01: Up — correct</title>▲
+    <title>2006-04-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="146.94"
-    y="271.37"
+    y="293.37"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2006-05-01: Up — wrong</title>▲
+    <title>2006-05-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_hit"
@@ -522,15 +522,15 @@
     <title>2006-07-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="153.80"
-    y="271.48"
+    y="293.48"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2006-08-01: Up — correct</title>▲
+    <title>2006-08-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -566,15 +566,15 @@
     <title>2006-11-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="162.95"
-    y="266.48"
+    y="288.48"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2006-12-01: Up — correct</title>▲
+    <title>2006-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -588,15 +588,15 @@
     <title>2007-01-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="167.53"
-    y="265.38"
+    y="287.38"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2007-02-01: Up — correct</title>▲
+    <title>2007-02-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_miss"
@@ -643,15 +643,15 @@
     <title>2007-06-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="178.96"
-    y="262.44"
+    y="284.44"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2007-07-01: Up — correct</title>▲
+    <title>2007-07-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_miss"
@@ -808,15 +808,15 @@
     <title>2008-09-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="213.28"
-    y="305.81"
+    y="283.81"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2008-10-01: Down — correct</title>▼
+    <title>2008-10-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph down_hit"
@@ -830,15 +830,15 @@
     <title>2008-11-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="217.86"
-    y="309.34"
+    y="287.34"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2008-12-01: Down — correct</title>▼
+    <title>2008-12-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph up_miss"
@@ -852,15 +852,15 @@
     <title>2009-01-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="222.43"
-    y="312.14"
+    y="290.14"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2009-02-01: Down — correct</title>▼
+    <title>2009-02-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph down_hit"
@@ -907,15 +907,15 @@
     <title>2009-06-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="233.87"
-    y="307.08"
+    y="285.08"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2009-07-01: Down — wrong</title>▼
+    <title>2009-07-01: Up — correct</title>▲
   </text>
   <text
     class="glyph down_miss"
@@ -951,26 +951,26 @@
     <title>2009-10-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="243.02"
-    y="279.19"
+    y="301.19"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2009-11-01: Up — correct</title>▲
+    <title>2009-11-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="245.31"
-    y="278.33"
+    y="300.33"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2009-12-01: Up — correct</title>▲
+    <title>2009-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -984,15 +984,15 @@
     <title>2010-01-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="249.88"
-    y="279.15"
+    y="301.15"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2010-02-01: Up — wrong</title>▲
+    <title>2010-02-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -1039,15 +1039,15 @@
     <title>2010-06-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="261.32"
-    y="301.51"
+    y="279.51"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2010-07-01: Down — correct</title>▼
+    <title>2010-07-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -1061,15 +1061,15 @@
     <title>2010-08-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="265.90"
-    y="277.87"
+    y="299.87"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2010-09-01: Up — correct</title>▲
+    <title>2010-09-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1094,15 +1094,15 @@
     <title>2010-11-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="272.76"
-    y="273.25"
+    y="295.25"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2010-12-01: Up — correct</title>▲
+    <title>2010-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1138,15 +1138,15 @@
     <title>2011-03-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="281.91"
-    y="291.77"
+    y="269.77"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2011-04-01: Down — wrong</title>▼
+    <title>2011-04-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -1160,26 +1160,26 @@
     <title>2011-05-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="286.49"
-    y="271.48"
+    y="293.48"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2011-06-01: Up — wrong</title>▲
+    <title>2011-06-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="288.78"
-    y="292.01"
+    y="270.01"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2011-07-01: Down — wrong</title>▼
+    <title>2011-07-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_miss"
@@ -1226,15 +1226,15 @@
     <title>2011-11-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="300.22"
-    y="273.18"
+    y="295.18"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2011-12-01: Up — correct</title>▲
+    <title>2011-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -1248,15 +1248,15 @@
     <title>2012-01-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="304.79"
-    y="268.95"
+    y="290.95"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2012-02-01: Up — correct</title>▲
+    <title>2012-02-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1270,15 +1270,15 @@
     <title>2012-03-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="309.37"
-    y="289.64"
+    y="267.64"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2012-04-01: Down — correct</title>▼
+    <title>2012-04-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph up_miss"
@@ -1292,26 +1292,26 @@
     <title>2012-05-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="313.94"
-    y="292.08"
+    y="270.08"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2012-06-01: Down — correct</title>▼
+    <title>2012-06-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="316.23"
-    y="268.67"
+    y="290.67"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2012-07-01: Up — correct</title>▲
+    <title>2012-07-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1435,15 +1435,15 @@
     <title>2013-06-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="343.68"
-    y="278.71"
+    y="256.71"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2013-07-01: Down — wrong</title>▼
+    <title>2013-07-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -1457,26 +1457,26 @@
     <title>2013-08-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="348.26"
-    y="256.00"
+    y="278.00"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2013-09-01: Up — correct</title>▲
+    <title>2013-09-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="350.55"
-    y="254.73"
+    y="276.73"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2013-10-01: Up — correct</title>▲
+    <title>2013-10-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1512,15 +1512,15 @@
     <title>2014-01-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="359.70"
-    y="250.97"
+    y="272.97"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2014-02-01: Up — wrong</title>▲
+    <title>2014-02-01: Down — correct</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1556,15 +1556,15 @@
     <title>2014-05-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="368.85"
-    y="245.94"
+    y="267.94"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2014-06-01: Up — correct</title>▲
+    <title>2014-06-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1578,15 +1578,15 @@
     <title>2014-07-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="373.42"
-    y="245.38"
+    y="267.38"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2014-08-01: Up — wrong</title>▲
+    <title>2014-08-01: Down — correct</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1633,15 +1633,15 @@
     <title>2014-12-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="384.86"
-    y="242.80"
+    y="264.80"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2015-01-01: Up — wrong</title>▲
+    <title>2015-01-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -1666,37 +1666,37 @@
     <title>2015-03-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="391.73"
-    y="240.22"
+    y="262.22"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2015-04-01: Up — correct</title>▲
+    <title>2015-04-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="394.01"
-    y="239.56"
+    y="261.56"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2015-05-01: Up — correct</title>▲
+    <title>2015-05-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="396.30"
-    y="240.05"
+    y="262.05"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2015-06-01: Up — wrong</title>▲
+    <title>2015-06-01: Down — correct</title>▼
   </text>
   <text
     class="glyph up_miss"
@@ -1710,26 +1710,26 @@
     <title>2015-07-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="400.88"
-    y="264.35"
+    y="242.35"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2015-08-01: Down — correct</title>▼
+    <title>2015-08-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="403.17"
-    y="268.04"
+    y="246.04"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2015-09-01: Down — correct</title>▼
+    <title>2015-09-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph down_miss"
@@ -1787,15 +1787,15 @@
     <title>2016-02-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="416.89"
-    y="243.04"
+    y="265.04"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2016-03-01: Up — correct</title>▲
+    <title>2016-03-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1853,15 +1853,15 @@
     <title>2016-08-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="430.62"
-    y="237.78"
+    y="259.78"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2016-09-01: Up — wrong</title>▲
+    <title>2016-09-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_hit"
@@ -1886,15 +1886,15 @@
     <title>2016-11-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="437.48"
-    y="234.34"
+    y="256.34"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2016-12-01: Up — correct</title>▲
+    <title>2016-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1908,15 +1908,15 @@
     <title>2017-01-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="442.06"
-    y="231.12"
+    y="253.12"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2017-02-01: Up — correct</title>▲
+    <title>2017-02-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1930,26 +1930,26 @@
     <title>2017-03-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="446.63"
-    y="229.98"
+    y="251.98"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2017-04-01: Up — wrong</title>▲
+    <title>2017-04-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="448.92"
-    y="228.58"
+    y="250.58"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2017-05-01: Up — correct</title>▲
+    <title>2017-05-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -1974,26 +1974,26 @@
     <title>2017-07-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="455.78"
-    y="226.23"
+    y="248.23"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2017-08-01: Up — correct</title>▲
+    <title>2017-08-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="458.07"
-    y="224.81"
+    y="246.81"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2017-09-01: Up — correct</title>▲
+    <title>2017-09-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2018,15 +2018,15 @@
     <title>2017-11-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="464.94"
-    y="218.17"
+    y="240.17"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2017-12-01: Up — correct</title>▲
+    <title>2017-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2084,37 +2084,37 @@
     <title>2018-05-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="478.66"
-    y="214.69"
+    y="236.69"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2018-06-01: Up — correct</title>▲
+    <title>2018-06-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="480.95"
-    y="213.17"
+    y="235.17"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2018-07-01: Up — correct</title>▲
+    <title>2018-07-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="483.24"
-    y="210.68"
+    y="232.68"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2018-08-01: Up — correct</title>▲
+    <title>2018-08-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2128,26 +2128,26 @@
     <title>2018-09-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
-    x="487.81"
-    y="213.48"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="11"
-    fill="#e67e22"
-  >
-    <title>2018-10-01: Up — wrong</title>▲
-  </text>
-  <text
     class="glyph down_hit"
-    x="490.10"
-    y="237.89"
+    x="487.81"
+    y="235.48"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
     fill="#3498db"
   >
-    <title>2018-11-01: Down — correct</title>▼
+    <title>2018-10-01: Down — correct</title>▼
+  </text>
+  <text
+    class="glyph up_miss"
+    x="490.10"
+    y="215.89"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#e67e22"
+  >
+    <title>2018-11-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph down_hit"
@@ -2172,15 +2172,15 @@
     <title>2019-01-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="496.96"
-    y="214.67"
+    y="236.67"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2019-02-01: Up — correct</title>▲
+    <title>2019-02-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2194,15 +2194,15 @@
     <title>2019-03-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="501.54"
-    y="208.90"
+    y="230.90"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2019-04-01: Up — correct</title>▲
+    <title>2019-04-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_miss"
@@ -2271,15 +2271,15 @@
     <title>2019-10-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="517.55"
-    y="201.12"
+    y="223.12"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2019-11-01: Up — correct</title>▲
+    <title>2019-11-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2315,15 +2315,15 @@
     <title>2020-02-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="526.71"
-    y="218.63"
+    y="240.63"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2020-03-01: Up — wrong</title>▲
+    <title>2020-03-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -2370,15 +2370,15 @@
     <title>2020-07-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="538.14"
-    y="212.02"
+    y="190.02"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2020-08-01: Down — wrong</title>▼
+    <title>2020-08-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_miss"
@@ -2392,26 +2392,26 @@
     <title>2020-09-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
-    x="542.72"
-    y="188.97"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="11"
-    fill="#2ecc71"
-  >
-    <title>2020-10-01: Up — correct</title>▲
-  </text>
-  <text
     class="glyph down_miss"
-    x="545.01"
-    y="205.93"
+    x="542.72"
+    y="210.97"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
     fill="#e74c3c"
   >
-    <title>2020-11-01: Down — wrong</title>▼
+    <title>2020-10-01: Down — wrong</title>▼
+  </text>
+  <text
+    class="glyph up_hit"
+    x="545.01"
+    y="183.93"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#2ecc71"
+  >
+    <title>2020-11-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -2480,15 +2480,15 @@
     <title>2021-05-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="561.02"
-    y="157.24"
+    y="179.24"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2021-06-01: Up — correct</title>▲
+    <title>2021-06-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2557,37 +2557,37 @@
     <title>2021-12-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="577.04"
-    y="144.26"
+    y="166.26"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#3498db"
+  >
+    <title>2022-01-01: Down — correct</title>▼
+  </text>
+  <text
+    class="glyph up_miss"
+    x="579.32"
+    y="149.59"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
     fill="#e67e22"
   >
-    <title>2022-01-01: Up — wrong</title>▲
+    <title>2022-02-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
-    x="579.32"
-    y="171.59"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="11"
-    fill="#3498db"
-  >
-    <title>2022-02-01: Down — correct</title>▼
-  </text>
-  <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="581.61"
-    y="173.32"
+    y="151.32"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2022-03-01: Down — correct</title>▼
+    <title>2022-03-01: Up — wrong</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -2601,15 +2601,15 @@
     <title>2022-04-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="586.19"
-    y="164.91"
+    y="186.91"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2022-05-01: Up — wrong</title>▲
+    <title>2022-05-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_hit"
@@ -2623,26 +2623,26 @@
     <title>2022-06-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph down_miss"
-    x="590.76"
-    y="191.89"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="11"
-    fill="#e74c3c"
-  >
-    <title>2022-07-01: Down — wrong</title>▼
-  </text>
-  <text
     class="glyph up_hit"
-    x="593.05"
-    y="160.33"
+    x="590.76"
+    y="169.89"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
     fill="#2ecc71"
   >
-    <title>2022-08-01: Up — correct</title>▲
+    <title>2022-07-01: Up — correct</title>▲
+  </text>
+  <text
+    class="glyph down_miss"
+    x="593.05"
+    y="182.33"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#e74c3c"
+  >
+    <title>2022-08-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_miss"
@@ -2689,37 +2689,37 @@
     <title>2022-12-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_miss"
-    x="604.49"
-    y="189.99"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="11"
-    fill="#e74c3c"
-  >
-    <title>2023-01-01: Down — wrong</title>▼
-  </text>
-  <text
     class="glyph up_hit"
-    x="606.78"
-    y="163.38"
+    x="604.49"
+    y="167.99"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
     fill="#2ecc71"
   >
-    <title>2023-02-01: Up — correct</title>▲
+    <title>2023-01-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_miss"
-    x="609.06"
-    y="167.69"
+    class="glyph down_miss"
+    x="606.78"
+    y="185.38"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#e74c3c"
   >
-    <title>2023-03-01: Up — wrong</title>▲
+    <title>2023-02-01: Down — wrong</title>▼
+  </text>
+  <text
+    class="glyph down_hit"
+    x="609.06"
+    y="189.69"
+    text-anchor="middle"
+    font-family="sans-serif"
+    font-size="11"
+    fill="#3498db"
+  >
+    <title>2023-03-01: Down — correct</title>▼
   </text>
   <text
     class="glyph down_miss"
@@ -2865,15 +2865,15 @@
     <title>2024-04-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="641.09"
-    y="118.65"
+    y="140.65"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2024-05-01: Up — correct</title>▲
+    <title>2024-05-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -2909,15 +2909,15 @@
     <title>2024-08-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="650.24"
-    y="125.71"
+    y="103.71"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2024-09-01: Down — wrong</title>▼
+    <title>2024-09-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -2964,15 +2964,15 @@
     <title>2025-01-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="661.68"
-    y="87.55"
+    y="109.55"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2025-02-01: Up — correct</title>▲
+    <title>2025-02-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_miss"
@@ -2986,26 +2986,26 @@
     <title>2025-03-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_hit"
+    class="glyph up_miss"
     x="666.26"
-    y="135.46"
+    y="113.46"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#3498db"
+    fill="#e67e22"
   >
-    <title>2025-04-01: Down — correct</title>▼
+    <title>2025-04-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="668.55"
-    y="118.37"
+    y="96.37"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2025-05-01: Down — wrong</title>▼
+    <title>2025-05-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -3041,26 +3041,26 @@
     <title>2025-08-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="677.70"
-    y="66.44"
+    y="88.44"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2025-09-01: Up — correct</title>▲
+    <title>2025-09-01: Down — wrong</title>▼
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="679.99"
-    y="60.57"
+    y="82.57"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2025-10-01: Up — correct</title>▲
+    <title>2025-10-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -3074,15 +3074,15 @@
     <title>2025-11-01: Up — correct</title>▲
   </text>
   <text
-    class="glyph up_hit"
+    class="glyph down_miss"
     x="684.56"
-    y="56.03"
+    y="78.03"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#2ecc71"
+    fill="#e74c3c"
   >
-    <title>2025-12-01: Up — correct</title>▲
+    <title>2025-12-01: Down — wrong</title>▼
   </text>
   <text
     class="glyph up_hit"
@@ -3107,26 +3107,26 @@
     <title>2026-02-01: Up — wrong</title>▲
   </text>
   <text
-    class="glyph up_miss"
+    class="glyph down_hit"
     x="691.42"
-    y="63.72"
+    y="85.72"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e67e22"
+    fill="#3498db"
   >
-    <title>2026-03-01: Up — wrong</title>▲
+    <title>2026-03-01: Down — correct</title>▼
   </text>
   <text
-    class="glyph down_miss"
+    class="glyph up_hit"
     x="693.71"
-    y="74.00"
+    y="52.00"
     text-anchor="middle"
     font-family="sans-serif"
     font-size="11"
-    fill="#e74c3c"
+    fill="#2ecc71"
   >
-    <title>2026-04-01: Down — wrong</title>▼
+    <title>2026-04-01: Up — correct</title>▲
   </text>
   <text
     class="glyph up_hit"
@@ -3195,7 +3195,7 @@
     font-family="sans-serif"
     font-size="12"
     fill="#222"
-  >Validation accuracy: 59.15%  ·  Test accuracy: 63.80%  ·  Cumulative strategy return: 203.29%</text>
+  >Validation accuracy: 57.14%  ·  Test accuracy: 54.12%  ·  Cumulative strategy return: 140.91%</text>
   <text
     x="708"
     y="354"

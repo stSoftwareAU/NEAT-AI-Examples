@@ -1,9 +1,10 @@
 /**
  * Unit tests for the stock-market direction-prediction example
- * (audit issue #218, telemetry rewired under #301). "What" tests only —
- * each test calls a real function with deterministic data and asserts
- * on the observable outputs (file contents, milestone summary fields,
- * accuracy floor, SVG structure, signal records).
+ * (audit issue #218, telemetry rewired under #301, multi-run wiring
+ * under #328). "What" tests only — each test calls a real function with
+ * deterministic data and asserts on the observable outputs (file
+ * contents, accuracy floor, SVG structure, signal records, multi-run
+ * resume semantics).
  */
 import {
   assert,
@@ -11,13 +12,13 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
-  assertThrows,
 } from "@std/assert";
 import { existsSync } from "@std/fs";
+import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
-import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
+import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
 import { buildSamples, splitChronologically } from "./data.ts";
 import {
   balancedDirectionalAccuracy,
@@ -26,11 +27,14 @@ import {
   cumulativeStrategyReturn,
   DEFAULT_EVOLVE_OPTIONS,
   directionalAccuracy,
+  evolveResultToMultiRunSample,
   evolveStockController,
+  EXAMPLE_SLUG,
   INPUT_COUNT,
   OUTPUT_COUNT,
   predictionFromOutput,
   replayController,
+  runMultiRunStock,
   WINDOW_SIZE,
   writeStockTrainingDataset,
 } from "./stock_market.ts";
@@ -227,7 +231,7 @@ Deno.test("DEFAULT_EVOLVE_OPTIONS has the audit-mandated stop conditions", () =>
 });
 
 Deno.test(
-  "evolveStockController returns a milestone EvolveDirSummary with finite fields",
+  "evolveStockController returns finite seed and wall-clock fields on the result",
   async () => {
     const tmp = Deno.makeTempDirSync({ prefix: "stock_evolve_" });
     try {
@@ -248,19 +252,16 @@ Deno.test(
         timeoutMinutes: 0,
         dataDir: tmp,
       });
-      const s = result.summary;
-      assert(Number.isFinite(s.finalError));
-      assert(Number.isFinite(s.finalScore));
-      assert(Number.isFinite(s.wallClockMs));
-      assert(Number.isInteger(s.generations));
-      assertGreaterOrEqual(s.generations, 1);
-      assertGreater(s.seedNeurons, 0);
-      assertGreaterOrEqual(s.seedSynapses, 0);
-      assertGreater(s.finalNeurons, 0);
-      assertGreaterOrEqual(s.finalSynapses, 0);
-      // tests pass timeoutMinutes=0 so the field must be omitted from
-      // the summary caption.
-      assertEquals(s.timeoutMinutes, undefined);
+      assert(Number.isFinite(result.bestError));
+      assert(Number.isFinite(result.bestFitness));
+      assert(Number.isFinite(result.wallClockMs));
+      assertGreaterOrEqual(result.wallClockMs, 0);
+      assert(Number.isInteger(result.generations));
+      assertGreaterOrEqual(result.generations, 1);
+      assertGreater(result.seedNeurons, 0);
+      assertGreaterOrEqual(result.seedSynapses, 0);
+      assertGreater(result.champion.neurons.length, 0);
+      assertGreaterOrEqual(result.champion.synapses.length, 0);
     } finally {
       Deno.removeSync(tmp, { recursive: true });
     }
@@ -322,9 +323,9 @@ Deno.test(
 );
 
 Deno.test(
-  "evolveStockController milestone summary renders an SVG containing each numeric callout",
+  "evolveResultToMultiRunSample carries error/score/topology onto the milestone shape",
   async () => {
-    const tmp = Deno.makeTempDirSync({ prefix: "stock_summary_" });
+    const tmp = Deno.makeTempDirSync({ prefix: "stock_sample_" });
     try {
       const prices = syntheticPrices(200, 5);
       const samples = buildSamples(prices, { windowSize: 5 });
@@ -336,52 +337,24 @@ Deno.test(
       const result = await evolveStockController({
         ...DEFAULT_EVOLVE_OPTIONS,
         windowSize: 5,
-        seed: 1,
-        populationSize: 6,
-        maxGenerations: 3,
+        seed: 7,
+        populationSize: 4,
+        maxGenerations: 2,
         errorThreshold: 0,
         timeoutMinutes: 0,
         dataDir: tmp,
       });
-      const svg = renderEvolveDirSummarySvg(result.summary, {
-        title: "Stock Market — evolveDir Run Summary",
-      });
-      assert(svg.startsWith("<svg"));
-      assert(svg.includes("</svg>"));
-      assert(svg.includes(String(result.summary.generations)));
-      assert(svg.includes(String(result.summary.seedNeurons)));
-      assert(svg.includes(String(result.summary.seedSynapses)));
-      assert(svg.includes(String(result.summary.finalNeurons)));
-      assert(svg.includes(String(result.summary.finalSynapses)));
-      assert(svg.includes("final error"));
-      assert(svg.includes("final score"));
-      assert(svg.includes("wall clock"));
-      assert(!svg.includes("NaN"));
-      assert(!svg.includes("Infinity"));
+      const sample = evolveResultToMultiRunSample(result);
+      assertEquals(sample.runGen, result.generations);
+      assertGreaterOrEqual(sample.error, 0);
+      assertGreaterOrEqual(1, sample.error);
+      assertEquals(sample.bestScore, result.bestFitness);
+      assertEquals(sample.neurons, result.champion.neurons.length);
+      assertEquals(sample.synapses, result.champion.synapses.length);
+      assertEquals(sample.generationWallClockMs, result.wallClockMs);
     } finally {
       Deno.removeSync(tmp, { recursive: true });
     }
-  },
-);
-
-Deno.test(
-  "renderEvolveDirSummarySvg rejects a summary with missing numeric fields",
-  () => {
-    const badSummary = {
-      finalError: 0.1,
-      finalScore: 0.5,
-      wallClockMs: Number.NaN,
-      generations: 10,
-      seedNeurons: 3,
-      seedSynapses: 2,
-      finalNeurons: 5,
-      finalSynapses: 6,
-    } as EvolveDirSummary;
-    assertThrows(
-      () => renderEvolveDirSummarySvg(badSummary),
-      Error,
-      "wallClockMs",
-    );
   },
 );
 
@@ -520,3 +493,198 @@ function creatureActivatesFinite(creature: Creature): void {
   const out = creature.activate(Float32Array.from(new Array(creature.input).fill(0)));
   assert(Number.isFinite(out[0]));
 }
+
+/* ------------------------------------------------------------------ */
+/*  Multi-run wiring (issue #328)                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Build a tiny synthetic stock-market binary `.bin` data directory the
+ * runner can hand straight to `evolveDir`. Returns the directory path
+ * so callers can pass it as `dataDir`.
+ */
+function buildSyntheticStockBinDir(seed = 1, count = 200): string {
+  const prices = syntheticPrices(count, seed);
+  const samples = buildSamples(prices, { windowSize: WINDOW_SIZE });
+  const split = splitChronologically(samples, {
+    trainFraction: 0.7,
+    validationFraction: 0.15,
+  });
+  const dir = Deno.makeTempDirSync({ prefix: "stock_test_bin_" });
+  writeStockTrainingDataset(split.train, dir, WINDOW_SIZE);
+  return dir;
+}
+
+Deno.test({
+  name:
+    "runMultiRunStock resume flow loads prior creature, appends a milestone, and renders both charts",
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "stock_resume_" });
+    const dataDir = buildSyntheticStockBinDir(11);
+    try {
+      const slug = EXAMPLE_SLUG;
+
+      // Pre-seed multi-run state with a synthetic prior champion + a
+      // synthetic milestone so `loadMultiRunState` reports nextRunIndex=2.
+      const priorCreatureExport = Creature.fromJSON(
+        buildRandomSeedCreature(123, WINDOW_SIZE),
+      ).exportJSON();
+      await appendMultiRunRun(slug, {
+        creatureExport: priorCreatureExport,
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: 0.5,
+          neurons: WINDOW_SIZE + OUTPUT_COUNT,
+          synapses: WINDOW_SIZE * OUTPUT_COUNT,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const outcome = await runMultiRunStock({
+        dataDir,
+        argv: [],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 4,
+          timeoutMinutes: 0,
+        },
+      });
+
+      // Prior champion must have been reloaded as the evolveDir seed.
+      assertEquals(outcome.resumed, true);
+      assertEquals(outcome.runIndex, 2);
+
+      // Persisted history now contains both the pre-seeded milestone and
+      // the new run's milestone, all with monotonic cumulativeGen.
+      const state = await loadMultiRunState(slug, tmp);
+      assertGreater(state.milestones.length, 1);
+      assertEquals(state.nextRunIndex, 3);
+      assertEquals(state.creatureExport !== undefined, true);
+      const newRunMilestones = state.milestones.filter((m) => m.runIndex === 2);
+      assertGreater(newRunMilestones.length, 0);
+      for (let i = 1; i < state.milestones.length; i++) {
+        const prev = state.milestones[i - 1].cumulativeGen;
+        const curr = state.milestones[i].cumulativeGen;
+        assert(curr >= prev, `cumulativeGen must be monotonic (${prev} → ${curr})`);
+      }
+
+      // Both chart SVGs were written under the baseDir override.
+      const errorSvg = join(tmp, "screenshots", slug, "milestones.svg");
+      const complexitySvg = join(tmp, "screenshots", slug, "complexity.svg");
+      assertEquals(existsSync(errorSvg), true, "error chart SVG should exist");
+      assertEquals(existsSync(complexitySvg), true, "complexity chart SVG should exist");
+      const errorText = await Deno.readTextFile(errorSvg);
+      const complexityText = await Deno.readTextFile(complexitySvg);
+      assert(errorText.startsWith("<svg"), "error chart must be an SVG");
+      assert(complexityText.startsWith("<svg"), "complexity chart must be an SVG");
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "runMultiRunStock --fresh wipes prior artefacts before running",
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "stock_fresh_" });
+    const dataDir = buildSyntheticStockBinDir(13);
+    try {
+      const slug = EXAMPLE_SLUG;
+      // Pre-seed with a prior run's state.
+      await appendMultiRunRun(slug, {
+        creatureExport: Creature.fromJSON(
+          buildRandomSeedCreature(456, WINDOW_SIZE),
+        ).exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: 0.5,
+          neurons: WINDOW_SIZE + OUTPUT_COUNT,
+          synapses: WINDOW_SIZE * OUTPUT_COUNT,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const outcome = await runMultiRunStock({
+        dataDir,
+        argv: ["--fresh"],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 4,
+          timeoutMinutes: 0,
+        },
+      });
+
+      // `--fresh` wiped the prior state, so this is run 1 and there was
+      // no prior champion to resume from.
+      assertEquals(outcome.resumed, false);
+      assertEquals(outcome.runIndex, 1);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.nextRunIndex, 2);
+      for (const m of state.milestones) {
+        assertEquals(m.runIndex, 1);
+      }
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "runMultiRunStock honours --target-error and --timeout overrides",
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "stock_overrides_" });
+    const dataDir = buildSyntheticStockBinDir(17);
+    try {
+      const outcome = await runMultiRunStock({
+        dataDir,
+        argv: ["--target-error=0.9", "--timeout=7"],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 4,
+          // Tests skip the actual backstop because NEAT-AI's FFI cleanup
+          // trips the Deno sanitizer.
+          timeoutMinutes: 0,
+        },
+      });
+      assertEquals(outcome.targetError, 0.9);
+      assertEquals(outcome.timeoutMinutes, 7);
+      // The persisted milestone exists for this run, and the chart
+      // artefacts were rendered.
+      const state = await loadMultiRunState(EXAMPLE_SLUG, tmp);
+      assertEquals(state.milestones.length, 1);
+      assertEquals(state.milestones[0].runIndex, 1);
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test("README embeds the multi-run charts and drops the legacy evolution_summary path", () => {
+  const readme = Deno.readTextFileSync("stock_market/README.md");
+  assert(
+    readme.includes("../docs/screenshots/stock_market/milestones.svg"),
+    "README must embed the multi-run error-curve chart (milestones.svg)",
+  );
+  assert(
+    readme.includes("../docs/screenshots/stock_market/complexity.svg"),
+    "README must embed the multi-run complexity chart (complexity.svg)",
+  );
+  // The legacy single-run evolution_summary chart is retired under #328.
+  assert(
+    !readme.includes("evolution_summary.svg"),
+    "README must no longer reference the retired evolution_summary.svg",
+  );
+});

@@ -1,6 +1,7 @@
 /**
  * Stock Market Direction Prediction Example (audit #218,
- * per-generation telemetry retired under #301).
+ * per-generation telemetry retired under #301, multi-run persistence
+ * wired under #328).
  *
  * Evolves a NEAT-AI network from a **minimal seed** to predict
  * next-period direction (up/down) on the public S&P 500 monthly-close
@@ -9,21 +10,31 @@
  * library — exercising back-propagation, structural mutation, and the
  * library's full evolution pipeline.
  *
- * 🌱 **Generation 1 starts from random noise.** The seed is built by the
- * NEAT-AI library's uniform-random `new Creature(WINDOW_SIZE, 1)`
- * constructor — direct input → output connections, with random weights
- * and a random output bias drawn from the seeded global PRNG. **No
- * topology, weights, or biases are hand-specified by this example.**
- * Hidden neurons are not pre-built — they emerge purely from NEAT-AI's
- * own structural mutation operators while `evolveDir` runs.
+ * 🌱 **Generation 1 starts from random noise.** A fresh run (no prior
+ * persisted champion, or `--fresh` on the command line) builds the seed
+ * via {@link buildRandomSeedCreature} — the NEAT-AI library's
+ * uniform-random `new Creature(WINDOW_SIZE, 1)` constructor — direct
+ * input → output connections, random weights, and a random output bias
+ * drawn from the seeded global PRNG. **No topology, weights, or biases
+ * are hand-specified by this example.** Hidden neurons are not
+ * pre-built — they emerge purely from NEAT-AI's own structural mutation
+ * operators while `evolveDir` runs.
  *
- * Under #301 the per-generation `onTrainingEvent` hook, the chunked
- * `evolveDir` loop, and the multi-panel checkpoint strip were removed
- * in favour of NEAT-AI's supported milestone-only telemetry surface
- * (see [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298)
- * for the decision record). The run now makes one `evolveDir` call and
- * renders a single milestone summary SVG from its return value via the
- * shared `EvolveDirSummary` helper from #284.
+ * Under #301 the per-generation `onTrainingEvent` hook and multi-panel
+ * checkpoint strip were removed in favour of NEAT-AI's supported
+ * milestone-only telemetry surface (see
+ * [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298)
+ * for the decision record). Under #328 the runner gained the multi-run
+ * idiom (issues #318, #319, #320): with no prior state it behaves like
+ * a single random-noise run; after a run it persists the champion + a
+ * per-run milestone summary so the next invocation resumes from the
+ * saved creature. `--fresh` wipes the persisted state,
+ * `--timeout=<minutes>` overrides the wall-clock backstop, and
+ * `--target-error=<value>` overrides the early-exit threshold. The
+ * runner emits two charts (`milestones.svg` and `complexity.svg`) plus
+ * the prediction-glyph chart. The legacy single-run
+ * `evolution_summary.svg` artefact (seeded under #301) is superseded by
+ * the multi-run chart pair and is no longer generated.
  *
  * Stop conditions (audit #218):
  *   - `targetError`     — per-example reasonable mean-squared error
@@ -50,8 +61,16 @@ import {
 } from "@stsoftware/neat-ai";
 
 import { fetchDataset } from "../common/data_cache.ts";
+import {
+  appendMultiRunRun,
+  loadMultiRunState,
+  type NewMultiRunSample,
+  parseMultiRunFlags,
+  wipeMultiRunState,
+} from "../common/multi_run_state.ts";
+import { renderMultiRunComplexityChartSVG } from "../common/multi_run_complexity_chart.ts";
+import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
   buildSamples,
   type DataSplit,
@@ -90,8 +109,39 @@ export const DATASET_PATH = join(STOCK_ROOT, "data", "prices.csv");
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/stock_market.svg";
 
-/** Milestone summary SVG path — sourced from `evolveDir`'s return value (#301). */
-export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/stock_market/evolution_summary.svg";
+/** Slug used by the multi-run persistence helpers and chart artefact paths. */
+export const EXAMPLE_SLUG = "stock_market";
+
+/**
+ * Path to the multi-run error-curve chart the runner emits — error vs
+ * cumulative generation across every run, with faint run-boundary guide
+ * lines. Supersedes the legacy single-run `evolution_summary.svg`
+ * (issue #328).
+ */
+export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/stock_market/milestones.svg";
+
+/**
+ * Path to the multi-run complexity chart the runner emits — neurons +
+ * synapses vs cumulative generation across every run.
+ */
+export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/stock_market/complexity.svg";
+
+/**
+ * Default `targetError` for a multi-run invocation. The issue calls for
+ * a tight `0.01` floor — well below chance MSE (~0.25) — so NEAT-AI is
+ * pressured to grow hidden structure. Markets are intrinsically noisy
+ * so the run typically exits via `timeoutMinutes` rather than reaching
+ * this floor (issue #328).
+ */
+export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.01;
+
+/**
+ * Default wall-clock budget for a single multi-run invocation, in
+ * minutes. Five minutes matches the audit-mandated stop condition
+ * (audit issue #218) and the multi-run idiom shared with the other
+ * in-scope examples.
+ */
+export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
 
 /** Configuration options for {@link evolveStockController}. */
 export interface EvolveOptions {
@@ -139,6 +189,13 @@ export interface EvolveOptions {
    * calling — see {@link writeStockTrainingDataset}.
    */
   dataDir: string;
+  /**
+   * Optional pre-seeded creature export, used by the multi-run resume
+   * flow to continue evolution from a prior champion. When supplied, the
+   * evolveDir seed is built via {@link Creature.fromJSON} instead of a
+   * fresh uniform-random {@link buildRandomSeedCreature} (issue #328).
+   */
+  seedCreatureExport?: CreatureExport;
 }
 
 /** Result of the evolutionary search. */
@@ -152,8 +209,12 @@ export interface EvolveResult {
   generations: number;
   /** True when the champion's training error fell below `errorThreshold`. */
   solved: boolean;
-  /** Milestone summary built from `evolveDir`'s return value (issue #301). */
-  summary: EvolveDirSummary;
+  /** Wall-clock duration of the evolveDir call in milliseconds. */
+  wallClockMs: number;
+  /** Neuron count of the seed creature before evolveDir ran. */
+  seedNeurons: number;
+  /** Synapse count of the seed creature before evolveDir ran. */
+  seedSynapses: number;
 }
 
 /**
@@ -263,7 +324,11 @@ export async function evolveStockController(options: EvolveOptions): Promise<Evo
     throw new Error("evolveStockController: dataDir must be supplied");
   }
 
-  const creature = Creature.fromJSON(buildRandomSeedCreature(options.seed, options.windowSize));
+  // Resume from the prior champion when supplied, otherwise build the
+  // uniform-random minimal seed via the seeded global PRNG.
+  const creature = options.seedCreatureExport !== undefined
+    ? Creature.fromJSON(options.seedCreatureExport)
+    : Creature.fromJSON(buildRandomSeedCreature(options.seed, options.windowSize));
   const seedNeurons = creature.neurons.length;
   const seedSynapses = creature.synapses.length;
 
@@ -294,26 +359,145 @@ export async function evolveStockController(options: EvolveOptions): Promise<Evo
   const generations = Math.max(1, result.generation ?? 1);
   const solved = finalError <= options.errorThreshold;
 
-  const summary: EvolveDirSummary = {
-    finalError,
-    finalScore,
-    wallClockMs,
-    generations,
-    seedNeurons,
-    seedSynapses,
-    finalNeurons: creature.neurons.length,
-    finalSynapses: creature.synapses.length,
-    targetError: options.errorThreshold,
-    ...(options.timeoutMinutes > 0 ? { timeoutMinutes: options.timeoutMinutes } : {}),
-  };
-
   return {
     champion: creature,
     bestFitness: finalScore,
     bestError: finalError,
     generations,
     solved,
-    summary,
+    wallClockMs,
+    seedNeurons,
+    seedSynapses,
+  };
+}
+
+/**
+ * Convert an {@link EvolveResult} into a {@link NewMultiRunSample}.
+ * `Creature.evolveDir` returns a single end-of-run summary, so each run
+ * contributes exactly one milestone to the merged history.
+ */
+export function evolveResultToMultiRunSample(result: EvolveResult): NewMultiRunSample {
+  const error = Math.max(0, Math.min(1, result.bestError));
+  return {
+    runGen: result.generations,
+    bestScore: result.bestFitness,
+    error,
+    neurons: result.champion.neurons.length,
+    synapses: result.champion.synapses.length,
+    generationWallClockMs: result.wallClockMs,
+  };
+}
+
+/** Options accepted by {@link runMultiRunStock}. */
+export interface RunMultiRunStockOptions {
+  /** Directory containing the binary `.bin` training stream consumed by
+   * `Creature.evolveDir`. */
+  dataDir: string;
+  /** Argv (defaults to `Deno.args`). Recognised flags: `--fresh`,
+   * `--timeout=<minutes>`, `--target-error=<value>`. */
+  argv?: readonly string[];
+  /** Base directory override for the multi-run persistence helpers and
+   * chart artefacts (used by tests). Defaults to `docs`. */
+  baseDir?: string;
+  /** Optional overrides applied to the resolved {@link EvolveOptions}
+   * (used by tests to cap iterations without depending on wall-clock
+   * timing). */
+  evolveOverrides?: Partial<EvolveOptions>;
+}
+
+/** Outcome of a single multi-run invocation. */
+export interface StockMultiRunResult {
+  /** The underlying evolveDir result. */
+  evolveResult: EvolveResult;
+  /** Resolved targetError used for this run. */
+  targetError: number;
+  /** Resolved timeoutMinutes used for this run. */
+  timeoutMinutes: number;
+  /** Number of this run within the persisted history (1-based). */
+  runIndex: number;
+  /** Cumulative generation total *after* this run was appended. */
+  lastCumulativeGen: number;
+  /** Total number of milestones in the merged history. */
+  totalMilestones: number;
+  /** `true` when the prior champion was reloaded as the seed creature. */
+  resumed: boolean;
+}
+
+/**
+ * End-to-end multi-run wiring: parses flags, optionally wipes prior
+ * state, loads the saved champion (when present) to seed the next run,
+ * evolves the controller, appends the new run's milestone to the merged
+ * history, and renders both multi-run charts.
+ */
+export async function runMultiRunStock(
+  options: RunMultiRunStockOptions,
+): Promise<StockMultiRunResult> {
+  const argv = options.argv ?? Deno.args;
+  const flags = parseMultiRunFlags(argv);
+  const slug = EXAMPLE_SLUG;
+
+  if (flags.fresh) {
+    await wipeMultiRunState(slug, options.baseDir);
+  }
+
+  const state = await loadMultiRunState(slug, options.baseDir);
+  const resumed = state.creatureExport !== undefined;
+
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  const evolveOptions: EvolveOptions = {
+    ...DEFAULT_EVOLVE_OPTIONS,
+    dataDir: options.dataDir,
+    timeoutMinutes,
+    errorThreshold: targetError,
+    // Multi-run runs are bounded by `timeoutMinutes` / `targetError` —
+    // raise the historical 200-generation cap so a real 5-minute run
+    // never exits via `maxGenerations` first (issue #328).
+    maxGenerations: 1_000_000,
+    seedCreatureExport: state.creatureExport,
+    ...options.evolveOverrides,
+  };
+
+  const evolveResult = await evolveStockController(evolveOptions);
+
+  const newSamples: NewMultiRunSample[] = [evolveResultToMultiRunSample(evolveResult)];
+
+  await appendMultiRunRun(slug, {
+    creatureExport: evolveResult.champion.exportJSON(),
+    newSamples,
+    runIndex: state.nextRunIndex,
+    baseCumulativeGen: state.lastCumulativeGen,
+  }, options.baseDir);
+
+  const merged = await loadMultiRunState(slug, options.baseDir);
+
+  if (merged.milestones.length > 0) {
+    const base = options.baseDir ?? "docs";
+    const screenshotsDir = join(base, "screenshots", slug);
+    ensureDirSync(screenshotsDir);
+
+    const errorSvg = renderMultiRunErrorChartSVG(merged.milestones, {
+      title: "Stock Market — multi-run error vs cumulative generations",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "milestones.svg"), errorSvg);
+
+    const complexitySvg = renderMultiRunComplexityChartSVG(merged.milestones, {
+      title: "Stock Market — multi-run creature complexity",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "complexity.svg"), complexitySvg);
+  }
+
+  return {
+    evolveResult,
+    targetError,
+    timeoutMinutes,
+    runIndex: state.nextRunIndex,
+    lastCumulativeGen: merged.lastCumulativeGen,
+    totalMilestones: merged.milestones.length,
+    resumed,
   };
 }
 
@@ -457,11 +641,27 @@ export async function loadPrices(path: string = DATASET_PATH): Promise<PricePoin
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("📈 Stock-Market Direction Prediction Example");
+  console.log("📈 Stock-Market Direction Prediction Example (multi-run)");
   console.log("⚠️  Teaching example — not investment advice.");
   console.log("");
 
   const { creaturesDir, outputDir, dataDir } = setupWorkingDirs(STOCK_ROOT);
+
+  // CI/quality quick mode (mirrors the cart-pole / xor / mnist idioms).
+  // When the runner is invoked with `STOCK_QUICK=1` the multi-run state
+  // and chart SVGs are written under a temp directory so the canonical
+  // docs artefacts checked into the repo are never overwritten by a CI
+  // run, and the iterations cap is forced low so the section finishes
+  // well inside `quality.sh`'s per-section budget.
+  const quick = Deno.env.get("STOCK_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "stock_quick_" });
+    console.log(
+      "⚡ Quick mode (STOCK_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
 
   console.log(`📥 Fetching dataset (cached in ${DATASET_PATH})…`);
   await fetchDataset({
@@ -489,20 +689,45 @@ if (import.meta.main) {
   const trainBin = writeStockTrainingDataset(split.train, dataDir);
   console.log(`📦 Wrote training set to ${trainBin}`);
 
-  console.log("\n🧬 Evolving controller from a minimal NEAT seed via evolveDir...");
-  const result = await evolveStockController({
-    ...DEFAULT_EVOLVE_OPTIONS,
+  // Multi-run flag parsing (logged here for the operator; the runner
+  // also re-parses inside `runMultiRunStock`).
+  const flags = parseMultiRunFlags(Deno.args);
+  if (flags.fresh) {
+    console.log("🧹 --fresh: wiping prior multi-run state.");
+  }
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  console.log(
+    `\n🧬 Evolving via Creature.evolveDir(${dataDir}, ` +
+      `{ targetError: ${targetError}, timeoutMinutes: ${timeoutMinutes} })…` +
+      (quick ? " (quick mode: maxGenerations=2)" : ""),
+  );
+
+  const multi = await runMultiRunStock({
     dataDir,
+    baseDir: quickBaseDir,
+    evolveOverrides: quick
+      ? { maxGenerations: 2, populationSize: 4, timeoutMinutes: 1 }
+      : undefined,
   });
+  const { evolveResult: result } = multi;
+
+  if (multi.resumed) {
+    console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
+  } else {
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+  }
 
   console.log(
     `\n${result.solved ? "✅ Solved" : "⚠️  Did not solve (within budget)"} ` +
       `after ${result.generations} generations ` +
       `(error=${result.bestError.toFixed(4)}, fitness=${result.bestFitness.toFixed(4)}, ` +
-      `wall-clock=${(result.summary.wallClockMs / 1000).toFixed(1)}s).`,
+      `wall-clock=${(result.wallClockMs / 1000).toFixed(1)}s).`,
   );
 
-  // Save champion creature.
+  // The champion creature is persisted by `runMultiRunStock` under
+  // `docs/data/stock_market/creature.json`. Also drop a copy under the
+  // example's working directory for ad-hoc inspection.
   const championPath = join(creaturesDir, "champion.json");
   const championExport: CreatureExport = result.champion.exportJSON();
   await safeWriteJson(championPath, championExport);
@@ -540,7 +765,9 @@ if (import.meta.main) {
       `cumulative strategy return: ${(cumulativeReturn * 100).toFixed(2)}%`,
   );
 
-  // Render animated chart.
+  // Render animated chart. Quick mode keeps this under the temp
+  // directory so a CI invocation never overwrites the canonical docs
+  // screenshot.
   const svg = renderChartSVG({
     records,
     glyphFor: classifyGlyph,
@@ -548,25 +775,38 @@ if (import.meta.main) {
     testAccuracy,
     cumulativeStrategyReturn: cumulativeReturn,
   });
-  ensureDirSync("docs/screenshots");
-  await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
-
-  // Milestone summary SVG sourced from the evolveDir return value
-  // (issue #301): one chart, no per-generation telemetry.
-  ensureDirSync("docs/screenshots/stock_market");
-  const summarySvg = renderEvolveDirSummarySvg(result.summary, {
-    title: "Stock Market — evolveDir Run Summary",
-  });
-  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
-  console.log(`📈 Wrote milestone summary ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  if (quick && quickBaseDir !== undefined) {
+    const tmpScreenshots = join(quickBaseDir, "screenshots");
+    ensureDirSync(tmpScreenshots);
+    await Deno.writeTextFile(join(tmpScreenshots, "stock_market.svg"), svg);
+    console.log("⏭️  Quick mode: skipped overwriting canonical prediction-glyph screenshot");
+  } else {
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
+    console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
+  }
 
   console.log(
-    `\n🏁 Final summary: generations=${result.summary.generations}  ` +
-      `bestFitness=${result.summary.finalScore.toFixed(4)}  ` +
-      `bestError=${result.summary.finalError.toFixed(4)}  ` +
-      `seed=${result.summary.seedNeurons}/${result.summary.seedSynapses}  ` +
-      `final=${result.summary.finalNeurons}/${result.summary.finalSynapses}`,
+    `📈 Multi-run charts updated under ${
+      quick ? quickBaseDir : "docs"
+    }/screenshots/${EXAMPLE_SLUG}/ — ` +
+      `${multi.totalMilestones} cumulative milestone(s) across ${multi.runIndex} run(s).`,
+  );
+
+  if (quick && quickBaseDir !== undefined) {
+    try {
+      await Deno.remove(quickBaseDir, { recursive: true });
+    } catch {
+      // Tolerable — temp dir cleanup is best-effort.
+    }
+  }
+
+  console.log(
+    `\n🏁 Final summary: generations=${result.generations}  ` +
+      `bestFitness=${result.bestFitness.toFixed(4)}  ` +
+      `bestError=${result.bestError.toFixed(4)}  ` +
+      `seed=${result.seedNeurons}/${result.seedSynapses}  ` +
+      `final=${result.champion.neurons.length}/${result.champion.synapses.length}`,
   );
   console.log(
     `🕒 Completed in ${format(Date.now() - start, { ignoreZero: true })}`,

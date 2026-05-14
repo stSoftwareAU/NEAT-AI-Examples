@@ -31,8 +31,8 @@ flowchart LR
     SPLIT["✂️ Train / val / test<br/>chronological split"]
     BIN["📦 Binary .bin training set<br/>(window, target) records"]
     SEED["🌱 new Creature(10, 1)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(dataDir, ...)<br/>forward-only, targetError=0.18,<br/>timeoutMinutes=5"]
-    SUMMARY["📈 Milestone summary<br/>(from evolveDir return value)"]
+    EVOLVE["🧪 Creature.evolveDir(dataDir, ...)<br/>forward-only, targetError=0.01,<br/>timeoutMinutes=5"]
+    SUMMARY["📈 Multi-run milestone<br/>(error + complexity charts)"]
     CHAMP["💾 champion.json"]
     REPLAY["🔁 Replay on test window"]
     SIG["📝 signals.json"]
@@ -100,15 +100,16 @@ correlating its output with realised direction.
 
 `evolveDir` terminates as soon as **any** of the following fires:
 
-| Condition        | Value                              | Why                                                                                     |
-| ---------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
-| `targetError`    | **0.18** (well below chance ~0.25) | Forces NEAT-AI to grow hidden structure to satisfy it — chance MSE alone is not enough. |
-| `timeoutMinutes` | **5** (audit-mandated backstop)    | Wall-clock safety net so a run never wedges. Audit #218 sets this as the upper bound.   |
-| `maxGenerations` | **200**                            | Hard cap on the number of generations so the example fits inside `quality.sh`'s budget. |
+| Condition        | Value                                           | Why                                                                                                                  |
+| ---------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `targetError`    | **0.01** (well below chance ~0.25)              | Forces NEAT-AI to grow hidden structure to satisfy it — chance MSE alone is not enough.                              |
+| `timeoutMinutes` | **5** (audit-mandated backstop)                 | Wall-clock safety net so a run never wedges. Audit #218 sets this as the upper bound.                                |
+| `maxGenerations` | effectively unlimited (raised under issue #328) | Multi-run runs are bounded by `timeoutMinutes` / `targetError` so the merged history is honest about residual error. |
 
-Markets are intrinsically noisy — most runs do **not** reach `targetError = 0.18` and exit via the
-generation cap. The wall-clock backstop is a final safety net; it never fires on a developer machine
-because the cap is much smaller than what 5 minutes can fit.
+Markets are intrinsically noisy — most runs do **not** reach `targetError = 0.01` and exit via the
+wall-clock backstop. The multi-run idiom (issue [#328]) makes this honest: each invocation appends a
+fresh milestone to the merged history, so the published charts plot the unified noise → competent
+arc across every run combined rather than hand-picking a single "best" run.
 
 ## 🚦 Train / Validation / Test Split
 
@@ -124,31 +125,89 @@ earlier windows:
 ## 🚀 Running the Example
 
 ```bash
+# First run — random seed, writes creature + milestones + both charts.
+./stock_market/run.sh --fresh
+
+# Subsequent runs — resume from the saved champion and append milestones.
 ./stock_market/run.sh
+
+# Override the wall-clock budget and / or early-stop target error.
+./stock_market/run.sh --timeout=10 --target-error=0.005
 ```
+
+The runner forwards every flag to the underlying Deno program, which parses them via
+`parseMultiRunFlags` from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
+
+| Flag                  | Default | Meaning                                                               |
+| --------------------- | ------- | --------------------------------------------------------------------- |
+| `--fresh`             | absent  | Wipe prior creature, milestones, and both chart SVGs before evolving. |
+| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
+| `--target-error=<v>`  | 0.01    | Stop as soon as the champion's normalised error falls below `v`.      |
 
 Artefacts:
 
 - `.synthetic-stock/data/prices.csv` — cached dataset
 - `.synthetic-stock/data/stock_market.bin` — pre-generated binary training set fed to `evolveDir`
-- `.synthetic-stock/creatures/champion.json` — fittest controller from the run
+- `.synthetic-stock/creatures/champion.json` — fittest controller from this invocation
+  (working-directory copy for ad-hoc inspection)
 - `.synthetic-stock/output/signals.json` — per-day prediction vs. outcome on the test window
 - `docs/screenshots/stock_market.svg` — animated chart of the test window
-- `docs/screenshots/stock_market/evolution_summary.svg` — milestone summary chart sourced from
-  `Creature.evolveDir`'s return value (final error/score, generations, wall-clock, seed vs final
-  topology counts)
+- [`docs/data/stock_market/creature.json`](../docs/data/stock_market/creature.json) – persisted
+  champion that subsequent runs reload as the next seed
+- [`docs/data/stock_market/milestones.json`](../docs/data/stock_market/milestones.json) – merged
+  milestone history across every run, with both `runGen` and `cumulativeGen`
+- [`docs/screenshots/stock_market/milestones.svg`](../docs/screenshots/stock_market/milestones.svg)
+  – multi-run error-curve chart: error vs cumulative generation, with faint run-boundary guide lines
+  (`renderMultiRunErrorChartSVG` from
+  [`common/multi_run_error_chart.ts`](../common/multi_run_error_chart.ts))
+- [`docs/screenshots/stock_market/complexity.svg`](../docs/screenshots/stock_market/complexity.svg)
+  – multi-run complexity chart: neuron and synapse counts vs cumulative generation
+  (`renderMultiRunComplexityChartSVG` from
+  [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
-## 📈 Evolution milestone stats
+## Evolution Progress (Multi-Run)
 
-The milestone summary chart below is generated **directly from the return value of
-`Creature.evolveDir`**. It pairs the seed and final topology counts on the left with the numeric
-callouts (final error, final score, generations, wall-clock) on the right, plus a caption listing
-the configured `targetError` / `timeoutMinutes` stop conditions. No per-generation telemetry is
-captured or emitted by this example any more (per issue #301; see also
-[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the canonical decision
-record).
+Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
+milestone-cadence telemetry. Under issue [#328] the legacy single-run `EvolveDirSummary` chart
+(seeded under #301) is superseded by the multi-run chart pair below. Each subsequent run reloads the
+saved champion via [`common/multi_run_state.ts`](../common/multi_run_state.ts), evolves further, and
+appends a fresh milestone with a monotonically-increasing `cumulativeGen` — so the charts show one
+continuous noise → competent → polished arc across every run combined. Markets are intrinsically
+noisy, so even after many runs the residual error remains well above zero — the multi-run charts
+make this honest by plotting the unified noise → competent arc rather than hand-picking a single
+"best" run.
 
-![Milestone summary chart](../docs/screenshots/stock_market/evolution_summary.svg)
+[#328]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/328
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as run.sh
+    participant State as multi_run_state.ts
+    participant Stock as stock_market.ts
+    participant Charts as multi_run_*_chart.ts
+    CLI->>State: parseMultiRunFlags(argv)
+    alt --fresh
+        CLI->>State: wipeMultiRunState()
+    end
+    CLI->>State: loadMultiRunState()
+    alt prior champion exists
+        State-->>Stock: Creature.fromJSON(creatureExport)
+    else first run
+        State-->>Stock: buildRandomSeedCreature() — uniform-random noise
+    end
+    Stock->>Stock: Creature.evolveDir(dataDir)
+    Stock->>State: appendMultiRunRun({champion, milestones})
+    State->>Charts: renderMultiRunErrorChartSVG()
+    State->>Charts: renderMultiRunComplexityChartSVG()
+    Charts-->>CLI: milestones.svg + complexity.svg
+```
+
+![Stock-Market multi-run error chart — error vs cumulative generation across every run, with faint run-boundary guide lines](../docs/screenshots/stock_market/milestones.svg)
+
+![Stock-Market multi-run complexity chart — best-creature neuron and synapse counts vs cumulative generation](../docs/screenshots/stock_market/complexity.svg)
+
+Re-run `./stock_market/run.sh` (without `--fresh`) to extend both charts with a new run.
 
 ## 🧪 What "reasonable solution" means here
 
@@ -184,9 +243,10 @@ A few things that are not obvious from the code alone:
   predicts "up" with the base rate (~63%) even though it has learnt nothing. Balanced accuracy (mean
   of per-class hit rates) honestly scores any constant or coin-flip predictor at 0.5 and only rises
   above 0.5 when the network's predictions actually correlate with direction.
-- **Stop conditions.** `targetError = 0.18` is the per-example reasonable floor;
-  `timeoutMinutes = 5` is the audit-mandated wall-clock backstop; `maxGenerations = 200` is a hard
-  generation cap so the example fits inside `quality.sh`'s budget.
+- **Stop conditions.** `targetError = 0.01` is the per-example reasonable floor (overridable via
+  `--target-error=<v>`); `timeoutMinutes = 5` is the audit-mandated wall-clock backstop (overridable
+  via `--timeout=<minutes>`); `maxGenerations = 200` is a hard generation cap so the example fits
+  inside `quality.sh`'s budget.
 - **Chronological split, no shuffling.** Shuffling samples would let a candidate "see" future
   patterns during validation — the unit tests verify the no-look-ahead property structurally.
 - **Reproducibility.** The library's global RNG is reseeded via
@@ -207,10 +267,14 @@ A few things that are not obvious from the code alone:
   seed.
 - `writeStockTrainingDataset` emits the expected number of records with one float per feature plus
   one float per label, and rejects malformed input.
-- `evolveStockController` returns an `EvolveDirSummary` with finite numeric fields and is built from
-  the return value of `Creature.evolveDir`.
-- The milestone summary SVG renders, contains every numeric callout from the run summary, and is
-  rejected when any required field is non-finite.
+- `evolveStockController` returns finite numeric fields built from `Creature.evolveDir`'s return
+  value (`bestError`, `bestFitness`, `wallClockMs`, `seedNeurons`, `seedSynapses`).
+- `evolveResultToMultiRunSample` projects the run result onto the `MultiRunMilestone` shape with the
+  correct `error`, `bestScore`, neuron and synapse counts.
+- `runMultiRunStock` resumes from a pre-seeded champion, appends a new milestone with monotonic
+  `cumulativeGen`, and renders both multi-run chart SVGs.
+- `runMultiRunStock --fresh` wipes prior state so the next run starts as run 1.
+- `runMultiRunStock` honours the `--target-error=<v>` and `--timeout=<minutes>` flags.
 - The hard generation cap is honoured when `targetError` is unreachable.
 - The animated chart renderer emits all four glyph categories and an SMIL animation primitive.
 
@@ -228,10 +292,16 @@ evolutionary topology search against a price-prediction fitness signal driven by
   matching the audit's stop-condition + topology contract.
 - **Structural mutation** — add-neuron / add-synapse operators grow the topology from the minimal
   seed.
-- **Milestone summary chart** — the run's `Creature.evolveDir` return value
-  (`{ error, score, time, generation }`) plus the seed and final topology counts feed the shared
-  `common/evolve_dir_summary.ts` renderer (issue
-  [#284](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/284)).
+- **Multi-run milestone history** — the run's `Creature.evolveDir` return value
+  (`{ error, score, time, generation }`) is converted into a `MultiRunMilestone` and appended to the
+  merged history persisted by [`common/multi_run_state.ts`](../common/multi_run_state.ts) (issues
+  [#318], [#319], [#320]). The merged history feeds the `renderMultiRunErrorChartSVG` and
+  `renderMultiRunComplexityChartSVG` helpers to produce the two multi-run charts published under
+  [`docs/screenshots/stock_market/`](../docs/screenshots/stock_market/).
+
+[#318]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/318
+[#319]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/319
+[#320]: https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/320
 
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
