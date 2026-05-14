@@ -27,16 +27,3 @@ deno run \
   --allow-run \
   synthetic_synapse/synthetic_synapse_example.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/synthetic_synapse.svg" ]]; then
-  deno fmt docs/screenshots/synthetic_synapse.svg > /dev/null
-fi
-if [[ -f ".synthetic-synapse/output/synthetic_synapse.svg" ]]; then
-  deno fmt .synthetic-synapse/output/synthetic_synapse.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/synthetic_synapse/evolution_summary.svg" ]]; then
-  deno fmt docs/screenshots/synthetic_synapse/evolution_summary.svg > /dev/null
-fi

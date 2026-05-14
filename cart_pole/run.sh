@@ -27,16 +27,3 @@ deno run \
   --allow-net \
   cart_pole/cart_pole.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderers emit compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/cart_pole.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/cart_pole/milestones.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole/milestones.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/cart_pole/complexity.svg" ]]; then
-  deno fmt docs/screenshots/cart_pole/complexity.svg > /dev/null
-fi

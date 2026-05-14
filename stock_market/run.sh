@@ -41,16 +41,3 @@ deno run \
   --allow-net \
   stock_market/stock_market.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderers emit compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-if [[ -f "docs/screenshots/stock_market.svg" ]]; then
-  deno fmt docs/screenshots/stock_market.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/stock_market/milestones.svg" ]]; then
-  deno fmt docs/screenshots/stock_market/milestones.svg > /dev/null
-fi
-if [[ -f "docs/screenshots/stock_market/complexity.svg" ]]; then
-  deno fmt docs/screenshots/stock_market/complexity.svg > /dev/null
-fi

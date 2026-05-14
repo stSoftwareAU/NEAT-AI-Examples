@@ -31,14 +31,3 @@ deno run \
   --allow-ffi \
   suggest_improvements/suggest_improvements.ts \
   "$@"
-
-# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
-# `deno fmt` prefers attributes split across multiple lines.
-for svg in \
-  "docs/screenshots/suggest_improvements/fitness.svg" \
-  "docs/screenshots/suggest_improvements/topology.svg"; do
-  if [[ -f "${svg}" ]]; then
-    deno fmt "${svg}" > /dev/null
-  fi
-done
