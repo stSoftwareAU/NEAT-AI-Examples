@@ -1,27 +1,28 @@
 /**
- * XOR Classification Example (per-generation telemetry retired under #301).
+ * XOR Classification Example (multi-run persistence wired under #326).
  *
  * Evolves a NEAT-AI creature to learn the XOR truth table — the
  * canonical "Hello World" of neuroevolution.
  *
- * 🌱 **Generation 1 starts from random noise.** The initial creature is
- * built by the NEAT-AI library's uniform-random `new Creature(2, 1)`
- * constructor — direct input → output synapses with random weights and
- * a random output bias drawn from the seeded global PRNG. **No
- * topology, weights, or biases are hand-specified by this example.**
- * Structural mutation (add-neuron, add-synapse, weight tuning) is
- * delegated to the NEAT-AI library via `creature.evolveDir(...)`. XOR
- * is not linearly separable, so the random direct-only seed cannot
- * solve the task — NEAT must invent at least one hidden neuron to
- * succeed.
+ * 🌱 **Generation 1 starts from random noise (when no prior champion
+ * exists).** The initial creature is built by the NEAT-AI library's
+ * uniform-random `new Creature(2, 1)` constructor — direct input → output
+ * synapses with random weights and a random output bias drawn from the
+ * seeded global PRNG. **No topology, weights, or biases are
+ * hand-specified by this example.** Structural mutation (add-neuron,
+ * add-synapse, weight tuning) is delegated to the NEAT-AI library via
+ * `creature.evolveDir(...)`. XOR is not linearly separable, so the random
+ * direct-only seed cannot solve the task — NEAT must invent at least one
+ * hidden neuron to succeed.
  *
- * Under #301 the per-generation `onTrainingEvent` hook, the chunked
- * `evolveDir` loop, and the multi-panel checkpoint strip were removed
- * in favour of NEAT-AI's supported milestone-only telemetry surface
- * (see [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298)
- * for the decision record). The run now makes one `evolveDir` call and
- * renders a single milestone summary SVG from its return value via
- * the shared `EvolveDirSummary` helper from #284.
+ * Under #326 the runner gained the multi-run idiom (issues #318, #319,
+ * #320): with no prior state it behaves like a single random-noise run;
+ * after a run it persists the champion + a per-run milestone summary so
+ * the next invocation resumes from the saved creature. `--fresh` wipes
+ * the persisted state, `--timeout=<minutes>` overrides the wall-clock
+ * backstop, and `--target-error=<value>` overrides the early-exit
+ * threshold. The runner emits two charts (`milestones.svg` and
+ * `complexity.svg`) plus the decision-boundary SVG.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -36,7 +37,15 @@ import {
 } from "@stsoftware/neat-ai";
 
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
+import {
+  appendMultiRunRun,
+  loadMultiRunState,
+  type NewMultiRunSample,
+  parseMultiRunFlags,
+  wipeMultiRunState,
+} from "../common/multi_run_state.ts";
+import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts";
+import { renderMultiRunComplexityChartSVG } from "../common/multi_run_complexity_chart.ts";
 import { renderDecisionBoundarySVG } from "./svg.ts";
 
 /** Number of input features. */
@@ -103,6 +112,15 @@ export interface EvolveOptions {
    * their own directory here.
    */
   dataDir?: string;
+  /**
+   * Optional pre-seeded creature export, used by the multi-run resume
+   * flow to continue evolution from a prior champion. When supplied, the
+   * evolveDir seed is built via {@link Creature.fromJSON} instead of the
+   * uniform-random {@link buildRandomSeedCreature}. When absent the
+   * first generation starts from random noise (the default for a
+   * `--fresh` run).
+   */
+  seedCreatureExport?: CreatureExport;
 }
 
 /** Result of the evolutionary search. */
@@ -117,8 +135,12 @@ export interface EvolveResult {
   generations: number;
   /** True when the champion classifies all four samples correctly. */
   solved: boolean;
-  /** Milestone summary built from `evolveDir`'s return value (issue #301). */
-  summary: EvolveDirSummary;
+  /** Wall-clock duration of the evolveDir call in milliseconds. */
+  wallClockMs: number;
+  /** Neuron count of the seed creature before evolveDir ran. */
+  seedNeurons: number;
+  /** Synapse count of the seed creature before evolveDir ran. */
+  seedSynapses: number;
 }
 
 /** Sensible defaults for the demonstration runner. */
@@ -135,12 +157,37 @@ export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   mutationAmount: 3,
 };
 
-/** Path to the SVG snapshot the runner emits for the README. */
+/** Path to the decision-boundary SVG the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/xor_decision_boundary.svg";
 
-/** Milestone summary SVG path — sourced from `evolveDir`'s return value (#301). */
-export const EVOLUTION_SUMMARY_SVG_PATH =
-  "docs/screenshots/xor_classification/evolution_summary.svg";
+/** Slug used by the multi-run persistence helpers and chart artefact paths. */
+export const EXAMPLE_SLUG = "xor_classification";
+
+/**
+ * Path to the multi-run error-curve chart the runner emits — error vs
+ * cumulative generation across every run, with faint run-boundary guide
+ * lines. Replaces the legacy single-run summary chart (issue #326).
+ */
+export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/xor_classification/milestones.svg";
+
+/**
+ * Path to the multi-run complexity chart the runner emits — neurons +
+ * synapses vs cumulative generation across every run.
+ */
+export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/xor_classification/complexity.svg";
+
+/**
+ * Default `targetError` for a multi-run invocation. Matches the
+ * historical XOR convention — `0.05` (`>= 95%` per-sample fitness).
+ */
+export const DEFAULT_MULTI_RUN_TARGET_ERROR = DEFAULT_EVOLVE_OPTIONS.errorThreshold;
+
+/**
+ * Default wall-clock budget for a single multi-run invocation, in
+ * minutes. Five minutes matches the audit-mandated stop condition
+ * (audit issue #205) and the issue #326 default.
+ */
+export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
 
 /** Resolution (cells per side) of the decision-boundary grid. */
 export const DECISION_BOUNDARY_GRID = 40;
@@ -234,15 +281,15 @@ export function correctCount(creature: Creature): number {
  *
  * The runner builds the **uniform-random seed creature** via
  * {@link buildRandomSeedCreature} (no hidden neurons, random weights and
- * output bias from the seeded PRNG) and delegates structural mutation
- * to the library via `creature.evolveDir` — add-neuron, add-synapse and
- * weight perturbation are all driven by the NEAT primitives, not by
- * the example.
+ * output bias from the seeded PRNG) when no `seedCreatureExport` is
+ * supplied, or rebuilds the prior champion from its export to resume.
+ * Structural mutation is delegated to the library via
+ * `creature.evolveDir` — add-neuron, add-synapse and weight perturbation
+ * are all driven by the NEAT primitives, not by the example.
  *
  * One `evolveDir` call covers the whole budget. The return value's
  * `{ error, score, time, generation }` fields plus the seed and final
- * topology counts feed an {@link EvolveDirSummary} for the milestone
- * summary chart (issue #301).
+ * topology counts feed the multi-run milestone history (issue #326).
  *
  * Determinism: the seed flows through `NeatOptions.seed` and is also
  * used to construct the initial creature, so two runs with the same
@@ -258,7 +305,12 @@ export async function evolveXorController(
   try {
     if (ownDataDir) writeXorDataset(dataDir);
 
-    const creature = Creature.fromJSON(buildRandomSeedCreature(options.seed));
+    // When `seedCreatureExport` is supplied (multi-run resume), rebuild
+    // the prior champion. Otherwise fall back to the uniform-random
+    // minimal seed.
+    const creature = options.seedCreatureExport !== undefined
+      ? Creature.fromJSON(options.seedCreatureExport)
+      : Creature.fromJSON(buildRandomSeedCreature(options.seed));
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;
 
@@ -297,26 +349,15 @@ export async function evolveXorController(
     const solved = finalError <= options.errorThreshold &&
       correctCount(creature) === 4;
 
-    const summary: EvolveDirSummary = {
-      finalError,
-      finalScore,
-      wallClockMs,
-      generations,
-      seedNeurons,
-      seedSynapses,
-      finalNeurons: creature.neurons.length,
-      finalSynapses: creature.synapses.length,
-      targetError: options.errorThreshold,
-      ...(options.timeoutMinutes > 0 ? { timeoutMinutes: options.timeoutMinutes } : {}),
-    };
-
     return {
       champion: creature,
       bestFitness: finalScore,
       bestError: finalError,
       generations,
       solved,
-      summary,
+      wallClockMs,
+      seedNeurons,
+      seedSynapses,
     };
   } finally {
     if (ownDataDir) {
@@ -329,10 +370,129 @@ export async function evolveXorController(
   }
 }
 
+/** Options accepted by {@link runMultiRunXor}. */
+export interface RunMultiRunXorOptions {
+  /** Argv (defaults to `Deno.args`). Recognised flags: `--fresh`,
+   * `--timeout=<minutes>`, `--target-error=<value>`. */
+  argv?: readonly string[];
+  /** Base directory override for the multi-run persistence helpers and
+   * chart artefacts (used by tests). Defaults to `docs`. */
+  baseDir?: string;
+  /** Optional overrides applied to `DEFAULT_EVOLVE_OPTIONS` (used by
+   * tests to cap iterations without depending on wall-clock timing). */
+  evolveOverrides?: Partial<EvolveOptions>;
+}
+
+/** Outcome of a single multi-run invocation. */
+export interface MultiRunResult {
+  /** The underlying evolveDir result. */
+  evolveResult: EvolveResult;
+  /** Number of this run within the persisted history (1-based). */
+  runIndex: number;
+  /** Cumulative generation total *after* this run was appended. */
+  lastCumulativeGen: number;
+  /** Total number of milestones in the merged history. */
+  totalMilestones: number;
+  /** `true` when the prior champion was reloaded as the seed creature. */
+  resumed: boolean;
+}
+
+/**
+ * Convert an {@link EvolveResult} into a {@link NewMultiRunSample}. The
+ * supervised XOR run produces a single end-of-run summary
+ * (`evolveDir` returns `{ error, score, generation, time }`), so each
+ * run contributes one milestone to the merged history.
+ */
+export function evolveResultToMultiRunSample(result: EvolveResult): NewMultiRunSample {
+  const error = Math.max(0, Math.min(1, result.bestError));
+  return {
+    runGen: result.generations,
+    bestScore: result.bestFitness,
+    error,
+    neurons: result.champion.neurons.length,
+    synapses: result.champion.synapses.length,
+    generationWallClockMs: result.wallClockMs,
+  };
+}
+
+/**
+ * End-to-end multi-run wiring: parses flags, optionally wipes prior
+ * state, loads the saved champion (when present) to seed the next run,
+ * evolves the controller, appends the new run's milestone to the merged
+ * history, and renders both multi-run charts.
+ *
+ * Returns a {@link MultiRunResult} so callers (CLI + tests) can report
+ * on the run without re-reading disk.
+ */
+export async function runMultiRunXor(
+  options: RunMultiRunXorOptions = {},
+): Promise<MultiRunResult> {
+  const argv = options.argv ?? Deno.args;
+  const flags = parseMultiRunFlags(argv);
+  const slug = EXAMPLE_SLUG;
+
+  if (flags.fresh) {
+    await wipeMultiRunState(slug, options.baseDir);
+  }
+
+  const state = await loadMultiRunState(slug, options.baseDir);
+  const resumed = state.creatureExport !== undefined;
+
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  const evolveOptions: EvolveOptions = {
+    ...DEFAULT_EVOLVE_OPTIONS,
+    timeoutMinutes,
+    errorThreshold: targetError,
+    seedCreatureExport: state.creatureExport,
+    ...options.evolveOverrides,
+  };
+
+  const evolveResult = await evolveXorController(evolveOptions);
+
+  const newSamples: NewMultiRunSample[] = [evolveResultToMultiRunSample(evolveResult)];
+
+  await appendMultiRunRun(slug, {
+    creatureExport: evolveResult.champion.exportJSON(),
+    newSamples,
+    runIndex: state.nextRunIndex,
+    baseCumulativeGen: state.lastCumulativeGen,
+  }, options.baseDir);
+
+  const merged = await loadMultiRunState(slug, options.baseDir);
+
+  if (merged.milestones.length > 0) {
+    const base = options.baseDir ?? "docs";
+    const screenshotsDir = join(base, "screenshots", slug);
+    ensureDirSync(screenshotsDir);
+
+    const errorSvg = renderMultiRunErrorChartSVG(merged.milestones, {
+      title: "XOR Classification — multi-run error vs cumulative generations",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "milestones.svg"), errorSvg);
+
+    const complexitySvg = renderMultiRunComplexityChartSVG(merged.milestones, {
+      title: "XOR Classification — multi-run creature complexity",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "complexity.svg"), complexitySvg);
+  }
+
+  return {
+    evolveResult,
+    runIndex: state.nextRunIndex,
+    lastCumulativeGen: merged.lastCumulativeGen,
+    totalMilestones: merged.milestones.length,
+    resumed,
+  };
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🧠 XOR Classification Example");
+  console.log("🧠 XOR Classification Example (multi-run)");
   console.log("");
 
   const { creaturesDir } = setupWorkingDirs(".synthetic-xor");
@@ -342,8 +502,46 @@ if (import.meta.main) {
     console.log(`   (${inputs[0]}, ${inputs[1]}) → ${target}`);
   }
 
-  console.log("\n🧬 Evolving classifier (NEAT structural mutation from random noise)...");
-  const result = await evolveXorController();
+  // CI/quality quick mode (mirrors the cart-pole / snake / maze idioms).
+  // When the runner is invoked with `XOR_QUICK=1` the multi-run state and
+  // chart SVGs are written under a temp directory so the canonical docs
+  // artefacts checked into the repo are never overwritten by a CI run,
+  // and the iterations cap is forced low so the section finishes well
+  // inside `quality.sh`'s per-section budget.
+  const quick = Deno.env.get("XOR_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "xor_quick_" });
+    console.log(
+      "⚡ Quick mode (XOR_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
+  const flags = parseMultiRunFlags(Deno.args);
+  if (flags.fresh) {
+    console.log("🧹 --fresh: wiping prior multi-run state.");
+  }
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  console.log("\n🧬 Evolving classifier via Creature.evolveDir()...");
+  console.log(
+    `   Stop conditions: targetError=${targetError}, timeoutMinutes=${timeoutMinutes}` +
+      (quick ? ", maxGenerations=3 (quick mode)" : ""),
+  );
+
+  const multi = await runMultiRunXor({
+    baseDir: quickBaseDir,
+    evolveOverrides: quick ? { maxGenerations: 3 } : undefined,
+  });
+  const { evolveResult: result } = multi;
+
+  if (multi.resumed) {
+    console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
+  } else {
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+  }
 
   console.log(
     `\n${result.solved ? "✅ Solved" : "⚠️  Did not solve"} ` +
@@ -359,38 +557,48 @@ if (import.meta.main) {
     console.log(`   (${inputs[0]}, ${inputs[1]}) → ${out.toFixed(4)} (target=${target}) ${tick}`);
   }
 
-  // Save the champion creature.
+  // The champion creature is persisted by `runMultiRunXor` under
+  // `docs/data/xor_classification/creature.json`. Also drop a copy under
+  // the example's working directory for ad-hoc inspection.
   const championPath = join(creaturesDir, "champion.json");
   const championExport: CreatureExport = result.champion.exportJSON();
   await safeWriteJson(championPath, championExport);
   console.log(`\n💾 Saved champion to ${championPath}`);
 
-  // Render the decision-boundary SVG.
+  // Render the decision-boundary SVG (a distinct artefact from the
+  // multi-run charts). Quick mode keeps this under the temp directory
+  // so a CI invocation never overwrites the canonical docs screenshot.
   const svg = renderDecisionBoundarySVG(result.champion, {
     gridResolution: DECISION_BOUNDARY_GRID,
     samples: xorSamples(),
   });
-  ensureDirSync("docs/screenshots");
-  await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
-
-  // Milestone summary SVG sourced from the evolveDir return value
-  // (issue #301): one chart, no per-generation telemetry.
-  ensureDirSync("docs/screenshots/xor_classification");
-  const summarySvg = renderEvolveDirSummarySvg(result.summary, {
-    title: "XOR Classification — evolveDir Run Summary",
-  });
-  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
-  console.log(`📈 Wrote milestone summary ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  if (quick && quickBaseDir !== undefined) {
+    const tmpScreenshots = join(quickBaseDir, "screenshots");
+    ensureDirSync(tmpScreenshots);
+    await Deno.writeTextFile(join(tmpScreenshots, "xor_decision_boundary.svg"), svg);
+    console.log("⏭️  Quick mode: skipped overwriting canonical decision-boundary screenshot");
+  } else {
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
+    console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
+  }
 
   console.log(
-    `\n🏁 Final summary: generations=${result.summary.generations}  ` +
-      `bestFitness=${result.summary.finalScore.toFixed(4)}  ` +
-      `bestError=${result.summary.finalError.toFixed(4)}  ` +
-      `seed=${result.summary.seedNeurons}/${result.summary.seedSynapses}  ` +
-      `final=${result.summary.finalNeurons}/${result.summary.finalSynapses}`,
+    `📈 Multi-run charts updated under ${
+      quick ? quickBaseDir : "docs"
+    }/screenshots/${EXAMPLE_SLUG}/ — ` +
+      `${multi.totalMilestones} cumulative milestone(s) across ${multi.runIndex} run(s).`,
   );
+
+  if (quick && quickBaseDir !== undefined) {
+    try {
+      await Deno.remove(quickBaseDir, { recursive: true });
+    } catch {
+      // Tolerable — temp dir cleanup is best-effort.
+    }
+  }
+
   console.log(
-    `🕒 Completed in ${format(Date.now() - start, { ignoreZero: true })}`,
+    `\n🏁 Completed in ${format(Date.now() - start, { ignoreZero: true })}`,
   );
 }

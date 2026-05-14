@@ -212,8 +212,13 @@ run_example_with_env "Snake Game Example" "./snake_game/run.sh" "SNAKE_QUICK=1"
 # 5-minute / target-error=0.01 defaults.
 run_example_with_env "Maze Navigation Example" "./maze_navigation/run.sh" "MAZE_QUICK=1"
 
-# Run the XOR Classification example
-run_example "XOR Classification Example" "./xor_classification/run.sh"
+# Run the XOR Classification example. The CI/quality budget caps the
+# section via `XOR_QUICK=1` (issue #326): the runner forces a low
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs creature/milestones/charts. A direct
+# `./xor_classification/run.sh` invocation still uses the realistic
+# 5-minute / target-error=0.05 defaults.
+run_example_with_env "XOR Classification Example" "./xor_classification/run.sh" "XOR_QUICK=1"
 
 # Run the Stock Market Direction Prediction example
 run_example "Stock Market Direction Prediction Example" "./stock_market/run.sh"
