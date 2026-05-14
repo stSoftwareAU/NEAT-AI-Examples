@@ -223,8 +223,14 @@ run_example_with_env "XOR Classification Example" "./xor_classification/run.sh" 
 # Run the Stock Market Direction Prediction example
 run_example "Stock Market Direction Prediction Example" "./stock_market/run.sh"
 
-# Run the MNIST Handwritten-Digit Classification example
-run_example "MNIST Handwritten-Digit Classification Example" "./mnist_classification/run.sh"
+# Run the MNIST Handwritten-Digit Classification example. The
+# CI/quality budget caps the section via `MNIST_QUICK=1` (issue #327):
+# the runner forces a low iterations cap, writes its artefacts under a
+# temp directory, and never overwrites the canonical docs
+# creature/milestones/charts. A direct `./mnist_classification/run.sh`
+# invocation still uses the realistic 5-minute / target-error=0.001
+# defaults.
+run_example_with_env "MNIST Handwritten-Digit Classification Example" "./mnist_classification/run.sh" "MNIST_QUICK=1"
 
 # Run the MCMC Mutation Acceptance demo
 run_example "MCMC Mutation Acceptance Demo" "./mcmc_acceptance/run.sh"
