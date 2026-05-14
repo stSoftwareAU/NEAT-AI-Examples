@@ -1,0 +1,262 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "constant",
+      "uuid": "2d2498f6-5e8f-415c-9b9f-7e88e1973329",
+      "bias": 1.009544354342266
+    },
+    {
+      "type": "constant",
+      "uuid": "96eef8f9-b650-4ce5-9ae8-0e6b0303134b",
+      "bias": -0.027054998306201145
+    },
+    {
+      "type": "constant",
+      "uuid": "0481444d-5921-414a-a291-7b6e54ef153f",
+      "bias": 0.06280779390560713
+    },
+    {
+      "type": "hidden",
+      "uuid": "6b53e32b-9ff2-42e0-a99b-37a50693b2ec",
+      "bias": 0.023166968481903576,
+      "squash": "ELU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "e2165cef-e886-43c8-a321-995627f59d90",
+      "bias": 0.5050298742473615,
+      "squash": "Swish"
+    },
+    {
+      "type": "hidden",
+      "uuid": "92eaad58-c681-4e9a-9294-0bc67c520d41",
+      "bias": 0.07088057290825506,
+      "squash": "Swish"
+    },
+    {
+      "type": "hidden",
+      "uuid": "ade0373c-6519-479f-bd64-2d4493c212ee",
+      "bias": -0.5872552763515877,
+      "squash": "GELU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "1c3ed812-5cd3-44a7-82ca-606af2843fe5",
+      "bias": 0.40313816569562544,
+      "squash": "Softplus"
+    },
+    {
+      "type": "hidden",
+      "uuid": "2cf62e5c-1acc-4887-bd3c-ef6f61e0a593",
+      "bias": 0.7827883693582238,
+      "squash": "Swish"
+    },
+    {
+      "type": "hidden",
+      "uuid": "8f94df58-53d3-4047-b5c1-2154d585d5c8",
+      "bias": 0.5721193866795412,
+      "squash": "StdInverse"
+    },
+    {
+      "type": "hidden",
+      "uuid": "12731bab-877f-435f-a608-9885acfdc224",
+      "bias": -0.664939569799636,
+      "squash": "IF"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 1.6715057457645295,
+      "squash": "HARD_TANH"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": -5.642480187056021,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-2",
+      "bias": 0.8860115463629656,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 2.1685451963738545,
+      "fromUUID": "input-0",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.6016261816029725,
+      "fromUUID": "input-1",
+      "toUUID": "e2165cef-e886-43c8-a321-995627f59d90"
+    },
+    {
+      "weight": -0.41829685678035805,
+      "fromUUID": "input-1",
+      "toUUID": "ade0373c-6519-479f-bd64-2d4493c212ee"
+    },
+    {
+      "weight": -1.4928823823237343,
+      "fromUUID": "input-1",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 1.2823897886030031,
+      "fromUUID": "input-2",
+      "toUUID": "ade0373c-6519-479f-bd64-2d4493c212ee"
+    },
+    {
+      "weight": 0.08206429999999999,
+      "fromUUID": "input-3",
+      "toUUID": "8f94df58-53d3-4047-b5c1-2154d585d5c8"
+    },
+    {
+      "weight": -0.15161088682080606,
+      "fromUUID": "input-3",
+      "toUUID": "12731bab-877f-435f-a608-9885acfdc224",
+      "type": "negative"
+    },
+    {
+      "weight": 0.8011797715578926,
+      "fromUUID": "input-4",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 1.5438925057966117,
+      "fromUUID": "input-5",
+      "toUUID": "6b53e32b-9ff2-42e0-a99b-37a50693b2ec"
+    },
+    {
+      "weight": -0.770242741090702,
+      "fromUUID": "input-5",
+      "toUUID": "92eaad58-c681-4e9a-9294-0bc67c520d41"
+    },
+    {
+      "weight": -0.58798896336314,
+      "fromUUID": "input-5",
+      "toUUID": "1c3ed812-5cd3-44a7-82ca-606af2843fe5"
+    },
+    {
+      "weight": 0.023062983648243274,
+      "fromUUID": "input-5",
+      "toUUID": "2cf62e5c-1acc-4887-bd3c-ef6f61e0a593"
+    },
+    {
+      "weight": -0.46947951967328017,
+      "fromUUID": "input-6",
+      "toUUID": "2cf62e5c-1acc-4887-bd3c-ef6f61e0a593"
+    },
+    {
+      "weight": -0.017631259831143744,
+      "fromUUID": "input-6",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 1.9077936289267985,
+      "fromUUID": "input-6",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": 2.1411559715347788,
+      "fromUUID": "input-6",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.0726387283096704,
+      "fromUUID": "2d2498f6-5e8f-415c-9b9f-7e88e1973329",
+      "toUUID": "92eaad58-c681-4e9a-9294-0bc67c520d41"
+    },
+    {
+      "weight": 0.050492414875606184,
+      "fromUUID": "2d2498f6-5e8f-415c-9b9f-7e88e1973329",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -1.034004649515545,
+      "fromUUID": "96eef8f9-b650-4ce5-9ae8-0e6b0303134b",
+      "toUUID": "12731bab-877f-435f-a608-9885acfdc224",
+      "type": "condition"
+    },
+    {
+      "weight": 0.16768960047311945,
+      "fromUUID": "0481444d-5921-414a-a291-7b6e54ef153f",
+      "toUUID": "ade0373c-6519-479f-bd64-2d4493c212ee"
+    },
+    {
+      "weight": -0.20054982242839994,
+      "fromUUID": "0481444d-5921-414a-a291-7b6e54ef153f",
+      "toUUID": "8f94df58-53d3-4047-b5c1-2154d585d5c8"
+    },
+    {
+      "weight": -0.2889884423106911,
+      "fromUUID": "6b53e32b-9ff2-42e0-a99b-37a50693b2ec",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -0.6586928609760279,
+      "fromUUID": "e2165cef-e886-43c8-a321-995627f59d90",
+      "toUUID": "2cf62e5c-1acc-4887-bd3c-ef6f61e0a593"
+    },
+    {
+      "weight": -0.6647310555695739,
+      "fromUUID": "92eaad58-c681-4e9a-9294-0bc67c520d41",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.09531904612752135,
+      "fromUUID": "ade0373c-6519-479f-bd64-2d4493c212ee",
+      "toUUID": "1c3ed812-5cd3-44a7-82ca-606af2843fe5"
+    },
+    {
+      "weight": 0.24846605079984577,
+      "fromUUID": "1c3ed812-5cd3-44a7-82ca-606af2843fe5",
+      "toUUID": "8f94df58-53d3-4047-b5c1-2154d585d5c8"
+    },
+    {
+      "weight": -0.47978503070408784,
+      "fromUUID": "2cf62e5c-1acc-4887-bd3c-ef6f61e0a593",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.0020705728279586666,
+      "fromUUID": "8f94df58-53d3-4047-b5c1-2154d585d5c8",
+      "toUUID": "12731bab-877f-435f-a608-9885acfdc224",
+      "type": "positive"
+    },
+    {
+      "weight": 2.5249812529974447,
+      "fromUUID": "8f94df58-53d3-4047-b5c1-2154d585d5c8",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.0663122,
+      "fromUUID": "12731bab-877f-435f-a608-9885acfdc224",
+      "toUUID": "output-1"
+    }
+  ],
+  "input": 7,
+  "output": 3,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0.08211815019474791"
+    },
+    {
+      "name": "score",
+      "value": "0.9178804463805252"
+    },
+    {
+      "name": "trialRewards",
+      "value": "-0.18210919121562355,-0.0845104374945888,-0.1321247459623245,0,-0.15705453624265173,-0.061449952275394,0,-0.19442882027469166,0,-0.009503818482204964"
+    },
+    {
+      "name": "meanReward",
+      "value": "-0.08211815019474791"
+    }
+  ]
+}

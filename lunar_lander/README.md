@@ -18,21 +18,21 @@ external dependency is NEAT-AI's `Creature.activate` to compute each step's thru
 
 ## 📊 Real Run Statistics
 
-On a default run (seed-driven, `targetError=0.01`, `timeoutMinutes=2`) the example exits via the
-`timeout` stop condition before reaching a 99% landed-rate target. Per
+On a default multi-run invocation (`targetError=0.01`, `timeoutMinutes=5`) the example resumes from
+the previously-saved champion (`docs/data/lunar_lander/creature.json`) and continues evolution. Per
 [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only milestone
-statistics, so the canonical fitness-progression artefact is the milestone chart embedded below. The
-two-minute wall-clock budget is intentionally tight so the example terminates predictably; the
-captured champion is a partial controller — gen 1 is noise, and the validation chart shows where the
-controller still crashes or drifts.
+statistics, so the canonical fitness-progression artefacts are the two multi-run charts embedded
+below (`milestones.svg` for normalised error, `complexity.svg` for neuron + synapse counts). Each
+run appends its milestones to the merged history (`docs/data/lunar_lander/milestones.json`) so the
+chart's x-axis is the cumulative generation across **every** run, with faint guide lines marking the
+run boundaries.
 
 The topology genuinely grows during the run rather than being memorised from a hand-crafted seed:
 the gen-1 milestone records NEAT-AI's minimal `(input, output)` seed (seven inputs and three
 outputs, fully connected with no hidden layer) and subsequent milestones capture the neuron and
-synapse counts as NEAT-AI's structural-mutation operators splice in hidden neurons. The milestone
-chart below renders this growth — best score, mean episode steps, and champion neuron / synapse
-counts — at the canonical milestone cadence (generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000,
-then powers of ten).
+synapse counts as NEAT-AI's structural-mutation operators splice in hidden neurons. The complexity
+chart below renders this growth — champion neuron and synapse counts — at the canonical milestone
+cadence (generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of ten).
 
 > Continuous Integration runs the example in **quick mode** (`LUNAR_QUICK=1`, ~6 seconds) so
 > `quality.sh` finishes in seconds and never overwrites the canonical artefacts. The artefacts
@@ -54,7 +54,7 @@ flowchart LR
     PICK["🎯 Pick representative validation scenario<br/>(median score; index 0 if all landed)"]
     RUN["▶️ Replay champion from validation start"]
     JSON["📝 validation/results.json"]
-    MILES["📈 docs/screenshots/<br/>lunar_lander_milestones.svg<br/>(milestone chart)"]
+    MILES["📈 docs/screenshots/lunar_lander/<br/>milestones.svg + complexity.svg<br/>(multi-run charts)"]
     BARS["📊 docs/screenshots/lunar_lander/<br/>validation.svg<br/>(bar chart)"]
     SVG["🖼️ docs/screenshots/<br/>lunar_lander.svg<br/>(validation episode)"]
 
@@ -157,12 +157,13 @@ evolutionary search a smooth gradient to climb — a controller that drifts with
 scores measurably better than one that explodes out of bounds, so selection can reward incremental
 improvement instead of waiting for the first successful landing.
 
-Whichever condition fires first wins. The runner reports `result.stopReason` (`"target"` or
-`"timeout"`) and `result.wallclockMs` so callers can distinguish the two outcomes. The CLI runner
-accepts overrides:
+Whichever condition fires first wins. The runner reports `result.stopReason` (`"target"`,
+`"timeout"`, or `"iterations"`) and `result.wallclockMs` so callers can distinguish the outcomes.
+The CLI runner accepts overrides:
 
 ```bash
-./lunar_lander/run.sh --target-error=0.05 --timeout-minutes=5
+./lunar_lander/run.sh --target-error=0.05 --timeout=5
+./lunar_lander/run.sh --fresh   # wipe prior multi-run state before evolving
 ```
 
 Multi-trial scoring (`trials = 10`, `initialPerturbation = 1.0`) means a controller cannot win by
@@ -226,7 +227,12 @@ defaults — that is the path users invoke directly when they want a champion + 
 
 Artefacts:
 
-- `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the run
+- `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the latest run
+  (also persisted under `docs/data/lunar_lander/creature.json` by the multi-run helper)
+- `docs/data/lunar_lander/creature.json` — the latest champion (multi-run state, reloaded on the
+  next invocation)
+- `docs/data/lunar_lander/milestones.json` — merged milestone history across every run, with both
+  per-run and cumulative generation indices
 - `.synthetic-lunar-lander/validation/results.json` — per-scenario outcomes from replaying the
   champion against every held-out validation scenario (one entry per scenario plus aggregate counts;
   consumed by downstream charts)
@@ -240,29 +246,26 @@ Artefacts:
   colour-coded outcome badge (`✓ LANDED` / `✗ CRASHED` / `✗ OUT OF BOUNDS` / `… TIMED OUT`) sits in
   the top-right corner so the result is unmistakable
   ([issue #177](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/177)).
-- `docs/screenshots/lunar_lander_milestones.svg` — dual-axis milestone chart plotting best score and
-  mean episode steps (left axis) against champion neuron and synapse counts (right axis) at the
-  canonical milestone cadence (generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of
-  ten). Replaces the legacy per-generation `evolution.svg`, `fitness.svg`, and the snapshot-driven
-  `lunar_lander_evolution.svg` strip — per
-  [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI only surfaces
-  milestone-cadence telemetry.
+- `docs/screenshots/lunar_lander/milestones.svg` — multi-run error chart plotting normalised error
+  vs cumulative generation across every run, with faint run-boundary guide lines. Subsumes the
+  legacy single-run `lunar_lander_milestones.svg` retired by
+  [#324](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/324).
+- `docs/screenshots/lunar_lander/complexity.svg` — multi-run complexity chart plotting champion
+  neuron + synapse counts vs cumulative generation across every run.
 - `docs/screenshots/lunar_lander/validation.svg` — per-validation-scenario outcome bar chart
   (`landed` / `crashed` / `out_of_bounds` / `flying` counts across the 200 held-out scenarios)
 
 ## Evolution Progress
 
-![Lunar-Lander evolveRL milestone chart — best score and mean episode steps on the left axis, champion neuron and synapse counts on the right axis, plotted at the milestone cadence](../docs/screenshots/lunar_lander_milestones.svg)
+![Lunar-Lander multi-run error chart — normalised error vs cumulative generations across every run, with faint guide lines marking run boundaries](../docs/screenshots/lunar_lander/milestones.svg)
+
+![Lunar-Lander multi-run complexity chart — champion neuron and synapse counts vs cumulative generations across every run](../docs/screenshots/lunar_lander/complexity.svg)
 
 The runner collects `evolverl_milestone` events from `Creature.evolveRL()` (emitted at the canonical
-milestone cadence — generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of ten) and
-renders them via the shared [`common/milestone_chart.ts`](../common/milestone_chart.ts) helper. The
-blue and orange lines on the left axis track the best score and mean episode steps across the
-milestone evaluation; the green and red lines on the right axis track the champion's neuron and
-synapse counts. The narrative is the same one the legacy snapshot strip used to tell: **gen 1 is
-random noise** (the 10-neuron / 21-synapse minimal seed), later milestones capture the controller
-starting to throttle and orient, and the final milestone is the champion the runner saved when the
-timeout fired.
+milestone cadence — generations 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, then powers of ten),
+converts each into a `MultiRunMilestone`, and appends them to the merged history under
+`docs/data/lunar_lander/milestones.json`. The two charts re-render from that history on every run so
+the noise → competent narrative is preserved across resumes.
 
 ## 🛬 Entry Profile
 
