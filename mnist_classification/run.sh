@@ -5,10 +5,17 @@ set -euo pipefail
 #
 # Writes the FULL 60 000-record MNIST training set to a binary `.bin`
 # file, seeds NEAT-AI with `new Creature(784, 10)` (no hidden hint, no
-# warm start), and runs `Creature.evolveDir(dataDir,
-# { targetError: 0.001, timeoutMinutes: 10 })` exactly once. Saves the
-# evolved champion + a confusion matrix and renders the prediction-grid
-# SVG.
+# warm start) on the first run, and runs `Creature.evolveDir(dataDir,
+# { targetError, timeoutMinutes })` exactly once. Persists the champion
+# and a per-run milestone via the multi-run helper (issue #327) so
+# subsequent invocations resume from the saved creature and append a
+# fresh milestone to the merged history. Renders the prediction-grid
+# SVG plus both multi-run charts (milestones.svg + complexity.svg).
+#
+# Recognised flags (forwarded verbatim to the Deno program):
+#   --fresh                 Wipe prior multi-run state before running.
+#   --timeout=<minutes>     Override the wall-clock budget (default 5).
+#   --target-error=<value>  Override the early-exit threshold (default 0.001).
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
@@ -35,12 +42,15 @@ deno run \
   mnist_classification/mnist_classification.ts \
   "$@"
 
-# Re-format the regenerated SVG so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
+# Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
+# stay clean — the renderers emit compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
 if [[ -f "docs/screenshots/mnist_classification.svg" ]]; then
   deno fmt "docs/screenshots/mnist_classification.svg" > /dev/null
 fi
-if [[ -f "docs/screenshots/mnist_classification/evolution_summary.svg" ]]; then
-  deno fmt "docs/screenshots/mnist_classification/evolution_summary.svg" > /dev/null
+if [[ -f "docs/screenshots/mnist_classification/milestones.svg" ]]; then
+  deno fmt "docs/screenshots/mnist_classification/milestones.svg" > /dev/null
+fi
+if [[ -f "docs/screenshots/mnist_classification/complexity.svg" ]]; then
+  deno fmt "docs/screenshots/mnist_classification/complexity.svg" > /dev/null
 fi

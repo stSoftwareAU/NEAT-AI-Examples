@@ -1,16 +1,18 @@
 {
   "trainingRecords": 60000,
-  "evolveWallClockMs": 610032,
+  "evolveWallClockMs": 312607,
   "targetError": 0.001,
-  "timeoutMinutes": 10,
+  "timeoutMinutes": 5,
   "seedNeurons": 794,
   "seedSynapses": 7840,
   "finalNeurons": 794,
   "finalSynapses": 7841,
-  "validationAccuracy": 0.109,
-  "testAccuracy": 0.1037,
+  "validationAccuracy": 0.0657,
+  "testAccuracy": 0.0696,
   "stopCondition": "timeoutMinutes",
-  "evolveDirError": 0.0901,
-  "evolveDirScore": 0.9099,
-  "evolveDirGenerations": 12
+  "evolveDirError": 149291.70322509718,
+  "evolveDirScore": -149290.70330350817,
+  "evolveDirGenerations": 94,
+  "runIndex": 1,
+  "resumed": false
 }
