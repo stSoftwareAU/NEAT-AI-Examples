@@ -812,6 +812,69 @@ function toMilestoneSample(m: EvolveRLMilestone): MilestoneSample {
 }
 
 /**
+ * Ensure the milestone list reflects the run's actual final generation
+ * (issue #351).
+ *
+ * `Creature.evolveRL()` only emits milestone payloads at the canonical
+ * schedule (`1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of
+ * ten). When evolution stops between two schedule points — e.g. the
+ * 5-minute timeout fires at generation 1487, between `1000` and
+ * `10_000` — the last recorded milestone sits at the previous schedule
+ * point, so the multi-run chart's x-axis ends at `1000` even though the
+ * run actually executed several hundred further generations. The user
+ * report on #351 ("Only 1000 Generations ?") is exactly this artefact.
+ *
+ * This helper appends a synthetic final-generation {@link MilestoneSample}
+ * whenever the run terminated past the last canonical milestone, so the
+ * chart's x-axis reflects the true terminal generation count rather
+ * than the previous round number. The synthetic milestone carries the
+ * champion's actual neuron and synapse counts plus the run's final
+ * normalised error (mapped back through `bestScore = -error` to match
+ * the upstream sign convention), so it slots into the existing
+ * milestone pipeline without special-case handling downstream.
+ *
+ * Edge cases:
+ * - Empty milestone list (statistics disabled / zero-iteration run):
+ *   the helper returns the list unchanged.
+ * - `finalGeneration` already equals the last milestone's generation
+ *   (run stopped exactly on a schedule point): no synthetic milestone
+ *   is appended.
+ * - `finalGeneration < last.generation` (defensive against upstream
+ *   drift): the list is returned unchanged.
+ *
+ * Pure function — no side effects on the input array.
+ */
+export function appendFinalMilestone(
+  milestones: readonly MilestoneSample[],
+  finalGeneration: number,
+  finalError: number,
+  champion: Creature,
+): MilestoneSample[] {
+  const out = milestones.slice();
+  if (out.length === 0) return out;
+  const last = out[out.length - 1];
+  if (!Number.isFinite(finalGeneration) || finalGeneration <= last.generation) {
+    return out;
+  }
+  const clampedError = clamp01(Math.max(0, finalError));
+  out.push({
+    generation: Math.floor(finalGeneration),
+    bestScore: -clampedError,
+    bestNeurons: champion.neurons.length,
+    bestSynapses: champion.synapses.length,
+    // `meanEpisodeSteps` is a per-generation rollout statistic that
+    // `evolveRL` does not surface at termination. Carry the previous
+    // milestone's value forward so the rendered chart keeps a
+    // monotonically reasonable curve without inventing a fresh number.
+    meanEpisodeSteps: last.meanEpisodeSteps,
+    // No per-generation wall-clock cost is available at termination,
+    // so attribute zero ms to the synthetic milestone.
+    generationWallClockMs: 0,
+  });
+  return out;
+}
+
+/**
  * Run NEAT-AI's first-class reinforcement-learning evolution loop
  * against a {@link LanderAdapter}. Mutation, crossover, elitism,
  * plateau detection, and stop-condition handling are owned by
@@ -878,7 +941,17 @@ export async function evolveLanderController(
 
   const wallclockMs = Date.now() - loopStart;
 
-  const milestones: MilestoneSample[] = (result.milestones ?? []).map(toMilestoneSample);
+  const rawMilestones: MilestoneSample[] = (result.milestones ?? []).map(toMilestoneSample);
+  // Issue #351: append a synthetic milestone at the run's true terminal
+  // generation so the multi-run chart's x-axis stops at the actual final
+  // generation rather than the previous canonical schedule point (1000,
+  // 10000, …) the upstream milestone cadence happened to emit.
+  const milestones: MilestoneSample[] = appendFinalMilestone(
+    rawMilestones,
+    result.generation,
+    result.error,
+    seedCreature,
+  );
 
   // Replay the champion against the same perturbed trial batch the
   // adapter was driving so `landedRate`, `championOutcome`, and the
