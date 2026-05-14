@@ -267,6 +267,14 @@ converts each into a `MultiRunMilestone`, and appends them to the merged history
 `docs/data/lunar_lander/milestones.json`. The two charts re-render from that history on every run so
 the noise → competent narrative is preserved across resumes.
 
+Per [#351](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/351), the runner also appends a
+**synthetic final-generation milestone** whenever the run terminates between two canonical schedule
+points — for example, when a 5-minute timeout fires at generation 1487, between 1000 and 10000. The
+synthetic milestone carries the champion's actual neuron and synapse counts plus the run's final
+normalised error, so the chart's x-axis reflects the **true terminal generation count** rather than
+the previous round number. Without it the chart would truncate at 1000, even though the run executed
+several hundred further generations.
+
 ## 🛬 Entry Profile
 
 Issue [#72](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/72): the lander now enters

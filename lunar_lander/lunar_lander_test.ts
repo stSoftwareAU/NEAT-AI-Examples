@@ -32,6 +32,7 @@ import { join } from "@std/path";
 import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
+  appendFinalMilestone,
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
   DEFAULT_MULTI_RUN_TARGET_ERROR,
@@ -834,6 +835,136 @@ Deno.test("multi-run chart paths sit under the lunar_lander slug directory", () 
   assertEquals(EXAMPLE_SLUG, "lunar_lander");
   assertEquals(DEFAULT_MULTI_RUN_TARGET_ERROR, 0.01);
   assertEquals(DEFAULT_MULTI_RUN_TIMEOUT_MINUTES, 5);
+});
+
+Deno.test({
+  // Issue #351: when evolution stops between two canonical milestone
+  // generations (e.g. iterations=3 sits between schedule points 2 and
+  // 5), the multi-run chart used to truncate at the previous schedule
+  // point. The fix appends a synthetic final-generation milestone so
+  // the chart's x-axis reflects the true terminal generation.
+  name:
+    "evolveLanderController appends a synthetic milestone at the actual final generation (#351)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const iterations = 3; // sits between canonical schedule points 2 and 5
+    const result = await evolveLanderController({
+      ...TEST_EVOLVE_OPTIONS,
+      iterations,
+    });
+
+    assertEquals(
+      result.generations,
+      iterations,
+      "expected the iterations cap to drive run termination",
+    );
+    const last = result.milestones[result.milestones.length - 1];
+    assertEquals(
+      last.generation,
+      iterations,
+      `expected the final milestone to match result.generations=${iterations}, ` +
+        `got ${last.generation}`,
+    );
+    assertGreaterOrEqual(last.bestNeurons, INPUT_COUNT + OUTPUT_COUNT);
+    assertGreaterOrEqual(last.bestSynapses, 1);
+  },
+});
+
+Deno.test("appendFinalMilestone appends synthetic milestone when run ends past last schedule point", () => {
+  // Build a synthetic milestone history that stops at the canonical
+  // schedule point 1000, simulating a real run that fired the timeout
+  // at generation 1487 — between 1000 and the next schedule point of
+  // 10000. Without the fix the chart would truncate at 1000.
+  const milestones = [
+    {
+      generation: 1,
+      bestScore: -0.4,
+      bestNeurons: 10,
+      bestSynapses: 21,
+      meanEpisodeSteps: 100,
+      generationWallClockMs: 50,
+    },
+    {
+      generation: 1000,
+      bestScore: -0.13,
+      bestNeurons: 33,
+      bestSynapses: 51,
+      meanEpisodeSteps: 127,
+      generationWallClockMs: 93,
+    },
+  ];
+  const champion = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const augmented = appendFinalMilestone(milestones, 1487, 0.08, champion);
+  assertEquals(augmented.length, milestones.length + 1);
+  const tail = augmented[augmented.length - 1];
+  assertEquals(tail.generation, 1487);
+  // `bestScore = -error`, mirroring the adapter's sign convention.
+  assertAlmostEquals(tail.bestScore, -0.08, 1e-12);
+  assertEquals(tail.bestNeurons, champion.neurons.length);
+  assertEquals(tail.bestSynapses, champion.synapses.length);
+  // Carry the previous milestone's meanEpisodeSteps forward — the
+  // library does not surface a terminal-step value.
+  assertEquals(tail.meanEpisodeSteps, milestones[milestones.length - 1].meanEpisodeSteps);
+  // No per-generation wall-clock cost is available at termination.
+  assertEquals(tail.generationWallClockMs, 0);
+});
+
+Deno.test("appendFinalMilestone is a no-op when final generation matches the last milestone", () => {
+  // Run terminates exactly on a canonical schedule point (e.g.
+  // generation 1000 hit precisely). No synthetic milestone is needed.
+  const milestones = [
+    {
+      generation: 1,
+      bestScore: -0.4,
+      bestNeurons: 10,
+      bestSynapses: 21,
+      meanEpisodeSteps: 100,
+      generationWallClockMs: 50,
+    },
+    {
+      generation: 1000,
+      bestScore: -0.13,
+      bestNeurons: 33,
+      bestSynapses: 51,
+      meanEpisodeSteps: 127,
+      generationWallClockMs: 93,
+    },
+  ];
+  const champion = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const result = appendFinalMilestone(milestones, 1000, 0.13, champion);
+  assertEquals(result.length, milestones.length);
+  assertEquals(result[result.length - 1].generation, 1000);
+});
+
+Deno.test("appendFinalMilestone returns input unchanged when milestones list is empty", () => {
+  // Defensive: if statistics were disabled or zero iterations ran the
+  // helper has nothing to anchor against and must not invent state.
+  const champion = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const result = appendFinalMilestone([], 500, 0.1, champion);
+  assertEquals(result.length, 0);
+});
+
+Deno.test("appendFinalMilestone clamps the synthetic milestone's error into [0, 1]", () => {
+  const milestones = [
+    {
+      generation: 100,
+      bestScore: -0.2,
+      bestNeurons: 12,
+      bestSynapses: 24,
+      meanEpisodeSteps: 110,
+      generationWallClockMs: 40,
+    },
+  ];
+  const champion = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+
+  // Defensive: a defensive overshoot (error > 1) is clamped to 1.
+  const high = appendFinalMilestone(milestones, 250, 1.5, champion);
+  assertEquals(high[high.length - 1].bestScore, -1);
+
+  // Defensive: a defensive undershoot (error < 0) is clamped to 0.
+  const low = appendFinalMilestone(milestones, 250, -0.3, champion);
+  assertEquals(low[low.length - 1].bestScore, 0);
 });
 
 Deno.test("milestoneToMultiRunSample maps cumulative reward to normalised error", () => {
