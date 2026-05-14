@@ -188,8 +188,13 @@ run_example_with_env "Cart-Pole Balancing Example" "./cart_pole/run.sh" "CART_PO
 # `./lunar_lander/run.sh` still use the realistic 2-minute defaults.
 run_example_with_env "Lunar Lander Descent Example" "./lunar_lander/run.sh" "LUNAR_QUICK=1"
 
-# Run the Mountain Car Control example
-run_example "Mountain Car Control Example" "./mountain_car/run.sh"
+# Run the Mountain Car Control example. The CI/quality budget caps the
+# section via `MOUNTAIN_CAR_QUICK=1` (issue #323): the runner forces an
+# `iterations: 3` cap, writes its artefacts under a temp directory, and
+# never overwrites the canonical docs creature/milestones/charts. A
+# direct `./mountain_car/run.sh` invocation still uses the realistic
+# 5-minute / target-error=0.01 defaults.
+run_example_with_env "Mountain Car Control Example" "./mountain_car/run.sh" "MOUNTAIN_CAR_QUICK=1"
 
 # Run the Snake Game example. The CI/quality budget caps the section
 # via `SNAKE_QUICK=1` (issue #325): the runner forces an `iterations: 3`

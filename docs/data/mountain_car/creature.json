@@ -1,0 +1,87 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "constant",
+      "uuid": "d2547a5e-65ca-4abb-a71d-42de26896896",
+      "bias": -0.1578798917028221
+    },
+    {
+      "type": "hidden",
+      "uuid": "269d61c4-3148-440f-a1ba-ef91ff3748da",
+      "bias": -0.004851136134770437,
+      "squash": "StdInverse"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.8277030516593578,
+      "squash": "ISRU"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": -0.3068235553935106,
+      "squash": "SOFTSIGN"
+    },
+    {
+      "type": "output",
+      "uuid": "output-2",
+      "bias": 0.9685099457970615,
+      "squash": "GAUSSIAN"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.10195193975556766,
+      "fromUUID": "input-0",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -0.6697855758083253,
+      "fromUUID": "input-1",
+      "toUUID": "269d61c4-3148-440f-a1ba-ef91ff3748da"
+    },
+    {
+      "weight": 0.947875200080887,
+      "fromUUID": "input-1",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -0.3185420222523612,
+      "fromUUID": "d2547a5e-65ca-4abb-a71d-42de26896896",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.3052895,
+      "fromUUID": "269d61c4-3148-440f-a1ba-ef91ff3748da",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.1634196,
+      "fromUUID": "output-0",
+      "toUUID": "output-2"
+    }
+  ],
+  "input": 2,
+  "output": 3,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0"
+    },
+    {
+      "name": "score",
+      "value": "0.99999974"
+    },
+    {
+      "name": "trialRewards",
+      "value": "0,0,0,0,0"
+    },
+    {
+      "name": "meanReward",
+      "value": "0"
+    }
+  ]
+}

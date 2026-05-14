@@ -10,27 +10,36 @@
  *   `mutateCreatureExport` internal helpers have been dropped in favour
  *   of direct adapter and controller tests.
  * - Issue #290 — per-generation telemetry, snapshot capture, and the
- *   evolution / fitness / topology charts have been replaced by the
- *   milestone-statistics chart from #287. Tests covering the removed
- *   surfaces have been deleted; a new test asserts the milestone-chart
- *   SVG round-trip via `evolveRL` + `renderMilestoneChartSVG`.
+ *   evolution / fitness / topology charts were replaced by the
+ *   milestone-statistics chart from #287.
+ * - Issue #323 — the single-run milestone chart is itself superseded by
+ *   the multi-run error + complexity chart pair. Tests covering the
+ *   retired `MILESTONE_SVG_PATH` constant have been deleted; new tests
+ *   exercise the resume code path, the `--fresh` wipe, and the
+ *   end-to-end multi-run runner.
  */
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
+  DEFAULT_MULTI_RUN_TARGET_ERROR,
+  DEFAULT_MULTI_RUN_TIMEOUT_MINUTES,
   evolveMountainCarController,
+  EXAMPLE_SLUG,
   INPUT_COUNT,
   MAX_STEPS,
-  MILESTONE_SVG_PATH,
+  milestoneToMultiRunSample,
   MountainCarAdapter,
   type MountainCarEpisodeState,
+  MULTI_RUN_COMPLEXITY_SVG_PATH,
+  MULTI_RUN_ERROR_SVG_PATH,
   OUTPUT_COUNT,
   replayController,
+  runMultiRunMountainCar,
   scoreController,
   scoreSwingUpPolicy,
   SOLVED_THRESHOLD,
@@ -38,7 +47,7 @@ import {
 } from "./mountain_car.ts";
 import { renderRunSVG } from "./svg.ts";
 import { GOAL_POSITION, MAX_EPISODE_STEPS } from "./physics.ts";
-import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
+import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
 
 Deno.test("MountainCarAdapter advertises 2 inputs and the canonical step cap", () => {
   const adapter = new MountainCarAdapter();
@@ -278,14 +287,14 @@ Deno.test({
 });
 
 Deno.test({
-  name: "evolveMountainCarController collects milestone samples and the chart SVG round-trips",
+  name: "evolveMountainCarController collects milestone samples with expected shape",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // Per #287/#290 the milestone chart is the only fitness-progression
-    // artefact the mountain-car example emits. The first milestone fires
-    // at generation 1, so even a single-iteration run must collect at
-    // least one sample, and the chart must render to a well-formed SVG.
+    // Per #287/#290/#298 milestone statistics are the only telemetry
+    // channel NEAT-AI exposes. The first milestone fires at generation
+    // 1, so even a single-iteration run must collect at least one
+    // sample with the documented fields populated.
     const result = await evolveMountainCarController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
@@ -302,49 +311,228 @@ Deno.test({
       assertGreaterOrEqual(m.meanEpisodeSteps, 0);
       assertGreaterOrEqual(m.generationWallClockMs, 0);
     }
+  },
+});
 
-    const tmp = await Deno.makeTempDir({ prefix: "mountain_car_milestone_" });
+// Issue #323 retired the legacy single-run `MILESTONE_SVG_PATH` constant
+// in favour of the multi-run chart pair under `docs/screenshots/mountain_car/`.
+Deno.test("multi-run chart paths sit under the mountain_car slug directory", () => {
+  assertEquals(MULTI_RUN_ERROR_SVG_PATH, "docs/screenshots/mountain_car/milestones.svg");
+  assertEquals(
+    MULTI_RUN_COMPLEXITY_SVG_PATH,
+    "docs/screenshots/mountain_car/complexity.svg",
+  );
+  assertEquals(EXAMPLE_SLUG, "mountain_car");
+  assertEquals(DEFAULT_MULTI_RUN_TARGET_ERROR, 0.01);
+  assertEquals(DEFAULT_MULTI_RUN_TIMEOUT_MINUTES, 5);
+});
+
+Deno.test("milestoneToMultiRunSample maps cumulative reward to normalised error", () => {
+  // The mountain-car adapter emits cumulative reward in {-1, 0}, so
+  // error = -bestScore = 1 - summitRate. NEAT-AI surfaces the
+  // per-episode mean cumulative reward as `bestScore` on the milestone
+  // payload.
+  const sample = milestoneToMultiRunSample({
+    generation: 10,
+    bestScore: -0.4,
+    bestNeurons: 7,
+    bestSynapses: 12,
+    meanEpisodeSteps: 150,
+    generationWallClockMs: 250,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(sample.runGen, 10);
+  assertEquals(sample.bestScore, -0.4);
+  assertEquals(sample.error, 0.4); // -(-0.4)
+  assertEquals(sample.neurons, 7);
+  assertEquals(sample.synapses, 12);
+  assertEquals(sample.meanEpisodeSteps, 150);
+  assertEquals(sample.generationWallClockMs, 250);
+});
+
+Deno.test("milestoneToMultiRunSample clamps error into [0, 1]", () => {
+  // bestScore = -1.5 (defensive undershoot) → 1.5 → clamped to 1
+  const high = milestoneToMultiRunSample({
+    generation: 1,
+    bestScore: -1.5,
+    bestNeurons: 5,
+    bestSynapses: 4,
+    meanEpisodeSteps: 0,
+    generationWallClockMs: 1,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(high.error, 1);
+
+  // bestScore = 0.5 (above the adapter range) → -0.5 → clamped to 0
+  const low = milestoneToMultiRunSample({
+    generation: 1,
+    bestScore: 0.5,
+    bestNeurons: 5,
+    bestSynapses: 4,
+    meanEpisodeSteps: MAX_STEPS,
+    generationWallClockMs: 1,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(low.error, 0);
+
+  // bestScore = 0 (every trial summited) → error = 0
+  const solved = milestoneToMultiRunSample({
+    generation: 1,
+    bestScore: 0,
+    bestNeurons: 5,
+    bestSynapses: 4,
+    meanEpisodeSteps: 100,
+    generationWallClockMs: 1,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(solved.error, 0);
+});
+
+Deno.test({
+  name:
+    "evolveMountainCarController honours seedCreatureExport — accepts the export and produces a valid run",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // Resume-path smoke test: when `seedCreatureExport` is supplied the
+    // call must succeed and produce a champion that round-trips back to
+    // a `CreatureExport` with the same input/output channel counts as
+    // the seed (i.e., the library accepted the supplied genome instead
+    // of crashing on schema mismatch). End-to-end resume semantics are
+    // exercised by the `runMultiRunMountainCar resume flow` integration
+    // test below.
+    const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const seedExport: CreatureExport = seedCreature.exportJSON();
+    assertEquals(seedExport.input, INPUT_COUNT);
+    assertEquals(seedExport.output, OUTPUT_COUNT);
+
+    const result = await evolveMountainCarController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
+      seedCreatureExport: seedExport,
+    });
+    assertGreater(result.milestones.length, 0);
+
+    const championExport = result.champion.exportJSON();
+    assertEquals(championExport.input, INPUT_COUNT);
+    assertEquals(championExport.output, OUTPUT_COUNT);
+    assert(Number.isFinite(result.bestScore));
+  },
+});
+
+Deno.test({
+  name:
+    "runMultiRunMountainCar resume flow loads prior creature, appends milestones, and renders charts",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "mountain_car_resume_" });
     try {
-      const svg = renderMilestoneChartSVG(result.milestones, {
-        title: "Mountain Car — evolveRL Milestones",
-        logX: true,
-        caption: true,
+      const slug = EXAMPLE_SLUG;
+
+      // Pre-seed multi-run state with a prior champion + a synthetic
+      // milestone so loadMultiRunState reports nextRunIndex=2.
+      const priorCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+      await appendMultiRunRun(slug, {
+        creatureExport: priorCreature.exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: -0.5,
+          neurons: INPUT_COUNT + OUTPUT_COUNT,
+          synapses: INPUT_COUNT,
+          meanEpisodeSteps: 200,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      // Drive the multi-run flow with an `iterations=1` cap so the test
+      // completes in seconds and never depends on wall-clock timing.
+      const outcome = await runMultiRunMountainCar({
+        argv: [],
+        baseDir: tmp,
+        evolveOverrides: { iterations: 1 },
       });
-      const path = join(tmp, "mountain_car_milestones.svg");
-      await Deno.writeTextFile(path, svg);
-      const written = await Deno.readTextFile(path);
-      assert(written.startsWith("<svg"), "must start with <svg>");
-      assert(written.includes("</svg>"), "must contain </svg>");
-      assert(
-        written.includes("Mountain Car &#x2014; evolveRL Milestones") ||
-          written.includes("Mountain Car — evolveRL Milestones"),
-        "expected the chart title to appear in the SVG",
-      );
-      // The chart should reference each milestone series.
-      assert(
-        written.includes("best-score-line"),
-        "expected the best-score series",
-      );
-      assert(
-        written.includes("mean-steps-line"),
-        "expected the mean-steps series",
-      );
-      assert(
-        written.includes("neurons-line"),
-        "expected the neurons series",
-      );
-      assert(
-        written.includes("synapses-line"),
-        "expected the synapses series",
-      );
+
+      // Prior champion must have been reloaded as the evolveRL seed.
+      assertEquals(outcome.resumed, true);
+      assertEquals(outcome.runIndex, 2);
+
+      // Persisted history now contains both the pre-seeded milestone and
+      // the new run's milestones, all with monotonic cumulativeGen.
+      const state = await loadMultiRunState(slug, tmp);
+      assertGreater(state.milestones.length, 1);
+      assertEquals(state.nextRunIndex, 3);
+      assertEquals(state.creatureExport !== undefined, true);
+      const newRunMilestones = state.milestones.filter((m) => m.runIndex === 2);
+      assertGreater(newRunMilestones.length, 0);
+      for (let i = 1; i < state.milestones.length; i++) {
+        const prev = state.milestones[i - 1].cumulativeGen;
+        const curr = state.milestones[i].cumulativeGen;
+        assert(curr >= prev, `cumulativeGen must be monotonic (${prev} → ${curr})`);
+      }
+
+      // Both chart SVGs were written under the baseDir override.
+      const errorSvg = join(tmp, "screenshots", slug, "milestones.svg");
+      const complexitySvg = join(tmp, "screenshots", slug, "complexity.svg");
+      assertEquals(existsSync(errorSvg), true, "error chart SVG should exist");
+      assertEquals(existsSync(complexitySvg), true, "complexity chart SVG should exist");
+      const errorText = await Deno.readTextFile(errorSvg);
+      const complexityText = await Deno.readTextFile(complexitySvg);
+      assert(errorText.startsWith("<svg"), "error chart must be an SVG");
+      assert(complexityText.startsWith("<svg"), "complexity chart must be an SVG");
     } finally {
       await Deno.remove(tmp, { recursive: true });
     }
   },
 });
 
-Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
-  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/mountain_car_milestones.svg");
+Deno.test({
+  name: "runMultiRunMountainCar --fresh wipes prior artefacts before running",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "mountain_car_fresh_" });
+    try {
+      const slug = EXAMPLE_SLUG;
+      // Pre-seed with a prior run's state.
+      await appendMultiRunRun(slug, {
+        creatureExport: new Creature(INPUT_COUNT, OUTPUT_COUNT).exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: -0.5,
+          neurons: INPUT_COUNT + OUTPUT_COUNT,
+          synapses: INPUT_COUNT,
+          meanEpisodeSteps: 200,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const outcome = await runMultiRunMountainCar({
+        argv: ["--fresh"],
+        baseDir: tmp,
+        evolveOverrides: { iterations: 1 },
+      });
+
+      // `--fresh` wiped the prior state, so this is run 1 and there was
+      // no prior champion to resume from.
+      assertEquals(outcome.resumed, false);
+      assertEquals(outcome.runIndex, 1);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.nextRunIndex, 2);
+      for (const m of state.milestones) {
+        assertEquals(m.runIndex, 1);
+      }
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
 });
 
 Deno.test("replayController returns a non-empty trace starting at the initial state", () => {

@@ -29,11 +29,14 @@ deno run \
   "$@"
 
 # Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
+# stay clean — the renderers emit compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines.
 if [[ -f "docs/screenshots/mountain_car.svg" ]]; then
   deno fmt docs/screenshots/mountain_car.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/mountain_car_milestones.svg" ]]; then
-  deno fmt docs/screenshots/mountain_car_milestones.svg > /dev/null
+if [[ -f "docs/screenshots/mountain_car/milestones.svg" ]]; then
+  deno fmt docs/screenshots/mountain_car/milestones.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/mountain_car/complexity.svg" ]]; then
+  deno fmt docs/screenshots/mountain_car/complexity.svg > /dev/null
 fi

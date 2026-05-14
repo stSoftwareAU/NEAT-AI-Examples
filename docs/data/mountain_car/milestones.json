@@ -1,0 +1,112 @@
+[
+  {
+    "runGen": 1,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 5,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 34,
+    "runIndex": 1,
+    "cumulativeGen": 1
+  },
+  {
+    "runGen": 2,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 5,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 12,
+    "runIndex": 1,
+    "cumulativeGen": 2
+  },
+  {
+    "runGen": 5,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 4,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 14,
+    "runIndex": 1,
+    "cumulativeGen": 5
+  },
+  {
+    "runGen": 10,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 11,
+    "runIndex": 1,
+    "cumulativeGen": 10
+  },
+  {
+    "runGen": 20,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 13,
+    "runIndex": 1,
+    "cumulativeGen": 20
+  },
+  {
+    "runGen": 50,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 14,
+    "runIndex": 1,
+    "cumulativeGen": 50
+  },
+  {
+    "runGen": 100,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 11,
+    "runIndex": 1,
+    "cumulativeGen": 100
+  },
+  {
+    "runGen": 200,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 18,
+    "runIndex": 1,
+    "cumulativeGen": 200
+  },
+  {
+    "runGen": 500,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 14,
+    "runIndex": 1,
+    "cumulativeGen": 500
+  },
+  {
+    "runGen": 1000,
+    "bestScore": -1,
+    "error": 1,
+    "neurons": 5,
+    "synapses": 3,
+    "meanEpisodeSteps": 200,
+    "generationWallClockMs": 14,
+    "runIndex": 1,
+    "cumulativeGen": 1000
+  }
+]
