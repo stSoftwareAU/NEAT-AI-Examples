@@ -33,14 +33,18 @@ deno run \
   "$@"
 
 # Re-format the regenerated SVGs so subsequent `deno fmt --check` runs
-# stay clean — the renderer emits compact output for readability, and
+# stay clean — the renderers emit compact output for readability, and
 # `deno fmt` prefers attributes split across multiple lines. Quick mode
-# does not write these files, so the existence guards are no-ops there.
+# routes its writes to a temp directory, so the existence guards skip
+# cleanly when canonical artefacts were not regenerated.
 if [[ -f "docs/screenshots/lunar_lander.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander.svg > /dev/null
 fi
-if [[ -f "docs/screenshots/lunar_lander_milestones.svg" ]]; then
-  deno fmt docs/screenshots/lunar_lander_milestones.svg > /dev/null
+if [[ -f "docs/screenshots/lunar_lander/milestones.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander/milestones.svg > /dev/null
+fi
+if [[ -f "docs/screenshots/lunar_lander/complexity.svg" ]]; then
+  deno fmt docs/screenshots/lunar_lander/complexity.svg > /dev/null
 fi
 if [[ -f "docs/screenshots/lunar_lander/validation.svg" ]]; then
   deno fmt docs/screenshots/lunar_lander/validation.svg > /dev/null

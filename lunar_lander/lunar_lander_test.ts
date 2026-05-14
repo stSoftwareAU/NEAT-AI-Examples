@@ -11,13 +11,14 @@
  *   have been dropped in favour of direct {@link LanderAdapter} and
  *   controller tests.
  * - Issue #292 — per-generation telemetry, snapshot capture, and the
- *   evolution / fitness / evolution-progress strip artefacts have been
- *   replaced by the milestone-statistics chart from #287. Tests covering
- *   the removed surfaces (snapshot config, `GenerationInfo`,
- *   `formatEvolutionCsv`, `EvolutionRow`) have been deleted in line with
- *   the milestone-only telemetry decision recorded in #298; a new test
- *   asserts the milestone-chart SVG round-trip via `evolveRL` +
- *   `renderMilestoneChartSVG`.
+ *   evolution / fitness / evolution-progress strip artefacts were
+ *   replaced by the milestone-statistics chart from #287.
+ * - Issue #324 — the single-run milestone chart is itself superseded by
+ *   the multi-run error + complexity chart pair. Tests covering the
+ *   retired `MILESTONE_SVG_PATH` constant and the
+ *   `renderMilestoneChartSVG` round-trip have been deleted; new tests
+ *   exercise the resume code path, the `--fresh` wipe, and the
+ *   end-to-end multi-run runner.
  */
 import {
   assert,
@@ -28,25 +29,31 @@ import {
 } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
   decodeAction,
   DEFAULT_EVOLVE_OPTIONS,
+  DEFAULT_MULTI_RUN_TARGET_ERROR,
+  DEFAULT_MULTI_RUN_TIMEOUT_MINUTES,
   evolveLanderController,
+  EXAMPLE_SLUG,
   freeFallBaselineScore,
   gradedTerminalReward,
   INPUT_COUNT,
   isQuickMode,
   LanderAdapter,
   MAX_STEPS,
-  MILESTONE_SVG_PATH,
+  milestoneToMultiRunSample,
+  MULTI_RUN_COMPLEXITY_SVG_PATH,
+  MULTI_RUN_ERROR_SVG_PATH,
   OUTPUT_COUNT,
   pickValidationSvgIndex,
   QUICK_ITERATIONS,
   QUICK_TARGET_ERROR,
   QUICK_TIMEOUT_MINUTES,
   replayController,
+  runMultiRunLunarLander,
   SCORE_NORMALISERS,
   scoreController,
   scoreFinalState,
@@ -57,7 +64,7 @@ import {
 import { renderRunSVG } from "./svg.ts";
 import { DEFAULT_START_X, DEFAULT_TERRAIN, initialState, type LanderState } from "./physics.ts";
 import { generateScenarioPools } from "./scenarios.ts";
-import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
+import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
 
 /**
  * A fast, deterministic configuration suitable for unit tests. Under
@@ -788,14 +795,14 @@ Deno.test("renderRunSVG renders an animated fuel HUD bar", () => {
 });
 
 Deno.test({
-  name: "evolveLanderController collects milestone samples and the chart SVG round-trips",
+  name: "evolveLanderController collects milestone samples with the documented shape",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // Per #287/#292 the milestone chart is the only fitness-progression
-    // artefact the lunar-lander example emits. The first milestone fires
-    // at generation 1, so even a single-iteration run must collect at
-    // least one sample, and the chart must render to a well-formed SVG.
+    // Per #287/#292/#298/#324 milestone statistics are the only telemetry
+    // channel NEAT-AI exposes. The first milestone fires at generation
+    // 1, so even a single-iteration run must collect at least one
+    // sample with the documented fields populated.
     const result = await evolveLanderController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
@@ -813,48 +820,229 @@ Deno.test({
       assertGreaterOrEqual(m.meanEpisodeSteps, 0);
       assertGreaterOrEqual(m.generationWallClockMs, 0);
     }
+  },
+});
 
-    const tmp = await Deno.makeTempDir({ prefix: "lunar_lander_milestone_" });
+// Issue #324 retired the legacy single-run `MILESTONE_SVG_PATH` constant
+// in favour of the multi-run chart pair under `docs/screenshots/lunar_lander/`.
+Deno.test("multi-run chart paths sit under the lunar_lander slug directory", () => {
+  assertEquals(MULTI_RUN_ERROR_SVG_PATH, "docs/screenshots/lunar_lander/milestones.svg");
+  assertEquals(
+    MULTI_RUN_COMPLEXITY_SVG_PATH,
+    "docs/screenshots/lunar_lander/complexity.svg",
+  );
+  assertEquals(EXAMPLE_SLUG, "lunar_lander");
+  assertEquals(DEFAULT_MULTI_RUN_TARGET_ERROR, 0.01);
+  assertEquals(DEFAULT_MULTI_RUN_TIMEOUT_MINUTES, 5);
+});
+
+Deno.test("milestoneToMultiRunSample maps cumulative reward to normalised error", () => {
+  // The lunar-lander adapter emits graded terminal reward in `[-1, 0]`,
+  // so `error = -bestScore` is an upper bound on `1 - landedRate`.
+  // NEAT-AI surfaces the per-episode mean cumulative reward as
+  // `bestScore` on the milestone payload.
+  const sample = milestoneToMultiRunSample({
+    generation: 10,
+    bestScore: -0.4,
+    bestNeurons: 12,
+    bestSynapses: 24,
+    meanEpisodeSteps: 200,
+    generationWallClockMs: 300,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(sample.runGen, 10);
+  assertEquals(sample.bestScore, -0.4);
+  assertEquals(sample.error, 0.4); // -(-0.4)
+  assertEquals(sample.neurons, 12);
+  assertEquals(sample.synapses, 24);
+  assertEquals(sample.meanEpisodeSteps, 200);
+  assertEquals(sample.generationWallClockMs, 300);
+});
+
+Deno.test("milestoneToMultiRunSample clamps error into [0, 1]", () => {
+  // bestScore = -1.5 (defensive undershoot) → 1.5 → clamped to 1.
+  const high = milestoneToMultiRunSample({
+    generation: 1,
+    bestScore: -1.5,
+    bestNeurons: 10,
+    bestSynapses: 21,
+    meanEpisodeSteps: 0,
+    generationWallClockMs: 1,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(high.error, 1);
+
+  // bestScore = 0.5 (above the adapter range) → -0.5 → clamped to 0.
+  const low = milestoneToMultiRunSample({
+    generation: 1,
+    bestScore: 0.5,
+    bestNeurons: 10,
+    bestSynapses: 21,
+    meanEpisodeSteps: MAX_STEPS,
+    generationWallClockMs: 1,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(low.error, 0);
+
+  // bestScore = 0 (every trial landed cleanly) → error = 0.
+  const solved = milestoneToMultiRunSample({
+    generation: 1,
+    bestScore: 0,
+    bestNeurons: 10,
+    bestSynapses: 21,
+    meanEpisodeSteps: 100,
+    generationWallClockMs: 1,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assertEquals(solved.error, 0);
+});
+
+Deno.test({
+  name:
+    "evolveLanderController honours seedCreatureExport — accepts the export and produces a valid run",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // Resume-path smoke test: when `seedCreatureExport` is supplied the
+    // call must succeed and produce a champion that round-trips back to
+    // a `CreatureExport` with the same input/output channel counts as
+    // the seed (i.e., the library accepted the supplied genome instead
+    // of crashing on schema mismatch). End-to-end resume semantics are
+    // exercised by the `runMultiRunLunarLander resume flow` integration
+    // test below.
+    const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    const seedExport: CreatureExport = seedCreature.exportJSON();
+    assertEquals(seedExport.input, INPUT_COUNT);
+    assertEquals(seedExport.output, OUTPUT_COUNT);
+
+    const result = await evolveLanderController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 1,
+      populationSize: 6,
+      seedCreatureExport: seedExport,
+    });
+    assertGreater(result.milestones.length, 0);
+
+    const championExport = result.champion.exportJSON();
+    assertEquals(championExport.input, INPUT_COUNT);
+    assertEquals(championExport.output, OUTPUT_COUNT);
+    assert(Number.isFinite(result.bestScore));
+  },
+});
+
+Deno.test({
+  name:
+    "runMultiRunLunarLander resume flow loads prior creature, appends milestones, and renders charts",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "lunar_lander_resume_" });
     try {
-      const svg = renderMilestoneChartSVG(result.milestones, {
-        title: "Lunar Lander — evolveRL Milestones",
-        logX: true,
-        caption: true,
+      const slug = EXAMPLE_SLUG;
+
+      // Pre-seed multi-run state with a prior champion + a synthetic
+      // milestone so loadMultiRunState reports nextRunIndex=2.
+      const priorCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+      await appendMultiRunRun(slug, {
+        creatureExport: priorCreature.exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: -0.5,
+          neurons: INPUT_COUNT + OUTPUT_COUNT,
+          synapses: INPUT_COUNT,
+          meanEpisodeSteps: 200,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      // Drive the multi-run flow with an `iterations=1` cap so the test
+      // completes in seconds and never depends on wall-clock timing.
+      const outcome = await runMultiRunLunarLander({
+        argv: [],
+        baseDir: tmp,
+        evolveOverrides: { iterations: 1, populationSize: 6 },
       });
-      const path = join(tmp, "lunar_lander_milestones.svg");
-      await Deno.writeTextFile(path, svg);
-      const written = await Deno.readTextFile(path);
-      assert(written.startsWith("<svg"), "must start with <svg>");
-      assert(written.includes("</svg>"), "must contain </svg>");
-      assert(
-        written.includes("Lunar Lander &#x2014; evolveRL Milestones") ||
-          written.includes("Lunar Lander — evolveRL Milestones"),
-        "expected the chart title to appear in the SVG",
-      );
-      assert(
-        written.includes("best-score-line"),
-        "expected the best-score series",
-      );
-      assert(
-        written.includes("mean-steps-line"),
-        "expected the mean-steps series",
-      );
-      assert(
-        written.includes("neurons-line"),
-        "expected the neurons series",
-      );
-      assert(
-        written.includes("synapses-line"),
-        "expected the synapses series",
-      );
+
+      // Prior champion must have been reloaded as the evolveRL seed.
+      assertEquals(outcome.resumed, true);
+      assertEquals(outcome.runIndex, 2);
+
+      // Persisted history now contains both the pre-seeded milestone and
+      // the new run's milestones, all with monotonic cumulativeGen.
+      const state = await loadMultiRunState(slug, tmp);
+      assertGreater(state.milestones.length, 1);
+      assertEquals(state.nextRunIndex, 3);
+      assertEquals(state.creatureExport !== undefined, true);
+      const newRunMilestones = state.milestones.filter((m) => m.runIndex === 2);
+      assertGreater(newRunMilestones.length, 0);
+      for (let i = 1; i < state.milestones.length; i++) {
+        const prev = state.milestones[i - 1].cumulativeGen;
+        const curr = state.milestones[i].cumulativeGen;
+        assert(curr >= prev, `cumulativeGen must be monotonic (${prev} → ${curr})`);
+      }
+
+      // Both chart SVGs were written under the baseDir override.
+      const errorSvg = join(tmp, "screenshots", slug, "milestones.svg");
+      const complexitySvg = join(tmp, "screenshots", slug, "complexity.svg");
+      assertEquals(existsSync(errorSvg), true, "error chart SVG should exist");
+      assertEquals(existsSync(complexitySvg), true, "complexity chart SVG should exist");
+      const errorText = await Deno.readTextFile(errorSvg);
+      const complexityText = await Deno.readTextFile(complexitySvg);
+      assert(errorText.startsWith("<svg"), "error chart must be an SVG");
+      assert(complexityText.startsWith("<svg"), "complexity chart must be an SVG");
     } finally {
       await Deno.remove(tmp, { recursive: true });
     }
   },
 });
 
-Deno.test("MILESTONE_SVG_PATH points at the documented milestone chart", () => {
-  assertEquals(MILESTONE_SVG_PATH, "docs/screenshots/lunar_lander_milestones.svg");
+Deno.test({
+  name: "runMultiRunLunarLander --fresh wipes prior artefacts before running",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "lunar_lander_fresh_" });
+    try {
+      const slug = EXAMPLE_SLUG;
+      // Pre-seed with a prior run's state.
+      await appendMultiRunRun(slug, {
+        creatureExport: new Creature(INPUT_COUNT, OUTPUT_COUNT).exportJSON(),
+        newSamples: [{
+          runGen: 1,
+          error: 0.5,
+          bestScore: -0.5,
+          neurons: INPUT_COUNT + OUTPUT_COUNT,
+          synapses: INPUT_COUNT,
+          meanEpisodeSteps: 200,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const outcome = await runMultiRunLunarLander({
+        argv: ["--fresh"],
+        baseDir: tmp,
+        evolveOverrides: { iterations: 1, populationSize: 6 },
+      });
+
+      // `--fresh` wiped the prior state, so this is run 1 and there was
+      // no prior champion to resume from.
+      assertEquals(outcome.resumed, false);
+      assertEquals(outcome.runIndex, 1);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.nextRunIndex, 2);
+      for (const m of state.milestones) {
+        assertEquals(m.runIndex, 1);
+      }
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
 });
 
 Deno.test({

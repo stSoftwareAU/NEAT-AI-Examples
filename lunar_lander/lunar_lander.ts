@@ -21,8 +21,13 @@
  * NEAT-AI surfaces only milestone-cadence telemetry (`evolverl_milestone`
  * events at generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then
  * powers of ten). This example collects the milestone payloads emitted
- * by `Creature.evolveRL()` and renders them via
- * `renderMilestoneChartSVG` — no `onTrainingEvent` handler is registered.
+ * by `Creature.evolveRL()` — no `onTrainingEvent` handler is registered.
+ *
+ * 🔁 **Multi-run persistence (issue #324).** The runner uses the shared
+ * `common/multi_run_state.ts` helper to resume evolution across runs:
+ * each invocation reloads the previously-saved champion (when present),
+ * appends fresh milestones to the merged history, and re-renders the
+ * two multi-run chart SVGs. `--fresh` wipes prior state to start over.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -39,7 +44,16 @@ import {
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
-import { type MilestoneSample, renderMilestoneChartSVG } from "../common/milestone_chart.ts";
+import { type MilestoneSample } from "../common/milestone_chart.ts";
+import {
+  appendMultiRunRun,
+  loadMultiRunState,
+  type NewMultiRunSample,
+  parseMultiRunFlags,
+  wipeMultiRunState,
+} from "../common/multi_run_state.ts";
+import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts";
+import { renderMultiRunComplexityChartSVG } from "../common/multi_run_complexity_chart.ts";
 import { renderOutcomeBarChartSVG, type ScenarioOutcome } from "../common/outcome_bar_chart.ts";
 import {
   classifyOutcome,
@@ -258,6 +272,15 @@ export interface EvolveOptions {
    * for backwards compatibility.
    */
   trialSeed?: number;
+  /**
+   * Optional pre-seeded creature export, used by the multi-run resume
+   * flow (issue #324) to continue evolution from a prior champion. When
+   * supplied, the evolveRL seed is built via {@link Creature.fromJSON}
+   * instead of the uniform-random `new Creature(INPUT_COUNT,
+   * OUTPUT_COUNT)`. When absent the first generation starts from random
+   * noise (the default for a `--fresh` run).
+   */
+  seedCreatureExport?: CreatureExport;
 }
 
 /** Options controlling multi-trial perturbed scoring of a single creature. */
@@ -331,8 +354,8 @@ export interface EvolveResult {
    * Milestone payloads collected via `evolveRL`'s `statistics: true`
    * option, surfaced in the schedule documented by
    * {@link MilestoneSample}. Per issue #298 this is the only telemetry
-   * channel NEAT-AI exposes — see {@link MILESTONE_SVG_PATH} for the
-   * rendered chart.
+   * channel NEAT-AI exposes — see {@link MULTI_RUN_ERROR_SVG_PATH} and
+   * {@link MULTI_RUN_COMPLEXITY_SVG_PATH} for the rendered charts.
    */
   milestones: MilestoneSample[];
 }
@@ -772,10 +795,10 @@ export function freeFallBaselineScore(maxSteps: number = MAX_STEPS): number {
 
 /**
  * Convert an `EvolveRLMilestone` from the library into the
- * {@link MilestoneSample} shape consumed by
- * `renderMilestoneChartSVG`. Both interfaces are structurally
- * identical, but pinning the conversion keeps consumers from leaking
- * the upstream type onto their own surfaces.
+ * {@link MilestoneSample} shape kept on {@link EvolveResult}. Both
+ * interfaces are structurally identical, but pinning the conversion
+ * keeps consumers from leaking the upstream type onto their own
+ * surfaces.
  */
 function toMilestoneSample(m: EvolveRLMilestone): MilestoneSample {
   return {
@@ -816,7 +839,14 @@ export async function evolveLanderController(
     maxStepsPerEpisode: MAX_STEPS,
   });
 
-  const seedCreature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  // When `seedCreatureExport` is supplied (multi-run resume), build the
+  // seed via `Creature.fromJSON` so the prior champion's topology and
+  // weights carry forward. Otherwise fall back to the uniform-random
+  // minimal genome — the standard noise → competent seeding for a fresh
+  // run.
+  const seedCreature = options.seedCreatureExport !== undefined
+    ? Creature.fromJSON(options.seedCreatureExport)
+    : new Creature(INPUT_COUNT, OUTPUT_COUNT);
 
   // EvolveRL normalised target error — the adapter emits a graded
   // terminal reward in `[-1, 0]` via {@link gradedTerminalReward}, so
@@ -897,15 +927,37 @@ export async function evolveLanderController(
 /** Path to the SVG snapshot the runner emits for the README. */
 export const SCREENSHOT_PATH = "docs/screenshots/lunar_lander.svg";
 
+/** Slug used by the multi-run persistence helpers and chart artefact paths. */
+export const EXAMPLE_SLUG = "lunar_lander";
+
 /**
- * Path to the milestone-statistics chart the runner emits — this is the
- * canonical fitness-progression artefact under the milestone-only
- * telemetry policy (issue #298). Replaces the legacy
- * `lunar_lander_evolution.svg`, `lunar_lander/evolution.svg`,
- * `lunar_lander/fitness.svg`, and the snapshot-driven evolution-progress
- * strip that the per-generation snapshot pipeline used to emit.
+ * Path to the multi-run error-curve chart the runner emits — normalised
+ * error vs cumulative generation across every run, with faint
+ * run-boundary guide lines. Subsumes the legacy single-run milestone
+ * chart (`docs/screenshots/lunar_lander_milestones.svg`) and the retired
+ * per-generation evolution / fitness charts (issue #324, supersedes
+ * #292).
  */
-export const MILESTONE_SVG_PATH = "docs/screenshots/lunar_lander_milestones.svg";
+export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/lunar_lander/milestones.svg";
+
+/**
+ * Path to the multi-run complexity chart the runner emits — neurons +
+ * synapses vs cumulative generation across every run.
+ */
+export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/lunar_lander/complexity.svg";
+
+/**
+ * Default `targetError` for a multi-run invocation. The issue #324
+ * convention is `0.01` so the multi-run flow keeps cresting the bar
+ * across resumes.
+ */
+export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.01;
+
+/**
+ * Default wall-clock budget for a single multi-run invocation, in
+ * minutes. Five minutes matches the issue #324 default.
+ */
+export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
 
 /**
  * Path to the validation results JSON written by the runner. Downstream
@@ -929,32 +981,17 @@ export const VALIDATION_BASE_SEED = 13579;
 export const VALIDATION_OUTCOME_SVG_PATH = "docs/screenshots/lunar_lander/validation.svg";
 
 /**
- * Trivial `--name=value` CLI flag parser. Returns `undefined` when the
- * flag is absent or its value is not a finite number.
- */
-function parseNumericFlag(args: string[], name: string): number | undefined {
-  const prefix = `${name}=`;
-  for (const arg of args) {
-    if (arg.startsWith(prefix)) {
-      const v = parseFloat(arg.slice(prefix.length));
-      if (Number.isFinite(v)) return v;
-    }
-  }
-  return undefined;
-}
-
-/**
  * CI/quality "quick mode" stop-condition overrides. When the runner is
  * invoked via `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag), the
- * standard 99% / 2-minute defaults are replaced with a deliberately
+ * standard 99% / 5-minute defaults are replaced with a deliberately
  * unreachable target and a short iterations cap so the example always
  * exits via the iterations backstop well inside `quality.sh`'s
  * per-section budget.
  *
- * Quick mode also suppresses canonical artefact writes (champion JSON,
- * validation results JSON, descent SVG, milestone chart, validation
- * outcome chart) so a CI run never overwrites the docs artefacts
- * checked into the repo.
+ * Quick mode also routes multi-run state + chart writes to a temp
+ * directory and gates canonical disk writes (champion JSON, validation
+ * results JSON, descent SVG, validation outcome chart) so a CI run
+ * never overwrites the docs artefacts checked into the repo.
  */
 export const QUICK_TARGET_ERROR = -1;
 export const QUICK_TIMEOUT_MINUTES = 1;
@@ -975,18 +1012,159 @@ export function isQuickMode(args: readonly string[], envValue: string | undefine
   return false;
 }
 
+/**
+ * Convert a lunar-lander `EvolveRLMilestone` into a
+ * {@link NewMultiRunSample}.
+ *
+ * `EvolveRLMilestone.bestScore` is the per-episode mean cumulative
+ * reward reported by NEAT-AI's RL fitness, which for the lunar-lander
+ * adapter sits in `[-1, 0]` (graded terminal reward in
+ * {@link gradedTerminalReward}). NEAT-AI's `defaultRewardToError` maps
+ * that to `error = max(0, -reward)`, so the normalised error for the
+ * multi-run chart is `error = -bestScore`, an upper bound on
+ * `1 - landedRate` (a soft crash contributes less than `1` to the error
+ * sum). The value is clamped defensively into `[0, 1]`.
+ */
+export function milestoneToMultiRunSample(m: EvolveRLMilestone): NewMultiRunSample {
+  const error = clamp01(-m.bestScore);
+  return {
+    runGen: m.generation,
+    bestScore: m.bestScore,
+    error,
+    neurons: m.bestNeurons,
+    synapses: m.bestSynapses,
+    meanEpisodeSteps: m.meanEpisodeSteps,
+    generationWallClockMs: m.generationWallClockMs,
+  };
+}
+
+/** Options accepted by {@link runMultiRunLunarLander}. */
+export interface RunMultiRunLunarLanderOptions {
+  /** Argv (defaults to `Deno.args`). Recognised flags: `--fresh`,
+   * `--timeout=<minutes>`, `--target-error=<value>`. */
+  argv?: readonly string[];
+  /** Base directory override for the multi-run persistence helpers and
+   * chart artefacts (used by tests and quick mode). Defaults to `docs`. */
+  baseDir?: string;
+  /** Optional overrides applied to `DEFAULT_EVOLVE_OPTIONS` (used by
+   * tests to cap iterations without depending on wall-clock timing). */
+  evolveOverrides?: Partial<EvolveOptions>;
+}
+
+/** Outcome of a single multi-run invocation. */
+export interface MultiRunResult {
+  /** The underlying evolveRL result. */
+  evolveResult: EvolveResult;
+  /** Number of this run within the persisted history (1-based). */
+  runIndex: number;
+  /** Cumulative generation total *after* this run was appended. */
+  lastCumulativeGen: number;
+  /** Total number of milestones in the merged history. */
+  totalMilestones: number;
+  /** `true` when the prior champion was reloaded as the seed creature. */
+  resumed: boolean;
+}
+
+/**
+ * End-to-end multi-run wiring (issue #324): parses flags, optionally
+ * wipes prior state, loads the saved champion (when present) to seed
+ * the next run, evolves the controller, appends fresh milestones to
+ * the merged history, and renders both multi-run charts.
+ *
+ * Returns a {@link MultiRunResult} so callers (CLI + tests) can report
+ * on the run without re-reading disk.
+ */
+export async function runMultiRunLunarLander(
+  options: RunMultiRunLunarLanderOptions = {},
+): Promise<MultiRunResult> {
+  const argv = options.argv ?? Deno.args;
+  const flags = parseMultiRunFlags(argv);
+  const slug = EXAMPLE_SLUG;
+
+  if (flags.fresh) {
+    await wipeMultiRunState(slug, options.baseDir);
+  }
+
+  const state = await loadMultiRunState(slug, options.baseDir);
+  const resumed = state.creatureExport !== undefined;
+
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  const evolveOptions: EvolveOptions = {
+    ...DEFAULT_EVOLVE_OPTIONS,
+    timeoutMinutes,
+    targetError,
+    seedCreatureExport: state.creatureExport,
+    ...options.evolveOverrides,
+  };
+
+  const evolveResult = await evolveLanderController(evolveOptions);
+
+  const newSamples: NewMultiRunSample[] = evolveResult.milestones.map((m) =>
+    milestoneToMultiRunSample({
+      generation: m.generation,
+      bestScore: m.bestScore,
+      bestNeurons: m.bestNeurons,
+      bestSynapses: m.bestSynapses,
+      meanEpisodeSteps: m.meanEpisodeSteps,
+      generationWallClockMs: m.generationWallClockMs,
+    })
+  );
+
+  await appendMultiRunRun(slug, {
+    creatureExport: evolveResult.champion.exportJSON(),
+    newSamples,
+    runIndex: state.nextRunIndex,
+    baseCumulativeGen: state.lastCumulativeGen,
+  }, options.baseDir);
+
+  const merged = await loadMultiRunState(slug, options.baseDir);
+
+  if (merged.milestones.length > 0) {
+    const base = options.baseDir ?? "docs";
+    const screenshotsDir = join(base, "screenshots", slug);
+    ensureDirSync(screenshotsDir);
+
+    const errorSvg = renderMultiRunErrorChartSVG(merged.milestones, {
+      title: "Lunar Lander — multi-run error vs cumulative generations",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "milestones.svg"), errorSvg);
+
+    const complexitySvg = renderMultiRunComplexityChartSVG(merged.milestones, {
+      title: "Lunar Lander — multi-run creature complexity",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "complexity.svg"), complexitySvg);
+  }
+
+  return {
+    evolveResult,
+    runIndex: state.nextRunIndex,
+    lastCumulativeGen: merged.lastCumulativeGen,
+    totalMilestones: merged.milestones.length,
+    resumed,
+  };
+}
+
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🚀 Lunar Lander Descent Example");
+  console.log("🚀 Lunar Lander Descent Example (multi-run)");
   console.log("");
 
-  // Quick mode (CI/quality budget): forces a tiny iterations cap and
-  // skips canonical artefact writes so a CI invocation never overwrites
-  // the docs artefacts checked into the repo. See {@link isQuickMode}.
+  // Quick mode (CI/quality budget): routes multi-run state + chart
+  // writes to a temp directory and forces a tiny iterations cap so the
+  // CI invocation never overwrites the canonical docs artefacts.
   const quick = isQuickMode(Deno.args, Deno.env.get("LUNAR_QUICK"));
+  let quickBaseDir: string | undefined;
   if (quick) {
-    console.log("⚡ Quick mode (LUNAR_QUICK=1 or --quick): tiny budget, no canonical artefacts");
+    quickBaseDir = await Deno.makeTempDir({ prefix: "lunar_lander_quick_" });
+    console.log(
+      "⚡ Quick mode (LUNAR_QUICK=1 or --quick): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
     console.log("");
   }
 
@@ -995,31 +1173,38 @@ if (import.meta.main) {
   const baseline = freeFallBaselineScore();
   console.log(`🪂 Free-fall baseline score: ${baseline.toFixed(1)}`);
 
-  // CLI overrides for the NEAT-AI standard stop conditions. Quick mode
-  // forces an impossible target plus a small iterations cap so the loop
-  // always exits via the iterations backstop well inside the CI budget.
-  const targetError = quick ? QUICK_TARGET_ERROR : (parseNumericFlag(Deno.args, "--target-error") ??
-    DEFAULT_EVOLVE_OPTIONS.targetError);
-  const timeoutMinutes = quick
-    ? QUICK_TIMEOUT_MINUTES
-    : (parseNumericFlag(Deno.args, "--timeout-minutes") ??
-      DEFAULT_EVOLVE_OPTIONS.timeoutMinutes);
-  const iterations = quick ? QUICK_ITERATIONS : undefined;
+  const flags = parseMultiRunFlags(Deno.args);
+  if (flags.fresh) {
+    console.log("🧹 --fresh: wiping prior multi-run state.");
+  }
+  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
 
   console.log("\n🧬 Evolving controller via Creature.evolveRL()...");
   console.log(
-    `   Stop conditions: targetError=${targetError} ` +
+    `   Stop conditions: targetError=${targetError.toFixed(3)} ` +
       `(landed-rate ≥ ${((1 - targetError) * 100).toFixed(0)}%), ` +
       `timeoutMinutes=${timeoutMinutes}` +
-      (iterations !== undefined ? `, iterations=${iterations}` : ""),
+      (quick ? `, iterations=${QUICK_ITERATIONS} (quick mode)` : ""),
   );
 
-  const result = await evolveLanderController({
-    ...DEFAULT_EVOLVE_OPTIONS,
-    targetError,
-    timeoutMinutes,
-    iterations,
+  const multi = await runMultiRunLunarLander({
+    baseDir: quickBaseDir,
+    evolveOverrides: quick
+      ? {
+        iterations: QUICK_ITERATIONS,
+        targetError: QUICK_TARGET_ERROR,
+        timeoutMinutes: QUICK_TIMEOUT_MINUTES,
+      }
+      : undefined,
   });
+  const { evolveResult: result } = multi;
+
+  if (multi.resumed) {
+    console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
+  } else {
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+  }
 
   const verdictIcon = result.solved ? "✅" : "⚠️";
   console.log(
@@ -1031,18 +1216,13 @@ if (import.meta.main) {
       `stop=${result.stopReason}, wallclock=${(result.wallclockMs / 1000).toFixed(1)}s).`,
   );
 
-  // Always exercise the post-evolution pipeline (validation, replay,
-  // SVG rendering, chart construction) so quick mode still proves the
-  // full code path runs end-to-end. Only the disk writes that would
-  // overwrite canonical docs artefacts are gated on `!quick`.
+  // The champion creature is persisted by `runMultiRunLunarLander` under
+  // `docs/data/lunar_lander/creature.json`. Also drop a copy under the
+  // example's working directory for ad-hoc inspection.
   const championExport: CreatureExport = result.champion.exportJSON();
-  if (!quick) {
-    const championPath = join(creaturesDir, "champion.json");
-    await safeWriteJson(championPath, championExport);
-    console.log(`💾 Saved champion to ${championPath}`);
-  } else {
-    console.log("⏭️  Quick mode: skipped writing champion JSON");
-  }
+  const championPath = join(creaturesDir, "champion.json");
+  await safeWriteJson(championPath, championExport);
+  console.log(`💾 Saved champion to ${championPath}`);
 
   // Validate the champion against the held-out validation pool: the SVG
   // and the validation JSON are sourced from these unseen scenarios so
@@ -1071,9 +1251,9 @@ if (import.meta.main) {
   }
 
   // Render the per-validation-scenario outcome bar chart from the same
-  // report. Lives next to the milestone chart so the README can show the
-  // controller's journey (milestones) alongside its end-state spread
-  // across all 200 unseen scenarios (this chart).
+  // report. Lives next to the multi-run charts so the README can show
+  // the controller's journey alongside its end-state spread across all
+  // 200 unseen scenarios.
   const outcomeSamples: ScenarioOutcome[] = validationReport.scenarios.map((s) => ({
     scenarioIndex: s.index,
     outcome: s.outcome,
@@ -1115,34 +1295,19 @@ if (import.meta.main) {
     );
   }
 
-  // Render the milestone-statistics chart — the canonical fitness
-  // progression artefact under issue #298's milestone-only telemetry
-  // policy. Replaces the legacy per-generation evolution chart,
-  // fitness chart, and evolution-progression strip.
-  if (result.milestones.length > 0) {
-    const milestoneSvg = renderMilestoneChartSVG(result.milestones, {
-      title: "Lunar Lander — evolveRL Milestones",
-      logX: true,
-      caption: true,
-    });
-    if (!quick) {
-      ensureDirSync("docs/screenshots");
-      await Deno.writeTextFile(MILESTONE_SVG_PATH, milestoneSvg);
-      console.log(
-        `📈 Wrote milestone chart ${MILESTONE_SVG_PATH} ` +
-          `(${result.milestones.length} milestones)`,
-      );
-    } else {
-      console.log(
-        `⏭️  Quick mode: skipped writing milestone chart ` +
-          `(rendered ${milestoneSvg.length} bytes in-memory, ${result.milestones.length} milestones)`,
-      );
+  console.log(
+    `📈 Multi-run charts updated under ${
+      quick ? quickBaseDir : "docs"
+    }/screenshots/${EXAMPLE_SLUG}/ — ` +
+      `${multi.totalMilestones} cumulative milestones across ${multi.runIndex} run(s).`,
+  );
+
+  if (quick && quickBaseDir !== undefined) {
+    try {
+      await Deno.remove(quickBaseDir, { recursive: true });
+    } catch {
+      // Tolerable — temp dir cleanup is best-effort.
     }
-  } else {
-    console.log(
-      "⚠️  No milestones returned by evolveRL — run did not reach the first " +
-        "milestone generation. Skipping milestone chart.",
-    );
   }
 
   console.log(
