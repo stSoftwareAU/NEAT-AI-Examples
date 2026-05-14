@@ -312,14 +312,27 @@ function renderCaption(
   const distinctRuns = new Set(samples.map((s) => s.runIndex)).size;
   const totalGens = last.cumulativeGen;
   const totalMs = samples.reduce((acc, s) => acc + s.generationWallClockMs, 0);
+  // Issue #344: surface a generations-per-minute throughput rate so
+  // viewers can see the effective training pace alongside the raw
+  // wall-clock total. `totalMs === 0` is treated as 0 gens/min to keep
+  // the caption finite and free of divide-by-zero artefacts.
+  const gensPerMinute = totalMs > 0 ? (totalGens / totalMs) * 60_000 : 0;
   const text = `final error ${formatError(last.error)} · ${distinctRuns} runs · ` +
-    `${totalGens} cumulative generations · ${totalMs} ms total`;
+    `${totalGens} cumulative generations · ${totalMs} ms total · ` +
+    `${formatRate(gensPerMinute)} gen/min`;
   return [
     `  <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">`,
     `    <text x="${fmt(width / 2)}" y="${fmt(height - 6)}" text-anchor="middle">` +
     escapeText(text) + `</text>`,
     `  </g>`,
   ].join("\n");
+}
+
+/** Format a generations-per-minute throughput rate to a short, deterministic string. */
+function formatRate(v: number): string {
+  if (!Number.isFinite(v)) return "0";
+  if (v >= 10) return Math.round(v).toString();
+  return (Math.round(v * 10) / 10).toString();
 }
 
 // ---------------------------------------------------------------------------
