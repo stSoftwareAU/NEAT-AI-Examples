@@ -27,6 +27,7 @@ import {
   DEFAULT_MULTI_RUN_TARGET_ERROR,
   DEFAULT_MULTI_RUN_TIMEOUT_MINUTES,
   evolveCartPoleController,
+  type EvolveOptions,
   EXAMPLE_SLUG,
   INPUT_COUNT,
   MAX_STEPS,
@@ -44,6 +45,15 @@ import {
 import { renderRunSVG } from "./svg.ts";
 import { renderMilestoneChartSVG } from "../common/milestone_chart.ts";
 import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
+
+/** Same search settings as {@link DEFAULT_EVOLVE_OPTIONS} with a longer
+ * wall-clock ceiling so CI (coverage instrumentation, Linux without the
+ * local Metal path) still reaches the solved target before the evolveRL
+ * timeout backstop. */
+const CI_DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
+  ...DEFAULT_EVOLVE_OPTIONS,
+  timeoutMinutes: 10,
+};
 
 Deno.test("CartPoleAdapter advertises 4 inputs and the default 500-step cap", () => {
   const adapter = new CartPoleAdapter();
@@ -238,7 +248,7 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const result = await evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+    const result = await evolveCartPoleController(CI_DEFAULT_EVOLVE_OPTIONS);
     assertEquals(
       result.solved,
       true,
@@ -263,7 +273,7 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const result = await evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+    const result = await evolveCartPoleController(CI_DEFAULT_EVOLVE_OPTIONS);
     const independentScore = scoreController(result.champion, MAX_STEPS, {
       trials: 10,
       trialSeed: 987654,
@@ -621,7 +631,7 @@ Deno.test({
     const tmp = await Deno.makeTempDir({ prefix: "cart_pole_smoke_" });
     try {
       ensureDirSync(join(tmp, "screenshots"));
-      const result = await evolveCartPoleController(DEFAULT_EVOLVE_OPTIONS);
+      const result = await evolveCartPoleController(CI_DEFAULT_EVOLVE_OPTIONS);
       const trace = replayController(result.champion);
       const svg = renderRunSVG(trace, SVG_FRAME_COUNT);
       const svgPath = join(tmp, "screenshots", "cart_pole.svg");
