@@ -5,11 +5,11 @@
   <g class="topology" font-family="sans-serif" font-size="11" fill="#333">
     <rect x="24" y="48" width="369" height="256" fill="#ffffff" stroke="#333" stroke-width="1"/>
     <text x="34" y="64" font-weight="bold">topology</text>
-    <rect class="topo-bar topo-bar-seed-neurons" x="47.06" y="190" width="46.13" height="80" fill="#9ecae1"/>
-    <text x="70.13" y="186" text-anchor="middle" font-weight="bold">4</text>
+    <rect class="topo-bar topo-bar-seed-neurons" x="47.06" y="167.14" width="46.13" height="102.86" fill="#9ecae1"/>
+    <text x="70.13" y="163.14" text-anchor="middle" font-weight="bold">4</text>
     <text x="70.13" y="282" text-anchor="middle">seed</text>
     <rect class="topo-bar topo-bar-final-neurons" x="139.31" y="90" width="46.13" height="180" fill="#1f77b4"/>
-    <text x="162.38" y="86" text-anchor="middle" font-weight="bold">9</text>
+    <text x="162.38" y="86" text-anchor="middle" font-weight="bold">7</text>
     <text x="162.38" y="282" text-anchor="middle">final</text>
     <text x="116.25" y="292" text-anchor="middle" font-weight="bold">neurons</text>
     <rect class="topo-bar topo-bar-seed-synapses" x="231.56" y="231.43" width="46.13" height="38.57" fill="#9ecae1"/>
@@ -24,13 +24,13 @@
     <rect x="409" y="48" width="287" height="256" fill="#ffffff" stroke="#333" stroke-width="1"/>
     <text x="419" y="64" font-weight="bold">summary</text>
     <text class="callout-label" x="421" y="103.5" dominant-baseline="middle">final error</text>
-    <text class="callout-value" x="684" y="103.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">0.02</text>
+    <text class="callout-value" x="684" y="103.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">0.021</text>
     <text class="callout-label" x="421" y="158.5" dominant-baseline="middle">final score</text>
-    <text class="callout-value" x="684" y="158.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">0.98</text>
+    <text class="callout-value" x="684" y="158.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">0.979</text>
     <text class="callout-label" x="421" y="213.5" dominant-baseline="middle">generations</text>
-    <text class="callout-value" x="684" y="213.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">408</text>
+    <text class="callout-value" x="684" y="213.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">1003</text>
     <text class="callout-label" x="421" y="268.5" dominant-baseline="middle">wall clock</text>
-    <text class="callout-value" x="684" y="268.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">5s</text>
+    <text class="callout-value" x="684" y="268.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">11s</text>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#555">
     <text x="360" y="348" text-anchor="middle">stop conditions: target error 0.02 · timeout 5 min</text>
