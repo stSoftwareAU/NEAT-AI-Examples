@@ -369,17 +369,28 @@ export function isTerminal(
 
 /**
  * Encode a {@link LanderState} as a Float32Array suitable for feeding
- * into a NEAT-AI creature: `[x, y, vx, vy, angle, angularV, fuel]`.
+ * into a NEAT-AI creature. Values are normalised into comparable ranges:
+ * `[relativeX, altitude, vx, vy, angle, angularV, fuel]`, where
+ * `relativeX` is measured against the active landing pad.
  */
-export function encodeState(state: LanderState): Float32Array {
+export function encodeState(
+  state: LanderState,
+  terrain: LanderTerrain = DEFAULT_TERRAIN,
+): Float32Array {
+  const clamp = (value: number, min: number, max: number) =>
+    value < min ? min : value > max ? max : value;
+  const altitudeMax = DEFAULT_START_ALTITUDE + WIDE_RANGES.y;
+  const fuelMax = DEFAULT_START_FUEL + WIDE_RANGES.fuel;
+  const velocityMax = 25;
+  const spinMax = 5;
   return new Float32Array([
-    state.x,
-    state.y,
-    state.vx,
-    state.vy,
-    state.angle,
-    state.angularV,
-    state.fuel,
+    clamp((state.x - terrain.padX) / terrain.worldHalfWidth, -1, 1),
+    clamp((state.y - terrain.groundY) / altitudeMax, 0, 1),
+    clamp(state.vx / velocityMax, -1, 1),
+    clamp(state.vy / velocityMax, -1, 1),
+    clamp(state.angle / Math.PI, -1, 1),
+    clamp(state.angularV / spinMax, -1, 1),
+    clamp(state.fuel / fuelMax, 0, 1),
   ]);
 }
 

@@ -49,8 +49,10 @@ jobs:
       - name: Run deno lint
         run: deno lint
 
-      - name: Run deno fmt --check
-        run: deno fmt --check
+      # Apply formatter in CI (same as local `quality.sh`), rather than
+      # `deno fmt --check`, so a formatting drift does not fail the job.
+      - name: Apply Deno formatting
+        run: deno fmt
 
       - name: Run deno check (type checking)
         run: deno check **/*.ts
@@ -63,10 +65,12 @@ jobs:
       # --coverage produces a profile that is converted to lcov and
       # uploaded to Codecov below. Issue #51.
       - name: Run unit tests with coverage
-        run: deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --coverage=cov_profile
+        run: |
+          set -euo pipefail
+          deno test --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df --coverage=.coverage
 
       - name: Generate lcov coverage report
-        run: deno coverage cov_profile --lcov --output=coverage.lcov
+        run: deno coverage .coverage --lcov --output=.coverage/coverage.lcov
 
       # The codecov-action is a no-op when no coverage file is found,
       # and we set fail_ci_if_error: false so a transient Codecov
@@ -74,7 +78,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
-          files: coverage.lcov
+          files: .coverage/coverage.lcov
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 

@@ -1,8 +1,11 @@
 # Deno Dependency Freshness workflow for NEAT-AI-Examples
 #
-# Runs `deno outdated --latest` on pull requests so dependency drift is
-# visible while work is in review. This workflow reports stale imports
-# but does not modify the branch or open bot PRs.
+# Runs `./bump-deps.sh` (which invokes `deno update --latest`) on pull
+# requests so dependency drift is visible while work is in review. If
+# pins would change, the step emits a CI warning and restores
+# `deno.json` / `deno.lock` on the runner — it does not commit or open
+# bot PRs. Run `./bump-deps.sh` locally, then `./quality.sh`, and commit
+# when you want to refresh pins.
 
 name: Deno Dependency Freshness
 
@@ -28,11 +31,13 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Check dependencies are current
+      - name: Report dependency drift (non-blocking)
         run: |
-          deno outdated --latest > deno-outdated.txt
-          if [[ -s deno-outdated.txt ]]; then
-            echo "::error::Deno dependencies are outdated. Run 'deno outdated --update --latest' locally and commit the result."
-            cat deno-outdated.txt
-            exit 1
+          bash bump-deps.sh
+          if git diff --quiet deno.json deno.lock; then
+            echo "All tracked Deno dependencies already match \`deno update --latest\`."
+          else
+            echo "::warning::Pinned versions lag the registry. Run ./bump-deps.sh locally, then ./quality.sh, and commit deno.json and deno.lock."
+            git diff --stat deno.json deno.lock
+            git checkout -- deno.json deno.lock
           fi

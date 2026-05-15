@@ -267,24 +267,28 @@ Deno.test("isTerminal distinguishes flying from final outcomes", () => {
   assertEquals(isTerminal(grounded), true);
 });
 
-Deno.test("encodeState produces a 7-element Float32Array of [x, y, vx, vy, angle, angularV, fuel]", () => {
+Deno.test("encodeState produces 7 bounded values using pad-relative x", () => {
+  const terrain = { ...DEFAULT_TERRAIN, padX: 11 };
   const arr = encodeState({
     x: 1,
-    y: 2,
+    y: 50,
     vx: 3,
     vy: -4,
     angle: 0.5,
     angularV: -0.25,
-    fuel: 99,
-  });
+    fuel: 60,
+  }, terrain);
   assertEquals(arr.length, 7);
-  assertAlmostEquals(arr[0], 1, 1e-6);
-  assertAlmostEquals(arr[1], 2, 1e-6);
-  assertAlmostEquals(arr[2], 3, 1e-6);
-  assertAlmostEquals(arr[3], -4, 1e-6);
-  assertAlmostEquals(arr[4], 0.5, 1e-6);
-  assertAlmostEquals(arr[5], -0.25, 1e-6);
-  assertAlmostEquals(arr[6], 99, 1e-6);
+  assertAlmostEquals(arr[0], -0.2, 1e-6);
+  assertAlmostEquals(arr[1], 0.5, 1e-6);
+  assertAlmostEquals(arr[2], 0.12, 1e-6);
+  assertAlmostEquals(arr[3], -0.16, 1e-6);
+  assertAlmostEquals(arr[4], 0.5 / Math.PI, 1e-6);
+  assertAlmostEquals(arr[5], -0.05, 1e-6);
+  assertAlmostEquals(arr[6], 0.5, 1e-6);
+  for (const value of arr) {
+    assert(value >= -1 && value <= 1, `encoded value out of range: ${value}`);
+  }
 });
 
 Deno.test("perturbedInitialState centres on initialState within the widened ranges", () => {

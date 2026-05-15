@@ -29,5 +29,6 @@ deno run \
   --allow-write \
   --allow-env \
   --allow-net \
+  --allow-ffi \
   lunar_lander/lunar_lander.ts \
   "$@"
