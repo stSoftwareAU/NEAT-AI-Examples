@@ -190,19 +190,20 @@ Deno.test({
       1,
       `expected the first milestone to live at generation 1, got ${first.generation}`,
     );
-    // Half the solved mean-step target is the nominal “still noise” line, but
-    // milestone means can sit slightly above that with library / trial RNG
-    // variance without approaching a solved champion (bestScore still gates).
-    const gen1MeanNoiseCeiling = SOLVED_THRESHOLD / 2 + 20;
-    assert(
-      first.meanEpisodeSteps < gen1MeanNoiseCeiling,
-      `expected the gen-1 mean episode steps to stay clearly below solved ` +
-        `performance (< ${gen1MeanNoiseCeiling}), got ${first.meanEpisodeSteps}`,
+    assertEquals(
+      result.solved,
+      false,
+      "gen-1 noise must not clear the solved gate",
     );
     assert(
       first.bestScore < SOLVED_THRESHOLD,
       `expected the gen-1 best score to sit below SOLVED_THRESHOLD=${SOLVED_THRESHOLD} ` +
         `under the wobble regime, got ${first.bestScore}`,
+    );
+    assert(
+      first.meanEpisodeSteps < SOLVED_THRESHOLD,
+      `expected the gen-1 mean episode steps to stay below the solved mean-step ` +
+        `target (${SOLVED_THRESHOLD}), got ${first.meanEpisodeSteps}`,
     );
   },
 });

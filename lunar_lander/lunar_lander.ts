@@ -762,8 +762,7 @@ function pickChallengingLandedSvgIndex(
  *   landings, then the **lower median** score within that subset.
  * - Otherwise (no landings): lower median score across **all** scenarios.
  *
- * Without scenarios (tests only): legacy lower-median-by-score among
- * landed rows; all-landed returns index `0`.
+ * Without scenarios: lower-median-by-score among landed rows only.
  */
 export function pickValidationSvgIndex(
   results: readonly ValidationScenarioResult[],
@@ -793,10 +792,6 @@ export function pickValidationSvgIndex(
     }
     const order = [...landed].sort((a, b) => a.r.score - b.r.score || a.i - b.i);
     return order[Math.floor((order.length - 1) / 2)].i;
-  }
-
-  if (results.every((r) => r.outcome === "landed")) {
-    return 0;
   }
 
   return lowerMedianIndexByScore(
