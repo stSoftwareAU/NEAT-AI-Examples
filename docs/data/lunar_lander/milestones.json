@@ -240,5 +240,126 @@
   "generationWallClockMs": 127,
   "runIndex": 1,
   "cumulativeGen": 3175
+ },
+ {
+  "runGen": 1,
+  "bestScore": -0.22739913186680813,
+  "error": 0.22739913186680813,
+  "neurons": 37,
+  "synapses": 60,
+  "meanEpisodeSteps": 121.9075,
+  "generationWallClockMs": 296,
+  "runIndex": 2,
+  "cumulativeGen": 4881
+ },
+ {
+  "runGen": 2,
+  "bestScore": -0.20821184726916636,
+  "error": 0.20821184726916636,
+  "neurons": 37,
+  "synapses": 60,
+  "meanEpisodeSteps": 120.4125,
+  "generationWallClockMs": 154,
+  "runIndex": 2,
+  "cumulativeGen": 4882
+ },
+ {
+  "runGen": 5,
+  "bestScore": -0.19673896286700943,
+  "error": 0.19673896286700943,
+  "neurons": 39,
+  "synapses": 63,
+  "meanEpisodeSteps": 113.70779220779221,
+  "generationWallClockMs": 186,
+  "runIndex": 2,
+  "cumulativeGen": 4885
+ },
+ {
+  "runGen": 10,
+  "bestScore": -0.19673896286700943,
+  "error": 0.19673896286700943,
+  "neurons": 39,
+  "synapses": 63,
+  "meanEpisodeSteps": 116.29305555555555,
+  "generationWallClockMs": 181,
+  "runIndex": 2,
+  "cumulativeGen": 4890
+ },
+ {
+  "runGen": 20,
+  "bestScore": -0.17116716788894215,
+  "error": 0.17116716788894215,
+  "neurons": 39,
+  "synapses": 64,
+  "meanEpisodeSteps": 134.9544117647059,
+  "generationWallClockMs": 204,
+  "runIndex": 2,
+  "cumulativeGen": 4900
+ },
+ {
+  "runGen": 50,
+  "bestScore": -0.11070756999795188,
+  "error": 0.11070756999795188,
+  "neurons": 31,
+  "synapses": 43,
+  "meanEpisodeSteps": 117.51764705882353,
+  "generationWallClockMs": 197,
+  "runIndex": 2,
+  "cumulativeGen": 4930
+ },
+ {
+  "runGen": 100,
+  "bestScore": -0.11070756999795188,
+  "error": 0.11070756999795188,
+  "neurons": 31,
+  "synapses": 43,
+  "meanEpisodeSteps": 123.16447368421052,
+  "generationWallClockMs": 314,
+  "runIndex": 2,
+  "cumulativeGen": 4980
+ },
+ {
+  "runGen": 200,
+  "bestScore": -0.11070756999795188,
+  "error": 0.11070756999795188,
+  "neurons": 31,
+  "synapses": 43,
+  "meanEpisodeSteps": 122.81538461538462,
+  "generationWallClockMs": 243,
+  "runIndex": 2,
+  "cumulativeGen": 5080
+ },
+ {
+  "runGen": 500,
+  "bestScore": -0.11070756999795188,
+  "error": 0.11070756999795188,
+  "neurons": 31,
+  "synapses": 43,
+  "meanEpisodeSteps": 119.32837837837837,
+  "generationWallClockMs": 224,
+  "runIndex": 2,
+  "cumulativeGen": 5380
+ },
+ {
+  "runGen": 1000,
+  "bestScore": -0.11070756999795188,
+  "error": 0.11070756999795188,
+  "neurons": 31,
+  "synapses": 43,
+  "meanEpisodeSteps": 119.76447368421053,
+  "generationWallClockMs": 244,
+  "runIndex": 2,
+  "cumulativeGen": 5880
+ },
+ {
+  "runGen": 3798,
+  "bestScore": -0.11070756999795188,
+  "error": 0.11070756999795188,
+  "neurons": 31,
+  "synapses": 43,
+  "meanEpisodeSteps": 121.21298701298701,
+  "generationWallClockMs": 234,
+  "runIndex": 2,
+  "cumulativeGen": 8678
  }
 ]

@@ -1434,6 +1434,51 @@ Deno.test(
 );
 
 Deno.test(
+  "pickValidationSvgIndex prefers a challenging landed scenario when scenarios are supplied",
+  () => {
+    const canonical = initialState();
+    const rows: ValidationScenarioResult[] = [
+      {
+        seed: 0,
+        index: 0,
+        outcome: "landed",
+        score: 100,
+        finalState: canonical,
+      },
+      {
+        seed: 1,
+        index: 1,
+        outcome: "landed",
+        score: 80,
+        finalState: canonical,
+      },
+      {
+        seed: 2,
+        index: 2,
+        outcome: "landed",
+        score: 90,
+        finalState: canonical,
+      },
+    ];
+    const scenarios = [
+      { seed: 0, state: canonical, terrain: DEFAULT_TERRAIN },
+      {
+        seed: 1,
+        state: { ...canonical, x: -5, vx: 4, angle: 0.2 },
+        terrain: { ...DEFAULT_TERRAIN, padX: 15 },
+      },
+      {
+        seed: 2,
+        state: { ...canonical, x: 0, vx: 0, angle: 0 },
+        terrain: DEFAULT_TERRAIN,
+      },
+    ];
+    // Challenging pool is indices 1 and 2 (median complexity); lower median score → i=2.
+    assertEquals(pickValidationSvgIndex(rows, scenarios), 2);
+  },
+);
+
+Deno.test(
   "pickValidationSvgIndex returns -1 for an empty result set (issue #198)",
   () => {
     assertEquals(pickValidationSvgIndex([]), -1);
