@@ -1,54 +1,52 @@
 ## Summary
 
-Automated Deno dependency updates for NEAT-AI-Examples, mirroring the `deno-outdated` automation in
-stSoftwareAU/NEAT-AI. The existing `deno-outdated.yml` workflow only warned about drift on pull
-requests — it never raised a bump PR — so pins had to be refreshed by hand. The workflow now adds a
-weekly scheduled run that invokes `./bump-deps.sh` on `Develop` and, if any pins change, opens a
-pull request via `peter-evans/create-pull-request` (pinned to commit SHA
-`5f6978faf089d4d20b00c7766989d076bb2fc7f1`, v8.1.1, published 2026-04-10 — well past the 24-hour
-supply-chain quarantine window).
+Replaced the existing PR-time drift warning with an actual auto-bump. When a pull request is raised
+against `Develop`, `.github/workflows/deno-outdated.yml` now runs `./bump-deps.sh` and, if pinned
+versions in `deno.json` / `deno.lock` lag the registry, commits and pushes the bump back to the PR
+head branch — so the PR ships with up-to-date dependencies automatically. Closes #362.
 
-The PR drift-check behaviour is preserved as a separate job gated on
-`github.event_name == 'pull_request'`, so reviewer-facing drift warnings still fire on every PR.
+Reconciles two adjacent issues:
 
-Closes #362.
+- **#362** — "the dependencies should be automatically updated" (referencing NEAT-AI's automation).
+  Previously the workflow only emitted a `::warning::` and reverted the bump; now it commits.
+- **#364** — "I don't want a weekly dependency update — should be only done on raise of PR". The
+  weekly cron schedule is deliberately omitted; the workflow only runs on `pull_request` to
+  `Develop`.
+
+Forked PRs are skipped because `GITHUB_TOKEN` cannot push to a fork. Pushes via `GITHUB_TOKEN` do
+not re-trigger workflows by design, so there is no infinite loop.
 
 ## Evidence
 
 ```mermaid
 flowchart LR
-    cron["cron: weekly Mon 06:00 UTC"] --> bump["bash bump-deps.sh<br/>(deno update --latest)"]
-    dispatch["workflow_dispatch"] --> bump
-    bump --> diff{deno.json / deno.lock<br/>changed?}
-    diff -- yes --> pr["peter-evans/create-pull-request<br/>→ chore/deno-outdated PR into Develop"]
-    diff -- no --> noop["no-op"]
-    pr_event["pull_request → Develop"] --> drift["drift-check job<br/>(non-blocking ::warning::)"]
+    pr["pull_request → Develop"] --> guard{head.repo == this repo?}
+    guard -- no, fork --> skip["skip auto-bump"]
+    guard -- yes --> checkout["checkout PR head ref"]
+    checkout --> bump["bash bump-deps.sh<br/>(deno update --latest)"]
+    bump --> diff{deno.json /<br/>deno.lock changed?}
+    diff -- no --> noop["log: already up-to-date"]
+    diff -- yes --> commit["git commit + push<br/>back to PR head branch"]
 ```
 
 Backend/CI-only change — no UI to screenshot. Verified by:
 
-- `deno fmt --check` — clean (320 files).
-- `deno lint` — clean (108 files).
-- `deno check **/*.ts` — clean.
-- `.github/deno_outdated_workflow_test.ts` — 5/5 tests pass; assert triggers, job gating,
-  `bump-deps.sh` invocation, and that `peter-evans/create-pull-request` is pinned to a 40-char SHA.
-- YAML structure double-checked by parsing via `@std/yaml` (`on:` is parsed as a string key, not a
-  boolean alias).
+- `.github/deno_outdated_workflow_test.ts` — 5/5 tests pass; assert triggers (PR-only, no cron),
+  fork guard, `contents: write` permission, and that the bump step commits + pushes.
+- `deno fmt --check` and `deno lint` clean for the new test file.
+- `deno check` clean for the new test file.
 
 ## Test Plan
 
 Added `.github/deno_outdated_workflow_test.ts` with five tests:
 
-1. `runs on a weekly schedule` — asserts the cron is `0 6 * * 1`.
-2. `supports manual dispatch` — asserts `workflow_dispatch` is declared.
-3. `keeps PR drift-check job` — asserts the existing drift-check job is gated on `pull_request` and
-   still present.
-4. `auto-bump job runs on schedule and dispatch` — asserts the new job is gated on
-   `schedule || workflow_dispatch` and requests `contents: write` + `pull-requests: write`
-   permissions.
-5. `auto-bump invokes bump-deps.sh and peter-evans/create-pull-request` — asserts a step runs
-   `bump-deps.sh`, the PR action is pinned to a 40-character commit SHA, and PR targets `Develop` on
-   branch `chore/deno-outdated`.
-
-The full `./quality.sh` runs every example (40+ minutes) and is not exercised by this YAML-only
-change; the targeted Deno checks above cover the modified surface.
+1. `triggers only on pull_request to Develop` — asserts the `pull_request` trigger targets
+   `Develop`.
+2. `does NOT run on a weekly cron schedule (#364)` — asserts no `schedule:` key is declared.
+3. `auto-bump job requests contents:write so it can push` — asserts the workflow grants
+   `contents: write`.
+4. `skips PRs from forks` — asserts the job `if:` guard checks
+   `head.repo.full_name == github.repository`.
+5. `auto-bump runs bump-deps.sh and commits the result` — asserts a step invokes `bump-deps.sh`,
+   another commits and pushes, and `actions/checkout` targets the PR head ref/repo and is pinned to
+   a 40-character commit SHA.

@@ -1,12 +1,15 @@
-// Tests for .github/workflows/deno-outdated.yml (Issue #362).
+// Tests for .github/workflows/deno-outdated.yml (Issue #362, #364).
 //
-// The workflow declares two behaviours: a PR drift check (non-blocking
-// warning) and a scheduled auto-bump that opens a pull request via
-// peter-evans/create-pull-request. These tests parse the YAML and
-// assert on the declared configuration — that is the only observable
-// surface of a workflow file short of running it on GitHub Actions.
+// The workflow must:
+//  * trigger only on `pull_request` to Develop (no weekly cron — #364);
+//  * run `bump-deps.sh` and, when pins drift, COMMIT and PUSH the bump
+//    back to the PR head branch so dependencies are updated
+//    automatically (#362) — not just warned about;
+//  * skip the auto-bump for PRs from forks (push would fail without a
+//    privileged token);
+//  * request `contents: write` so the push succeeds.
 
-import { assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { parse } from "@std/yaml";
 
 const WORKFLOW_PATH = new URL("./workflows/deno-outdated.yml", import.meta.url);
@@ -19,68 +22,94 @@ async function loadWorkflow(): Promise<Workflow> {
   return parse(text) as Workflow;
 }
 
-Deno.test("deno-outdated workflow — runs on a weekly schedule", async () => {
+function triggers(wf: Workflow): Record<string, unknown> {
+  // YAML's `on:` key is sometimes parsed as the boolean `true` because
+  // `on` is a YAML 1.1 boolean literal; @std/yaml uses YAML 1.2 and
+  // keeps it as the string `on`, but accept both for safety.
+  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<string, unknown>;
+}
+
+Deno.test("deno-outdated workflow — triggers only on pull_request to Develop", async () => {
   const wf = await loadWorkflow();
-  // YAML `on:` becomes the boolean key `true` because `on` is a YAML
-  // boolean literal; @std/yaml preserves that, so accept either key.
-  const triggers = wf.on ?? wf["true"] ?? wf[true as unknown as string];
-  assertExists(triggers, "workflow must declare triggers");
-  assertExists(triggers.schedule, "must declare a schedule trigger");
-  assertEquals(triggers.schedule.length, 1);
-  assertEquals(triggers.schedule[0].cron, "0 6 * * 1");
+  const t = triggers(wf);
+  assertExists(t, "workflow must declare triggers");
+  assertExists(t.pull_request, "must trigger on pull_request");
+  const pr = t.pull_request as { branches?: string[] };
+  assertEquals(pr.branches, ["Develop"], "pull_request must target Develop");
 });
 
-Deno.test("deno-outdated workflow — supports manual dispatch", async () => {
+Deno.test("deno-outdated workflow — does NOT run on a weekly cron schedule (#364)", async () => {
   const wf = await loadWorkflow();
-  const triggers = wf.on ?? wf["true"] ?? wf[true as unknown as string];
-  // workflow_dispatch with no inputs serialises as `null` in YAML.
+  const t = triggers(wf);
   assertEquals(
-    Object.prototype.hasOwnProperty.call(triggers, "workflow_dispatch"),
-    true,
+    Object.prototype.hasOwnProperty.call(t, "schedule"),
+    false,
+    "Issue #364 forbids weekly bot dependency PRs — no `schedule:` trigger allowed.",
   );
 });
 
-Deno.test("deno-outdated workflow — keeps PR drift-check job", async () => {
+Deno.test("deno-outdated workflow — auto-bump job requests contents:write so it can push", async () => {
   const wf = await loadWorkflow();
-  const job = wf.jobs?.["drift-check"];
-  assertExists(job, "drift-check job must exist");
-  assertEquals(job.if, "github.event_name == 'pull_request'");
+  // Either job-level or workflow-level permissions must grant write.
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const jobNames = Object.keys(jobs);
+  assert(jobNames.length >= 1, "must declare at least one job");
+  const job = jobs[jobNames[0]];
+  const jobPerms = (job.permissions ?? {}) as Record<string, string>;
+  const wfPerms = (wf.permissions ?? {}) as Record<string, string>;
+  const contents = jobPerms.contents ?? wfPerms.contents;
+  assertEquals(contents, "write", "auto-bump must have contents: write to push");
 });
 
-Deno.test("deno-outdated workflow — auto-bump job runs on schedule and dispatch", async () => {
+Deno.test("deno-outdated workflow — skips PRs from forks", async () => {
   const wf = await loadWorkflow();
-  const job = wf.jobs?.["auto-bump"];
-  assertExists(job, "auto-bump job must exist");
-  assertEquals(
-    job.if,
-    "github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'",
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const guard = String(job.if ?? "");
+  assert(
+    guard.includes("head.repo.full_name") && guard.includes("github.repository"),
+    `job must guard against fork PRs via head.repo.full_name == github.repository, got: ${guard}`,
   );
-  assertEquals(job.permissions.contents, "write");
-  assertEquals(job.permissions["pull-requests"], "write");
 });
 
-Deno.test("deno-outdated workflow — auto-bump invokes bump-deps.sh and peter-evans/create-pull-request", async () => {
+Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits the result", async () => {
   const wf = await loadWorkflow();
-  const steps = wf.jobs["auto-bump"].steps as Array<Record<string, unknown>>;
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const steps = job.steps as Array<Record<string, unknown>>;
+
+  // bump-deps.sh must be invoked.
   const bump = steps.find((s) =>
     typeof s.run === "string" && (s.run as string).includes("bump-deps.sh")
   );
   assertExists(bump, "auto-bump must invoke bump-deps.sh");
 
-  const prStep = steps.find((s) =>
-    typeof s.uses === "string" && (s.uses as string).startsWith("peter-evans/create-pull-request@")
+  // A step must commit and push the changes (signals the auto-update,
+  // not just warning).
+  const commit = steps.find((s) => {
+    const run = String(s.run ?? "");
+    return run.includes("git commit") && run.includes("git push");
+  });
+  assertExists(commit, "auto-bump must commit and push the dependency updates");
+
+  // Checkout must use the PR head ref so the push targets the PR branch.
+  const checkout = steps.find((s) =>
+    typeof s.uses === "string" && (s.uses as string).startsWith("actions/checkout@")
   );
-  assertExists(prStep, "auto-bump must use peter-evans/create-pull-request");
-  // Action pinned to a 40-char commit SHA per supply-chain policy.
-  const uses = prStep.uses as string;
-  const sha = uses.split("@")[1].split(" ")[0];
+  assertExists(checkout, "must check out the PR head");
+  const cwith = checkout.with as Record<string, unknown>;
   assertEquals(
-    sha.length,
-    40,
-    `peter-evans/create-pull-request must be pinned to a 40-char SHA, got "${sha}"`,
+    cwith.ref,
+    "${{ github.event.pull_request.head.ref }}",
+    "checkout must target the PR head ref so commits go back to the PR branch",
+  );
+  assertEquals(
+    cwith.repository,
+    "${{ github.event.pull_request.head.repo.full_name }}",
+    "checkout must target the PR head repository",
   );
 
-  const withCfg = prStep.with as Record<string, unknown>;
-  assertEquals(withCfg.base, "Develop");
-  assertEquals(withCfg.branch, "chore/deno-outdated");
+  // checkout must be pinned to a 40-char SHA per supply-chain policy.
+  const sha = (checkout.uses as string).split("@")[1].split(" ")[0];
+  assertEquals(sha.length, 40, `actions/checkout must be pinned to a 40-char SHA, got "${sha}"`);
 });
