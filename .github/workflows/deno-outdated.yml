@@ -1,43 +1,59 @@
-# Deno Dependency Freshness workflow for NEAT-AI-Examples
+# Deno Dependency Auto-Bump workflow for NEAT-AI-Examples (Issues #362, #364)
 #
-# Runs `./bump-deps.sh` (which invokes `deno update --latest`) on pull
-# requests so dependency drift is visible while work is in review. If
-# pins would change, the step emits a CI warning and restores
-# `deno.json` / `deno.lock` on the runner — it does not commit or open
-# bot PRs. Run `./bump-deps.sh` locally, then `./quality.sh`, and commit
-# when you want to refresh pins.
+# When a pull request is raised against `Develop`, this workflow runs
+# `./bump-deps.sh` (which invokes `deno update --latest`). If pinned
+# versions in `deno.json` / `deno.lock` lag the registry, the changes
+# are committed and pushed back to the PR head branch — so the PR ships
+# with up-to-date dependencies automatically (#362).
+#
+# There is deliberately no weekly cron: dependency refreshes only
+# happen when a PR is raised, never as scheduled bot noise (#364).
+#
+# Forked PRs are skipped because GITHUB_TOKEN cannot push to a fork.
 
-name: Deno Dependency Freshness
+name: Deno Dependency Auto-Bump
 
 on:
   pull_request:
     branches:
       - Develop
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  outdated:
-    name: Check Deno dependencies
+  auto-bump:
+    name: Auto-bump Deno dependencies on PR
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out PR head
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # Use GITHUB_TOKEN so the resulting push is attributed to the
+          # workflow. Pushes via GITHUB_TOKEN do not re-trigger workflows
+          # by design — no infinite loop.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
 
-      - name: Report dependency drift (non-blocking)
+      - name: Bump and commit dependency updates
         run: |
+          set -euo pipefail
           bash bump-deps.sh
           if git diff --quiet deno.json deno.lock; then
-            echo "All tracked Deno dependencies already match \`deno update --latest\`."
-          else
-            echo "::warning::Pinned versions lag the registry. Run ./bump-deps.sh locally, then ./quality.sh, and commit deno.json and deno.lock."
-            git diff --stat deno.json deno.lock
-            git checkout -- deno.json deno.lock
+            echo "All Deno dependencies already match \`deno update --latest\`."
+            exit 0
           fi
+          echo "Pinned versions lag the registry — committing the bump."
+          git diff --stat deno.json deno.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deno.json deno.lock
+          git commit -m "chore: auto-bump Deno dependencies (#362)"
+          git push origin HEAD:"${GITHUB_HEAD_REF}"
