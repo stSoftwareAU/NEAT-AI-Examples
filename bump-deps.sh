@@ -4,7 +4,7 @@
 # `deno update --latest` (see `deno update --help`).
 #
 # Same role as stSoftwareAU/GRQ `bump-deps.sh`: run from the repo root,
-# commit the resulting `deno.json` / `deno.lock` changes, then run
+# commit the resulting `deno.json` pin changes (`deno.lock` is gitignored), then run
 # `./quality.sh` before merging.
 set -euo pipefail
 
