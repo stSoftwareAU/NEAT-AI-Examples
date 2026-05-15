@@ -65,7 +65,9 @@ jobs:
       # --coverage produces a profile that is converted to lcov and
       # uploaded to Codecov below. Issue #51.
       - name: Run unit tests with coverage
-        run: deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --coverage=cov_profile
+        run: |
+          set -euo pipefail
+          deno test --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df --coverage=cov_profile
 
       - name: Generate lcov coverage report
         run: deno coverage cov_profile --lcov --output=coverage.lcov

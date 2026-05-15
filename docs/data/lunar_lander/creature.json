@@ -1,256 +1,256 @@
 {
- "semanticVersion": "4.0.0",
- "forwardOnly": true,
- "neurons": [
-  {
-   "type": "hidden",
-   "uuid": "c56bdd6a-d79b-4343-8429-997b1391e19f",
-   "bias": -0.23804630377107378,
-   "squash": "LeakyReLU",
-   "tags": [
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
     {
-     "name": "approach",
-     "value": "graft"
-    }
-   ]
-  },
-  {
-   "type": "hidden",
-   "uuid": "b20a4169-c0ae-47c9-8d74-270fdc683c70",
-   "bias": -3.96221930159068,
-   "squash": "Mish"
-  },
-  {
-   "type": "hidden",
-   "uuid": "088e7ad4-c380-4a7b-912c-be98c7fdeed1",
-   "bias": 0.26603392699837003,
-   "squash": "Mish"
-  },
-  {
-   "type": "output",
-   "uuid": "output-0",
-   "bias": 7.322059175439678,
-   "squash": "GAUSSIAN"
-  },
-  {
-   "type": "output",
-   "uuid": "output-1",
-   "bias": -0.4133389134049928,
-   "squash": "Mish"
-  },
-  {
-   "type": "output",
-   "uuid": "output-2",
-   "bias": -1.0913900358600446,
-   "squash": "LogSigmoid"
-  }
- ],
- "synapses": [
-  {
-   "weight": 21.814935932441813,
-   "fromUUID": "input-0",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": 0.4009527957106613,
-   "fromUUID": "input-0",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": -0.4330887,
-   "fromUUID": "input-1",
-   "toUUID": "088e7ad4-c380-4a7b-912c-be98c7fdeed1"
-  },
-  {
-   "weight": 41.07264489564491,
-   "fromUUID": "input-1",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": 0.04062820880972628,
-   "fromUUID": "input-1",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": -0.36498349999999996,
-   "fromUUID": "input-2",
-   "toUUID": "c56bdd6a-d79b-4343-8429-997b1391e19f"
-  },
-  {
-   "weight": -19.45416116873074,
-   "fromUUID": "input-2",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": -0.8899774503154453,
-   "fromUUID": "input-2",
-   "toUUID": "output-1"
-  },
-  {
-   "weight": -6.611074586195354,
-   "fromUUID": "input-2",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": 22.997189011920195,
-   "fromUUID": "input-3",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": 10.726316011921874,
-   "fromUUID": "input-3",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": -91.91938340588523,
-   "fromUUID": "input-4",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": 0.6192331399816584,
-   "fromUUID": "input-4",
-   "toUUID": "output-1"
-  },
-  {
-   "weight": 3.6128042943071876,
-   "fromUUID": "input-4",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": -38.29916280690273,
-   "fromUUID": "input-5",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": 5.356601296636468,
-   "fromUUID": "input-5",
-   "toUUID": "output-1"
-  },
-  {
-   "weight": -0.23180802949486778,
-   "fromUUID": "input-5",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": 0.2546632839296138,
-   "fromUUID": "input-6",
-   "toUUID": "b20a4169-c0ae-47c9-8d74-270fdc683c70"
-  },
-  {
-   "weight": 0.43861750687763174,
-   "fromUUID": "input-6",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": 0.05709911397629752,
-   "fromUUID": "input-6",
-   "toUUID": "output-1"
-  },
-  {
-   "weight": -4.429356379619216,
-   "fromUUID": "input-6",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": 0.1767533,
-   "fromUUID": "c56bdd6a-d79b-4343-8429-997b1391e19f",
-   "toUUID": "b20a4169-c0ae-47c9-8d74-270fdc683c70"
-  },
-  {
-   "weight": 0.28876245935308287,
-   "fromUUID": "b20a4169-c0ae-47c9-8d74-270fdc683c70",
-   "toUUID": "output-0"
-  },
-  {
-   "weight": -0.4727571,
-   "fromUUID": "088e7ad4-c380-4a7b-912c-be98c7fdeed1",
-   "toUUID": "output-1"
-  },
-  {
-   "weight": -0.41135835508855506,
-   "fromUUID": "output-0",
-   "toUUID": "output-2"
-  },
-  {
-   "weight": -0.4549530423424105,
-   "fromUUID": "output-1",
-   "toUUID": "output-2"
-  }
- ],
- "input": 7,
- "output": 3,
- "tags": [
-  {
-   "name": "error",
-   "value": "0.11975960977286827"
-  },
-  {
-   "name": "score",
-   "value": "0.8802398292829665"
-  },
-  {
-   "name": "trialRewards",
-   "value": "-0.15,-0.15,0,0,-0.2507274450147541,-0.16783021362245554"
-  },
-  {
-   "name": "meanReward",
-   "value": "-0.11975960977286827"
-  },
-  {
-   "name": "approach",
-   "value": "fine"
-  },
-  {
-   "name": "adjusted",
-   "value": "2 weights, 3 biases"
-  },
-  {
-   "name": "approach-logged",
-   "value": "fine"
-  }
- ],
- "memetic": {
-  "generation": 2,
-  "score": 0.5867214968997677,
-  "biases": {
-   "c56bdd6a-d79b-4343-8429-997b1391e19f": -0.28403538365876996,
-   "b20a4169-c0ae-47c9-8d74-270fdc683c70": 1.0085424177701485,
-   "output-0": 0.7592214332082972
-  },
-  "weights": [
-   {
-    "fromUUID": "input-1",
-    "toUUID": "output-2",
-    "weight": -0.0111215
-   },
-   {
-    "fromUUID": "input-2",
-    "toUUID": "output-0",
-    "weight": -19.64999631129191
-   }
-  ],
-  "ancestry": [
-   {
-    "generation": 1,
-    "weights": [
-     {
-      "fromUUID": "input-1",
-      "toUUID": "output-2",
-      "weight": -0.0111215
-     },
-     {
-      "fromUUID": "input-2",
-      "toUUID": "output-0",
-      "weight": -19.64999631129191
-     }
-    ],
-    "biases": {
-     "c56bdd6a-d79b-4343-8429-997b1391e19f": -0.28403538365876996,
-     "b20a4169-c0ae-47c9-8d74-270fdc683c70": 1.0085424177701485,
-     "output-0": 0.7592214332082972
+      "type": "hidden",
+      "uuid": "c56bdd6a-d79b-4343-8429-997b1391e19f",
+      "bias": -0.23804630377107378,
+      "squash": "LeakyReLU",
+      "tags": [
+        {
+          "name": "approach",
+          "value": "graft"
+        }
+      ]
     },
-    "score": 0.5867214968997677
-   }
-  ]
- }
+    {
+      "type": "hidden",
+      "uuid": "b20a4169-c0ae-47c9-8d74-270fdc683c70",
+      "bias": -3.96221930159068,
+      "squash": "Mish"
+    },
+    {
+      "type": "hidden",
+      "uuid": "088e7ad4-c380-4a7b-912c-be98c7fdeed1",
+      "bias": 0.26603392699837003,
+      "squash": "Mish"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 7.322059175439678,
+      "squash": "GAUSSIAN"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": -0.4133389134049928,
+      "squash": "Mish"
+    },
+    {
+      "type": "output",
+      "uuid": "output-2",
+      "bias": -1.0913900358600446,
+      "squash": "LogSigmoid"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 21.814935932441813,
+      "fromUUID": "input-0",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.4009527957106613,
+      "fromUUID": "input-0",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -0.4330887,
+      "fromUUID": "input-1",
+      "toUUID": "088e7ad4-c380-4a7b-912c-be98c7fdeed1"
+    },
+    {
+      "weight": 41.07264489564491,
+      "fromUUID": "input-1",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.04062820880972628,
+      "fromUUID": "input-1",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -0.36498349999999996,
+      "fromUUID": "input-2",
+      "toUUID": "c56bdd6a-d79b-4343-8429-997b1391e19f"
+    },
+    {
+      "weight": -19.45416116873074,
+      "fromUUID": "input-2",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.8899774503154453,
+      "fromUUID": "input-2",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -6.611074586195354,
+      "fromUUID": "input-2",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 22.997189011920195,
+      "fromUUID": "input-3",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 10.726316011921874,
+      "fromUUID": "input-3",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -91.91938340588523,
+      "fromUUID": "input-4",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.6192331399816584,
+      "fromUUID": "input-4",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": 3.6128042943071876,
+      "fromUUID": "input-4",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -38.29916280690273,
+      "fromUUID": "input-5",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 5.356601296636468,
+      "fromUUID": "input-5",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -0.23180802949486778,
+      "fromUUID": "input-5",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.2546632839296138,
+      "fromUUID": "input-6",
+      "toUUID": "b20a4169-c0ae-47c9-8d74-270fdc683c70"
+    },
+    {
+      "weight": 0.43861750687763174,
+      "fromUUID": "input-6",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.05709911397629752,
+      "fromUUID": "input-6",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -4.429356379619216,
+      "fromUUID": "input-6",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.1767533,
+      "fromUUID": "c56bdd6a-d79b-4343-8429-997b1391e19f",
+      "toUUID": "b20a4169-c0ae-47c9-8d74-270fdc683c70"
+    },
+    {
+      "weight": 0.28876245935308287,
+      "fromUUID": "b20a4169-c0ae-47c9-8d74-270fdc683c70",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.4727571,
+      "fromUUID": "088e7ad4-c380-4a7b-912c-be98c7fdeed1",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -0.41135835508855506,
+      "fromUUID": "output-0",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -0.4549530423424105,
+      "fromUUID": "output-1",
+      "toUUID": "output-2"
+    }
+  ],
+  "input": 7,
+  "output": 3,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0.11975960977286827"
+    },
+    {
+      "name": "score",
+      "value": "0.8802398292829665"
+    },
+    {
+      "name": "trialRewards",
+      "value": "-0.15,-0.15,0,0,-0.2507274450147541,-0.16783021362245554"
+    },
+    {
+      "name": "meanReward",
+      "value": "-0.11975960977286827"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
+    },
+    {
+      "name": "adjusted",
+      "value": "2 weights, 3 biases"
+    },
+    {
+      "name": "approach-logged",
+      "value": "fine"
+    }
+  ],
+  "memetic": {
+    "generation": 2,
+    "score": 0.5867214968997677,
+    "biases": {
+      "c56bdd6a-d79b-4343-8429-997b1391e19f": -0.28403538365876996,
+      "b20a4169-c0ae-47c9-8d74-270fdc683c70": 1.0085424177701485,
+      "output-0": 0.7592214332082972
+    },
+    "weights": [
+      {
+        "fromUUID": "input-1",
+        "toUUID": "output-2",
+        "weight": -0.0111215
+      },
+      {
+        "fromUUID": "input-2",
+        "toUUID": "output-0",
+        "weight": -19.64999631129191
+      }
+    ],
+    "ancestry": [
+      {
+        "generation": 1,
+        "weights": [
+          {
+            "fromUUID": "input-1",
+            "toUUID": "output-2",
+            "weight": -0.0111215
+          },
+          {
+            "fromUUID": "input-2",
+            "toUUID": "output-0",
+            "weight": -19.64999631129191
+          }
+        ],
+        "biases": {
+          "c56bdd6a-d79b-4343-8429-997b1391e19f": -0.28403538365876996,
+          "b20a4169-c0ae-47c9-8d74-270fdc683c70": 1.0085424177701485,
+          "output-0": 0.7592214332082972
+        },
+        "score": 0.5867214968997677
+      }
+    ]
+  }
 }
