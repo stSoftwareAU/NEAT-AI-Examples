@@ -732,9 +732,10 @@ export interface ValidationReport {
  * - If **every** scenario landed: return index `0` — deterministic, stable
  *   when scores cluster around the landed baseline.
  * - Else if **any** scenario landed: pick the **lower median** by score
- *   among **landed** scenarios only so the hero replay matches the headline
- *   landed rate (median over all scores often sits on a crash when most
- *   runs land but a few fail hard).
+ *   among **landed** scenarios only so the descent SVG shows a landing
+ *   (a random scenario still lands at about the headline landed rate, but
+ *   the global median **by numeric score** can sit on a high-scoring crash
+ *   because crash and landed scores overlap).
  * - Otherwise (no landings): fall back to the lower median by score across
  *   **all** scenarios so the SVG still tells a deterministic story.
  */
