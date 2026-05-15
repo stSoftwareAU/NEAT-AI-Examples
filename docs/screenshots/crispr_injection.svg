@@ -33,23 +33,23 @@
     <text x="70.00" y="380.00" dominant-baseline="middle" font-size="11" fill="#333">generations</text>
     <text x="434.00" y="380.00" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">603</text>
     <text x="70.00" y="424.80" dominant-baseline="middle" font-size="11" fill="#333">neurons</text>
-    <text x="434.00" y="424.80" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">7</text>
+    <text x="434.00" y="424.80" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">4</text>
     <text x="70.00" y="469.60" dominant-baseline="middle" font-size="11" fill="#333">synapses</text>
-    <text x="434.00" y="469.60" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">10</text>
+    <text x="434.00" y="469.60" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">5</text>
     <rect x="464.00" y="240.00" width="384.00" height="260.00" fill="#ffffff" stroke="#333" stroke-width="1"/>
     <rect x="464.00" y="240.00" width="384.00" height="28.00" fill="#1f77b4"/>
     <text x="656.00" y="258.00" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff">post-injection</text>
     <text x="474.00" y="290.40" dominant-baseline="middle" font-size="11" fill="#333">final score</text>
-    <text x="838.00" y="290.40" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.999</text>
+    <text x="838.00" y="290.40" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.997</text>
     <text x="474.00" y="335.20" dominant-baseline="middle" font-size="11" fill="#333">final error</text>
-    <text x="838.00" y="335.20" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.001</text>
+    <text x="838.00" y="335.20" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">0.003</text>
     <text x="474.00" y="380.00" dominant-baseline="middle" font-size="11" fill="#333">generations</text>
     <text x="838.00" y="380.00" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">603</text>
     <text x="474.00" y="424.80" dominant-baseline="middle" font-size="11" fill="#333">neurons</text>
-    <text x="838.00" y="424.80" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">10</text>
+    <text x="838.00" y="424.80" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">8</text>
     <text x="474.00" y="469.60" dominant-baseline="middle" font-size="11" fill="#333">synapses</text>
-    <text x="838.00" y="469.60" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">22</text>
+    <text x="838.00" y="469.60" text-anchor="end" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#222">18</text>
     <text x="454.00" y="362.00" text-anchor="middle" font-size="10" fill="#555">fitness lift</text>
-    <text x="454.00" y="380.00" text-anchor="middle" font-size="14" font-weight="bold" fill="#27ae60">+0.012</text>
+    <text x="454.00" y="380.00" text-anchor="middle" font-size="14" font-weight="bold" fill="#27ae60">+0.01</text>
   </g>
 </svg>
