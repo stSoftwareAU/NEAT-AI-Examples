@@ -114,12 +114,23 @@ export function renderMultiRunErrorChartSVG(
 
   lines.push(renderXAxis(genMin, genMax, xScale, plotY + plotH, logX));
   lines.push(renderYAxis(yMin, yMax, yScale, plotX));
+  if (logX) {
+    lines.push(
+      renderAxisFootnote(
+        plotX,
+        plotY + plotH + 46,
+        plotW,
+        "Linear error on Y · log₁₀ generations on X · one line segment per run (no cross-run spikes).",
+      ),
+    );
+  }
 
-  // Run-boundary markers — render under the polyline so the line stays
+  // Run-boundary markers — render under the polylines so the data stays
   // visually on top. Detect each runIndex transition in cumulative order.
   lines.push(renderRunBoundaries(ordered, xScale, plotY, plotH));
 
-  // Single continuous error polyline across every sample.
+  // One polyline segment per run so run restarts do not draw misleading
+  // vertical connectors on a log-scaled X axis.
   lines.push(renderErrorSeries(ordered, xScale, yScale));
 
   if (caption) {
@@ -286,13 +297,16 @@ function renderErrorSeries(
   xScale: (v: number) => number,
   yScale: (v: number) => number,
 ): string {
-  const points = samples.map((s) => `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(s.error))}`);
+  const segments = segmentSamplesByRun(samples);
   const out: string[] = [];
   out.push(`  <g class="error-line">`);
-  out.push(
-    `    <polyline fill="none" stroke="${ERROR_COLOUR}" stroke-width="1.5" ` +
-      `points="${points.join(" ")}"/>`,
-  );
+  for (const seg of segments) {
+    const points = seg.map((s) => `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(s.error))}`);
+    out.push(
+      `    <polyline fill="none" stroke="${ERROR_COLOUR}" stroke-width="1.5" ` +
+        `points="${points.join(" ")}"/>`,
+    );
+  }
   for (const s of samples) {
     out.push(
       `    <circle class="error-point" cx="${fmt(xScale(s.cumulativeGen))}" ` +
@@ -301,6 +315,32 @@ function renderErrorSeries(
   }
   out.push(`  </g>`);
   return out.join("\n");
+}
+
+/** Split milestones into contiguous runs so polylines do not draw vertical connectors at run boundaries. */
+function segmentSamplesByRun(
+  samples: readonly MultiRunMilestone[],
+): MultiRunMilestone[][] {
+  const out: MultiRunMilestone[][] = [];
+  let cur: MultiRunMilestone[] = [];
+  for (const s of samples) {
+    if (cur.length > 0 && s.runIndex !== cur[cur.length - 1].runIndex) {
+      out.push(cur);
+      cur = [];
+    }
+    cur.push(s);
+  }
+  if (cur.length > 0) out.push(cur);
+  return out;
+}
+
+function renderAxisFootnote(x: number, y: number, w: number, text: string): string {
+  return [
+    `  <g class="axis-footnote" font-family="sans-serif" font-size="10" fill="#666666">`,
+    `    <text x="${fmt(x + w / 2)}" y="${fmt(y)}" text-anchor="middle">` +
+    escapeText(text) + `</text>`,
+    `  </g>`,
+  ].join("\n");
 }
 
 function renderCaption(
@@ -322,7 +362,7 @@ function renderCaption(
     `${formatRate(gensPerMinute)} gen/min`;
   return [
     `  <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">`,
-    `    <text x="${fmt(width / 2)}" y="${fmt(height - 6)}" text-anchor="middle">` +
+    `    <text x="${fmt(width / 2)}" y="${fmt(height - 22)}" text-anchor="middle">` +
     escapeText(text) + `</text>`,
     `  </g>`,
   ].join("\n");

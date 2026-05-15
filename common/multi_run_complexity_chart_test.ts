@@ -57,9 +57,17 @@ Deno.test("renderMultiRunComplexityChartSVG: happy path emits valid SVG with bot
   assertStringIncludes(svg, "</svg>");
   assertStringIncludes(svg, "Multi-run Complexity Test");
 
-  // Both series must be plotted.
+  // Both series must be plotted (one polyline segment per run each).
   assertStringIncludes(svg, "neurons-line");
   assertStringIncludes(svg, "synapses-line");
+  assertEquals(
+    (svg.match(/<polyline fill="none" stroke="#2ca02c"/g) ?? []).length,
+    2,
+  );
+  assertEquals(
+    (svg.match(/<polyline fill="none" stroke="#d62728"/g) ?? []).length,
+    2,
+  );
 
   // Dual axes plus shared x axis present.
   assertStringIncludes(svg, "x-axis");

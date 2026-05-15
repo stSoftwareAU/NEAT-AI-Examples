@@ -51,7 +51,7 @@ flowchart LR
     STOP{"target reached<br/>OR timeout elapsed?"}
     CHAMP["💾 Save champion.json"]
     VALID["🧪 Validate vs 200 held-out scenarios"]
-    PICK["🎯 Pick representative validation scenario<br/>(median score; index 0 if all landed)"]
+    PICK["🎯 Pick representative validation scenario<br/>(median among landed scores; else global median; index 0 if all landed)"]
     RUN["▶️ Replay champion from validation start"]
     JSON["📝 validation/results.json"]
     MILES["📈 docs/screenshots/lunar_lander/<br/>milestones.svg + complexity.svg<br/>(multi-run charts)"]
@@ -103,13 +103,21 @@ final state and trial fitness is written to `.synthetic-lunar-lander/validation/
 
 The descent screenshot embedded above (`docs/screenshots/lunar_lander.svg`) is rendered from a
 **representative validation episode**, not the canonical training launch — so the SVG always shows
-the controller handling an unseen state, and on the captured run that state ends in a `crashed`
-outcome (the badge in the top-right corner reflects the real per-scenario result). The default
-selection rule is the validation scenario whose final score is the **median** across all validation
-scenarios; if every scenario lands, the runner falls back to validation index 0 to keep the choice
-deterministic when scores cluster tightly.
+the controller handling an unseen state, and the outcome badge reflects that episode's real result
+(`landed`, `crashed`, `out_of_bounds`, or `flying`). When **any** validation scenario lands, the
+runner picks the **median score among landed scenarios only** so the hero replay shows a landing
+that reflects how well the controller lands, not a lucky crash. That is **not** the same as the
+scenario at the **global median fitness score** (sort every scenario by numeric score and take the
+middle): a uniformly random scenario still lands with probability about the headline landed rate
+(for example ~85% means odds-on to land), but scores from soft crashes and marginal landings overlap
+on the number line, so the global score-median row can still be a crash even when most scenarios
+land. If **every** scenario lands, the runner uses validation index `0` for a deterministic choice
+when scores cluster tightly. If **nothing** lands, it falls back to the global median score across
+all scenarios.
 
-The aggregate per-scenario outcome distribution is drawn alongside the descent SVG as a bar chart:
+The aggregate per-scenario outcome bar chart scales each count bar as a **fraction of the full
+validation pool** (linear in share of the 200 scenarios), so bar heights match the headline
+percentages at a glance.
 
 ![Lunar-Lander validation outcome bar chart — count of landed / crashed / out_of_bounds / flying outcomes across the 200 held-out validation scenarios](../docs/screenshots/lunar_lander/validation.svg)
 
@@ -160,7 +168,7 @@ The CLI runner accepts overrides:
 
 ```bash
 ./lunar_lander/run.sh --target-error=0.05 --timeout=5
-./lunar_lander/run.sh --fresh   # wipe prior multi-run state before evolving
+./lunar_lander/run.sh --fresh   # full reset: multi-run data + validation + descent screenshots
 ```
 
 Multi-trial scoring (`trials = 10`, `initialPerturbation = 1.0`) means a controller cannot win by
@@ -217,8 +225,13 @@ Use `--timeout=<minutes>` to choose how long a single training invocation may ru
 ```
 
 Run the same command again to continue training from the saved champion and extend the cumulative
-charts. Use `--fresh` when you deliberately want to discard the saved champion and milestone history
-and start the noise → competent story again from a random seed:
+charts. Use `--fresh` when you deliberately want to discard the saved champion, merged milestone
+history, **and every published artefact** that carried cumulative statistics (multi-run charts under
+`docs/screenshots/lunar_lander/`, the main descent `docs/screenshots/lunar_lander.svg`, validation
+bar chart, and `.synthetic-lunar-lander/validation/results.json`) so a short new run (for example
+`--timeout=10`) cannot be read alongside wall-clock or generation totals from an earlier multi-hour
+campaign — the noise → competent story starts again from a random seed with **empty** merged history
+until this invocation appends its own milestones.
 
 ```bash
 ./lunar_lander/run.sh --fresh --timeout=30

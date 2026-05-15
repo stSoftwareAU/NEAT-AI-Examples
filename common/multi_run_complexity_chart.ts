@@ -349,15 +349,18 @@ function renderSeries(
   xScale: (v: number) => number,
   yScale: (s: MultiRunMilestone) => number,
 ): string {
-  const points = samples.map(
-    (s) => `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(s))}`,
-  );
+  const segments = segmentSamplesByRun(samples);
   const out: string[] = [];
   out.push(`  <g class="${lineClass}">`);
-  out.push(
-    `    <polyline fill="none" stroke="${colour}" stroke-width="1.5" ` +
-      `points="${points.join(" ")}"/>`,
-  );
+  for (const seg of segments) {
+    const points = seg.map(
+      (s) => `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(s))}`,
+    );
+    out.push(
+      `    <polyline fill="none" stroke="${colour}" stroke-width="1.5" ` +
+        `points="${points.join(" ")}"/>`,
+    );
+  }
   for (const s of samples) {
     out.push(
       `    <circle class="${pointClass}" cx="${fmt(xScale(s.cumulativeGen))}" ` +
@@ -366,6 +369,23 @@ function renderSeries(
   }
   out.push(`  </g>`);
   return out.join("\n");
+}
+
+/** Split milestones into contiguous runs so polylines do not draw vertical connectors at run boundaries. */
+function segmentSamplesByRun(
+  samples: readonly MultiRunMilestone[],
+): MultiRunMilestone[][] {
+  const out: MultiRunMilestone[][] = [];
+  let cur: MultiRunMilestone[] = [];
+  for (const s of samples) {
+    if (cur.length > 0 && s.runIndex !== cur[cur.length - 1].runIndex) {
+      out.push(cur);
+      cur = [];
+    }
+    cur.push(s);
+  }
+  if (cur.length > 0) out.push(cur);
+  return out;
 }
 
 function renderLegend(plotX: number, plotY: number): string {

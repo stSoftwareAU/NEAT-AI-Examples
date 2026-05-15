@@ -57,12 +57,19 @@ Deno.test("renderMultiRunErrorChartSVG: happy path emits valid SVG with error po
   assertStringIncludes(svg, "</svg>");
   assertStringIncludes(svg, "Multi-run Test");
 
-  // Error series must be plotted.
+  // Error series: one polyline per run (two runs → two segments).
   assertStringIncludes(svg, "error-line");
+  assertEquals(
+    (svg.match(/<polyline fill="none" stroke="#d62728"/g) ?? []).length,
+    2,
+  );
 
   // Both axes present.
   assertStringIncludes(svg, "x-axis");
   assertStringIncludes(svg, "y-axis");
+
+  // Default log-X layout documents linear Y in a footnote.
+  assertStringIncludes(svg, 'class="axis-footnote"');
 
   // No NaN/Infinity leaks into the output.
   assert(!svg.includes("NaN"), "SVG must not contain NaN");
@@ -283,6 +290,11 @@ Deno.test("renderMultiRunErrorChartSVG: log-x layout differs from linear", () =>
     linear !== log,
     "logX layout should differ from linear layout for power-of-ten spaced generations",
   );
+  assert(
+    !linear.includes('class="axis-footnote"'),
+    "linear X must omit the log-X explanatory footnote",
+  );
+  assertStringIncludes(log, 'class="axis-footnote"');
 });
 
 Deno.test("renderMultiRunErrorChartSVG: unsorted input is sorted by cumulativeGen", () => {

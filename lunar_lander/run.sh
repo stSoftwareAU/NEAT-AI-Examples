@@ -24,7 +24,7 @@ echo ""
 # quality.sh stays inside its tight per-section budget without
 # overwriting the docs SVGs checked into the repo.
 deno run \
-  --v8-flags=--max-old-space-size=4096 \
+  --v8-flags=--max-old-space-size=8192 \
   --allow-read \
   --allow-write \
   --allow-env \

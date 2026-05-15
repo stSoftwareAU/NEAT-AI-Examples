@@ -28,7 +28,9 @@
  * `common/multi_run_state.ts` helper to resume evolution across runs:
  * each invocation reloads the previously-saved champion (when present),
  * appends fresh milestones to the merged history, and re-renders the
- * two multi-run chart SVGs. `--fresh` wipes prior state to start over.
+ * two multi-run chart SVGs. `--fresh` wipes prior state **and** the
+ * published validation / descent artefacts so cumulative-generation and
+ * wall-clock summaries cannot mix a short new run with an older history.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -727,12 +729,15 @@ export interface ValidationReport {
 /**
  * Pick a representative validation scenario for the descent SVG.
  *
- * Default rule: the scenario whose final score is the median across all
- * validation scenarios — sorted ascending and indexing the lower median
- * (`Math.floor((n - 1) / 2)`) so the choice is stable for ties. If every
- * scenario landed successfully, return index `0` instead — a deterministic
- * fallback that side-steps tie-break sensitivity when scores cluster
- * tightly around the landed-baseline.
+ * - If **every** scenario landed: return index `0` — deterministic, stable
+ *   when scores cluster around the landed baseline.
+ * - Else if **any** scenario landed: pick the **lower median** by score
+ *   among **landed** scenarios only so the descent SVG shows a landing
+ *   (a random scenario still lands at about the headline landed rate, but
+ *   the global median **by numeric score** can sit on a high-scoring crash
+ *   because crash and landed scores overlap).
+ * - Otherwise (no landings): fall back to the lower median by score across
+ *   **all** scenarios so the SVG still tells a deterministic story.
  */
 export function pickValidationSvgIndex(
   results: readonly ValidationScenarioResult[],
@@ -740,6 +745,15 @@ export function pickValidationSvgIndex(
   if (results.length === 0) return -1;
   const allLanded = results.every((r) => r.outcome === "landed");
   if (allLanded) return 0;
+
+  const landed = results
+    .map((r, i) => ({ r, i }))
+    .filter((x) => x.r.outcome === "landed");
+  if (landed.length > 0) {
+    const order = [...landed].sort((a, b) => a.r.score - b.r.score);
+    return order[Math.floor((order.length - 1) / 2)].i;
+  }
+
   const order = results
     .map((r, i) => ({ score: r.score, i }))
     .sort((a, b) => a.score - b.score);
@@ -1065,6 +1079,27 @@ export const VALIDATION_BASE_SEED = 13579;
  */
 export const VALIDATION_OUTCOME_SVG_PATH = "docs/screenshots/lunar_lander/validation.svg";
 
+/** Best-effort delete for a single file (missing paths are ignored). */
+async function removeFileIfExists(path: string): Promise<void> {
+  try {
+    await Deno.remove(path);
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) return;
+    throw err;
+  }
+}
+
+/**
+ * Remove published validation and descent artefacts so a `--fresh` run
+ * cannot leave stale JSON/SVGs that still imply an older evolution. Only
+ * used for the canonical `docs/` layout (not temp directories in tests).
+ */
+async function wipeLunarFreshPublishedArtefacts(): Promise<void> {
+  await removeFileIfExists(VALIDATION_RESULTS_PATH);
+  await removeFileIfExists(VALIDATION_OUTCOME_SVG_PATH);
+  await removeFileIfExists(SCREENSHOT_PATH);
+}
+
 /**
  * CI/quality "quick mode" stop-condition overrides. When the runner is
  * invoked via `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag), the
@@ -1168,6 +1203,9 @@ export async function runMultiRunLunarLander(
 
   if (flags.fresh) {
     await wipeMultiRunState(slug, options.baseDir);
+    if (options.baseDir === undefined) {
+      await wipeLunarFreshPublishedArtefacts();
+    }
   }
 
   const state = await loadMultiRunState(slug, options.baseDir);
@@ -1260,7 +1298,10 @@ if (import.meta.main) {
 
   const flags = parseMultiRunFlags(Deno.args);
   if (flags.fresh) {
-    console.log("🧹 --fresh: wiping prior multi-run state.");
+    console.log(
+      "🧹 --fresh: full reset — multi-run state under docs/data plus validation JSON, " +
+        "validation/descent screenshots, and merged chart captions will reflect only this run.",
+    );
   }
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
   const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
