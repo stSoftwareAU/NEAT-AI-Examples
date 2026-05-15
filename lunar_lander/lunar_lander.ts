@@ -71,6 +71,7 @@ import {
   type LanderState,
   type LanderTerrain,
   perturbedScenario,
+  scenarioComplexity,
   step,
 } from "./physics.ts";
 import { renderRunSVG, type TraceFrame } from "./svg.ts";
@@ -726,38 +727,76 @@ export interface ValidationReport {
   selectedIndex: number;
 }
 
+/** Lower median index by trial score (deterministic tie order). */
+function lowerMedianIndexByScore(
+  items: readonly { score: number; i: number }[],
+): number {
+  const order = [...items].sort((a, b) => a.score - b.score || a.i - b.i);
+  return order[Math.floor((order.length - 1) / 2)].i;
+}
+
+/**
+ * Among landed validation rows, prefer challenging starts (complexity at
+ * or above the landed pool's median) then the lower median score within
+ * that subset so the hero replay is neither a trivial vertical drop nor a
+ * lucky outlier.
+ */
+function pickChallengingLandedSvgIndex(
+  landed: readonly { r: ValidationScenarioResult; i: number; complexity: number }[],
+): number {
+  if (landed.length === 1) return landed[0].i;
+  const complexities = landed.map((x) => x.complexity).sort((a, b) => a - b);
+  const medianCx = complexities[Math.floor((complexities.length - 1) / 2)];
+  const challenging = landed.filter((x) => x.complexity >= medianCx);
+  const pool = challenging.length > 0 ? challenging : landed;
+  return lowerMedianIndexByScore(pool.map((x) => ({ score: x.r.score, i: x.i })));
+}
+
 /**
  * Pick a representative validation scenario for the descent SVG.
  *
- * - If **every** scenario landed: return index `0` — deterministic, stable
- *   when scores cluster around the landed baseline.
- * - Else if **any** scenario landed: pick the **lower median** by score
- *   among **landed** scenarios only so the descent SVG shows a landing
- *   (a random scenario still lands at about the headline landed rate, but
- *   the global median **by numeric score** can sit on a high-scoring crash
- *   because crash and landed scores overlap).
- * - Otherwise (no landings): fall back to the lower median by score across
- *   **all** scenarios so the SVG still tells a deterministic story.
+ * When `validationScenarios` is supplied (same length as `results`):
+ *
+ * - Among **landed** scenarios (including when **every** scenario landed),
+ *   prefer starts at or above the median {@link scenarioComplexity} among
+ *   landings, then the **lower median** score within that subset.
+ * - Otherwise (no landings): lower median score across **all** scenarios.
+ *
+ * Without scenarios: lower-median-by-score among landed rows only.
  */
 export function pickValidationSvgIndex(
   results: readonly ValidationScenarioResult[],
+  validationScenarios?: readonly SeededScenario[],
 ): number {
   if (results.length === 0) return -1;
-  const allLanded = results.every((r) => r.outcome === "landed");
-  if (allLanded) return 0;
+
+  const hasScenarios = validationScenarios !== undefined &&
+    validationScenarios.length === results.length;
 
   const landed = results
-    .map((r, i) => ({ r, i }))
+    .map((r, i) => ({
+      r,
+      i,
+      complexity: hasScenarios
+        ? scenarioComplexity(
+          validationScenarios[i].state,
+          validationScenarios[i].terrain,
+        )
+        : 0,
+    }))
     .filter((x) => x.r.outcome === "landed");
+
   if (landed.length > 0) {
-    const order = [...landed].sort((a, b) => a.r.score - b.r.score);
+    if (hasScenarios) {
+      return pickChallengingLandedSvgIndex(landed);
+    }
+    const order = [...landed].sort((a, b) => a.r.score - b.r.score || a.i - b.i);
     return order[Math.floor((order.length - 1) / 2)].i;
   }
 
-  const order = results
-    .map((r, i) => ({ score: r.score, i }))
-    .sort((a, b) => a.score - b.score);
-  return order[Math.floor((order.length - 1) / 2)].i;
+  return lowerMedianIndexByScore(
+    results.map((r, i) => ({ score: r.score, i })),
+  );
 }
 
 /**
@@ -802,7 +841,7 @@ export function validateChampion(
     landedRate,
     meanFitness,
     outcomeCounts: counts,
-    selectedIndex: pickValidationSvgIndex(scenarios),
+    selectedIndex: pickValidationSvgIndex(scenarios, validationScenarios),
   };
 }
 

@@ -268,6 +268,30 @@ export function perturbedScenario(
 }
 
 /**
+ * Normalised measure of how far a scenario sits from the canonical
+ * training launch (centred start, centred pad). Larger values mean a
+ * more demanding initial condition — offset pad, horizontal mismatch
+ * to the pad, tilt, and non-default velocities. Used when picking the
+ * descent screenshot so the hero replay favours a challenging landing.
+ */
+export function scenarioComplexity(
+  state: LanderState,
+  terrain: LanderTerrain,
+): number {
+  const norm = (delta: number, halfRange: number) =>
+    halfRange > 0 ? Math.abs(delta) / halfRange : 0;
+  return (
+    norm(state.x - terrain.padX, WIDE_RANGES.x) +
+    norm(state.x - DEFAULT_START_X, WIDE_RANGES.x) +
+    norm(terrain.padX, WIDE_RANGES.padX) +
+    norm(state.y - DEFAULT_START_ALTITUDE, WIDE_RANGES.y) +
+    norm(state.vx - DEFAULT_START_VX, WIDE_RANGES.vx) +
+    norm(state.vy, WIDE_RANGES.vy) +
+    norm(state.angle, WIDE_RANGES.angle)
+  );
+}
+
+/**
  * Advance the lander by one time step using semi-implicit Euler
  * integration. Velocities are updated first, then positions, so the
  * step is energy-stable for small `timeStep` values.

@@ -105,15 +105,17 @@ The descent screenshot embedded above (`docs/screenshots/lunar_lander.svg`) is r
 **representative validation episode**, not the canonical training launch — so the SVG always shows
 the controller handling an unseen state, and the outcome badge reflects that episode's real result
 (`landed`, `crashed`, `out_of_bounds`, or `flying`). When **any** validation scenario lands, the
-runner picks the **median score among landed scenarios only** so the hero replay shows a landing
-that reflects how well the controller lands, not a lucky crash. That is **not** the same as the
-scenario at the **global median fitness score** (sort every scenario by numeric score and take the
-middle): a uniformly random scenario still lands with probability about the headline landed rate
-(for example ~85% means odds-on to land), but scores from soft crashes and marginal landings overlap
-on the number line, so the global score-median row can still be a crash even when most scenarios
-land. If **every** scenario lands, the runner uses validation index `0` for a deterministic choice
-when scores cluster tightly. If **nothing** lands, it falls back to the global median score across
-all scenarios.
+runner picks a **challenging** landing for the hero replay: among scenarios that landed, it keeps
+those at or above the median {@link scenarioComplexity} (offset pad, horizontal mismatch to the pad,
+tilt, and velocity), then the **lower median score** within that subset so the SVG shows a demanding
+recovery, not a trivial vertical drop over a centred pad. That is **not** the same as the scenario
+at the **global median fitness score** (sort every scenario by numeric score and take the middle): a
+uniformly random scenario still lands with probability about the headline landed rate (for example
+~85% means odds-on to land), but scores from soft crashes and marginal landings overlap on the
+number line, so the global score-median row can still be a crash even when most scenarios land. If
+**every** scenario lands, the runner uses validation index `0` for a deterministic choice when
+scores cluster tightly. If **nothing** lands, it falls back to the global median score across all
+scenarios.
 
 The aggregate per-scenario outcome bar chart scales each count bar as a **fraction of the full
 validation pool** (linear in share of the 200 scenarios), so bar heights match the headline

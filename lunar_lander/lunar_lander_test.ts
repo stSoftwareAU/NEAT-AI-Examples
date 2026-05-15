@@ -70,6 +70,7 @@ import {
   encodeState,
   initialState,
   type LanderState,
+  scenarioComplexity,
 } from "./physics.ts";
 import { generateScenarioPools } from "./scenarios.ts";
 import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
@@ -1388,8 +1389,60 @@ Deno.test({
   },
 });
 
+/** Lower median of a numeric list (deterministic). */
+function lowerMedianValue(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
+/** The picked row must be a landing when any scenario landed. */
+function assertPickedRowIsLanded(
+  results: readonly ValidationScenarioResult[],
+  index: number,
+): void {
+  assert(index >= 0 && index < results.length);
+  assertEquals(results[index].outcome, "landed");
+}
+
+/** Without scenarios: hero score is the lower median among landed rows. */
+function assertLegacyLandedMedianPick(
+  results: readonly ValidationScenarioResult[],
+  index: number,
+): void {
+  assertPickedRowIsLanded(results, index);
+  const landedScores = results
+    .filter((r) => r.outcome === "landed")
+    .map((r) => r.score);
+  assertEquals(results[index].score, lowerMedianValue(landedScores));
+}
+
+/** With scenarios: challenging landed pool + lower median score within it. */
+function assertChallengingLandedPick(
+  results: readonly ValidationScenarioResult[],
+  scenarios: readonly { state: LanderState; terrain: typeof DEFAULT_TERRAIN }[],
+  index: number,
+): void {
+  assertPickedRowIsLanded(results, index);
+  const landed = results
+    .map((r, i) => ({
+      i,
+      score: r.score,
+      complexity: scenarioComplexity(scenarios[i].state, scenarios[i].terrain),
+    }))
+    .filter((x) => results[x.i].outcome === "landed");
+  const complexities = landed.map((x) => x.complexity).sort((a, b) => a - b);
+  const medianCx = complexities[Math.floor((complexities.length - 1) / 2)];
+  const challenging = landed.filter((x) => x.complexity >= medianCx);
+  const pool = challenging.length > 0 ? challenging : landed;
+  assertEquals(results[index].score, lowerMedianValue(pool.map((x) => x.score)));
+  assertGreaterOrEqual(
+    scenarioComplexity(scenarios[index].state, scenarios[index].terrain),
+    medianCx,
+  );
+}
+
 Deno.test(
-  "pickValidationSvgIndex returns 0 when every scenario landed (issue #198)",
+  "pickValidationSvgIndex shows a landed replay when every scenario landed (issue #198)",
   () => {
     const allLanded: ValidationScenarioResult[] = Array.from({ length: 5 }, (_, i) => ({
       seed: i,
@@ -1398,16 +1451,14 @@ Deno.test(
       score: 100 + i,
       finalState: initialState(),
     }));
-    assertEquals(pickValidationSvgIndex(allLanded), 0);
+    const index = pickValidationSvgIndex(allLanded);
+    assertLegacyLandedMedianPick(allLanded, index);
   },
 );
 
 Deno.test(
-  "pickValidationSvgIndex picks the lower-median score among landed scenarios when any land (issue #198)",
+  "pickValidationSvgIndex shows a landing when only one scenario landed (issue #198)",
   () => {
-    // Mixed outcomes: four crashed, one landed. Median over *all* scores
-    // would sit on a crash; the descent SVG should still show a landing
-    // when the champion clears at least one scenario.
     const mixed: ValidationScenarioResult[] = [
       { seed: 0, index: 0, outcome: "crashed", score: 30, finalState: initialState() },
       { seed: 1, index: 1, outcome: "crashed", score: 50, finalState: initialState() },
@@ -1415,7 +1466,9 @@ Deno.test(
       { seed: 3, index: 3, outcome: "crashed", score: 40, finalState: initialState() },
       { seed: 4, index: 4, outcome: "landed", score: 20, finalState: initialState() },
     ];
-    assertEquals(pickValidationSvgIndex(mixed), 4);
+    const index = pickValidationSvgIndex(mixed);
+    assertEquals(index, mixed.findIndex((r) => r.outcome === "landed"));
+    assertPickedRowIsLanded(mixed, index);
   },
 );
 
@@ -1428,8 +1481,58 @@ Deno.test(
       { seed: 2, index: 2, outcome: "landed", score: 30, finalState: initialState() },
       { seed: 3, index: 3, outcome: "landed", score: 20, finalState: initialState() },
     ];
-    // Landed scores sorted: 10 (i=1), 20 (i=3), 30 (i=2) → lower median → i=3.
-    assertEquals(pickValidationSvgIndex(rows), 3);
+    const index = pickValidationSvgIndex(rows);
+    assertLegacyLandedMedianPick(rows, index);
+  },
+);
+
+Deno.test(
+  "pickValidationSvgIndex prefers a challenging landed scenario when scenarios are supplied",
+  () => {
+    const canonical = initialState();
+    const rows: ValidationScenarioResult[] = [
+      {
+        seed: 0,
+        index: 0,
+        outcome: "landed",
+        score: 100,
+        finalState: canonical,
+      },
+      {
+        seed: 1,
+        index: 1,
+        outcome: "landed",
+        score: 80,
+        finalState: canonical,
+      },
+      {
+        seed: 2,
+        index: 2,
+        outcome: "landed",
+        score: 90,
+        finalState: canonical,
+      },
+    ];
+    const scenarios = [
+      { seed: 0, state: canonical, terrain: DEFAULT_TERRAIN },
+      {
+        seed: 1,
+        state: { ...canonical, x: -5, vx: 4, angle: 0.2 },
+        terrain: { ...DEFAULT_TERRAIN, padX: 15 },
+      },
+      {
+        seed: 2,
+        state: { ...canonical, x: 0, vx: 0, angle: 0 },
+        terrain: DEFAULT_TERRAIN,
+      },
+    ];
+    const index = pickValidationSvgIndex(rows, scenarios);
+    assertChallengingLandedPick(rows, scenarios, index);
+    assertGreater(
+      scenarioComplexity(scenarios[1].state, scenarios[1].terrain),
+      scenarioComplexity(scenarios[0].state, scenarios[0].terrain),
+      "fixture must include a strictly harder scenario than the canonical launch",
+    );
   },
 );
 
@@ -1448,8 +1551,8 @@ Deno.test(
       { seed: 1, index: 1, outcome: "flying", score: 10, finalState: initialState() },
       { seed: 2, index: 2, outcome: "crashed", score: 50, finalState: initialState() },
     ];
-    // Sorted scores: 10 (i=1), 30 (i=0), 50 (i=2) → lower median → i=0.
-    assertEquals(pickValidationSvgIndex(rows), 0);
+    const index = pickValidationSvgIndex(rows);
+    assertEquals(rows[index].score, lowerMedianValue(rows.map((r) => r.score)));
   },
 );
 
