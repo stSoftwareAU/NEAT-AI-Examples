@@ -67,10 +67,10 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           set -euo pipefail
-          deno test --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df --coverage=cov_profile
+          deno test --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df --coverage=.coverage
 
       - name: Generate lcov coverage report
-        run: deno coverage cov_profile --lcov --output=coverage.lcov
+        run: deno coverage .coverage --lcov --output=.coverage/coverage.lcov
 
       # The codecov-action is a no-op when no coverage file is found,
       # and we set fail_ci_if_error: false so a transient Codecov
@@ -78,7 +78,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
-          files: coverage.lcov
+          files: .coverage/coverage.lcov
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
