@@ -1,11 +1,15 @@
-# Deno Dependency Freshness workflow for NEAT-AI-Examples
+# Deno Dependency Freshness workflow for NEAT-AI-Examples (Issue #362)
 #
-# Runs `./bump-deps.sh` (which invokes `deno update --latest`) on pull
-# requests so dependency drift is visible while work is in review. If
-# pins would change, the step emits a CI warning and restores
-# `deno.json` / `deno.lock` on the runner — it does not commit or open
-# bot PRs. Run `./bump-deps.sh` locally, then `./quality.sh`, and commit
-# when you want to refresh pins.
+# Two behaviours, gated by trigger:
+#
+#  * Pull request — runs `./bump-deps.sh` against the PR head and emits a
+#    non-blocking CI warning if pins drift. Local pins are restored on
+#    the runner; no commit or bot PR is made.
+#
+#  * Schedule / workflow_dispatch — runs `./bump-deps.sh` and, if any
+#    pins changed, opens a pull request via peter-evans/create-pull-request
+#    so the bump lands without manual intervention. Mirrors the
+#    `deno-outdated` automation in stSoftwareAU/NEAT-AI.
 
 name: Deno Dependency Freshness
 
@@ -13,14 +17,19 @@ on:
   pull_request:
     branches:
       - Develop
+  schedule:
+    # 06:00 UTC every Monday — outside Australian business hours so any
+    # resulting PR is ready for review at the start of the week.
+    - cron: "0 6 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  outdated:
-    name: Check Deno dependencies
+  drift-check:
+    name: Report dependency drift (PR)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -41,3 +50,41 @@ jobs:
             git diff --stat deno.json deno.lock
             git checkout -- deno.json deno.lock
           fi
+
+  auto-bump:
+    name: Auto-bump dependencies and raise PR
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: Develop
+
+      - name: Install Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Bump Deno dependencies
+        run: bash bump-deps.sh
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "chore: update Deno dependencies"
+          title: "chore: update Deno dependencies"
+          branch: chore/deno-outdated
+          base: Develop
+          delete-branch: true
+          labels: dependencies
+          body: |
+            Automated Deno dependency update produced by `./bump-deps.sh`
+            (which invokes `deno update --latest`).
+
+            Raised by `.github/workflows/deno-outdated.yml` (Issue #362).
+            Review the `deno.json` / `deno.lock` diff, confirm `./quality.sh`
+            passes, then merge.
