@@ -727,12 +727,14 @@ export interface ValidationReport {
 /**
  * Pick a representative validation scenario for the descent SVG.
  *
- * Default rule: the scenario whose final score is the median across all
- * validation scenarios — sorted ascending and indexing the lower median
- * (`Math.floor((n - 1) / 2)`) so the choice is stable for ties. If every
- * scenario landed successfully, return index `0` instead — a deterministic
- * fallback that side-steps tie-break sensitivity when scores cluster
- * tightly around the landed-baseline.
+ * - If **every** scenario landed: return index `0` — deterministic, stable
+ *   when scores cluster around the landed baseline.
+ * - Else if **any** scenario landed: pick the **lower median** by score
+ *   among **landed** scenarios only so the hero replay matches the headline
+ *   landed rate (median over all scores often sits on a crash when most
+ *   runs land but a few fail hard).
+ * - Otherwise (no landings): fall back to the lower median by score across
+ *   **all** scenarios so the SVG still tells a deterministic story.
  */
 export function pickValidationSvgIndex(
   results: readonly ValidationScenarioResult[],
@@ -740,6 +742,15 @@ export function pickValidationSvgIndex(
   if (results.length === 0) return -1;
   const allLanded = results.every((r) => r.outcome === "landed");
   if (allLanded) return 0;
+
+  const landed = results
+    .map((r, i) => ({ r, i }))
+    .filter((x) => x.r.outcome === "landed");
+  if (landed.length > 0) {
+    const order = [...landed].sort((a, b) => a.r.score - b.r.score);
+    return order[Math.floor((order.length - 1) / 2)].i;
+  }
+
   const order = results
     .map((r, i) => ({ score: r.score, i }))
     .sort((a, b) => a.score - b.score);

@@ -16,6 +16,10 @@
  * reading the "92% landed" headline. Stacking them in one SVG gives the
  * reader both views without having to flip between charts.
  *
+ * Count-panel bar heights are scaled against the **total scenario count**
+ * so bar proportions match the headline fractions (linear in landed share),
+ * not against the tallest single category alone.
+ *
  * Output is byte-deterministic for identical input — no timestamps, no
  * Math.random, no DOM. Pure string emission, matching the convention of
  * {@link ./milestone_chart.ts}.
@@ -147,11 +151,10 @@ function renderCountPanel(
   w: number,
   h: number,
 ): string {
-  // Domain max is the largest count; pad by 10% so the tallest bar does
-  // not touch the panel ceiling. Floor at 1 so a single non-zero count
-  // still produces a visible bar.
-  const domainMax = Math.max(1, ...OUTCOME_ORDER.map((c) => counts[c]));
-  const ceiling = domainMax * 1.1;
+  // Scale bar height as count / total so a 170/200 landed split reads as
+  // ~85% of the panel, not ~100% (which happened when the ceiling was the
+  // largest category count alone).
+  const scaleMax = Math.max(1, total);
 
   const out: string[] = [];
   out.push(`  <g class="count-panel" font-family="sans-serif" font-size="11" fill="#333">`);
@@ -167,7 +170,7 @@ function renderCountPanel(
   for (let i = 0; i < slotCount; i++) {
     const cat = OUTCOME_ORDER[i];
     const count = counts[cat];
-    const barH = (count / ceiling) * h;
+    const barH = (count / scaleMax) * h;
     const barX = x + i * slotW + (slotW - barW) / 2;
     const barY = y + h - barH;
     out.push(

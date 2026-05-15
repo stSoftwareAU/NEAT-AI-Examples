@@ -1403,9 +1403,11 @@ Deno.test(
 );
 
 Deno.test(
-  "pickValidationSvgIndex picks the lower-median scenario by score (issue #198)",
+  "pickValidationSvgIndex picks the lower-median score among landed scenarios when any land (issue #198)",
   () => {
-    // Mixed outcomes: scores 10, 20, 30, 40, 50 → median=30 at index 2.
+    // Mixed outcomes: four crashed, one landed. Median over *all* scores
+    // would sit on a crash; the descent SVG should still show a landing
+    // when the champion clears at least one scenario.
     const mixed: ValidationScenarioResult[] = [
       { seed: 0, index: 0, outcome: "crashed", score: 30, finalState: initialState() },
       { seed: 1, index: 1, outcome: "crashed", score: 50, finalState: initialState() },
@@ -1413,9 +1415,21 @@ Deno.test(
       { seed: 3, index: 3, outcome: "crashed", score: 40, finalState: initialState() },
       { seed: 4, index: 4, outcome: "landed", score: 20, finalState: initialState() },
     ];
-    // Sorted scores: 10 (i=2), 20 (i=4), 30 (i=0), 40 (i=3), 50 (i=1).
-    // Lower median (index 2 of sorted, since (5-1)/2 = 2) → original index 0.
-    assertEquals(pickValidationSvgIndex(mixed), 0);
+    assertEquals(pickValidationSvgIndex(mixed), 4);
+  },
+);
+
+Deno.test(
+  "pickValidationSvgIndex uses lower-median landed score when several land (issue #198)",
+  () => {
+    const rows: ValidationScenarioResult[] = [
+      { seed: 0, index: 0, outcome: "crashed", score: -100, finalState: initialState() },
+      { seed: 1, index: 1, outcome: "landed", score: 10, finalState: initialState() },
+      { seed: 2, index: 2, outcome: "landed", score: 30, finalState: initialState() },
+      { seed: 3, index: 3, outcome: "landed", score: 20, finalState: initialState() },
+    ];
+    // Landed scores sorted: 10 (i=1), 20 (i=3), 30 (i=2) → lower median → i=3.
+    assertEquals(pickValidationSvgIndex(rows), 3);
   },
 );
 
@@ -1423,6 +1437,19 @@ Deno.test(
   "pickValidationSvgIndex returns -1 for an empty result set (issue #198)",
   () => {
     assertEquals(pickValidationSvgIndex([]), -1);
+  },
+);
+
+Deno.test(
+  "pickValidationSvgIndex falls back to global median when nothing landed (issue #198)",
+  () => {
+    const rows: ValidationScenarioResult[] = [
+      { seed: 0, index: 0, outcome: "crashed", score: 30, finalState: initialState() },
+      { seed: 1, index: 1, outcome: "flying", score: 10, finalState: initialState() },
+      { seed: 2, index: 2, outcome: "crashed", score: 50, finalState: initialState() },
+    ];
+    // Sorted scores: 10 (i=1), 30 (i=0), 50 (i=2) → lower median → i=0.
+    assertEquals(pickValidationSvgIndex(rows), 0);
   },
 );
 
