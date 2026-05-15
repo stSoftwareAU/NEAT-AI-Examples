@@ -164,7 +164,7 @@ The CLI runner accepts overrides:
 
 ```bash
 ./lunar_lander/run.sh --target-error=0.05 --timeout=5
-./lunar_lander/run.sh --fresh   # wipe prior multi-run state before evolving
+./lunar_lander/run.sh --fresh   # full reset: multi-run data + validation + descent screenshots
 ```
 
 Multi-trial scoring (`trials = 10`, `initialPerturbation = 1.0`) means a controller cannot win by
@@ -221,8 +221,13 @@ Use `--timeout=<minutes>` to choose how long a single training invocation may ru
 ```
 
 Run the same command again to continue training from the saved champion and extend the cumulative
-charts. Use `--fresh` when you deliberately want to discard the saved champion and milestone history
-and start the noise → competent story again from a random seed:
+charts. Use `--fresh` when you deliberately want to discard the saved champion, merged milestone
+history, **and every published artefact** that carried cumulative statistics (multi-run charts under
+`docs/screenshots/lunar_lander/`, the main descent `docs/screenshots/lunar_lander.svg`, validation
+bar chart, and `.synthetic-lunar-lander/validation/results.json`) so a short new run (for example
+`--timeout=10`) cannot be read alongside wall-clock or generation totals from an earlier multi-hour
+campaign — the noise → competent story starts again from a random seed with **empty** merged history
+until this invocation appends its own milestones.
 
 ```bash
 ./lunar_lander/run.sh --fresh --timeout=30

@@ -28,7 +28,9 @@
  * `common/multi_run_state.ts` helper to resume evolution across runs:
  * each invocation reloads the previously-saved champion (when present),
  * appends fresh milestones to the merged history, and re-renders the
- * two multi-run chart SVGs. `--fresh` wipes prior state to start over.
+ * two multi-run chart SVGs. `--fresh` wipes prior state **and** the
+ * published validation / descent artefacts so cumulative-generation and
+ * wall-clock summaries cannot mix a short new run with an older history.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -1076,6 +1078,27 @@ export const VALIDATION_BASE_SEED = 13579;
  */
 export const VALIDATION_OUTCOME_SVG_PATH = "docs/screenshots/lunar_lander/validation.svg";
 
+/** Best-effort delete for a single file (missing paths are ignored). */
+async function removeFileIfExists(path: string): Promise<void> {
+  try {
+    await Deno.remove(path);
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) return;
+    throw err;
+  }
+}
+
+/**
+ * Remove published validation and descent artefacts so a `--fresh` run
+ * cannot leave stale JSON/SVGs that still imply an older evolution. Only
+ * used for the canonical `docs/` layout (not temp directories in tests).
+ */
+async function wipeLunarFreshPublishedArtefacts(): Promise<void> {
+  await removeFileIfExists(VALIDATION_RESULTS_PATH);
+  await removeFileIfExists(VALIDATION_OUTCOME_SVG_PATH);
+  await removeFileIfExists(SCREENSHOT_PATH);
+}
+
 /**
  * CI/quality "quick mode" stop-condition overrides. When the runner is
  * invoked via `LUNAR_QUICK=1` (env var) or `--quick` (CLI flag), the
@@ -1179,6 +1202,9 @@ export async function runMultiRunLunarLander(
 
   if (flags.fresh) {
     await wipeMultiRunState(slug, options.baseDir);
+    if (options.baseDir === undefined) {
+      await wipeLunarFreshPublishedArtefacts();
+    }
   }
 
   const state = await loadMultiRunState(slug, options.baseDir);
@@ -1271,7 +1297,10 @@ if (import.meta.main) {
 
   const flags = parseMultiRunFlags(Deno.args);
   if (flags.fresh) {
-    console.log("🧹 --fresh: wiping prior multi-run state.");
+    console.log(
+      "🧹 --fresh: full reset — multi-run state under docs/data plus validation JSON, " +
+        "validation/descent screenshots, and merged chart captions will reflect only this run.",
+    );
   }
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
   const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
