@@ -11,12 +11,12 @@
   ],
   "synapses": [
     {
-      "weight": 2.230474284088345,
+      "weight": 2.3198045339193594,
       "fromUUID": "input-0",
       "toUUID": "output-0"
     },
     {
-      "weight": -0.3734468780466159,
+      "weight": 149.2755527000566,
       "fromUUID": "input-1",
       "toUUID": "output-0"
     },
@@ -26,7 +26,7 @@
       "toUUID": "output-0"
     },
     {
-      "weight": 226.7449948592839,
+      "weight": 506.5489856397374,
       "fromUUID": "input-3",
       "toUUID": "output-0"
     }
@@ -36,31 +36,31 @@
   "tags": [
     {
       "name": "error",
-      "value": "0.5618"
+      "value": "0.374"
     },
     {
       "name": "score",
-      "value": "0.4381999590128041"
+      "value": "0.6259999590047476"
     },
     {
       "name": "trialRewards",
-      "value": "-0.848,-0.084,-0.658,-0.158,-0.462,-0.69,-0.848,-0.772,-0.446,-0.652"
+      "value": "-0.532,-0.5,0,0,-0.762,-0.352,-0.544,-0.51,-0.07,-0.47"
     },
     {
       "name": "meanReward",
-      "value": "-0.5618"
+      "value": "-0.374"
     },
     {
       "name": "adjusted",
       "value": "1 weight"
     },
     {
-      "name": "approach",
-      "value": "fine"
-    },
-    {
       "name": "restored",
       "value": "1"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
     },
     {
       "name": "approach-logged",
@@ -68,52 +68,52 @@
     }
   ],
   "memetic": {
-    "generation": 12,
-    "score": 0.1819999592697519,
+    "generation": 7,
+    "score": 0.2933999590055038,
     "biases": {},
     "weights": [
       {
-        "fromUUID": "input-3",
+        "fromUUID": "input-1",
         "toUUID": "output-0",
-        "weight": 4.757056659700283
+        "weight": 38.09249214331852
       }
     ],
     "ancestry": [
       {
-        "generation": 11,
+        "generation": 6,
         "weights": [
           {
-            "fromUUID": "input-3",
+            "fromUUID": "input-1",
             "toUUID": "output-0",
-            "weight": 4.757056659700283
+            "weight": 38.09249214331852
           }
         ],
         "biases": {},
-        "score": 0.1819999592697519
+        "score": 0.2933999590055038
       },
       {
-        "generation": 10,
+        "generation": 5,
         "weights": [
           {
-            "fromUUID": "input-3",
+            "fromUUID": "input-1",
             "toUUID": "output-0",
-            "weight": 4.757056659700283
+            "weight": 38.09249214331852
           }
         ],
         "biases": {},
-        "score": 0.1819999592697519
+        "score": 0.2933999590055038
       },
       {
-        "generation": 9,
+        "generation": 4,
         "weights": [
           {
-            "fromUUID": "input-3",
+            "fromUUID": "input-1",
             "toUUID": "output-0",
-            "weight": 4.757056659700283
+            "weight": 38.09249214331852
           }
         ],
         "biases": {},
-        "score": 0.1819999592697519
+        "score": 0.2933999590055038
       }
     ]
   }
