@@ -116,7 +116,7 @@ echo "----------------------------------------"
 echo "Running: Unit Tests"
 echo "----------------------------------------"
 
-if deno test --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df; then
+if deno test --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df,bash; then
   echo ""
   echo "SUCCESS: Unit Tests"
   echo ""
