@@ -4,12 +4,12 @@
 
 Adds an idempotent bash script `scripts/inject-monitor-neat-ai.sh` that injects the "Monitor
 NEAT-AI" checklist snippet (defined in `docs/monitoring-neat-ai.md`, delivered by #393) into the
-body of each re-evolve issue #371-#390. Ran the script to perform the actual injection across all
-20 issues, then re-ran it to prove idempotency.
+body of each re-evolve issue #371-#390. Ran the script to perform the actual injection across all 20
+issues, then re-ran it to prove idempotency.
 
 The script reads the snippet block (between `<!-- MONITOR-NEAT-AI-START -->` and
-`<!-- MONITOR-NEAT-AI-END -->`) directly out of `docs/monitoring-neat-ai.md` rather than
-duplicating it, so the doc remains the single source of truth.
+`<!-- MONITOR-NEAT-AI-END -->`) directly out of `docs/monitoring-neat-ai.md` rather than duplicating
+it, so the doc remains the single source of truth.
 
 Closes #394.
 
@@ -79,13 +79,13 @@ flowchart LR
 
 ## Test Plan
 
-Added `scripts/inject_monitor_neat_ai_test.ts` — Deno unit tests that exercise the script via a
-mock `gh` binary so no real GitHub calls are made. The tests cover:
+Added `scripts/inject_monitor_neat_ai_test.ts` — Deno unit tests that exercise the script via a mock
+`gh` binary so no real GitHub calls are made. The tests cover:
 
 - `first run injects snippet into Acceptance Criteria` — happy path; verifies the snippet is
   inserted before the next H2 heading and existing criteria are preserved.
-- `second run is idempotent (skipped)` — re-running on a body that already contains the START
-  marker emits `skipped (already present)` and **does not** call `gh issue edit`.
+- `second run is idempotent (skipped)` — re-running on a body that already contains the START marker
+  emits `skipped (already present)` and **does not** call `gh issue edit`.
 - `appends new Acceptance Criteria section when none exists` — graceful fallback when the original
   issue body has no `## Acceptance Criteria` section.
 - `gh edit failure produces non-zero exit` — simulates an `gh issue edit` failure; the script

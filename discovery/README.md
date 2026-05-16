@@ -11,7 +11,7 @@ flowchart LR
     REF["🧬 Hand-crafted reference creature<br/>(only used to label the .bin set)"]
     DATA["📦 Binary .bin training set"]
     SEED["🌱 new Creature(4, 1)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=1e-6,<br/>timeoutMinutes=5"]
+    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=1e-6,<br/>timeoutMinutes=15"]
     OUT["🏆 Evolved champion + milestone summary SVG"]
     REF --> DATA
     DATA --> EVOLVE
@@ -33,8 +33,8 @@ flowchart LR
 2. Seed evolution with `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — four inputs, one output, no
    hidden neurons, no warm start.
 3. Call `Creature.evolveDir(dataDir, options)` over the `.bin` directory in forward-only mode until
-   either the per-example `targetError` is reached or the `timeoutMinutes: 5` backstop fires (issue
-   #207 stop-condition rule).
+   either the per-example `targetError` is reached or the `timeoutMinutes: 15` backstop fires (issue
+   #207 introduced a 5-minute backstop; #375 bumped it to 15 for the Refresh-2026-05 re-evolution).
 4. Capture the milestone-summary fields from `evolveDir`'s return value and render them via the
    shared `common/evolve_dir_summary.ts` helper (#284) — seed-vs-final topology bars plus numeric
    callouts for `finalError`, `finalScore`, `generations`, and wall-clock duration.

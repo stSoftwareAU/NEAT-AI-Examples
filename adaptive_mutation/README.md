@@ -47,21 +47,21 @@ estimates, no qualifiers.
 | Metric                    | Value                                  |
 | ------------------------- | -------------------------------------- |
 | Task                      | 4-bit even parity (16-row truth table) |
-| Generations               | 461 (solved — `targetError` reached)   |
-| Wall-clock                | 24.7 s                                 |
-| Final training accuracy   | 0.9375 (15 of 16 rows correct)         |
-| Held-out accuracy         | 0.9375                                 |
-| Final best fitness        | 0.9500                                 |
-| Held-out score (-MSE)     | -0.0487                                |
+| Generations               | 1440 (solved — `targetError` reached)  |
+| Wall-clock                | 1 m 26 s                               |
+| Final training accuracy   | 1.0000 (16 of 16 rows correct)         |
+| Held-out accuracy         | 1.0000                                 |
+| Final best fitness        | 1.0000                                 |
+| Held-out score (-MSE)     | -0.0000234                             |
 | Seed neurons / synapses   | 5 / 4                                  |
-| Final neurons / synapses  | 30 / 70                                |
+| Final neurons / synapses  | 19 / 44                                |
 | `targetError`             | 0.05                                   |
 | `timeoutMinutes` (safety) | 5                                      |
 
-Topology genuinely changed: NEAT added 25 hidden neurons (5 → 30) and grew the synapse count from 4
-to 70 across 461 generations, starting from a minimal direct-only seed that cannot represent parity
-at all. Classification accuracy climbed from **0.5625 at gen 1** (about chance) to **0.9375 at the
-final generation** — the captured noise → competent arc.
+Topology genuinely changed: NEAT added 14 hidden neurons (5 → 19) and grew the synapse count from 4
+to 44 across 1440 generations, starting from a minimal direct-only seed that cannot represent parity
+at all. Classification accuracy climbed from about chance at gen 1 to **1.0000 at the final
+generation** — the captured noise → competent arc.
 
 - Single-call summary chart:
   [`docs/screenshots/adaptive_mutation/evolution_summary.svg`](../docs/screenshots/adaptive_mutation/evolution_summary.svg)

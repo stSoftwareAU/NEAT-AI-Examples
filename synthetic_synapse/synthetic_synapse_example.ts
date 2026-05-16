@@ -26,7 +26,9 @@
  *    over a pre-generated binary `.bin` training set; the topology is
  *    learned by NEAT, not bolted on by the example.
  * 3. Stop conditions are a per-example `targetError` plus a
- *    `timeoutMinutes: 5` safety backstop.
+ *    `timeoutMinutes` safety backstop — lifted 5 → 20 under issue #389
+ *    (Refresh-2026-05) so the runner can consume an additional 15
+ *    wall-clock minutes of evolution per parent milestone #369.
  */
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -89,8 +91,12 @@ export interface SyntheticSynapseConfig {
   targetError: number;
   /**
    * Wall-clock backstop in minutes for the whole demo. The value is
-   * split across the sparse and refine phases. Issue #206 mandates 5
-   * minutes as the upper bound; the per-phase split is half this.
+   * split across the sparse and refine phases. Issue #206 originally
+   * mandated 5 minutes as the upper bound; issue #389 (Refresh-2026-05)
+   * raised the backstop to 20 minutes (= the original 5 + an additional
+   * 15 wall-clock minutes mandated by the parent milestone #369) so the
+   * runner can actually consume the budget on newer NEAT-AI builds. The
+   * per-phase split is half this.
    */
   timeoutMinutes: number;
   /** NEAT population size. Small for a fast self-contained demo. */
@@ -107,17 +113,25 @@ export interface SyntheticSynapseConfig {
 
 /**
  * Defaults chosen so the demo converges via `targetError` well inside
- * the 5-minute backstop on a developer machine while still showing the
- * densify-then-prune effect clearly.
+ * the wall-clock backstop on a developer machine while still showing
+ * the densify-then-prune effect clearly. Issue #389 (Refresh-2026-05)
+ * lifted `timeoutMinutes` 5 → 20 (= the original 5 + the additional
+ * 15 wall-clock minutes mandated by parent milestone #369) and
+ * `maxIterationsPerPhase` 250 → 10 000 so wall-clock remains the
+ * genuine limiter on newer NEAT-AI builds.
  */
 export const DEFAULT_SYNTHETIC_SYNAPSE_CONFIG: SyntheticSynapseConfig = {
   seed: 850850850,
   trainingSize: 128,
   heldOutSize: 64,
-  targetError: 0.005,
-  timeoutMinutes: 5,
+  // Tightened from the original 0.005 (issue #206) to 0.0005 under
+  // issue #389 so the runner genuinely engages the extra 15-minute
+  // wall-clock budget — at 0.005 the sparse phase converges via
+  // targetError in seconds and leaves no work for densify/refine.
+  targetError: 0.0005,
+  timeoutMinutes: 20,
   populationSize: 24,
-  maxIterationsPerPhase: 250,
+  maxIterationsPerPhase: 10_000,
   pruneThreshold: 0.05,
 };
 
@@ -597,8 +611,9 @@ export async function runSyntheticSynapseDemo(
     // NEAT-AI requires `timeoutMinutes` to be a positive integer, so we
     // floor the per-phase split (and clamp at 1 minute) rather than
     // pass the literal half-budget. Each phase still respects the
-    // overall 5-minute backstop because the total wall-clock spent
-    // across both phases cannot exceed `timeoutMinutes`.
+    // overall backstop because the total wall-clock spent across both
+    // phases cannot exceed `timeoutMinutes` (20 min under issue #389;
+    // 5 min before the Refresh-2026-05 bump).
     const phaseTimeoutMinutes = Math.max(
       1,
       Math.floor(config.timeoutMinutes / 2),
@@ -678,7 +693,24 @@ if (import.meta.main) {
   );
   console.log("");
 
-  const { dataDir, creaturesDir } = setupWorkingDirs(WORKING_ROOT);
+  // CI/quality quick mode (mirrors the SUGGEST_QUICK=1 idiom from #388
+  // and CRISPR_QUICK=1 from #373). When invoked with `SYNAPSE_QUICK=1`
+  // the runner forces a tiny config, writes its artefacts under a temp
+  // working directory, and never overwrites the canonical
+  // docs/screenshots SVGs or .synthetic-synapse/creatures/champion.json.
+  // Direct invocations still use the realistic 20-minute budget set in
+  // DEFAULT_SYNTHETIC_SYNAPSE_CONFIG (issue #389 Refresh-2026-05 bump).
+  const quick = Deno.env.get("SYNAPSE_QUICK") === "1";
+  let quickWorkingRoot: string | undefined;
+  if (quick) {
+    quickWorkingRoot = Deno.makeTempDirSync({ prefix: "synthetic_synapse_quick_" });
+    console.log(
+      `⚡ Quick mode (SYNAPSE_QUICK=1): tiny iterations cap, ephemeral artefacts under ${quickWorkingRoot}`,
+    );
+  }
+
+  const workingRoot = quick && quickWorkingRoot !== undefined ? quickWorkingRoot : WORKING_ROOT;
+  const { dataDir, creaturesDir } = setupWorkingDirs(workingRoot);
 
   console.log(
     "🌱 Building minimal NEAT-AI seed: " +
@@ -686,7 +718,17 @@ if (import.meta.main) {
   );
   console.log("📊 Generating synthetic dataset and writing binary .bin training set...");
 
-  const config = DEFAULT_SYNTHETIC_SYNAPSE_CONFIG;
+  const config: SyntheticSynapseConfig = quick
+    ? {
+      ...DEFAULT_SYNTHETIC_SYNAPSE_CONFIG,
+      trainingSize: 16,
+      heldOutSize: 16,
+      targetError: 0.0001,
+      timeoutMinutes: 1,
+      populationSize: 6,
+      maxIterationsPerPhase: 3,
+    }
+    : DEFAULT_SYNTHETIC_SYNAPSE_CONFIG;
   const target = buildTargetNetwork(config);
   const trainingSet = generateDataset(target, config.trainingSize, config.seed ^ 0x1234_5678);
   writeBinaryDataset(trainingSet, dataDir);
@@ -726,23 +768,40 @@ if (import.meta.main) {
     controlScore: result.phases[0].heldOutScore,
     controlSynapseCount: result.phases[0].synapseCount,
   });
-  ensureDirSync("docs/screenshots");
-  ensureDirSync(join(WORKING_ROOT, "output"));
-  ensureDirSync("docs/screenshots/synthetic_synapse");
-  await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-  await Deno.writeTextFile(WORKING_OUTPUT_PATH, svg);
-  console.log(`\n🖼️  Wrote ${SCREENSHOT_PATH}`);
-
   // Milestone summary SVG — sourced from the refine phase's evolveDir
   // return value (the final, post-prune topology counts come from the
   // refine summary itself).
   const summarySvg = renderEvolveDirSummarySvg(result.refineSummary, {
     title: "Synthetic Synapse — refine evolveDir Run Summary",
   });
-  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
-  console.log(`📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
 
-  // Save the champion creature for downstream inspection.
+  if (quick) {
+    // Quick mode: write only into the ephemeral working root and
+    // leave the canonical docs/ and .synthetic-synapse/ artefacts
+    // untouched.
+    const quickOutputDir = join(workingRoot, "output");
+    ensureDirSync(quickOutputDir);
+    const quickSvgPath = join(quickOutputDir, "synthetic_synapse.svg");
+    const quickSummaryPath = join(quickOutputDir, "evolution_summary.svg");
+    await Deno.writeTextFile(quickSvgPath, svg);
+    await Deno.writeTextFile(quickSummaryPath, summarySvg);
+    console.log(
+      `⏭️  Quick mode: skipped overwriting canonical SVGs under docs/screenshots/`,
+    );
+  } else {
+    ensureDirSync("docs/screenshots");
+    ensureDirSync(join(WORKING_ROOT, "output"));
+    ensureDirSync("docs/screenshots/synthetic_synapse");
+    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
+    await Deno.writeTextFile(WORKING_OUTPUT_PATH, svg);
+    console.log(`\n🖼️  Wrote ${SCREENSHOT_PATH}`);
+    await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+    console.log(`📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  }
+
+  // Save the champion creature for downstream inspection. In quick
+  // mode this lands under the ephemeral working root, not the
+  // canonical .synthetic-synapse/creatures/ path.
   const championPath = join(creaturesDir, "champion.json");
   const championExport: CreatureExport = result.champion.exportJSON();
   await safeWriteJson(championPath, championExport);

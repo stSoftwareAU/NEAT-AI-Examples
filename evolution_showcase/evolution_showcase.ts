@@ -67,7 +67,9 @@ export const SYNTHETIC_CONFIG: SyntheticConfig = {
 export interface ShowcaseEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #211 mandates 5 as upper bound). */
+  /** Wall-clock backstop in minutes. Issue #211 mandates a backstop; the
+   * specific value is per-example (issue #377 raised it from 5 → 20 for
+   * the Refresh-2026-05 milestone). */
   timeoutMinutes: number;
   /** NEAT population size. */
   populationSize: number;
@@ -87,15 +89,23 @@ export interface ShowcaseEvolutionConfig {
  * that a hidden-less direct seed plateaus quickly. The default
  * `targetError` of 0.05 is reasonable for the task: it forces real
  * structural growth (a direct seed plateaus around per-record error
- * 0.27) but is still reachable inside the 5-minute backstop. Runs that
- * hit the `maxIterations` cap before the target is met still produce
- * the milestone summary chart.
+ * 0.27) but is still reachable inside the wall-clock backstop. Runs
+ * that hit the `maxIterations` cap before the target is met still
+ * produce the milestone summary chart.
+ *
+ * Per issue #377 (Refresh-2026-05), the wall-clock backstop was raised
+ * from the original 5 → 20 minutes to grant the +15 minutes of
+ * additional evolution requested by the refresh milestone, and the
+ * iteration cap was lifted in lock-step so wall-clock remains the
+ * genuine limiter on newer NEAT-AI builds. The audit (#211) mandates
+ * `targetError` plus a wall-clock backstop as the stop conditions;
+ * 20 minutes is the per-example justified value documented here.
  */
 export const DEFAULT_SHOWCASE_EVOLUTION_CONFIG: ShowcaseEvolutionConfig = {
   targetError: 0.05,
-  timeoutMinutes: 5,
+  timeoutMinutes: 20,
   populationSize: 24,
-  maxIterations: 3000,
+  maxIterations: 20_000,
   seed: 211_211,
 };
 

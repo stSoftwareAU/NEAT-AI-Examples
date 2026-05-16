@@ -17,8 +17,9 @@
  *      hidden-layer hint, no pre-built `network.json`, no hand-tuned shape.
  *   3. `Creature.evolveDir(dataDir, options)` runs forward-only over the
  *      pre-generated `.bin` training set (per #190) until either the
- *      `targetError` threshold is reached or the `timeoutMinutes: 5`
- *      backstop fires.
+ *      `targetError` threshold is reached or the `timeoutMinutes: 15`
+ *      backstop fires (bumped from 5 → 15 for the Refresh-2026-05
+ *      re-evolution under #375).
  *   4. The return value (`{ error, score, time, generation }`) plus the
  *      pre/post topology counts feed an {@link EvolveDirSummary}, which the
  *      shared `common/evolve_dir_summary.ts` helper renders as a single
@@ -72,7 +73,7 @@ export const SYNTHETIC_CONFIG: SyntheticConfig = {
 export interface DiscoveryEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #207 mandates 5 as upper bound). */
+  /** Wall-clock backstop in minutes (bumped to 15 for the Refresh-2026-05 re-evolution under #375). */
   timeoutMinutes: number;
   /** NEAT population size — small enough for a fast self-contained demo. */
   populationSize: number;
@@ -84,8 +85,11 @@ export interface DiscoveryEvolutionConfig {
 
 /**
  * Defaults tuned so the demo converges via `targetError` well inside the
- * 5-minute backstop on a developer machine while still showing visible
- * neuron / synapse growth from the minimal seed.
+ * 15-minute backstop on a developer machine while still showing visible
+ * neuron / synapse growth from the minimal seed. The backstop was bumped
+ * from 5 → 15 minutes for the Refresh-2026-05 re-evolution under issue
+ * #375; `maxIterations` was bumped from 900 → 30000 so the wall-clock
+ * cap can actually bind rather than the demo being generation-bound.
  */
 export const DEFAULT_DISCOVERY_CONFIG: DiscoveryEvolutionConfig = {
   // The reference creature's function is mildly nonlinear, so the
@@ -95,9 +99,9 @@ export const DEFAULT_DISCOVERY_CONFIG: DiscoveryEvolutionConfig = {
   // otherwise the topology bars would look identical (acceptance
   // criterion in issue #207).
   targetError: 0.000001,
-  timeoutMinutes: 5,
+  timeoutMinutes: 15,
   populationSize: 24,
-  maxIterations: 900,
+  maxIterations: 30000,
   seed: 207207,
 };
 
@@ -306,7 +310,23 @@ export function buildEvolveDirSummary(
 async function runDiscoveryExample(): Promise<void> {
   const stage = (label: string) => console.log(`\n== ${label} ==`);
 
-  const { dataDir, creaturesDir } = setupWorkingDirs(WORKING_ROOT);
+  // CI/quality quick mode (mirrors the crossover CROSSOVER_QUICK=1 idiom).
+  // When invoked with `DISCOVERY_QUICK=1` the runner forces a tiny
+  // iterations cap, writes its artefacts under a temp directory, and never
+  // overwrites the canonical docs SVG. Direct invocations still use the
+  // realistic 15-minute budget set in DEFAULT_DISCOVERY_CONFIG.
+  const quick = Deno.env.get("DISCOVERY_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "discovery_quick_" });
+    console.log(
+      "⚡ Quick mode (DISCOVERY_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
+  const workingRoot = quick && quickBaseDir !== undefined ? quickBaseDir : WORKING_ROOT;
+  const { dataDir, creaturesDir } = setupWorkingDirs(workingRoot);
 
   // Stage 1: Build the ground-truth reference and synthesise the .bin set.
   stage("Stage 1/3: Generating binary training set from ground-truth reference");
@@ -336,10 +356,12 @@ async function runDiscoveryExample(): Promise<void> {
     `   Seed topology: ${seed.neurons.length} neurons, ${seed.synapses.length} synapses`,
   );
 
-  const config = DEFAULT_DISCOVERY_CONFIG;
+  const config: DiscoveryEvolutionConfig = quick
+    ? { ...DEFAULT_DISCOVERY_CONFIG, timeoutMinutes: 1, maxIterations: 3 }
+    : DEFAULT_DISCOVERY_CONFIG;
   console.log(
     `   Stop conditions: targetError=${config.targetError}, ` +
-      `timeoutMinutes=${config.timeoutMinutes} (issue #207 backstop)`,
+      `timeoutMinutes=${config.timeoutMinutes}`,
   );
 
   const result = await runMinimalSeedEvolution(seed, dataDir, config);
@@ -361,17 +383,24 @@ async function runDiscoveryExample(): Promise<void> {
   console.log(`   Saved evolved champion to ${championPath}`);
 
   // Stage 3: Emit the milestone-summary SVG sourced from the captured
-  // `evolveDir` return value (issue #304 — milestone telemetry only).
+  // `evolveDir` return value (issue #304 — milestone telemetry only). In
+  // quick mode the SVG is written next to the ephemeral artefacts only —
+  // the canonical docs SVG is preserved so quality.sh never clobbers it.
   stage("Stage 3/3: Writing milestone summary SVG");
   const summary = buildEvolveDirSummary(result, config);
-  ensureDirSync(dirname(EVOLUTION_SUMMARY_SVG_PATH));
-  await Deno.writeTextFile(
-    EVOLUTION_SUMMARY_SVG_PATH,
-    renderEvolveDirSummarySvg(summary, {
-      title: "Discovery — evolveDir Run Summary",
-    }),
-  );
-  console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  const summarySvg = renderEvolveDirSummarySvg(summary, {
+    title: "Discovery — evolveDir Run Summary",
+  });
+  if (quick) {
+    const quickSvgPath = join(workingRoot, "evolution_summary.svg");
+    await Deno.writeTextFile(quickSvgPath, summarySvg);
+    console.log("   ⏭️  Quick mode: skipped overwriting canonical screenshot");
+    console.log(`   📈 Wrote ephemeral SVG to ${quickSvgPath}`);
+  } else {
+    ensureDirSync(dirname(EVOLUTION_SUMMARY_SVG_PATH));
+    await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+    console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  }
 
   // Summary line — quoted in the README so reviewers can see the
   // measured numbers from the latest run.

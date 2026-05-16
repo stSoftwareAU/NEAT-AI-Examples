@@ -49,7 +49,9 @@ flowchart LR
    non-linear function of two inputs. The target is only the _label oracle_ — NEAT-AI never sees it.
 2. Phase 1 — seed `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (no hidden hint, no warm start) and make
    a single `Creature.evolveDir(...)` call until either `targetError` is reached or the
-   `timeoutMinutes: 5` backstop fires.
+   `timeoutMinutes: 15` backstop fires (bumped from 5 → 15 for the Refresh-2026-05 re-evolution
+   under [#373](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/373); both phases still exit
+   via `targetError` well before the cap).
 3. Splice the hand-crafted edit gene into a JSON snapshot of the pre-injection champion.
 4. Phase 2 — evolve the spliced creature with a second `Creature.evolveDir(...)` call.
 5. Render a single SVG with the gene topology on top and a before-vs-after milestone summary panel

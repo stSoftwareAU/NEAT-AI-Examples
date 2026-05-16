@@ -5,44 +5,163 @@
   <g class="topology topology-sparse">
     <rect x="24.00" y="60.00" width="293.33" height="220.00" fill="#ffffff" stroke="#cccccc" stroke-width="0.8"/>
     <text x="170.67" y="78.00" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="bold" fill="#222">1. sparse</text>
-    <text x="170.67" y="94.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">30 synapses · score -0.0115</text>
+    <text x="170.67" y="94.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">131 synapses · score -0.1353</text>
     <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="115.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="155.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="108.00" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="108.00" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="108.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="147.50" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="147.50" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="147.50" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="131.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="187.00" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="187.00" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="187.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="155.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="194.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="226.50" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="226.50" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="226.50" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="115.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="131.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="266.00" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="266.00" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="38.00" y1="266.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="170.67" y1="108.00" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="170.67" y1="108.00" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="170.67" y1="108.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="170.67" y1="187.00" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="170.67" y1="187.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="108.00" x2="170.67" y2="115.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="108.00" x2="170.67" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="108.00" x2="170.67" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="108.00" x2="170.67" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="108.00" x2="170.67" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="115.90" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="115.90" x2="170.67" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="115.90" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="123.80" x2="170.67" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="123.80" x2="170.67" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="123.80" x2="170.67" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="123.80" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="123.80" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="131.70" x2="170.67" y2="155.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="131.70" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="131.70" x2="170.67" y2="194.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="131.70" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="131.70" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="139.60" x2="170.67" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="139.60" x2="170.67" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="139.60" x2="170.67" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="139.60" x2="170.67" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="147.50" x2="170.67" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="147.50" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="147.50" x2="170.67" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="147.50" x2="170.67" y2="226.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="147.50" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="155.40" x2="170.67" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="163.30" x2="170.67" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="163.30" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="163.30" x2="170.67" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="163.30" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="163.30" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="163.30" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="171.20" x2="170.67" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="171.20" x2="170.67" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="171.20" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="179.10" x2="170.67" y2="194.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="179.10" x2="170.67" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="179.10" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="187.00" x2="170.67" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="187.00" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="187.00" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="194.90" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="194.90" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="202.80" x2="170.67" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="202.80" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="202.80" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="202.80" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="202.80" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="210.70" x2="170.67" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="210.70" x2="170.67" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="210.70" x2="170.67" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="210.70" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="210.70" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="210.70" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="218.60" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="226.50" x2="170.67" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="234.40" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="242.30" x2="170.67" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="242.30" x2="170.67" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="250.20" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="250.20" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="258.10" x2="170.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="258.10" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="170.67" y1="258.10" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="170.67" y1="266.00" x2="303.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="170.67" y1="266.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="303.33" y1="108.00" x2="303.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <circle cx="38.00" cy="108.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="38.00" cy="147.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="38.00" cy="187.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="38.00" cy="226.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="38.00" cy="266.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="170.67" cy="108.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="115.90" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="123.80" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="131.70" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="139.60" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="147.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="155.40" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="163.30" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="171.20" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="179.10" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="170.67" cy="187.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="194.90" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="202.80" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="210.70" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="218.60" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="226.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="234.40" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="242.30" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="250.20" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="170.67" cy="258.10" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="170.67" cy="266.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="303.33" cy="108.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4"/>
     <circle cx="303.33" cy="266.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4"/>
@@ -50,48 +169,244 @@
   <g class="topology topology-densified">
     <rect x="333.33" y="60.00" width="293.33" height="220.00" fill="#ffffff" stroke="#cccccc" stroke-width="0.8"/>
     <text x="480.00" y="78.00" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="bold" fill="#222">2. densified</text>
-    <text x="480.00" y="94.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">34 synapses · score -0.0115</text>
+    <text x="480.00" y="94.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">212 synapses · score -0.1353</text>
     <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="115.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="155.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="108.00" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="108.00" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="108.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="147.50" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="147.50" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="147.50" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="131.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="187.00" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="187.00" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="187.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="123.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="155.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="194.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="226.50" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="226.50" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="226.50" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="115.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="131.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="266.00" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="266.00" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="347.33" y1="266.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="480.00" y1="108.00" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="480.00" y1="108.00" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="480.00" y1="108.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="480.00" y1="187.00" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="480.00" y1="187.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="108.00" x2="480.00" y2="115.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="108.00" x2="480.00" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="108.00" x2="480.00" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="108.00" x2="480.00" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="108.00" x2="480.00" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="115.90" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="115.90" x2="480.00" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="115.90" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="123.80" x2="480.00" y2="139.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="123.80" x2="480.00" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="123.80" x2="480.00" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="123.80" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="123.80" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="131.70" x2="480.00" y2="155.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="131.70" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="131.70" x2="480.00" y2="194.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="131.70" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="131.70" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="139.60" x2="480.00" y2="147.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="139.60" x2="480.00" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="139.60" x2="480.00" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="139.60" x2="480.00" y2="210.70" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="147.50" x2="480.00" y2="163.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="147.50" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="147.50" x2="480.00" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="147.50" x2="480.00" y2="226.50" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="147.50" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="155.40" x2="480.00" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="163.30" x2="480.00" y2="171.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="163.30" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="163.30" x2="480.00" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="163.30" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="163.30" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="163.30" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="171.20" x2="480.00" y2="179.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="171.20" x2="480.00" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="171.20" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="179.10" x2="480.00" y2="194.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="179.10" x2="480.00" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="179.10" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="187.00" x2="480.00" y2="202.80" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="187.00" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="187.00" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="194.90" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="194.90" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="202.80" x2="480.00" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="202.80" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="202.80" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="202.80" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="202.80" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="210.70" x2="480.00" y2="218.60" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="210.70" x2="480.00" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="210.70" x2="480.00" y2="242.30" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="210.70" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="210.70" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="210.70" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="218.60" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="226.50" x2="480.00" y2="234.40" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="234.40" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="242.30" x2="480.00" y2="250.20" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="242.30" x2="480.00" y2="258.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="250.20" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="250.20" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="258.10" x2="480.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="258.10" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="480.00" y1="258.10" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="480.00" y1="266.00" x2="612.67" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="480.00" y1="266.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="612.67" y1="108.00" x2="612.67" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="131.70" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="187.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="194.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="218.60" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="226.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="234.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="108.00" x2="480.00" y2="250.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="115.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="131.70" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="139.60" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="155.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="171.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
     <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="187.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="194.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="202.80" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="218.60" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="226.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="234.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="250.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="147.50" x2="480.00" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="115.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="155.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="171.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="179.10" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
     <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="187.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
-    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="187.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="194.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="218.60" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="226.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="187.00" x2="480.00" y2="250.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="115.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="131.70" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="147.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="171.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="179.10" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="202.80" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="218.60" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="226.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="234.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="226.50" x2="480.00" y2="250.20" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="123.80" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="147.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="155.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="187.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="194.90" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="202.80" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="218.60" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="226.50" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="347.33" y1="266.00" x2="480.00" y2="234.40" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="108.00" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="108.00" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="115.90" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="123.80" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="123.80" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="131.70" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="139.60" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="139.60" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="147.50" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="147.50" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="155.40" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="155.40" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="163.30" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="171.20" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="179.10" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="179.10" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
     <line class="synapse-synthetic" x1="480.00" y1="187.00" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="187.00" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="194.90" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="210.70" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="218.60" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="218.60" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="226.50" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="226.50" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="234.40" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="234.40" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="242.30" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="242.30" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="250.20" x2="612.67" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="480.00" y1="266.00" x2="612.67" y2="266.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
     <circle cx="347.33" cy="108.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="347.33" cy="147.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="347.33" cy="187.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="347.33" cy="226.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="347.33" cy="266.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="480.00" cy="108.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="115.90" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="123.80" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="131.70" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="139.60" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="147.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="155.40" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="163.30" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="171.20" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="179.10" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="480.00" cy="187.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="194.90" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="202.80" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="210.70" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="218.60" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="226.50" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="234.40" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="242.30" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="250.20" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="480.00" cy="258.10" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="480.00" cy="266.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="612.67" cy="108.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4"/>
     <circle cx="612.67" cy="266.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4"/>
@@ -99,44 +414,237 @@
   <g class="topology topology-pruned">
     <rect x="642.67" y="60.00" width="293.33" height="220.00" fill="#ffffff" stroke="#cccccc" stroke-width="0.8"/>
     <text x="789.33" y="78.00" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="bold" fill="#222">3. pruned</text>
-    <text x="789.33" y="94.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">30 synapses · score -0.0083</text>
+    <text x="789.33" y="94.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">196 synapses · score -0.1311</text>
     <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="113.45" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="129.79" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="140.69" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="178.83" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="222.41" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="233.31" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="108.00" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="108.00" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="108.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="135.24" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="233.31" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="147.50" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="147.50" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="147.50" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="124.34" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="129.79" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="135.24" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="173.38" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="222.41" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="233.31" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="187.00" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="187.00" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="187.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="162.48" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="233.31" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="226.50" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="226.50" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="226.50" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="187.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="113.45" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="124.34" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="129.79" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="178.83" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="227.86" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="233.31" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="266.00" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="266.00" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="656.67" y1="266.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="789.33" y1="108.00" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="789.33" y1="108.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="789.33" y1="187.00" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="789.33" y1="187.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="118.90" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="124.34" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="178.83" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="195.17" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="108.00" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="113.45" x2="789.33" y2="124.34" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="113.45" x2="789.33" y2="129.79" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="113.45" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="113.45" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="113.45" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="118.90" x2="789.33" y2="140.69" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="124.34" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="124.34" x2="789.33" y2="189.72" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="124.34" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="124.34" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="124.34" x2="789.33" y2="233.31" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="135.24" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="162.48" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="173.38" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="129.79" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="146.14" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="184.28" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="189.72" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="135.24" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="140.69" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="151.59" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="157.03" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="162.48" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="173.38" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="146.14" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="151.59" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="157.03" x2="789.33" y2="167.93" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="157.03" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="178.83" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="195.17" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="162.48" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="167.93" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="173.38" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="173.38" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="173.38" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="173.38" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="173.38" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="173.38" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="178.83" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="178.83" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="178.83" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="184.28" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="184.28" x2="789.33" y2="211.52" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="184.28" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="189.72" x2="789.33" y2="200.62" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="195.17" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="195.17" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="200.62" x2="789.33" y2="206.07" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="200.62" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="200.62" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="200.62" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="206.07" x2="789.33" y2="216.97" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="206.07" x2="789.33" y2="227.86" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="206.07" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="206.07" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="206.07" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="211.52" x2="789.33" y2="222.41" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="211.52" x2="789.33" y2="227.86" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="211.52" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="211.52" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="216.97" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="216.97" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="216.97" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="216.97" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="222.41" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="222.41" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="222.41" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="222.41" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="222.41" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="222.41" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="227.86" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="233.31" x2="789.33" y2="238.76" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="233.31" x2="789.33" y2="244.21" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="233.31" x2="789.33" y2="249.66" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="233.31" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="233.31" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="233.31" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="238.76" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="244.21" x2="789.33" y2="255.10" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="244.21" x2="789.33" y2="260.55" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="249.66" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="255.10" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="255.10" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="260.55" x2="789.33" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="260.55" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-original" x1="789.33" y1="260.55" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
     <line class="synapse-original" x1="789.33" y1="266.00" x2="922.00" y2="108.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="789.33" y1="266.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
-    <line class="synapse-original" x1="922.00" y1="108.00" x2="922.00" y2="266.00" stroke="#555" stroke-width="0.7" stroke-opacity="0.7"/>
+    <line class="synapse-synthetic" x1="656.67" y1="108.00" x2="789.33" y2="124.34" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="108.00" x2="789.33" y2="162.48" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="108.00" x2="789.33" y2="184.28" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="108.00" x2="789.33" y2="206.07" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="147.50" x2="789.33" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="147.50" x2="789.33" y2="113.45" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="147.50" x2="789.33" y2="140.69" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="147.50" x2="789.33" y2="162.48" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="147.50" x2="789.33" y2="206.07" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="187.00" x2="789.33" y2="113.45" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="187.00" x2="789.33" y2="162.48" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="226.50" x2="789.33" y2="108.00" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="226.50" x2="789.33" y2="113.45" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="226.50" x2="789.33" y2="124.34" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="226.50" x2="789.33" y2="184.28" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="266.00" x2="789.33" y2="135.24" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="656.67" y1="266.00" x2="789.33" y2="162.48" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="789.33" y1="200.62" x2="789.33" y2="222.41" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
+    <line class="synapse-synthetic" x1="789.33" y1="200.62" x2="789.33" y2="227.86" stroke="#e57373" stroke-width="0.6" stroke-opacity="0.55"/>
     <circle cx="656.67" cy="108.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="656.67" cy="147.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="656.67" cy="187.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="656.67" cy="226.50" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="656.67" cy="266.00" r="3.5" fill="#4d82a3" stroke="#222" stroke-width="0.4"/>
     <circle cx="789.33" cy="108.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
-    <circle cx="789.33" cy="187.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="113.45" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="118.90" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="124.34" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="129.79" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="135.24" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="140.69" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="146.14" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="151.59" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="157.03" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="162.48" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="167.93" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="173.38" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="178.83" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="184.28" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="189.72" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="195.17" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="200.62" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="206.07" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="211.52" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="216.97" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="222.41" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="227.86" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="233.31" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="238.76" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="244.21" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="249.66" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="255.10" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
+    <circle cx="789.33" cy="260.55" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="789.33" cy="266.00" r="3.5" fill="#7fb069" stroke="#222" stroke-width="0.4"/>
     <circle cx="922.00" cy="108.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4"/>
     <circle cx="922.00" cy="266.00" r="3.5" fill="#d18b48" stroke="#222" stroke-width="0.4"/>
@@ -147,36 +655,36 @@
       <line x1="76.00" y1="480.00" x2="80.00" y2="480.00" stroke="#666" stroke-width="0.6"/>
       <text x="74.00" y="483.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">0</text>
       <line x1="76.00" y1="445.00" x2="80.00" y2="445.00" stroke="#666" stroke-width="0.6"/>
-      <text x="74.00" y="448.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">9</text>
+      <text x="74.00" y="448.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">53</text>
       <line x1="76.00" y1="410.00" x2="80.00" y2="410.00" stroke="#666" stroke-width="0.6"/>
-      <text x="74.00" y="413.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">17</text>
+      <text x="74.00" y="413.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">106</text>
       <line x1="76.00" y1="375.00" x2="80.00" y2="375.00" stroke="#666" stroke-width="0.6"/>
-      <text x="74.00" y="378.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">26</text>
+      <text x="74.00" y="378.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">159</text>
       <line x1="76.00" y1="340.00" x2="80.00" y2="340.00" stroke="#666" stroke-width="0.6"/>
-      <text x="74.00" y="343.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">34</text>
+      <text x="74.00" y="343.50" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">212</text>
       <text x="40.00" y="410.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#333" transform="rotate(-90 40.00 410.00)">synapses</text>
     </g>
     <g class="axis-y axis-y-right">
       <line x1="872.00" y1="480.00" x2="876.00" y2="480.00" stroke="#666" stroke-width="0.6"/>
-      <text x="878.00" y="483.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.012</text>
+      <text x="878.00" y="483.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.136</text>
       <line x1="872.00" y1="445.00" x2="876.00" y2="445.00" stroke="#666" stroke-width="0.6"/>
-      <text x="878.00" y="448.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.011</text>
+      <text x="878.00" y="448.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.134</text>
       <line x1="872.00" y1="410.00" x2="876.00" y2="410.00" stroke="#666" stroke-width="0.6"/>
-      <text x="878.00" y="413.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.010</text>
+      <text x="878.00" y="413.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.133</text>
       <line x1="872.00" y1="375.00" x2="876.00" y2="375.00" stroke="#666" stroke-width="0.6"/>
-      <text x="878.00" y="378.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.009</text>
+      <text x="878.00" y="378.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.132</text>
       <line x1="872.00" y1="340.00" x2="876.00" y2="340.00" stroke="#666" stroke-width="0.6"/>
-      <text x="878.00" y="343.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.008</text>
+      <text x="878.00" y="343.50" text-anchor="start" font-family="sans-serif" font-size="10" fill="#333">-0.131</text>
       <text x="922.00" y="410.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#333" transform="rotate(-90 922.00 410.00)">held-out score</text>
     </g>
-    <rect class="bar-synapse" x="124.55" y="356.47" width="108.90" height="123.53" fill="#90caf9" stroke="#1976d2" stroke-width="0.6"/>
-    <text x="179.00" y="352.47" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">30</text>
+    <rect class="bar-synapse" x="124.55" y="393.49" width="108.90" height="86.51" fill="#90caf9" stroke="#1976d2" stroke-width="0.6"/>
+    <text x="179.00" y="389.49" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">131</text>
     <rect class="bar-synapse" x="322.55" y="340.00" width="108.90" height="140.00" fill="#90caf9" stroke="#1976d2" stroke-width="0.6"/>
-    <text x="377.00" y="336.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">34</text>
-    <rect class="bar-synapse" x="520.55" y="356.47" width="108.90" height="123.53" fill="#90caf9" stroke="#1976d2" stroke-width="0.6"/>
-    <text x="575.00" y="352.47" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">30</text>
-    <rect class="bar-control" x="718.55" y="356.47" width="108.90" height="123.53" fill="#bdbdbd" stroke="#616161" stroke-width="0.6" stroke-dasharray="3 2"/>
-    <text x="773.00" y="352.47" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">30</text>
+    <text x="377.00" y="336.00" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">212</text>
+    <rect class="bar-synapse" x="520.55" y="350.57" width="108.90" height="129.43" fill="#90caf9" stroke="#1976d2" stroke-width="0.6"/>
+    <text x="575.00" y="346.57" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">196</text>
+    <rect class="bar-control" x="718.55" y="393.49" width="108.90" height="86.51" fill="#bdbdbd" stroke="#616161" stroke-width="0.6" stroke-dasharray="3 2"/>
+    <text x="773.00" y="389.49" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#222">131</text>
     <polyline class="score-line" fill="none" stroke="#2e7d32" stroke-width="2" points="179.00,468.33 377.00,468.33 575.00,351.67"/>
     <circle cx="179.00" cy="468.33" r="3.6" fill="#2e7d32"/>
     <circle cx="377.00" cy="468.33" r="3.6" fill="#2e7d32"/>

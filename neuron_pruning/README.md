@@ -100,9 +100,12 @@ every generation. There is no per-step environment, so per-step `activate()` wou
 ### Stop conditions
 
 The evolveDir phase stops when **either** `targetError` is reached **or** the `timeoutMinutes`
-backstop expires (issue #217 mandates a 5-minute upper bound). The example's defaults are
-`targetError: 0.005` and `timeoutMinutes: 5`. On a developer machine the demo finishes in well under
-thirty seconds — the timeout exists only as a safety net.
+backstop expires. Issue #217 originally mandated a 5-minute upper bound; issue
+[#385](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/385) raises this to 20 minutes (+15
+wall-clock minutes) for the `Refresh-2026-05` milestone refresh. The example's defaults are
+`targetError: 0.005` and `timeoutMinutes: 20`. On a developer machine the demo still finishes in
+well under thirty seconds — the larger timeout exists only as a safety net for slower or busier
+hardware.
 
 ### Bias fold
 

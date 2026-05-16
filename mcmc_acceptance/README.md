@@ -100,7 +100,7 @@ flowchart LR
     ORACLE["🧬 Hand-crafted oracle creature<br/>(only used to label the .bin set)"]
     DATA["📦 Binary .bin training set<br/>3-input → 1-output (256 records)"]
     SEED["🌱 new Creature(3, 1)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.02,<br/>timeoutMinutes=5"]
+    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.02,<br/>timeoutMinutes=20"]
     SUM["📈 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
     SVG["renderEvolveDirSummarySvg<br/>→ evolution_summary.svg"]
     ORACLE --> DATA
@@ -116,6 +116,24 @@ was removed; the run is summarised via a single milestone SVG sourced from `evol
 value plus the seed and final creature's topology.
 
 ![evolveDir milestone summary](../docs/screenshots/mcmc_acceptance/evolution_summary.svg)
+
+### Latest Measured Run
+
+| Metric                   | Value                                           |
+| ------------------------ | ----------------------------------------------- |
+| Generations              | 884                                             |
+| Wall-clock               | 6.9 s (converged early under the 20 min budget) |
+| Final per-record error   | 0.0183 (target 0.02 — reached)                  |
+| Final score              | 0.9817                                          |
+| Seed neurons / synapses  | 4 / 3                                           |
+| Final neurons / synapses | 8 / 15                                          |
+| `targetError` / timeout  | 0.02 / 20 min                                   |
+
+Issue [#381](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/381) raised the wall-clock
+backstop from 5 → 20 minutes for the `Refresh-2026-05` milestone (+15 minutes of additional
+evolution budget) and lifted `maxIterations` from 1 000 → 4 000 in lock-step so wall-clock remains
+the genuine limiter. On this run NEAT-AI reached `targetError` well inside the new backstop — the
+extra budget was made available but not consumed.
 
 ### Why `evolveDir` rather than per-step `activate()`?
 

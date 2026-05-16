@@ -11,7 +11,7 @@ flowchart LR
     REF["🧬 Hand-crafted reference creature<br/>(buildLargeCreature — only used to label the .bin set)"]
     DATA["📦 Binary .bin training set"]
     SEED["🌱 new Creature(6, 3)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.005,<br/>timeoutMinutes=5"]
+    EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.005,<br/>timeoutMinutes=20"]
     OUT["🏆 Evolved champion + milestone summary SVG"]
     REF --> DATA
     DATA --> EVOLVE
@@ -35,8 +35,8 @@ _FFI_ = Foreign Function Interface.
 2. Seed evolution with `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — six inputs, three outputs, no
    hidden neurons, no warm start.
 3. Call `Creature.evolveDir(dataDir, options)` over the `.bin` directory in forward-only mode until
-   either the per-example `targetError` is reached or the `timeoutMinutes: 5` backstop fires (issue
-   #208 stop-condition rule).
+   either the per-example `targetError` is reached or the `timeoutMinutes: 20` backstop fires (issue
+   #208 stop-condition rule, with the longer wall-clock budget documented in #376).
 4. Capture the milestone-summary fields from `evolveDir`'s return value and render them via the
    shared `common/evolve_dir_summary.ts` helper (#284). The seed-vs-final topology bars in the
    summary are this demo's headline visual — they show a single 9-neuron seed growing into a
@@ -56,13 +56,32 @@ neurons and synapses on top of the minimal `new Creature(6, 3)` seed. The numeri
 four milestone fields returned by `evolveDir` (`finalError`, `finalScore`, `generations`, wall-clock
 duration).
 
+### Measured run (`Refresh-2026-05`, issue #376)
+
+| Metric                   | Value          |
+| ------------------------ | -------------- |
+| Generations              | 15&nbsp;185    |
+| Wall-clock               | 20 m 0 s       |
+| Final per-record error   | 0.075          |
+| Final score              | 0.925          |
+| Seed neurons / synapses  | 9 / 18         |
+| Final neurons / synapses | 37 / 193       |
+| `targetError` / timeout  | 0.005 / 20 min |
+
+The `+15` minutes of additional wall-clock budget granted by #376 lifted the run out of the previous
+`maxIterations: 600` cap (which fired in ~30 s on `@stsoftware/neat-ai 5.0.18`) and let NEAT-AI keep
+growing structure on top of the minimal seed for the full 20-minute backstop. The topology grew
+visibly (9 → 37 neurons, 18 → 193 synapses) even though the run did not reach `targetError`.
+
 ## 🧪 What "reasonable solution" means here
 
-The final per-record error reported in the milestone summary above is below the `targetError` stop
-condition — evolution stopped because the champion is producing labels within that tolerance of the
-larger reference creature's outputs on average. That is a reasonable solution to the labelled task:
-a 9-neuron seed has been grown into a champion that reproduces the input → output behaviour of a
-33-neuron / ~165-synapse reference _without ever seeing its topology_.
+The run exits on whichever of the two stop conditions fires first. The `targetError` (0.005) bound
+is tight enough that the minimal seed must grow real hidden structure to satisfy it — on the
+`Refresh-2026-05` run NEAT-AI did not reach it inside the 20-minute backstop, but the champion still
+delivered a reasonable approximation of the labelled task: a 9-neuron seed has been grown into a
+37-neuron / 193-synapse champion that approximates the input → output behaviour of the 33-neuron /
+~165-synapse reference _without ever seeing its topology_. The topology bars in the summary above
+are the demo's headline — they show NEAT-AI _learning_ the network's shape, not just its weights.
 
 ## 🚀 Running the example
 

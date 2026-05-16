@@ -319,7 +319,7 @@ export interface EvolutionRow {
 export interface MinimalSeedConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #219 mandates 5 as upper bound). */
+  /** Wall-clock backstop in minutes (bumped to 15 for the Refresh-2026-05 re-evolution under #388). */
   timeoutMinutes: number;
   /** NEAT population size — small enough for a fast self-contained demo. */
   populationSize: number;
@@ -335,17 +335,20 @@ export interface MinimalSeedConfig {
 
 /**
  * Defaults tuned so the minimal-seed stage converges via `targetError`
- * well inside the 5-minute backstop on a developer machine while still
- * showing visible neuron / synapse growth from the minimal seed.
+ * well inside the 15-minute backstop on a developer machine while still
+ * showing visible neuron / synapse growth from the minimal seed. The
+ * backstop was bumped from 5 → 15 minutes for the Refresh-2026-05
+ * re-evolution under issue #388; `maxIterations` was lifted in step so
+ * the wall-clock budget can actually bind rather than the iteration cap.
  */
 export const DEFAULT_MINIMAL_SEED_CONFIG: MinimalSeedConfig = {
   // Non-linear bump-sum target needs hidden neurons to fit inside this
   // error. A purely linear input → output network plateaus around
   // ~0.005, so this threshold deliberately pushes NEAT to grow.
   targetError: 0.001,
-  timeoutMinutes: 5,
+  timeoutMinutes: 15,
   populationSize: 24,
-  maxIterations: 250,
+  maxIterations: 30000,
   seed: 219219,
   // Push NEAT toward structural growth so the example genuinely adds
   // hidden neurons / inter-layer synapses from the minimal seed —
@@ -546,11 +549,27 @@ if (import.meta.main) {
     console.log("");
   }
 
+  // CI/quality quick mode (mirrors the crispr_injection CRISPR_QUICK=1
+  // idiom from #373). When invoked with `SUGGEST_QUICK=1` the runner
+  // forces a tiny iterations cap, writes its artefacts under a temp
+  // directory, and never overwrites the canonical docs CSV/SVGs. Direct
+  // invocations still use the realistic 15-minute budget set in
+  // DEFAULT_MINIMAL_SEED_CONFIG.
+  const quick = Deno.env.get("SUGGEST_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "suggest_quick_" });
+    console.log(
+      "⚡ Quick mode (SUGGEST_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
   // Write summary to file if output directory exists
-  const outputDir = WORKING_ROOT;
+  const summaryRoot = quick && quickBaseDir !== undefined ? quickBaseDir : WORKING_ROOT;
   try {
-    Deno.mkdirSync(outputDir, { recursive: true });
-    const outputPath = join(outputDir, "improvements.md");
+    Deno.mkdirSync(summaryRoot, { recursive: true });
+    const outputPath = join(summaryRoot, "improvements.md");
     writeImprovementsSummary(result, outputPath);
     console.log(`Summary written to ${outputPath}`);
   } catch (error) {
@@ -568,7 +587,8 @@ if (import.meta.main) {
     `   Seed: new Creature(${INPUT_COUNT}, ${OUTPUT_COUNT}) — no hidden hint, no warm start.`,
   );
 
-  const { dataDir, creaturesDir } = setupWorkingDirs(WORKING_ROOT);
+  const workingRoot = quick && quickBaseDir !== undefined ? quickBaseDir : WORKING_ROOT;
+  const { dataDir, creaturesDir } = setupWorkingDirs(workingRoot);
 
   // Augment the 7 hard-coded improvements with deterministic synthetic
   // records so NEAT has enough data to fit the 2D mapping.
@@ -586,10 +606,12 @@ if (import.meta.main) {
       `${seedCreature.synapses.length} synapses`,
   );
 
-  const minimalConfig = DEFAULT_MINIMAL_SEED_CONFIG;
+  const minimalConfig: MinimalSeedConfig = quick
+    ? { ...DEFAULT_MINIMAL_SEED_CONFIG, timeoutMinutes: 1, maxIterations: 3 }
+    : DEFAULT_MINIMAL_SEED_CONFIG;
   console.log(
     `   Stop conditions: targetError=${minimalConfig.targetError}, ` +
-      `timeoutMinutes=${minimalConfig.timeoutMinutes} (issue #219 backstop)`,
+      `timeoutMinutes=${minimalConfig.timeoutMinutes} (issue #388 Refresh-2026-05 backstop)`,
   );
 
   const minimalResult = await runMinimalSeedEvolution(seedCreature, dataDir, minimalConfig);
@@ -620,9 +642,21 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Emit per-generation telemetry artefacts.
+  // Emit per-generation telemetry artefacts. Quick mode writes only into
+  // the ephemeral working directory so the canonical docs CSV/SVGs are
+  // never clobbered by a CI run.
   if (minimalResult.rows.length === 0) {
     console.log("   ⚠️  No per-generation events captured — telemetry skipped.");
+  } else if (quick) {
+    const csv = formatEvolutionCsv(minimalResult.rows);
+    const quickCsv = join(workingRoot, "evolution.csv");
+    await Deno.writeTextFile(quickCsv, csv);
+    console.log(`🗒️  Quick mode: wrote ${quickCsv} (${minimalResult.rows.length} rows)`);
+    // Render the SVGs into memory so the renderer path is exercised, but
+    // do not overwrite the canonical artefacts under docs/.
+    renderFitnessChartSvg(minimalResult.rows);
+    renderTopologyChartSvg(minimalResult.rows);
+    console.log("   ⏭️  Quick mode: skipped overwriting canonical CSV / SVGs under docs/");
   } else {
     ensureDirSync("docs/data/suggest_improvements");
     ensureDirSync("docs/screenshots/suggest_improvements");

@@ -162,17 +162,32 @@ export PATH="${DENO_WRAPPER_DIR}:${PATH}"
 # Run the Intelligent Design example
 run_example "Intelligent Design Example" "./intelligent_design/run.sh"
 
-# Run the Discovery example
-run_example "Discovery Example" "./discovery/run.sh"
+# Run the Discovery example. The CI/quality budget caps the section via
+# `DISCOVERY_QUICK=1` (issue #375): the runner forces a tiny iterations
+# cap, writes its artefacts under a temp directory, and never overwrites
+# the canonical docs SVG. A direct `./discovery/run.sh` invocation still
+# uses the realistic 15-minute / target-error budget from
+# `DEFAULT_DISCOVERY_CONFIG`.
+run_example_with_env "Discovery Example" "./discovery/run.sh" "DISCOVERY_QUICK=1"
 
 # Run the Discovery-at-Scale demo (issue #84)
 run_example "Discovery at Scale Demo" "./discovery_at_scale/run.sh"
 
-# Run the Crossover (Breeding) example
-run_example "Crossover (Breeding) Example" "./crossover/run.sh"
+# Run the Crossover (Breeding) example. The CI/quality budget caps the
+# section via `CROSSOVER_QUICK=1` (issue #374): the runner forces a tiny
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs SVG. A direct `./crossover/run.sh`
+# invocation still uses the realistic 15-minute / target-error budget
+# from `DEFAULT_CROSSOVER_EVOLUTION_CONFIG`.
+run_example_with_env "Crossover (Breeding) Example" "./crossover/run.sh" "CROSSOVER_QUICK=1"
 
-# Run the CRISPR Gene Injection example
-run_example "CRISPR Gene Injection Example" "./crispr_injection/run.sh"
+# Run the CRISPR Gene Injection example. The CI/quality budget caps the
+# section via `CRISPR_QUICK=1` (issue #373): the runner forces a tiny
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs SVG. A direct `./crispr_injection/run.sh`
+# invocation still uses the realistic 15-minute / target-error budget
+# from `DEFAULT_CRISPR_EVOLUTION_CONFIG`.
+run_example_with_env "CRISPR Gene Injection Example" "./crispr_injection/run.sh" "CRISPR_QUICK=1"
 
 # Run the Cart-Pole Balancing example. The CI/quality budget caps the
 # section via `CART_POLE_QUICK=1` (issue #321): the runner forces an
@@ -244,8 +259,15 @@ run_example "MCMC Mutation Acceptance Demo" "./mcmc_acceptance/run.sh"
 # Run the Memetic Evolution demo
 run_example "Memetic Evolution Demo" "./memetic_evolution/run.sh"
 
-# Run the Synthetic Synapse Training demo
-run_example "Synthetic Synapse Training Demo" "./synthetic_synapse/run.sh"
+# Run the Synthetic Synapse Training demo. The CI/quality budget caps
+# the section via `SYNAPSE_QUICK=1` (issue #389): the runner forces a
+# tiny iterations cap, writes its artefacts under a temp directory, and
+# never overwrites the canonical docs/screenshots SVGs or
+# .synthetic-synapse/creatures/champion.json. A direct
+# `./synthetic_synapse/run.sh` invocation still uses the realistic
+# 20-minute / target-error=0.005 defaults from
+# DEFAULT_SYNTHETIC_SYNAPSE_CONFIG.
+run_example_with_env "Synthetic Synapse Training Demo" "./synthetic_synapse/run.sh" "SYNAPSE_QUICK=1"
 
 # Run the Neuron Pruning demo
 run_example "Neuron Pruning Demo" "./neuron_pruning/run.sh"
@@ -253,8 +275,13 @@ run_example "Neuron Pruning Demo" "./neuron_pruning/run.sh"
 # Run the Adaptive Mutation Rate demo
 run_example "Adaptive Mutation Rate Demo" "./adaptive_mutation/run.sh"
 
-# Run the Suggest Improvements example
-run_example "Suggest Improvements" "./suggest_improvements/run.sh"
+# Run the Suggest Improvements example. The CI/quality budget caps the
+# section via `SUGGEST_QUICK=1` (issue #388): the runner forces a tiny
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs CSV / SVGs. A direct
+# `./suggest_improvements/run.sh` invocation still uses the realistic
+# 15-minute / target-error=0.001 defaults from DEFAULT_MINIMAL_SEED_CONFIG.
+run_example_with_env "Suggest Improvements" "./suggest_improvements/run.sh" "SUGGEST_QUICK=1"
 
 # Summary
 echo "================================================"

@@ -19,22 +19,23 @@ from a minimal seed and the README quotes the measured per-generation telemetry 
 The numbers below come directly from the latest local run of `./suggest_improvements/run.sh` — no
 estimates, no qualifiers.
 
-| Metric                    | Value                             |
-| ------------------------- | --------------------------------- |
-| Generations               | 252 (`maxIterations` cap reached) |
-| Wall-clock                | 13.1 s                            |
-| Final per-record error    | 0.0059                            |
-| Final best fitness        | 0.9941                            |
-| Held-out score (-MSE)     | -0.005921                         |
-| Seed neurons / synapses   | 3 / 2                             |
-| Final neurons / synapses  | 8 / 17                            |
-| `targetError`             | 0.001                             |
-| `timeoutMinutes` (safety) | 5                                 |
+| Metric                    | Value                               |
+| ------------------------- | ----------------------------------- |
+| Generations               | 6 092 (`targetError` floor reached) |
+| Wall-clock                | 544.4 s (9 min 4 s)                 |
+| Final per-record error    | 0.0010                              |
+| Final best fitness        | 0.9990                              |
+| Held-out score (-MSE)     | -0.000999                           |
+| Seed neurons / synapses   | 3 / 2                               |
+| Final neurons / synapses  | 27 / 89                             |
+| `targetError`             | 0.001                               |
+| `timeoutMinutes` (safety) | 15                                  |
 
 Topology genuinely changed: NEAT grew from the minimal direct-only seed (3 neurons, 2 synapses) to
-**8 neurons and 17 synapses** across 252 generations. The intermediate checkpoints visible in the
-CSV are `(3,2) → (5,9) → (7,15) → (8,17)` — five hidden neurons added, synapse count grew by
-fifteen.
+**27 neurons and 89 synapses** across 6 092 generations. Representative intermediate checkpoints
+visible in the CSV are `(3,2) → (5,8) → (8,17) → (15,43) → (20,67) → (27,89)` — twenty-four hidden
+neurons added, synapse count grew by eighty-seven. The run was solved by `targetError`, well inside
+the 15-minute wall-clock backstop bumped under #388 for the Refresh-2026-05 milestone.
 
 - Per-generation telemetry CSV:
   [`docs/data/suggest_improvements/evolution.csv`](../docs/data/suggest_improvements/evolution.csv)
@@ -44,8 +45,9 @@ fifteen.
 
 ![Suggest Improvements — Topology Growth (neuron and synapse counts per generation)](../docs/screenshots/suggest_improvements/topology.svg)
 
-The final creature's held-out -MSE of **-0.005921** on the 64-record training set is a reasonable
-solution: the average per-record squared error is below 0.006, well inside the [0, 1] target range.
+The final creature's held-out -MSE of **-0.000999** on the 64-record training set is a strong
+solution: the average per-record squared error is just under the `targetError` floor of 0.001 — the
+runner exited via `targetError` rather than the wall-clock backstop.
 
 ## 🔧 How It Works
 
@@ -58,7 +60,7 @@ flowchart LR
     FEAT["🧮 Feature Mapping<br/>(length, category) → score"]
     BIN["💾 training.bin<br/>(Float32 little-endian)"]
     SEED["🌱 Minimal NEAT seed<br/>new Creature(2, 1)"]
-    EVOLVE["🧬 evolveDir<br/>targetError + timeoutMinutes:5"]
+    EVOLVE["🧬 evolveDir<br/>targetError + timeoutMinutes:15"]
     CSV["🗒️ evolution.csv"]
     FITSVG["📈 fitness.svg"]
     TOPOSVG["📈 topology.svg"]
@@ -92,8 +94,9 @@ flowchart LR
 6. Writes the dataset as a Float32 `.bin` file.
 7. Seeds NEAT-AI with `new Creature(2, 1)` — minimal direct-only topology.
 8. Runs `Creature.evolveDir(dataDir, neatOptions)` with `targetError = 0.001` and
-   `timeoutMinutes = 5`. The evolution loop is split into 25-iteration chunks so per-generation
-   telemetry picks up structural growth at fine resolution.
+   `timeoutMinutes = 15` (bumped from 5 under #388 so the wall-clock budget binds rather than the
+   iteration cap). The evolution loop is split into 25-iteration chunks so per-generation telemetry
+   picks up structural growth at fine resolution.
 9. Writes the per-generation CSV, the fitness chart, the topology chart, and the champion creature
    JSON.
 
@@ -122,7 +125,7 @@ target = (exp(-((x - 0.25)² + (y - 0.5)²)·8) + exp(-((x - 0.75)² + (y + 0.5)
 ```
 
 This is non-monotonic in both axes, so NEAT must add hidden neurons and synapses before it can drive
-error below `targetError`. The latest run captured that growth from `(3,2)` to `(8,17)` — the
+error below `targetError`. The latest run captured that growth from `(3,2)` to `(27,89)` — the
 topology chart above shows it generation by generation.
 
 ## 🚀 Running the Example

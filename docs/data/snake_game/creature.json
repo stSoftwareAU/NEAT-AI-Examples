@@ -9,31 +9,8 @@
     },
     {
       "type": "constant",
-      "uuid": "ccd8731b-230f-4db3-8743-05803444f474",
-      "bias": 0.1393832867425805
-    },
-    {
-      "type": "constant",
       "uuid": "8f32928a-8d39-44e4-960d-34f46e334ce0",
       "bias": -0.12434161850293404,
-      "tags": [
-        {
-          "name": "approach",
-          "value": "graft"
-        }
-      ]
-    },
-    {
-      "type": "hidden",
-      "uuid": "39d5e77d-6c03-4f2f-b87a-73f1ed8459b2",
-      "bias": -0.5790867268045412,
-      "squash": "Swish"
-    },
-    {
-      "type": "hidden",
-      "uuid": "d6e07d73-35d8-491a-9b89-2b3da1dd52f7",
-      "bias": 0.5666939686318654,
-      "squash": "Mish",
       "tags": [
         {
           "name": "approach",
@@ -46,12 +23,6 @@
       "uuid": "c47a6f1d-d23d-4846-942c-8e6bf2cafb6b",
       "bias": -0.02416782383848426,
       "squash": "ArcTan"
-    },
-    {
-      "type": "hidden",
-      "uuid": "94ed0867-4b1a-4d51-847d-7a453f08b81e",
-      "bias": -0.37296263434148663,
-      "squash": "Swish"
     },
     {
       "type": "hidden",
@@ -68,7 +39,7 @@
     {
       "type": "hidden",
       "uuid": "919df844-3fd1-4d6a-84da-ec2877a9edf7",
-      "bias": 0.645469175189925,
+      "bias": 0.6121227674416578,
       "squash": "Mish"
     },
     {
@@ -79,20 +50,8 @@
     },
     {
       "type": "hidden",
-      "uuid": "5e91e8df-0279-4020-a6d8-2874888d5853",
-      "bias": 0.01867644114591611,
-      "squash": "Swish"
-    },
-    {
-      "type": "hidden",
       "uuid": "8aba7d52-7876-4adc-9176-251db5a38fd0",
       "bias": 0.2812711879628218,
-      "squash": "SQUARE"
-    },
-    {
-      "type": "hidden",
-      "uuid": "b62af532-c67c-4070-8c37-b7124f8f5863",
-      "bias": -0.06643393669192837,
       "squash": "SQUARE"
     },
     {
@@ -103,26 +62,20 @@
     },
     {
       "type": "hidden",
-      "uuid": "334f6f5c-7854-4797-aaae-da1f17f0a01a",
-      "bias": -0.21440863201306953,
-      "squash": "LogSigmoid"
-    },
-    {
-      "type": "hidden",
       "uuid": "ee6dc8c9-0d51-4256-a05f-2dcccfebaf14",
-      "bias": -0.2462923100040239,
+      "bias": -0.24390092579953832,
       "squash": "ISRU"
     },
     {
       "type": "hidden",
       "uuid": "63a72c33-6509-439d-9da4-56ca7fc071a5",
-      "bias": -0.9517122433014564,
+      "bias": -0.5750482906311487,
       "squash": "ISRU"
     },
     {
       "type": "hidden",
       "uuid": "32d600ca-201b-442b-bd43-b4be3c435ff4",
-      "bias": 0.7231613652833744,
+      "bias": 0.7247436822677868,
       "squash": "TANH"
     },
     {
@@ -146,7 +99,7 @@
     {
       "type": "output",
       "uuid": "output-1",
-      "bias": -0.39855045044841514,
+      "bias": -0.7008977734380355,
       "squash": "ArcTan"
     },
     {
@@ -254,11 +207,6 @@
       "toUUID": "c47a6f1d-d23d-4846-942c-8e6bf2cafb6b"
     },
     {
-      "weight": -0.7398668546998786,
-      "fromUUID": "input-5",
-      "toUUID": "94ed0867-4b1a-4d51-847d-7a453f08b81e"
-    },
-    {
       "weight": 1.2624703271578894,
       "fromUUID": "input-5",
       "toUUID": "8ca18c6f-c3aa-4010-935b-a01e540a376a"
@@ -304,11 +252,6 @@
       "toUUID": "8aba7d52-7876-4adc-9176-251db5a38fd0"
     },
     {
-      "weight": 2.669214539521258,
-      "fromUUID": "input-7",
-      "toUUID": "output-1"
-    },
-    {
       "weight": -8.213354524882332,
       "fromUUID": "input-7",
       "toUUID": "output-2"
@@ -319,39 +262,9 @@
       "toUUID": "output-3"
     },
     {
-      "weight": -0.0548917900609297,
-      "fromUUID": "34fa276a-4683-4aa7-9d41-f970f01dfd91",
-      "toUUID": "ee6dc8c9-0d51-4256-a05f-2dcccfebaf14"
-    },
-    {
       "weight": 0.17914241158901092,
       "fromUUID": "34fa276a-4683-4aa7-9d41-f970f01dfd91",
       "toUUID": "output-3"
-    },
-    {
-      "weight": -0.13840808612753988,
-      "fromUUID": "ccd8731b-230f-4db3-8743-05803444f474",
-      "toUUID": "d6e07d73-35d8-491a-9b89-2b3da1dd52f7"
-    },
-    {
-      "weight": -1.4840347844056527,
-      "fromUUID": "8f32928a-8d39-44e4-960d-34f46e334ce0",
-      "toUUID": "39d5e77d-6c03-4f2f-b87a-73f1ed8459b2"
-    },
-    {
-      "weight": -0.32904069999999996,
-      "fromUUID": "8f32928a-8d39-44e4-960d-34f46e334ce0",
-      "toUUID": "94ed0867-4b1a-4d51-847d-7a453f08b81e"
-    },
-    {
-      "weight": 0.26818379999999997,
-      "fromUUID": "8f32928a-8d39-44e4-960d-34f46e334ce0",
-      "toUUID": "919df844-3fd1-4d6a-84da-ec2877a9edf7"
-    },
-    {
-      "weight": 0.681195083350154,
-      "fromUUID": "8f32928a-8d39-44e4-960d-34f46e334ce0",
-      "toUUID": "5e91e8df-0279-4020-a6d8-2874888d5853"
     },
     {
       "weight": 0.3146762878615078,
@@ -359,34 +272,14 @@
       "toUUID": "434d3bbf-45b7-4746-8e67-02b3c6f1bf30"
     },
     {
-      "weight": -0.0099606,
-      "fromUUID": "39d5e77d-6c03-4f2f-b87a-73f1ed8459b2",
-      "toUUID": "32d600ca-201b-442b-bd43-b4be3c435ff4"
-    },
-    {
-      "weight": -0.7237000579074001,
-      "fromUUID": "d6e07d73-35d8-491a-9b89-2b3da1dd52f7",
-      "toUUID": "output-1"
-    },
-    {
       "weight": -0.43629229724896207,
       "fromUUID": "c47a6f1d-d23d-4846-942c-8e6bf2cafb6b",
       "toUUID": "ee6dc8c9-0d51-4256-a05f-2dcccfebaf14"
     },
     {
-      "weight": 0.23245369999999999,
-      "fromUUID": "94ed0867-4b1a-4d51-847d-7a453f08b81e",
-      "toUUID": "b62af532-c67c-4070-8c37-b7124f8f5863"
-    },
-    {
       "weight": 1.368035626245147,
       "fromUUID": "8ca18c6f-c3aa-4010-935b-a01e540a376a",
       "toUUID": "output-0"
-    },
-    {
-      "weight": -0.13510358788866236,
-      "fromUUID": "245819ea-a8bf-43a0-b279-fc2b94265fa1",
-      "toUUID": "b62af532-c67c-4070-8c37-b7124f8f5863"
     },
     {
       "weight": -0.1694191143454996,
@@ -404,11 +297,6 @@
       "toUUID": "output-0"
     },
     {
-      "weight": -0.21851089999999998,
-      "fromUUID": "5e91e8df-0279-4020-a6d8-2874888d5853",
-      "toUUID": "b62af532-c67c-4070-8c37-b7124f8f5863"
-    },
-    {
       "weight": 0.2974796,
       "fromUUID": "8aba7d52-7876-4adc-9176-251db5a38fd0",
       "toUUID": "4eae2439-bd5d-474a-a8df-98125eace1d6"
@@ -419,11 +307,6 @@
       "toUUID": "8276c18b-a886-49a1-a57c-4c513783cc82"
     },
     {
-      "weight": -0.39333040752960907,
-      "fromUUID": "b62af532-c67c-4070-8c37-b7124f8f5863",
-      "toUUID": "334f6f5c-7854-4797-aaae-da1f17f0a01a"
-    },
-    {
       "weight": 0.2656898,
       "fromUUID": "4eae2439-bd5d-474a-a8df-98125eace1d6",
       "toUUID": "63a72c33-6509-439d-9da4-56ca7fc071a5"
@@ -432,11 +315,6 @@
       "weight": 0.10498066354263819,
       "fromUUID": "4eae2439-bd5d-474a-a8df-98125eace1d6",
       "toUUID": "output-2"
-    },
-    {
-      "weight": 0.40557449096739573,
-      "fromUUID": "334f6f5c-7854-4797-aaae-da1f17f0a01a",
-      "toUUID": "output-0"
     },
     {
       "weight": 0.11609947674478108,
@@ -474,38 +352,19 @@
   "tags": [
     {
       "name": "error",
-      "value": "0"
+      "value": "8.437694987151189e-16"
     },
     {
       "name": "score",
-      "value": "0.9999972892372203"
+      "value": "0.9999981392134741"
     },
     {
       "name": "trialRewards",
-      "value": "0.004999999999998561,0.009999999999999343,-0.010000000000000009,0.024999999999999467,0.009999999999999343,-0.010000000000000453,0.01999999999999913,-0.030000000000001026,0.004999999999997451,0.004999999999999893"
+      "value": "-8.881784197001252e-16,-0.010000000000000009,0.009999999999997344,0.0050000000000005596,-1.4432899320127035e-15,0.004999999999999671,-3.3306690738754696e-16,0.019999999999998685,0.024999999999997913,-0.05499999999999994"
     },
     {
       "name": "meanReward",
-      "value": "0.00299999999999917"
+      "value": "-8.437694987151189e-16"
     }
-  ],
-  "memetic": {
-    "generation": 0,
-    "score": 0.7413306225708614,
-    "biases": {
-      "919df844-3fd1-4d6a-84da-ec2877a9edf7": 0.645469175189925
-    },
-    "weights": [
-      {
-        "fromUUID": "input-2",
-        "toUUID": "output-1",
-        "weight": 1.2148104697550142
-      },
-      {
-        "fromUUID": "8f32928a-8d39-44e4-960d-34f46e334ce0",
-        "toUUID": "94ed0867-4b1a-4d51-847d-7a453f08b81e",
-        "weight": -0.32904069999999996
-      }
-    ]
-  }
+  ]
 }
