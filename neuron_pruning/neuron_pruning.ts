@@ -29,7 +29,9 @@
  *    over a pre-generated binary `.bin` training set; the topology is
  *    learned by NEAT, not bolted on by the example.
  * 3. Stop conditions are a per-example `targetError` plus a
- *    `timeoutMinutes: 5` safety backstop.
+ *    `timeoutMinutes: 20` safety backstop (raised from 5 by issue #385
+ *    for the `Refresh-2026-05` milestone — +15 minutes of additional
+ *    wall-clock evolution budget on top of the original audit limit).
  *
  * The pruning operation then runs on the **evolved** champion: hidden
  * neurons are deliberately converted to constant-output (zero incoming
@@ -123,7 +125,9 @@ export interface NeuronPruningConfig {
   targetError: number;
   /**
    * Wall-clock backstop in minutes for the whole evolveDir phase.
-   * Issue #217 mandates 5 minutes as the upper bound.
+   * Issue #217 originally mandated 5 minutes; issue #385 raises this to
+   * 20 minutes (+15 wall-clock minutes) for the `Refresh-2026-05`
+   * milestone refresh.
    */
   timeoutMinutes: number;
   /** NEAT population size. Small for a fast self-contained demo. */
@@ -134,8 +138,12 @@ export interface NeuronPruningConfig {
 
 /**
  * Defaults chosen so the demo converges via `targetError` well inside
- * the 5-minute backstop on a developer machine while still illustrating
- * constant-neuron removal clearly.
+ * the wall-clock backstop on a developer machine while still illustrating
+ * constant-neuron removal clearly. Issue #385 lifts `timeoutMinutes`
+ * from 5 → 20 and `maxIterations` from 400 → 1 600 for the
+ * `Refresh-2026-05` milestone — +15 minutes of additional wall-clock
+ * evolution budget so the iteration cap is not the limiter on newer
+ * NEAT-AI builds.
  */
 export const DEFAULT_NEURON_PRUNING_CONFIG: NeuronPruningConfig = {
   inputs: INPUT_COUNT,
@@ -148,9 +156,9 @@ export const DEFAULT_NEURON_PRUNING_CONFIG: NeuronPruningConfig = {
   heldOutSize: 64,
   varianceThreshold: 1e-12,
   targetError: 0.005,
-  timeoutMinutes: 5,
+  timeoutMinutes: 20,
   populationSize: 32,
-  maxIterations: 400,
+  maxIterations: 1600,
 };
 
 /** A single held-out record. */
