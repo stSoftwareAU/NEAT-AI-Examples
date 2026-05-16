@@ -8,5 +8,15 @@
     "generationWallClockMs": 312607,
     "runIndex": 1,
     "cumulativeGen": 94
+  },
+  {
+    "runGen": 235,
+    "bestScore": 0.2652421690909943,
+    "error": 0.7346794199090441,
+    "neurons": 794,
+    "synapses": 7841,
+    "generationWallClockMs": 900890,
+    "runIndex": 2,
+    "cumulativeGen": 329
   }
 ]
