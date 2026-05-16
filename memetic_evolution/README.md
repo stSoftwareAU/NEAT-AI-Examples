@@ -17,6 +17,30 @@ summary panel naming the seeding event.
 
 ![Memetic vs control milestone comparison](../docs/screenshots/memetic_evolution.svg)
 
+## 📐 Latest Measured Run (`Refresh-2026-05`, issue #382)
+
+Stop conditions under issue #382: `targetError = 0.005`, `timeoutMinutes = 20` (raised from 5 to
+grant the +15 minute refresh budget; iteration caps lifted in lock-step — `controlIterations` 250 →
+1000, `memeticPhaseIterations` 125 → 500). Run measured on the freshly bumped `@stsoftware/neat-ai`
+from the `Refresh-2026-05` baseline.
+
+| Metric                 | Memetic (with seeding) | Control (no seeding) |
+| ---------------------- | ---------------------- | -------------------- |
+| Generations            | 66                     | 543                  |
+| Wall clock             | 1.2 s                  | 5.0 s                |
+| Final score (−MSE)     | 0.9964                 | 0.9976               |
+| Final per-record error | 0.0036                 | 0.0024               |
+| Seed → final neurons   | 3 → 5                  | 3 → 7                |
+| Seed → final synapses  | 2 → 8                  | 2 → 13               |
+| Held-out −MSE          | −0.003585              | −0.002389            |
+
+Fitness lift (memetic − control): **−0.0012**. Both runs converged well inside the new 20-minute
+backstop; the headline narrative this run captures is that the control's larger iteration budget
+discovered a slightly richer topology (7 neurons / 13 synapses) than the memetic run's two chained
+phases (5 neurons / 8 synapses). Issue #382 explicitly permits raising the PR even with no fitness
+gain — the headline SVG and milestone-summary callouts faithfully record the regenerated numbers
+against the freshly bumped `@stsoftware/neat-ai`.
+
 ## 🔧 How It Works
 
 ```mermaid

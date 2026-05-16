@@ -184,7 +184,12 @@ export function creatureHeldOutScore(
 export interface MemeticEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #216 mandates 5 as upper bound). */
+  /**
+   * Wall-clock backstop in minutes. Issue #216 set 5 minutes as the original
+   * upper bound; issue #382 raised this to 20 minutes to grant the +15 minute
+   * refresh budget on top of the existing baseline (parent #369 /
+   * `Refresh-2026-05`). Tests therefore assert `>= 5`, not `=== 5`.
+   */
   timeoutMinutes: number;
   /** NEAT population size — small enough for a fast self-contained demo. */
   populationSize: number;
@@ -209,15 +214,18 @@ export interface MemeticEvolutionConfig {
 
 /**
  * Defaults tuned so each run converges via `targetError` well inside the
- * 5-minute backstop on a developer machine while still showing visible
- * neuron / synapse growth from the minimal seed.
+ * wall-clock backstop on a developer machine while still showing visible
+ * neuron / synapse growth from the minimal seed. Under issue #382 the
+ * backstop was raised from 5 → 20 minutes and the iteration caps were
+ * lifted in lock-step (control 250 → 1000, memetic phase 125 → 500) so
+ * wall-clock remains the genuine limiter for the `Refresh-2026-05` run.
  */
 export const DEFAULT_MEMETIC_EVOLUTION_CONFIG: MemeticEvolutionConfig = {
   targetError: 0.005,
-  timeoutMinutes: 5,
+  timeoutMinutes: 20,
   populationSize: 24,
-  controlIterations: 250,
-  memeticPhaseIterations: 125,
+  controlIterations: 1000,
+  memeticPhaseIterations: 500,
   memeticSeed: 216216,
   controlSeed: 216217,
   // Push NEAT toward structural growth so the example genuinely adds
