@@ -162,8 +162,13 @@ export PATH="${DENO_WRAPPER_DIR}:${PATH}"
 # Run the Intelligent Design example
 run_example "Intelligent Design Example" "./intelligent_design/run.sh"
 
-# Run the Discovery example
-run_example "Discovery Example" "./discovery/run.sh"
+# Run the Discovery example. The CI/quality budget caps the section via
+# `DISCOVERY_QUICK=1` (issue #375): the runner forces a tiny iterations
+# cap, writes its artefacts under a temp directory, and never overwrites
+# the canonical docs SVG. A direct `./discovery/run.sh` invocation still
+# uses the realistic 15-minute / target-error budget from
+# `DEFAULT_DISCOVERY_CONFIG`.
+run_example_with_env "Discovery Example" "./discovery/run.sh" "DISCOVERY_QUICK=1"
 
 # Run the Discovery-at-Scale demo (issue #84)
 run_example "Discovery at Scale Demo" "./discovery_at_scale/run.sh"

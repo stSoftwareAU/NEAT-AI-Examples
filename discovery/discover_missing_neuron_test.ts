@@ -424,13 +424,13 @@ Deno.test(
 /* ------------------------------------------------------------------ */
 
 Deno.test("DEFAULT_DISCOVERY_CONFIG honours the audit's stop-condition rule", () => {
-  // Issue #207 mandates targetError + timeoutMinutes <= 5 (or higher
-  // with a documented justification — the default sticks to 5).
+  // Issue #207 set the original 5-minute backstop; #375 (Refresh-2026-05)
+  // bumps it to 15 minutes so the demo can use the extended budget.
   assertGreater(DEFAULT_DISCOVERY_CONFIG.targetError, 0, "targetError must be positive");
   assertEquals(
     DEFAULT_DISCOVERY_CONFIG.timeoutMinutes,
-    5,
-    "timeoutMinutes must default to the issue #207 backstop",
+    15,
+    "timeoutMinutes must default to the Refresh-2026-05 backstop (#375)",
   );
   assertGreater(DEFAULT_DISCOVERY_CONFIG.populationSize, 0, "populationSize must be positive");
   assertGreater(DEFAULT_DISCOVERY_CONFIG.maxIterations, 0, "maxIterations must be positive");
