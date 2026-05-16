@@ -19,7 +19,7 @@ flowchart TD
     REF["🧬 Hand-crafted reference creature<br/>(label oracle only — NEAT-AI never sees it)"]
     DATA["📦 Binary .bin training set"]
     SEED["🌱 new Creature(4, 1)<br/>minimal seed — no hidden hint"]
-    EVOLVE["🧪 Creature.evolveDir(...)<br/>single call, forward-only,<br/>targetError=0.0001, timeoutMinutes=5"]
+    EVOLVE["🧪 Creature.evolveDir(...)<br/>single call, forward-only,<br/>targetError=0.0001, timeoutMinutes=20"]
     SUMMARY["📦 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
     SCAN["🔬 Scan evolved champion<br/>for squash improvements"]
     OUT["📈 evolution_summary.svg + improved creature"]
@@ -51,7 +51,9 @@ _GELU_ = Gaussian Error Linear Unit.
    hidden neurons, no warm start.
 3. Make a **single** `Creature.evolveDir(dataDir, options)` call over the `.bin` directory in
    forward-only mode until either the per-example `targetError` is reached or the
-   `timeoutMinutes: 5` backstop fires.
+   `timeoutMinutes: 20` backstop fires (raised from 5 by issue
+   [#378](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/378) for the `Refresh-2026-05`
+   milestone — +15 minutes of additional wall-clock evolution budget).
 4. Run `scanForSquashImprovements` on the evolved champion to systematically test alternative
    activation functions. This is the original "intelligent design" demo, now operating on the
    genuinely-evolved creature.
@@ -64,6 +66,21 @@ The chart is sourced from `Creature.evolveDir`'s return value plus the seed and 
 topology — no per-generation telemetry hook.
 
 ![Intelligent Design — evolveDir run summary](../docs/screenshots/intelligent_design/evolution_summary.svg)
+
+| Metric                   | Value                                           |
+| ------------------------ | ----------------------------------------------- |
+| Generations              | 3 003                                           |
+| Wall-clock               | 9.0 s (converged early under the 20 min budget) |
+| Final per-record error   | 0.0001 (target 0.0001 — reached)                |
+| Final score              | 0.9999                                          |
+| Seed neurons / synapses  | 5 / 4                                           |
+| Final neurons / synapses | 5 / 3                                           |
+| `targetError` / timeout  | 0.0001 / 20 min                                 |
+
+Issue [#378](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/378) raised the wall-clock
+backstop from 5 → 20 minutes for the `Refresh-2026-05` milestone (+15 minutes of additional
+evolution budget). On this run NEAT-AI reached `targetError` well inside the new backstop — the
+extra budget was made available but not consumed.
 
 ## 🧪 What "reasonable solution" means here
 

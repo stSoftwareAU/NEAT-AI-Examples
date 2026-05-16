@@ -6,7 +6,7 @@
  * checking implementation details or timing.
  */
 
-import { assert, assertEquals, assertGreater } from "@std/assert";
+import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 
@@ -257,10 +257,13 @@ Deno.test("DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG honours the audit's stop-condit
     0,
     "targetError must be positive",
   );
-  assertEquals(
+  // Issue #378: the original audit (#214) mandated a 5-minute backstop;
+  // the Refresh-2026-05 milestone grants +15 minutes of additional
+  // evolution budget, so we assert `>= 5` rather than `=== 5`.
+  assertGreaterOrEqual(
     DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG.timeoutMinutes,
     5,
-    "timeoutMinutes must default to the issue #214 backstop",
+    "timeoutMinutes must default to at least the issue #214 backstop (issue #378 allows raising)",
   );
   assertGreater(
     DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG.populationSize,

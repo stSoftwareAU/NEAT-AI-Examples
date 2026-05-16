@@ -18,8 +18,10 @@
  *      `network.json`, no hand-tuned shape.
  *   3. `Creature.evolveDir(dataDir, options)` runs forward-only over the
  *      pre-generated `.bin` training set until either the per-example
- *      `targetError` threshold is reached or the `timeoutMinutes: 5`
- *      backstop fires.
+ *      `targetError` threshold is reached or the `timeoutMinutes: 20`
+ *      backstop fires (raised from the original audit's 5-minute cap by
+ *      issue #378 — +15 minutes of additional wall-clock budget for the
+ *      `Refresh-2026-05` milestone).
  *   4. A single milestone summary SVG is rendered from the `evolveDir`
  *      return value plus the seed and final creature topology.
  *   5. The "intelligent design" framing is preserved by running
@@ -79,7 +81,11 @@ export const SYNTHETIC_CONFIG: SyntheticConfig = {
 export interface MinimalSeedEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #214 mandates 5 as upper bound). */
+  /**
+   * Wall-clock backstop in minutes. Issue #214 originally mandated 5 as the
+   * upper bound; issue #378 grants +15 minutes of additional evolution budget
+   * (5 → 20) for the `Refresh-2026-05` milestone refresh.
+   */
   timeoutMinutes: number;
   /** NEAT population size. */
   populationSize: number;
@@ -100,9 +106,12 @@ export interface MinimalSeedEvolutionConfig {
  */
 export const DEFAULT_MINIMAL_SEED_EVOLUTION_CONFIG: MinimalSeedEvolutionConfig = {
   targetError: 0.0001,
-  timeoutMinutes: 5,
+  // Issue #378: refresh-2026-05 grants +15 minutes of additional wall-clock
+  // evolution budget (5 → 20). maxIterations is lifted in lock-step so that
+  // wall-clock remains the genuine limiter.
+  timeoutMinutes: 20,
   populationSize: 24,
-  maxIterations: 700,
+  maxIterations: 3000,
   mutationRate: 0.8,
   mutationAmount: 5,
   seed: 214214,
