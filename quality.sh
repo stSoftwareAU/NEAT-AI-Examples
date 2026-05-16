@@ -259,8 +259,15 @@ run_example "MCMC Mutation Acceptance Demo" "./mcmc_acceptance/run.sh"
 # Run the Memetic Evolution demo
 run_example "Memetic Evolution Demo" "./memetic_evolution/run.sh"
 
-# Run the Synthetic Synapse Training demo
-run_example "Synthetic Synapse Training Demo" "./synthetic_synapse/run.sh"
+# Run the Synthetic Synapse Training demo. The CI/quality budget caps
+# the section via `SYNAPSE_QUICK=1` (issue #389): the runner forces a
+# tiny iterations cap, writes its artefacts under a temp directory, and
+# never overwrites the canonical docs/screenshots SVGs or
+# .synthetic-synapse/creatures/champion.json. A direct
+# `./synthetic_synapse/run.sh` invocation still uses the realistic
+# 20-minute / target-error=0.005 defaults from
+# DEFAULT_SYNTHETIC_SYNAPSE_CONFIG.
+run_example_with_env "Synthetic Synapse Training Demo" "./synthetic_synapse/run.sh" "SYNAPSE_QUICK=1"
 
 # Run the Neuron Pruning demo
 run_example "Neuron Pruning Demo" "./neuron_pruning/run.sh"
