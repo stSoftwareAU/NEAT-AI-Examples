@@ -268,8 +268,13 @@ run_example "Neuron Pruning Demo" "./neuron_pruning/run.sh"
 # Run the Adaptive Mutation Rate demo
 run_example "Adaptive Mutation Rate Demo" "./adaptive_mutation/run.sh"
 
-# Run the Suggest Improvements example
-run_example "Suggest Improvements" "./suggest_improvements/run.sh"
+# Run the Suggest Improvements example. The CI/quality budget caps the
+# section via `SUGGEST_QUICK=1` (issue #388): the runner forces a tiny
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs CSV / SVGs. A direct
+# `./suggest_improvements/run.sh` invocation still uses the realistic
+# 15-minute / target-error=0.001 defaults from DEFAULT_MINIMAL_SEED_CONFIG.
+run_example_with_env "Suggest Improvements" "./suggest_improvements/run.sh" "SUGGEST_QUICK=1"
 
 # Summary
 echo "================================================"

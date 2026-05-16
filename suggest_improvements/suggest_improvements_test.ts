@@ -305,11 +305,14 @@ const SMALL_MINIMAL_CONFIG: MinimalSeedConfig = {
 };
 
 Deno.test("DEFAULT_MINIMAL_SEED_CONFIG - has audit-policy stop conditions", () => {
-  assertEquals(DEFAULT_MINIMAL_SEED_CONFIG.timeoutMinutes, 5);
+  // Bumped to a 15-minute wall-clock backstop for the Refresh-2026-05
+  // re-evolution under issue #388; maxIterations was lifted in step so
+  // the wall-clock budget actually binds rather than the iteration cap.
+  assertEquals(DEFAULT_MINIMAL_SEED_CONFIG.timeoutMinutes, 15);
   assertGreater(DEFAULT_MINIMAL_SEED_CONFIG.targetError, 0);
   assertGreaterOrEqual(0.1, DEFAULT_MINIMAL_SEED_CONFIG.targetError);
   assertGreater(DEFAULT_MINIMAL_SEED_CONFIG.populationSize, 1);
-  assertGreater(DEFAULT_MINIMAL_SEED_CONFIG.maxIterations, 0);
+  assertGreaterOrEqual(DEFAULT_MINIMAL_SEED_CONFIG.maxIterations, 1000);
 });
 
 Deno.test("INPUT_COUNT and OUTPUT_COUNT are 2 → 1", () => {
