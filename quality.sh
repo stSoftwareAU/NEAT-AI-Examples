@@ -168,8 +168,13 @@ run_example "Discovery Example" "./discovery/run.sh"
 # Run the Discovery-at-Scale demo (issue #84)
 run_example "Discovery at Scale Demo" "./discovery_at_scale/run.sh"
 
-# Run the Crossover (Breeding) example
-run_example "Crossover (Breeding) Example" "./crossover/run.sh"
+# Run the Crossover (Breeding) example. The CI/quality budget caps the
+# section via `CROSSOVER_QUICK=1` (issue #374): the runner forces a tiny
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs SVG. A direct `./crossover/run.sh`
+# invocation still uses the realistic 15-minute / target-error budget
+# from `DEFAULT_CROSSOVER_EVOLUTION_CONFIG`.
+run_example_with_env "Crossover (Breeding) Example" "./crossover/run.sh" "CROSSOVER_QUICK=1"
 
 # Run the CRISPR Gene Injection example. The CI/quality budget caps the
 # section via `CRISPR_QUICK=1` (issue #373): the runner forces a tiny

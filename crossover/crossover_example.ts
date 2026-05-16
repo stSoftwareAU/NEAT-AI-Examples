@@ -78,7 +78,7 @@ export const SYNTHETIC_CONFIG: SyntheticConfig = {
 export interface CrossoverEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #213 mandates 5 as upper bound). */
+  /** Wall-clock backstop in minutes (bumped to 15 for the Refresh-2026-05 re-evolution under #374). */
   timeoutMinutes: number;
   /** NEAT population size — small enough for a fast self-contained demo. */
   populationSize: number;
@@ -90,8 +90,11 @@ export interface CrossoverEvolutionConfig {
 
 /**
  * Defaults tuned so the demo converges via `targetError` well inside the
- * 5-minute backstop on a developer machine while still showing visible
- * neuron / synapse growth from the minimal seed.
+ * 15-minute backstop on a developer machine while still showing visible
+ * neuron / synapse growth from the minimal seed. The backstop was bumped
+ * from 5 → 15 minutes for the Refresh-2026-05 re-evolution under issue
+ * #374; `maxIterations` was bumped from 1000 → 30000 so the wall-clock
+ * cap can actually bind rather than the demo being generation-bound.
  *
  * `targetError` is deliberately tighter than what a direct-input → output
  * seed can reach for parent A's nonlinear sigmoid-of-sigmoids function,
@@ -100,9 +103,9 @@ export interface CrossoverEvolutionConfig {
  */
 export const DEFAULT_CROSSOVER_EVOLUTION_CONFIG: CrossoverEvolutionConfig = {
   targetError: 0.02,
-  timeoutMinutes: 5,
+  timeoutMinutes: 15,
   populationSize: 24,
-  maxIterations: 1000,
+  maxIterations: 30000,
   seed: 213213,
 };
 
@@ -536,8 +539,25 @@ if (import.meta.main) {
   console.log("🧬 Crossover (Breeding) Example — minimal-seed evolution (#213, #302)");
   console.log("");
 
-  // Set up directories (all under a hidden, gitignored folder)
-  const { dataDir, creaturesDir, outputDir } = setupWorkingDirs(WORKING_ROOT);
+  // CI/quality quick mode (mirrors the cart_pole CART_POLE_QUICK=1 idiom).
+  // When invoked with `CROSSOVER_QUICK=1` the runner forces a tiny
+  // iterations cap, writes its artefacts under a temp directory, and never
+  // overwrites the canonical docs SVG. Direct invocations still use the
+  // realistic 15-minute budget set in DEFAULT_CROSSOVER_EVOLUTION_CONFIG.
+  const quick = Deno.env.get("CROSSOVER_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "crossover_quick_" });
+    console.log(
+      "⚡ Quick mode (CROSSOVER_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
+  // Set up directories (all under a hidden, gitignored folder by default;
+  // a temp directory in quick mode).
+  const workingRoot = quick && quickBaseDir !== undefined ? quickBaseDir : WORKING_ROOT;
+  const { dataDir, creaturesDir, outputDir } = setupWorkingDirs(workingRoot);
 
   // Step 1: Create two parent creatures (hand-crafted demo state).
   console.log("📦 Step 1: Creating parent creatures (hand-crafted demo state)...");
@@ -618,7 +638,9 @@ if (import.meta.main) {
     `   Seed topology: ${seed.neurons.length} neurons, ${seed.synapses.length} synapses`,
   );
 
-  const evolutionConfig = DEFAULT_CROSSOVER_EVOLUTION_CONFIG;
+  const evolutionConfig: CrossoverEvolutionConfig = quick
+    ? { ...DEFAULT_CROSSOVER_EVOLUTION_CONFIG, timeoutMinutes: 1, maxIterations: 3 }
+    : DEFAULT_CROSSOVER_EVOLUTION_CONFIG;
   console.log(
     `   Stop conditions: targetError=${evolutionConfig.targetError}, ` +
       `timeoutMinutes=${evolutionConfig.timeoutMinutes}`,
@@ -646,14 +668,21 @@ if (import.meta.main) {
   const evolvedScore = await scoreCreature(evolutionResult.champion, dataDir);
   console.log(`   Evolved champion score: ${evolvedScore.toPrecision(6)}`);
 
-  // Step 6: Emit the milestone summary SVG.
+  // Step 6: Emit the milestone summary SVG. In quick mode the SVG is
+  // written next to the ephemeral artefacts only — the canonical
+  // docs SVG is preserved so quality.sh never clobbers it.
   console.log("\n📈 Step 6: Writing milestone summary SVG");
-  ensureDirSync("docs/screenshots/crossover");
   const summarySvg = renderEvolveDirSummarySvg(evolutionResult.summary, {
     title: "Crossover — evolveDir Run Summary",
   });
-  await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
-  console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  await Deno.writeTextFile(join(outputDir, "evolution_summary.svg"), summarySvg);
+  if (quick) {
+    console.log("   ⏭️  Quick mode: skipped overwriting canonical screenshot");
+  } else {
+    ensureDirSync("docs/screenshots/crossover");
+    await Deno.writeTextFile(EVOLUTION_SUMMARY_SVG_PATH, summarySvg);
+    console.log(`   📈 Wrote ${EVOLUTION_SUMMARY_SVG_PATH}`);
+  }
 
   // Final summary so the README can quote real measured numbers.
   console.log("\n📋 Comparison:");

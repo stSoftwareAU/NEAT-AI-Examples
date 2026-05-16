@@ -365,7 +365,11 @@ Deno.test("INPUT_COUNT and OUTPUT_COUNT match parent dimensions", () => {
 Deno.test("DEFAULT_CROSSOVER_EVOLUTION_CONFIG has audit-compliant defaults", () => {
   const cfg = DEFAULT_CROSSOVER_EVOLUTION_CONFIG;
   assertGreater(cfg.targetError, 0, "targetError must be positive");
-  assertEquals(cfg.timeoutMinutes, 5, "timeoutMinutes must be 5 per issue #213");
+  assertEquals(
+    cfg.timeoutMinutes,
+    15,
+    "timeoutMinutes must default to the Refresh-2026-05 backstop (#374)",
+  );
   assertGreater(cfg.populationSize, 0, "populationSize must be positive");
   assertGreater(cfg.maxIterations, 0, "maxIterations must be positive");
 });
