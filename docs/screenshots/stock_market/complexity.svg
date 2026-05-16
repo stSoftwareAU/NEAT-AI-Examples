@@ -1,107 +1,71 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 800 400"
-  width="800"
-  height="400"
-  role="img"
-  aria-label="Stock Market — multi-run creature complexity dual-axis chart"
->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="Stock Market — multi-run creature complexity dual-axis chart">
   <title>Stock Market — multi-run creature complexity</title>
-  <rect width="800" height="400" fill="#fafafa" />
-  <text
-    x="400"
-    y="24"
-    text-anchor="middle"
-    font-family="sans-serif"
-    font-size="16"
-    font-weight="bold"
-    fill="#222"
-  >Stock Market — multi-run creature complexity</text>
-  <rect x="70" y="50" width="660" height="290" fill="#ffffff" stroke="#333333" stroke-width="1" />
+  <rect width="800" height="400" fill="#fafafa"/>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">Stock Market — multi-run creature complexity</text>
+  <rect x="70" y="50" width="660" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
-    <line x1="400" y1="340" x2="400" y2="344" stroke="#333333" stroke-width="1" />
-    <text x="400" y="358" text-anchor="middle">4805</text>
-    <text
-      x="400"
-      y="376"
-      text-anchor="middle"
-      font-weight="bold"
-    >cumulative generation (log scale)</text>
+    <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="70" y="358" text-anchor="middle">4805</text>
+    <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="730" y="358" text-anchor="middle">9077</text>
+    <text x="400" y="376" text-anchor="middle" font-weight="bold">cumulative generation (log scale)</text>
   </g>
   <g class="left-axis" font-family="sans-serif" font-size="11" fill="#333333">
-    <line x1="66" y1="340" x2="70" y2="340" stroke="#333333" stroke-width="1" />
+    <line x1="66" y1="340" x2="70" y2="340" stroke="#333333" stroke-width="1"/>
     <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0</text>
-    <line x1="66" y1="282" x2="70" y2="282" stroke="#333333" stroke-width="1" />
-    <text x="62" y="282" text-anchor="end" dominant-baseline="middle">13</text>
-    <line x1="66" y1="224" x2="70" y2="224" stroke="#333333" stroke-width="1" />
-    <text x="62" y="224" text-anchor="end" dominant-baseline="middle">26</text>
-    <line x1="66" y1="166" x2="70" y2="166" stroke="#333333" stroke-width="1" />
-    <text x="62" y="166" text-anchor="end" dominant-baseline="middle">39</text>
-    <line x1="66" y1="108" x2="70" y2="108" stroke="#333333" stroke-width="1" />
-    <text x="62" y="108" text-anchor="end" dominant-baseline="middle">52</text>
-    <line x1="66" y1="50" x2="70" y2="50" stroke="#333333" stroke-width="1" />
-    <text x="62" y="50" text-anchor="end" dominant-baseline="middle">65</text>
-    <text
-      x="22"
-      y="195"
-      text-anchor="middle"
-      dominant-baseline="middle"
-      font-weight="bold"
-      transform="rotate(-90 22 195)"
-    >neurons</text>
+    <line x1="66" y1="282.57" x2="70" y2="282.57" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="282.57" text-anchor="end" dominant-baseline="middle">20</text>
+    <line x1="66" y1="225.15" x2="70" y2="225.15" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="225.15" text-anchor="end" dominant-baseline="middle">40</text>
+    <line x1="66" y1="167.72" x2="70" y2="167.72" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="167.72" text-anchor="end" dominant-baseline="middle">60</text>
+    <line x1="66" y1="110.3" x2="70" y2="110.3" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="110.3" text-anchor="end" dominant-baseline="middle">80</text>
+    <line x1="66" y1="52.87" x2="70" y2="52.87" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="52.87" text-anchor="end" dominant-baseline="middle">100</text>
+    <line x1="66" y1="50" x2="70" y2="50" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="50" text-anchor="end" dominant-baseline="middle">101</text>
+    <text x="22" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 195)">neurons</text>
   </g>
   <g class="right-axis" font-family="sans-serif" font-size="11" fill="#333333">
-    <line x1="730" y1="340" x2="734" y2="340" stroke="#333333" stroke-width="1" />
+    <line x1="730" y1="340" x2="734" y2="340" stroke="#333333" stroke-width="1"/>
     <text x="738" y="340" text-anchor="start" dominant-baseline="middle">0</text>
-    <line x1="730" y1="281.76" x2="734" y2="281.76" stroke="#333333" stroke-width="1" />
-    <text x="738" y="281.76" text-anchor="start" dominant-baseline="middle">48</text>
-    <line x1="730" y1="223.51" x2="734" y2="223.51" stroke="#333333" stroke-width="1" />
-    <text x="738" y="223.51" text-anchor="start" dominant-baseline="middle">96</text>
-    <line x1="730" y1="165.27" x2="734" y2="165.27" stroke="#333333" stroke-width="1" />
-    <text x="738" y="165.27" text-anchor="start" dominant-baseline="middle">144</text>
-    <line x1="730" y1="107.03" x2="734" y2="107.03" stroke="#333333" stroke-width="1" />
-    <text x="738" y="107.03" text-anchor="start" dominant-baseline="middle">192</text>
-    <line x1="730" y1="50" x2="734" y2="50" stroke="#333333" stroke-width="1" />
-    <text x="738" y="50" text-anchor="start" dominant-baseline="middle">239</text>
-    <text
-      x="778"
-      y="195"
-      text-anchor="middle"
-      dominant-baseline="middle"
-      font-weight="bold"
-      transform="rotate(90 778 195)"
-    >synapses</text>
+    <line x1="730" y1="282" x2="734" y2="282" stroke="#333333" stroke-width="1"/>
+    <text x="738" y="282" text-anchor="start" dominant-baseline="middle">84</text>
+    <line x1="730" y1="224" x2="734" y2="224" stroke="#333333" stroke-width="1"/>
+    <text x="738" y="224" text-anchor="start" dominant-baseline="middle">168</text>
+    <line x1="730" y1="166" x2="734" y2="166" stroke="#333333" stroke-width="1"/>
+    <text x="738" y="166" text-anchor="start" dominant-baseline="middle">252</text>
+    <line x1="730" y1="108" x2="734" y2="108" stroke="#333333" stroke-width="1"/>
+    <text x="738" y="108" text-anchor="start" dominant-baseline="middle">336</text>
+    <line x1="730" y1="50" x2="734" y2="50" stroke="#333333" stroke-width="1"/>
+    <text x="738" y="50" text-anchor="start" dominant-baseline="middle">420</text>
+    <text x="778" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(90 778 195)">synapses</text>
   </g>
-  <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666"></g>
+  <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
+    <line class="run-boundary" x1="730" y1="50" x2="730" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="730" y="46" text-anchor="middle">run 2</text>
+  </g>
   <g class="neurons-line">
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="400,50" />
-    <circle class="neurons-point" cx="400" cy="50" r="2.4" fill="#2ca02c" />
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="70,153.37"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="730,50"/>
+    <circle class="neurons-point" cx="70" cy="153.37" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="730" cy="50" r="2.4" fill="#2ca02c"/>
   </g>
   <g class="synapses-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="400,50" />
-    <circle class="synapses-point" cx="400" cy="50" r="2.4" fill="#d62728" />
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,174.98"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="730,50"/>
+    <circle class="synapses-point" cx="70" cy="174.98" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="730" cy="50" r="2.4" fill="#d62728"/>
   </g>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
-    <rect
-      x="76"
-      y="52"
-      width="120"
-      height="40"
-      fill="#ffffff"
-      fill-opacity="0.85"
-      stroke="#cccccc"
-      stroke-width="0.5"
-    />
-    <line x1="82" y1="62" x2="100" y2="62" stroke="#2ca02c" stroke-width="2" />
+    <rect x="76" y="52" width="120" height="40" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="0.5"/>
+    <line x1="82" y1="62" x2="100" y2="62" stroke="#2ca02c" stroke-width="2"/>
     <text x="106" y="66">neurons</text>
-    <line x1="82" y1="78" x2="100" y2="78" stroke="#d62728" stroke-width="2" />
+    <line x1="82" y1="78" x2="100" y2="78" stroke="#d62728" stroke-width="2"/>
     <text x="106" y="82">synapses</text>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">
-    <text
-      x="400"
-      y="394"
-      text-anchor="middle"
-    >final 65 neurons · 239 synapses · 1 runs · 4805 cumulative generations</text>
+    <text x="400" y="394" text-anchor="middle">final 101 neurons · 420 synapses · 2 runs · 9077 cumulative generations</text>
   </g>
 </svg>

@@ -14,9 +14,10 @@ Depends on #384.
 
 `neuron_pruning` is listed under [`AGENTS.md`](../AGENTS.md) as an exempt example because the
 hand-crafted constant-neuron injection that pruning removes is the demo's whole point — but the NEAT
-seed itself is still mandated by issue #217 to be the minimal `new Creature(INPUT_COUNT,
-OUTPUT_COUNT)` (no hidden hint, no pre-built `network.json`, no warm start). There is no
-`multi_run_state` resume path on this example; warm-starting from the persisted
+seed itself is still mandated by issue #217 to be the minimal
+`new Creature(INPUT_COUNT,
+OUTPUT_COUNT)` (no hidden hint, no pre-built `network.json`, no warm
+start). There is no `multi_run_state` resume path on this example; warm-starting from the persisted
 `.neuron-pruning/creatures/champion.json` would violate that seed contract and break the audit.
 
 The honest interpretation of the issue's "+15 minutes wall-clock" is therefore **+15 minutes of
@@ -29,17 +30,17 @@ under PR #404.
 
 ### Measured run
 
-| Metric                   | Before (`Refresh-2026-05` baseline) | After (this PR)                         |
-| ------------------------ | ----------------------------------- | --------------------------------------- |
-| Generations              | 700 (max-iter clamp)                | 395 (converged on `targetError`)        |
-| Wall-clock               | ≈ 7 s                               | 10.3 s                                  |
-| Final per-record error   | 0.0050                              | 0.0050 (target 0.005 — reached)         |
-| Final score              | 0.9950                              | 0.9950                                  |
-| Seed neurons / synapses  | 6 / 0                               | 6 / 0                                   |
-| Pre-prune neurons / syn. | 8 / 11                              | 8 / 11                                  |
-| Final neurons / synapses | 6 / 9                               | 6 / 9                                   |
-| Pruned neurons           | 2                                   | 2                                       |
-| `targetError` / timeout  | 0.005 / 5 min                       | 0.005 / 20 min                          |
+| Metric                   | Before (`Refresh-2026-05` baseline) | After (this PR)                  |
+| ------------------------ | ----------------------------------- | -------------------------------- |
+| Generations              | 700 (max-iter clamp)                | 395 (converged on `targetError`) |
+| Wall-clock               | ≈ 7 s                               | 10.3 s                           |
+| Final per-record error   | 0.0050                              | 0.0050 (target 0.005 — reached)  |
+| Final score              | 0.9950                              | 0.9950                           |
+| Seed neurons / synapses  | 6 / 0                               | 6 / 0                            |
+| Pre-prune neurons / syn. | 8 / 11                              | 8 / 11                           |
+| Final neurons / synapses | 6 / 9                               | 6 / 9                            |
+| Pruned neurons           | 2                                   | 2                                |
+| `targetError` / timeout  | 0.005 / 5 min                       | 0.005 / 20 min                   |
 
 The NEAT seed remains `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — no warm start, no hidden hint, no
 resumed checkpoint. Two deliberately-injected constant neurons were detected and folded into
@@ -94,10 +95,10 @@ confirming the bias-fold path's "no regression" guarantee. No defect issue was r
 
 ## Test Plan
 
-- `neuron_pruning/neuron_pruning_test.ts` — all 23 tests pass with the bumped defaults; the
-  existing `DEFAULT_NEURON_PRUNING_CONFIG - has positive sizes and counts` test continues to verify
-  the contract (positive `timeoutMinutes`, positive `maxIterations`, etc.) without pinning to a
-  specific value.
+- `neuron_pruning/neuron_pruning_test.ts` — all 23 tests pass with the bumped defaults; the existing
+  `DEFAULT_NEURON_PRUNING_CONFIG - has positive sizes and counts` test continues to verify the
+  contract (positive `timeoutMinutes`, positive `maxIterations`, etc.) without pinning to a specific
+  value.
 - `./quality.sh < /dev/null` — all `neuron_pruning`-related examples and tests pass; the only
   failing test (`docs/archive_test.ts::No PR summary files remain in docs/ root`) is pre-existing on
   the milestone branch and unrelated to this change.
