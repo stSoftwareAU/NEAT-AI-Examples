@@ -623,26 +623,31 @@ export interface AtScaleEvolutionConfig {
 }
 
 /**
- * Defaults tuned so the demo converges via `targetError` well inside the
- * 5-minute backstop on a developer machine while still showing visible
- * neuron / synapse growth from the minimal seed.
+ * Defaults tuned so the demo can grow visible structure from the minimal
+ * seed without bumping into the iteration cap prematurely on the bumped
+ * `@stsoftware/neat-ai` versions. The reference creature this minimal
+ * seed has to imitate is built via `buildLargeCreature(...)` with
+ * {@link REFERENCE_HIDDEN} hidden neurons, so the function we are fitting
+ * is more complex than the basic `discovery` example — that is the "at
+ * scale" framing of #208.
  *
- * The reference creature this minimal seed has to imitate is built via
- * `buildLargeCreature(...)` with {@link REFERENCE_HIDDEN} hidden neurons,
- * so the function we are fitting is more complex than the basic
- * `discovery` example — that is the "at scale" framing of #208.
+ * `timeoutMinutes` was raised from 5 → 20 under issue #376 (the
+ * `Refresh-2026-05` "+15 more minutes" re-evolve task — the documented
+ * justification permitted by #208's stop-condition rule) so the run is
+ * genuinely bounded by wall-clock rather than the iteration cap on newer
+ * NEAT-AI builds. `maxIterations` was raised in lock-step so wall-clock
+ * remains the limiter.
  */
 export const DEFAULT_AT_SCALE_EVOLUTION_CONFIG: AtScaleEvolutionConfig = {
   // The reference creature is produced by `buildLargeCreature`, which
   // builds a moderately dense feed-forward network. A targetError of
   // 0.005 is tight enough that the minimal seed must grow real hidden
   // structure to satisfy it (the audit's "topology genuinely changes"
-  // acceptance criterion) while still being reachable inside the
-  // 5-minute backstop on a developer machine.
+  // acceptance criterion).
   targetError: 0.005,
-  timeoutMinutes: 5,
+  timeoutMinutes: 20,
   populationSize: 32,
-  maxIterations: 600,
+  maxIterations: 20_000,
   seed: 208208,
 };
 

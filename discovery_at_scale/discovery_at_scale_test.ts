@@ -417,12 +417,15 @@ Deno.test(
 
 Deno.test("DEFAULT_AT_SCALE_EVOLUTION_CONFIG honours the audit's stop-condition rule", () => {
   // Issue #208 mandates targetError + timeoutMinutes <= 5 (or higher
-  // with a documented justification — the default sticks to 5).
+  // with a documented justification). Issue #376 (Refresh-2026-05) is
+  // the documented justification for raising the wall-clock backstop
+  // to 20 minutes so the run is bounded by wall-clock rather than the
+  // iteration cap on newer NEAT-AI builds.
   assertGreater(DEFAULT_AT_SCALE_EVOLUTION_CONFIG.targetError, 0, "targetError must be positive");
-  assertEquals(
+  assertGreaterOrEqual(
     DEFAULT_AT_SCALE_EVOLUTION_CONFIG.timeoutMinutes,
     5,
-    "timeoutMinutes must default to the issue #208 backstop",
+    "timeoutMinutes must be at least the issue #208 backstop (5 minutes)",
   );
   assertGreater(
     DEFAULT_AT_SCALE_EVOLUTION_CONFIG.populationSize,
