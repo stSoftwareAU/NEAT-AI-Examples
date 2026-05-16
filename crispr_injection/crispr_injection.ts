@@ -142,7 +142,7 @@ export const DEFAULT_CRISPR_CONFIG: CrisprConfig = {
 export interface CrisprEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #209 mandates 5 as upper bound). */
+  /** Wall-clock backstop in minutes (bumped to 15 for the Refresh-2026-05 re-evolution under #373). */
   timeoutMinutes: number;
   /** NEAT population size — small enough for a fast self-contained demo. */
   populationSize: number;
@@ -154,14 +154,17 @@ export interface CrisprEvolutionConfig {
 
 /**
  * Defaults tuned so each evolution phase converges via `targetError`
- * well inside the 5-minute backstop on a developer machine while still
- * showing visible neuron / synapse growth from the minimal seed.
+ * well inside the 15-minute backstop on a developer machine while still
+ * showing visible neuron / synapse growth from the minimal seed. The
+ * backstop was bumped from 5 → 15 minutes for the Refresh-2026-05
+ * re-evolution under issue #373; in practice both phases still exit
+ * via `targetError` long before the wall-clock cap fires.
  */
 export const DEFAULT_CRISPR_EVOLUTION_CONFIG: CrisprEvolutionConfig = {
   targetError: 0.000001,
-  timeoutMinutes: 5,
+  timeoutMinutes: 15,
   populationSize: 32,
-  maxIterations: 600,
+  maxIterations: 30000,
   seed: 209209,
 };
 
@@ -675,7 +678,23 @@ async function runCrisprExample(): Promise<void> {
 
   console.log("🧬 CRISPR Gene Injection Example");
 
-  const { dataDir, creaturesDir, outputDir } = setupWorkingDirs(WORKING_ROOT);
+  // CI/quality quick mode (mirrors the cart_pole CART_POLE_QUICK=1 idiom).
+  // When invoked with `CRISPR_QUICK=1` the runner forces a tiny iterations
+  // cap, writes its artefacts under a temp directory, and never overwrites
+  // the canonical docs SVG. Direct invocations still use the realistic
+  // budget set in DEFAULT_CRISPR_EVOLUTION_CONFIG.
+  const quick = Deno.env.get("CRISPR_QUICK") === "1";
+  let quickBaseDir: string | undefined;
+  if (quick) {
+    quickBaseDir = await Deno.makeTempDir({ prefix: "crispr_quick_" });
+    console.log(
+      "⚡ Quick mode (CRISPR_QUICK=1): tiny iterations cap, ephemeral artefacts " +
+        `under ${quickBaseDir}`,
+    );
+  }
+
+  const workingRoot = quick && quickBaseDir !== undefined ? quickBaseDir : WORKING_ROOT;
+  const { dataDir, creaturesDir, outputDir } = setupWorkingDirs(workingRoot);
 
   // Stage 1: Build the ground-truth target and synthesise the .bin set.
   stage("Stage 1/3: Generating binary training set from the hand-crafted target");
@@ -691,7 +710,9 @@ async function runCrisprExample(): Promise<void> {
 
   // Stage 2: Run before/after evolveDir phases.
   stage("Stage 2/3: Evolving before and after gene injection");
-  const config = DEFAULT_CRISPR_EVOLUTION_CONFIG;
+  const config: CrisprEvolutionConfig = quick
+    ? { ...DEFAULT_CRISPR_EVOLUTION_CONFIG, timeoutMinutes: 1, maxIterations: 3 }
+    : DEFAULT_CRISPR_EVOLUTION_CONFIG;
   console.log(
     `   Stop conditions: targetError=${config.targetError}, ` +
       `timeoutMinutes=${config.timeoutMinutes}`,
@@ -728,10 +749,14 @@ async function runCrisprExample(): Promise<void> {
     pre: result.pre.summary,
     post: result.post.summary,
   });
-  ensureDirSync("docs/screenshots");
-  await Deno.writeTextFile(SCREENSHOT_PATH, combinedSvg);
   await Deno.writeTextFile(join(outputDir, "crispr_injection.svg"), combinedSvg);
-  console.log(`   🖼️  Wrote ${SCREENSHOT_PATH}`);
+  if (quick) {
+    console.log("   ⏭️  Quick mode: skipped overwriting canonical screenshot");
+  } else {
+    ensureDirSync("docs/screenshots");
+    await Deno.writeTextFile(SCREENSHOT_PATH, combinedSvg);
+    console.log(`   🖼️  Wrote ${SCREENSHOT_PATH}`);
+  }
 
   // Summary line — quoted in the README so reviewers can see the
   // measured numbers from the latest run.

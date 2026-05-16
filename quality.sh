@@ -171,8 +171,13 @@ run_example "Discovery at Scale Demo" "./discovery_at_scale/run.sh"
 # Run the Crossover (Breeding) example
 run_example "Crossover (Breeding) Example" "./crossover/run.sh"
 
-# Run the CRISPR Gene Injection example
-run_example "CRISPR Gene Injection Example" "./crispr_injection/run.sh"
+# Run the CRISPR Gene Injection example. The CI/quality budget caps the
+# section via `CRISPR_QUICK=1` (issue #373): the runner forces a tiny
+# iterations cap, writes its artefacts under a temp directory, and never
+# overwrites the canonical docs SVG. A direct `./crispr_injection/run.sh`
+# invocation still uses the realistic 15-minute / target-error budget
+# from `DEFAULT_CRISPR_EVOLUTION_CONFIG`.
+run_example_with_env "CRISPR Gene Injection Example" "./crispr_injection/run.sh" "CRISPR_QUICK=1"
 
 # Run the Cart-Pole Balancing example. The CI/quality budget caps the
 # section via `CART_POLE_QUICK=1` (issue #321): the runner forces an

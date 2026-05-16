@@ -245,8 +245,8 @@ Deno.test("DEFAULT_CRISPR_EVOLUTION_CONFIG honours the audit's stop-condition ru
   );
   assertEquals(
     DEFAULT_CRISPR_EVOLUTION_CONFIG.timeoutMinutes,
-    5,
-    "timeoutMinutes must default to the issue #209 backstop",
+    15,
+    "timeoutMinutes must default to the Refresh-2026-05 backstop (#373)",
   );
   assertGreater(
     DEFAULT_CRISPR_EVOLUTION_CONFIG.populationSize,
