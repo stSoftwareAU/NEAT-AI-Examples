@@ -79,10 +79,9 @@ The run exits on whichever of the two stop conditions fires first. The `targetEr
 is tight enough that the minimal seed must grow real hidden structure to satisfy it — on the
 `Refresh-2026-05` run NEAT-AI did not reach it inside the 20-minute backstop, but the champion still
 delivered a reasonable approximation of the labelled task: a 9-neuron seed has been grown into a
-37-neuron / 193-synapse champion that approximates the input → output behaviour of the
-33-neuron / ~165-synapse reference _without ever seeing its topology_. The topology bars in the
-summary above are the demo's headline — they show NEAT-AI _learning_ the network's shape, not just
-its weights.
+37-neuron / 193-synapse champion that approximates the input → output behaviour of the 33-neuron /
+~165-synapse reference _without ever seeing its topology_. The topology bars in the summary above
+are the demo's headline — they show NEAT-AI _learning_ the network's shape, not just its weights.
 
 ## 🚀 Running the example
 

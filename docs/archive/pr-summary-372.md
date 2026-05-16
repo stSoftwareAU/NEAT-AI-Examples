@@ -7,9 +7,9 @@ by this example). Closes #372.
 
 The example was launched via `./cart_pole/run.sh --timeout=15` from the prior persisted champion in
 `docs/data/cart_pole/`. The multi-run wiring added under #321/#342 reloaded
-`docs/data/cart_pole/creature.json` via `Creature.fromJSON()` to seed run 2, then evolved for
-20,841 generations across 15 minutes wall-clock before exiting via the `timeoutMinutes` stop
-condition. The new milestones were appended to `docs/data/cart_pole/milestones.json` with a
+`docs/data/cart_pole/creature.json` via `Creature.fromJSON()` to seed run 2, then evolved for 20,841
+generations across 15 minutes wall-clock before exiting via the `timeoutMinutes` stop condition. The
+new milestones were appended to `docs/data/cart_pole/milestones.json` with a
 monotonically-increasing `cumulativeGen`, the merged champion was re-persisted, and the multi-run
 error / complexity charts plus the headline `cart_pole.svg` replay strip were re-rendered.
 
@@ -27,16 +27,16 @@ no warm seed replaces gen 1 of the demo.
 
 ### Measured run (multi-run state, before → after)
 
-| Metric                                   | Before (run 1) | After (run 1 + run 2) |
-| ---------------------------------------- | -------------- | --------------------- |
-| Runs in `multi_run_state.json`           | 1              | 2                     |
-| Total milestones in `milestones.json`    | 11             | 23                    |
+| Metric                                    | Before (run 1) | After (run 1 + run 2) |
+| ----------------------------------------- | -------------- | --------------------- |
+| Runs in `multi_run_state.json`            | 1              | 2                     |
+| Total milestones in `milestones.json`     | 11             | 23                    |
 | Best `meanEpisodeSteps` at last milestone | 108.49         | 114.59                |
-| Best raw `bestScore` (negative reward)   | -0.567         | -0.374                |
-| Cumulative generations reached           | 10,000         | 30,841                |
-| Wall-clock added                         | (baseline)     | +15 m 0 s             |
-| Stop reason for last run                 | (baseline)     | `timeout`             |
-| Solved (`mean ≥ 480`)?                   | No             | No                    |
+| Best raw `bestScore` (negative reward)    | -0.567         | -0.374                |
+| Cumulative generations reached            | 10,000         | 30,841                |
+| Wall-clock added                          | (baseline)     | +15 m 0 s             |
+| Stop reason for last run                  | (baseline)     | `timeout`             |
+| Solved (`mean ≥ 480`)?                    | No             | No                    |
 
 Evolution did not cross the `SOLVED_THRESHOLD` of 480 mean steps within the 15-minute budget, but
 the controller's normalised reward improved from `-0.567` to `-0.374` (error 0.567 → 0.374) and the
@@ -65,16 +65,16 @@ flowchart LR
 
 ### NEAT-AI monitoring observations
 
-The 15-minute run logged repeated `MemoryMonitor` warning- and critical-level responses
-(activation cache eviction, WASM cache clearing, ~84-89% heap occupancy). The `MemoryMonitor`
-back-off and snapshot output indicated the caches were **not** the retainer — the long-running
-population state is. Run completed cleanly (exit 0, champion saved, charts rendered), so this was
-judged as the library's memory-pressure subsystem operating as designed rather than a hard failure;
-no NEAT-AI defect issue was filed. Searches against `stSoftwareAU/NEAT-AI` for `MemoryMonitor heap
-critical`, `memory pressure`, and `heap` returned no existing open issues either, so there is
-nothing to dedupe against. If the symptom recurs at higher severity (OOM crash or process death)
-during another re-evolve, the next worker should file a defect using the template in
-`docs/monitoring-neat-ai.md`.
+The 15-minute run logged repeated `MemoryMonitor` warning- and critical-level responses (activation
+cache eviction, WASM cache clearing, ~84-89% heap occupancy). The `MemoryMonitor` back-off and
+snapshot output indicated the caches were **not** the retainer — the long-running population state
+is. Run completed cleanly (exit 0, champion saved, charts rendered), so this was judged as the
+library's memory-pressure subsystem operating as designed rather than a hard failure; no NEAT-AI
+defect issue was filed. Searches against `stSoftwareAU/NEAT-AI` for `MemoryMonitor heap
+critical`,
+`memory pressure`, and `heap` returned no existing open issues either, so there is nothing to dedupe
+against. If the symptom recurs at higher severity (OOM crash or process death) during another
+re-evolve, the next worker should file a defect using the template in `docs/monitoring-neat-ai.md`.
 
 ### Housekeeping
 
