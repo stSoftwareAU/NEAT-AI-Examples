@@ -12,7 +12,13 @@
  * the rendered SVG, and missing-field errors are caught.
  */
 
-import { assert, assertEquals, assertGreater, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreater,
+  assertGreaterOrEqual,
+  assertThrows,
+} from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
@@ -84,10 +90,15 @@ Deno.test("DEFAULT_SHOWCASE_EVOLUTION_CONFIG honours the audit's stop-condition 
     0,
     "targetError must be positive",
   );
-  assertEquals(
+  // Issue #211 mandates a wall-clock backstop; the specific value is
+  // per-example. Issue #377 (Refresh-2026-05) raised this example's
+  // backstop from 5 → 20 minutes to grant the +15 minutes of additional
+  // evolution requested by the refresh milestone, so the contract here
+  // is a lower-bound check rather than an exact match.
+  assertGreaterOrEqual(
     DEFAULT_SHOWCASE_EVOLUTION_CONFIG.timeoutMinutes,
     5,
-    "timeoutMinutes must default to the issue #211 backstop",
+    "timeoutMinutes must satisfy the issue #211 backstop lower bound (≥5)",
   );
   assertGreater(
     DEFAULT_SHOWCASE_EVOLUTION_CONFIG.populationSize,

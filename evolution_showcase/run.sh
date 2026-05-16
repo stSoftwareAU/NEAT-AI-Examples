@@ -7,9 +7,9 @@ set -euo pipefail
 # Builds a hand-crafted teacher creature, synthesises a deterministic
 # binary `.bin` training set from it, evolves a minimal NEAT-AI seed
 # (`new Creature(INPUT, OUTPUT)`) via `Creature.evolveDir` until either
-# the per-example `targetError` is reached or the `timeoutMinutes: 5`
-# backstop fires, and renders a single milestone summary SVG built from
-# the call's return value:
+# the per-example `targetError` is reached or the wall-clock backstop
+# fires (20 minutes per issue #377, Refresh-2026-05), and renders a
+# single milestone summary SVG built from the call's return value:
 #
 #   - docs/screenshots/evolution_showcase/evolution_summary.svg
 #
