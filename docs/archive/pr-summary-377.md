@@ -18,8 +18,8 @@ issue #211 to be the minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — there
 The honest interpretation of the issue's "+15 minutes wall-clock" is therefore **+15 minutes of
 additional evolution budget on the next fresh policy-compliant run** — i.e. raising
 `DEFAULT_SHOWCASE_EVOLUTION_CONFIG.timeoutMinutes` from 5 → 20 (the documented justification
-permitted by the audit's stop-condition rule). `maxIterations` was lifted in lock-step from
-3 000 → 20 000 so wall-clock is the limiter, and the matching test was relaxed from
+permitted by the audit's stop-condition rule). `maxIterations` was lifted in lock-step from 3 000 →
+20 000 so wall-clock is the limiter, and the matching test was relaxed from
 `assertEquals(timeoutMinutes, 5)` to `assertGreaterOrEqual(timeoutMinutes, 5)` with the #377
 justification recorded in the comment.
 
@@ -27,15 +27,15 @@ justification recorded in the comment.
 
 ### Measured run
 
-| Metric                   | Before (`Refresh-2026-05` baseline) | After (this PR)                                  |
-| ------------------------ | ----------------------------------- | ------------------------------------------------ |
-| Generations              | (5 min budget)                      | 14 368                                           |
-| Wall-clock               | ≤ 5 min                             | 20 m 17 s                                        |
-| Final per-record error   | n/a                                 | 0.1070 (target 0.05 — not reached in backstop)   |
-| Final score              | n/a                                 | 0.8930                                           |
-| Seed neurons / synapses  | 5 / 4                               | 5 / 4                                            |
-| Final neurons / synapses | (smaller)                           | 41 / 230                                         |
-| `targetError` / timeout  | 0.05 / 5 min                        | 0.05 / 20 min                                    |
+| Metric                   | Before (`Refresh-2026-05` baseline) | After (this PR)                                |
+| ------------------------ | ----------------------------------- | ---------------------------------------------- |
+| Generations              | (5 min budget)                      | 14 368                                         |
+| Wall-clock               | ≤ 5 min                             | 20 m 17 s                                      |
+| Final per-record error   | n/a                                 | 0.1070 (target 0.05 — not reached in backstop) |
+| Final score              | n/a                                 | 0.8930                                         |
+| Seed neurons / synapses  | 5 / 4                               | 5 / 4                                          |
+| Final neurons / synapses | (smaller)                           | 41 / 230                                       |
+| `targetError` / timeout  | 0.05 / 5 min                        | 0.05 / 20 min                                  |
 
 NEAT-AI added substantial structure on top of the minimal seed (5 → 41 neurons, 4 → 230 synapses)
 even though the run did not reach `targetError` inside the 20-minute backstop — the long-form
@@ -71,10 +71,10 @@ flowchart LR
 ## Test Plan
 
 - `evolution_showcase/evolution_showcase_test.ts::DEFAULT_SHOWCASE_EVOLUTION_CONFIG honours the audit's stop-condition rule`
-  — assertion relaxed from `assertEquals(timeoutMinutes, 5)` to `assertGreaterOrEqual(timeoutMinutes, 5)`
-  with the issue #377 justification recorded in the comment; the rest of the stop-condition
-  contract (positive `targetError`, positive `populationSize`, positive `maxIterations`) is
-  unchanged.
+  — assertion relaxed from `assertEquals(timeoutMinutes, 5)` to
+  `assertGreaterOrEqual(timeoutMinutes, 5)` with the issue #377 justification recorded in the
+  comment; the rest of the stop-condition contract (positive `targetError`, positive
+  `populationSize`, positive `maxIterations`) is unchanged.
 - All other `evolution_showcase_test.ts` tests are unchanged and continue to pass via
   `./quality.sh`.
 - `./quality.sh < /dev/null` — passes cleanly with the updated defaults.
