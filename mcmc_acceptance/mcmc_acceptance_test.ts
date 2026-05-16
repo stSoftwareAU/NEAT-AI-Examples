@@ -216,13 +216,18 @@ Deno.test("createOracleCreature returns a valid 3-input / 1-output topology", ()
 });
 
 Deno.test("DEFAULT_MCMC_EVOLUTION_CONFIG honours the audit's stop-condition rule", () => {
-  // Issue #215 mandates a per-example targetError plus the
-  // 5-minute timeoutMinutes safety backstop.
+  // Issue #215 mandated a per-example targetError plus a 5-minute
+  // timeoutMinutes safety backstop. Issue #381 grants +15 minutes of
+  // additional evolution budget for the Refresh-2026-05 milestone, so
+  // the backstop is now permitted to be >= 5 minutes (the upstream
+  // contract: the audit's stop-condition rule must continue to hold,
+  // but the example may carry a larger budget when refresh issues
+  // require it).
   assertGreater(DEFAULT_MCMC_EVOLUTION_CONFIG.targetError, 0);
-  assertEquals(
+  assertGreaterOrEqual(
     DEFAULT_MCMC_EVOLUTION_CONFIG.timeoutMinutes,
     5,
-    "timeoutMinutes must default to the issue #215 backstop",
+    "timeoutMinutes must be at least the issue #215 backstop (issue #381 grants +15 min)",
   );
   assertGreater(DEFAULT_MCMC_EVOLUTION_CONFIG.populationSize, 0);
   assertGreater(DEFAULT_MCMC_EVOLUTION_CONFIG.maxIterations, 0);

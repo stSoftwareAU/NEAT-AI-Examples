@@ -25,7 +25,10 @@
  *      pre-built `network.json`, no warm start) and runs
  *      `Creature.evolveDir(dataDir, options)` over the `.bin` set in
  *      forward-only mode until either the per-example `targetError` is
- *      reached or the `timeoutMinutes: 5` backstop fires. Under #303 the
+ *      reached or the `timeoutMinutes: 20` backstop fires (raised from
+ *      the original 5-minute audit cap by issue #381 — +15 minutes of
+ *      additional wall-clock budget for the `Refresh-2026-05` milestone).
+ *      Under #303 the
  *      per-generation `onTrainingEvent` hook was removed in favour of
  *      NEAT-AI's supported milestone-only telemetry surface — the run is
  *      summarised via a single milestone SVG sourced from `evolveDir`'s
@@ -138,7 +141,12 @@ export const SYNTHETIC_CONFIG: SyntheticConfig = {
 export interface MCMCEvolutionConfig {
   /** Per-example reasonable target error driving early exit. */
   targetError: number;
-  /** Wall-clock backstop in minutes (issue #215 mandates 5 as upper bound). */
+  /**
+   * Wall-clock backstop in minutes. Issue #215 originally mandated 5 as the
+   * upper bound; issue #381 grants +15 minutes of additional evolution
+   * budget for the `Refresh-2026-05` milestone, raising the default
+   * backstop to 20 minutes so wall-clock remains the genuine limiter.
+   */
   timeoutMinutes: number;
   /** NEAT population size — small enough for a fast self-contained demo. */
   populationSize: number;
@@ -150,18 +158,22 @@ export interface MCMCEvolutionConfig {
 
 /**
  * Defaults tuned so the demo converges via `targetError` well inside the
- * 5-minute backstop on a developer machine while still showing visible
+ * 20-minute backstop on a developer machine while still showing visible
  * neuron / synapse growth from the minimal seed.
  *
  * `targetError` is deliberately tighter than what a direct-input → output
  * seed can reach for the oracle's nonlinear function, so NEAT-AI is
  * forced to grow hidden structure to satisfy the stop condition.
+ *
+ * Issue #381 raised `timeoutMinutes` from 5 → 20 and lifted
+ * `maxIterations` from 1 000 → 4 000 in lock-step so wall-clock remains
+ * the genuine limiter under the freshly bumped @stsoftware/neat-ai.
  */
 export const DEFAULT_MCMC_EVOLUTION_CONFIG: MCMCEvolutionConfig = {
   targetError: 0.02,
-  timeoutMinutes: 5,
+  timeoutMinutes: 20,
   populationSize: 24,
-  maxIterations: 1000,
+  maxIterations: 4000,
   seed: 215215,
 };
 
