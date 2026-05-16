@@ -108,5 +108,16 @@
     "generationWallClockMs": 14,
     "runIndex": 1,
     "cumulativeGen": 1000
+  },
+  {
+    "runGen": 1,
+    "bestScore": 0,
+    "error": 0,
+    "neurons": 7,
+    "synapses": 6,
+    "meanEpisodeSteps": 164.805,
+    "generationWallClockMs": 59,
+    "runIndex": 2,
+    "cumulativeGen": 1001
   }
 ]
