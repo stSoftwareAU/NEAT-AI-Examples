@@ -3,32 +3,37 @@
   "forwardOnly": true,
   "neurons": [
     {
+      "type": "constant",
+      "uuid": "93d03ec6-100a-415d-8b7a-548e1cbcfb85",
+      "bias": -0.06573475903399874
+    },
+    {
       "type": "hidden",
       "uuid": "90e23935-37fc-4650-b377-1d31eb877e46",
-      "bias": -1.1209931702003737,
+      "bias": -1.1184295228534507,
       "squash": "HARD_TANH"
     },
     {
       "type": "hidden",
       "uuid": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-      "bias": -0.01772381708574414,
+      "bias": 0.4361485399422883,
       "squash": "SELU"
     },
     {
       "type": "output",
       "uuid": "output-0",
-      "bias": 0.6118392102663008,
+      "bias": 0.3384536189868536,
       "squash": "LeakyReLU"
     }
   ],
   "synapses": [
     {
-      "weight": 11.172493446168755,
+      "weight": 22.657368667697835,
       "fromUUID": "input-0",
       "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46"
     },
     {
-      "weight": -4.116021358263658,
+      "weight": -3.8735489235261666,
       "fromUUID": "input-0",
       "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
     },
@@ -38,27 +43,32 @@
       "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46"
     },
     {
-      "weight": -0.5101363170319576,
+      "weight": -0.6873354903621466,
       "fromUUID": "input-1",
       "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
     },
     {
-      "weight": -1.1231712590373804,
+      "weight": -1.1231085206152525,
       "fromUUID": "input-1",
       "toUUID": "output-0"
     },
     {
-      "weight": 0.45069899999999996,
+      "weight": -0.3739346,
+      "fromUUID": "93d03ec6-100a-415d-8b7a-548e1cbcfb85",
+      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46"
+    },
+    {
+      "weight": 1.0714712537333073,
       "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
       "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
     },
     {
-      "weight": 1.4466354167906166,
+      "weight": 1.3930676939735513,
       "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
       "toUUID": "output-0"
     },
     {
-      "weight": 0.5530457150887961,
+      "weight": 0.4646301283059483,
       "fromUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
       "toUUID": "output-0"
     }
@@ -68,11 +78,11 @@
   "tags": [
     {
       "name": "error",
-      "value": "0.007780227603838993"
+      "value": "0.00009091866697496587"
     },
     {
       "name": "score",
-      "value": "0.992219772396161"
+      "value": "0.999909081333025"
     },
     {
       "name": "approach",
@@ -80,7 +90,7 @@
     },
     {
       "name": "adjusted",
-      "value": "6 weights, 2 biases"
+      "value": "2 biases"
     },
     {
       "name": "approach-logged",
@@ -88,168 +98,40 @@
     }
   ],
   "memetic": {
-    "generation": 6,
-    "score": 0.8457438697836928,
+    "generation": 4,
+    "score": 0.9998704941568761,
     "biases": {
-      "90e23935-37fc-4650-b377-1d31eb877e46": -0.4500411690778111,
-      "061d0fa4-0808-4069-bcf9-b13efe6f9a15": -0.18356951449051973,
-      "output-0": 0.6118392102663008
+      "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
+      "output-0": 0.3296528349728205
     },
-    "weights": [
-      {
-        "fromUUID": "input-0",
-        "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-        "weight": 0
-      },
-      {
-        "fromUUID": "input-0",
-        "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-        "weight": 1.30073578502626
-      },
-      {
-        "fromUUID": "input-1",
-        "toUUID": "output-0",
-        "weight": 0.09962617515178414
-      },
-      {
-        "fromUUID": "input-1",
-        "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-        "weight": -0.5061038388144736
-      },
-      {
-        "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-        "toUUID": "output-0",
-        "weight": 0.07105000427430878
-      },
-      {
-        "fromUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-        "toUUID": "output-0",
-        "weight": 0.5539572265912509
-      }
-    ],
+    "weights": [],
     "ancestry": [
       {
-        "generation": 5,
-        "weights": [
-          {
-            "fromUUID": "input-0",
-            "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "weight": 0
-          },
-          {
-            "fromUUID": "input-0",
-            "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-            "weight": 1.30073578502626
-          },
-          {
-            "fromUUID": "input-1",
-            "toUUID": "output-0",
-            "weight": 0.09962617515178414
-          },
-          {
-            "fromUUID": "input-1",
-            "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "weight": -0.5061038388144736
-          },
-          {
-            "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-            "toUUID": "output-0",
-            "weight": 0.07105000427430878
-          },
-          {
-            "fromUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "toUUID": "output-0",
-            "weight": 0.5539572265912509
-          }
-        ],
-        "biases": {
-          "90e23935-37fc-4650-b377-1d31eb877e46": -0.4500411690778111,
-          "061d0fa4-0808-4069-bcf9-b13efe6f9a15": -0.18356951449051973,
-          "output-0": 0.6118392102663008
-        },
-        "score": 0.8457438697836928
-      },
-      {
-        "generation": 4,
-        "weights": [
-          {
-            "fromUUID": "input-0",
-            "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "weight": 0
-          },
-          {
-            "fromUUID": "input-0",
-            "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-            "weight": 1.30073578502626
-          },
-          {
-            "fromUUID": "input-1",
-            "toUUID": "output-0",
-            "weight": 0.09962617515178414
-          },
-          {
-            "fromUUID": "input-1",
-            "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "weight": -0.5061038388144736
-          },
-          {
-            "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-            "toUUID": "output-0",
-            "weight": 0.07105000427430878
-          },
-          {
-            "fromUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "toUUID": "output-0",
-            "weight": 0.5539572265912509
-          }
-        ],
-        "biases": {
-          "90e23935-37fc-4650-b377-1d31eb877e46": -0.4500411690778111,
-          "061d0fa4-0808-4069-bcf9-b13efe6f9a15": -0.18356951449051973,
-          "output-0": 0.6118392102663008
-        },
-        "score": 0.8457438697836928
-      },
-      {
         "generation": 3,
-        "weights": [
-          {
-            "fromUUID": "input-0",
-            "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "weight": 0
-          },
-          {
-            "fromUUID": "input-0",
-            "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-            "weight": 1.30073578502626
-          },
-          {
-            "fromUUID": "input-1",
-            "toUUID": "output-0",
-            "weight": 0.09962617515178414
-          },
-          {
-            "fromUUID": "input-1",
-            "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "weight": -0.5061038388144736
-          },
-          {
-            "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-            "toUUID": "output-0",
-            "weight": 0.07105000427430878
-          },
-          {
-            "fromUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-            "toUUID": "output-0",
-            "weight": 0.5539572265912509
-          }
-        ],
+        "weights": [],
         "biases": {
-          "90e23935-37fc-4650-b377-1d31eb877e46": -0.4500411690778111,
-          "061d0fa4-0808-4069-bcf9-b13efe6f9a15": -0.18356951449051973,
-          "output-0": 0.6118392102663008
+          "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
+          "output-0": 0.3296528349728205
         },
-        "score": 0.8457438697836928
+        "score": 0.9998704941568761
+      },
+      {
+        "generation": 2,
+        "weights": [],
+        "biases": {
+          "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
+          "output-0": 0.3296528349728205
+        },
+        "score": 0.9998704941568761
+      },
+      {
+        "generation": 1,
+        "weights": [],
+        "biases": {
+          "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
+          "output-0": 0.3296528349728205
+        },
+        "score": 0.9998704941568761
       }
     ]
   }
