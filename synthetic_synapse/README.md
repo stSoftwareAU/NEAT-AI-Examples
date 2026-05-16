@@ -128,9 +128,15 @@ inter-layer synapse the final creature owns is discovered during evolution.
 ### Stop conditions
 
 Each evolveDir phase stops when **either** `targetError` is reached **or** the `timeoutMinutes`
-backstop expires (issue #206 mandates a 5-minute upper bound). The example's defaults are
-`targetError: 0.005` and `timeoutMinutes: 5` — the per-phase wall-clock budget is half this so the
-two-phase total respects the safety net.
+backstop expires. Issue #206 originally capped the run at 5 wall-clock minutes; issue #389
+(Refresh-2026-05) lifted the backstop to 20 wall-clock minutes (= the original 5 + an additional 15
+minutes mandated by parent milestone #369) so the runner can actually consume the extra evolution
+budget on newer NEAT-AI builds. `maxIterationsPerPhase` was lifted from 250 to 10 000 alongside so
+wall-clock remains the genuine limiter. The example's defaults are `targetError: 0.005` and
+`timeoutMinutes: 20` — the per-phase wall-clock budget is half this so the two-phase total respects
+the safety net. `targetError` was tightened from 0.005 to 0.0005 under issue #389 alongside the
+budget bump so the sparse phase doesn't converge in seconds and leave the densify-train-prune cycle
+nothing to do.
 
 ## 📊 Milestone Telemetry
 

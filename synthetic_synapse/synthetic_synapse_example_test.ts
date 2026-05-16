@@ -293,9 +293,15 @@ Deno.test("DEFAULT_SYNTHETIC_SYNAPSE_CONFIG - has positive sizes and rates", () 
   assertGreater(c.heldOutSize, 0);
   assertGreater(c.trainingSize, 0);
   assertGreater(c.targetError, 0);
-  assertGreater(c.timeoutMinutes, 0);
+  // Issue #389 (Refresh-2026-05) lifted the wall-clock backstop from
+  // 5 → 20 minutes (= the original 5 + the additional 15 wall-clock
+  // minutes mandated by parent milestone #369) so the runner can
+  // actually consume the extra evolution budget. The matching
+  // `maxIterationsPerPhase` floor was lifted alongside so wall-clock
+  // remains the genuine limiter.
+  assertGreaterOrEqual(c.timeoutMinutes, 20);
+  assertGreaterOrEqual(c.maxIterationsPerPhase, 1000);
   assertGreater(c.populationSize, 0);
-  assertGreater(c.maxIterationsPerPhase, 0);
   assertGreaterOrEqual(c.pruneThreshold, 0);
 });
 
