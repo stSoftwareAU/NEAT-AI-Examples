@@ -4,5 +4,6 @@
 !.gitignore
 !.github
 !.markdownlint-cli2.jsonc
-deno.lock
+# deno.lock is tracked so CI can use --frozen and reject silent
+# transitive bumps (issue #418).
 run.log
