@@ -9,9 +9,12 @@
 
 name: Gitleaks
 
+# `branches: ["**"]` (not `["*"]`) so PRs against base branches that
+# contain a `/` (e.g. `milestone/refresh-2026-05`) still trigger this
+# workflow. The single-`*` glob does NOT match `/` — Issue #435.
 on:
   pull_request:
-    branches: ["*"]
+    branches: ["**"]
 
 permissions:
   contents: read
