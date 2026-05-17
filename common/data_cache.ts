@@ -22,7 +22,7 @@
  *     on one mirror falls back to the next.
  *
  * Implementation uses Deno's built-in `fetch` and `crypto.subtle` — no
- * extra dependencies are required.
+ * extra dependencies are required. 
  */
 
 import { ensureDir } from "@std/fs";
