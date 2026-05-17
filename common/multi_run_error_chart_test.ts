@@ -57,11 +57,13 @@ Deno.test("renderMultiRunErrorChartSVG: happy path emits valid SVG with error po
   assertStringIncludes(svg, "</svg>");
   assertStringIncludes(svg, "Multi-run Test");
 
-  // Error series: one polyline per run (two runs → two segments).
+  // Error series: a single best-error-so-far envelope polyline across all
+  // runs (issue #431 — the evolution-progress line is monotonically
+  // non-increasing, so per-run segmentation is no longer needed).
   assertStringIncludes(svg, "error-line");
   assertEquals(
     (svg.match(/<polyline fill="none" stroke="#d62728"/g) ?? []).length,
-    2,
+    1,
   );
 
   // Both axes present.
@@ -75,6 +77,97 @@ Deno.test("renderMultiRunErrorChartSVG: happy path emits valid SVG with error po
   assert(!svg.includes("NaN"), "SVG must not contain NaN");
   assert(!svg.includes("Infinity"), "SVG must not contain Infinity");
 });
+
+Deno.test(
+  "renderMultiRunErrorChartSVG: envelope polyline is monotonically non-increasing even when raw error spikes between runs (issue #431)",
+  () => {
+    // Reproduce the cart_pole regression: a resumed champion is
+    // re-evaluated against fresh random episodes and scores worse than
+    // the previous run's last milestone. The raw measurement goes UP
+    // (0.567 → 0.7058), but the evolution-progress envelope must not.
+    const samples: MultiRunMilestone[] = [
+      {
+        runIndex: 1,
+        runGen: 1,
+        cumulativeGen: 1,
+        error: 0.9,
+        bestScore: 0.1,
+        neurons: 4,
+        synapses: 6,
+        generationWallClockMs: 100,
+      },
+      {
+        runIndex: 1,
+        runGen: 10,
+        cumulativeGen: 10,
+        error: 0.6,
+        bestScore: 0.4,
+        neurons: 4,
+        synapses: 6,
+        generationWallClockMs: 100,
+      },
+      // Run boundary: re-evaluated champion measures worse.
+      {
+        runIndex: 2,
+        runGen: 1,
+        cumulativeGen: 11,
+        error: 0.8,
+        bestScore: 0.2,
+        neurons: 4,
+        synapses: 6,
+        generationWallClockMs: 100,
+      },
+      {
+        runIndex: 2,
+        runGen: 10,
+        cumulativeGen: 20,
+        error: 0.3,
+        bestScore: 0.7,
+        neurons: 4,
+        synapses: 6,
+        generationWallClockMs: 100,
+      },
+    ];
+
+    const svg = renderMultiRunErrorChartSVG(samples);
+
+    // Extract the envelope polyline's points and confirm Y never
+    // decreases-from-top → it must be non-decreasing in SVG Y space
+    // (SVG Y grows downward, lower error → larger Y). Equivalently: the
+    // Y coordinates must be non-decreasing as we walk left → right.
+    const polyMatch = svg.match(
+      /<polyline fill="none" stroke="#d62728"[^>]*points="([^"]+)"/,
+    );
+    assert(polyMatch, "envelope polyline must be present in SVG");
+    const ys = polyMatch[1]
+      .trim()
+      .split(/\s+/)
+      .map((pt) => Number(pt.split(",")[1]));
+    for (let i = 1; i < ys.length; i++) {
+      assert(
+        ys[i] >= ys[i - 1] - 1e-6,
+        `envelope must be monotonically non-increasing in error (Y not non-decreasing) ` +
+          `at index ${i}: ys[${i - 1}]=${ys[i - 1]} ys[${i}]=${ys[i]}`,
+      );
+    }
+
+    // Raw measurement circles must still expose the actual error values
+    // (including the spike) — circles use the same red as the envelope.
+    const circleCount = (svg.match(/<circle class="error-point"/g) ?? []).length;
+    assertEquals(circleCount, samples.length);
+  },
+);
+
+Deno.test(
+  "renderMultiRunErrorChartSVG: footnote documents the best-error-so-far envelope (issue #431)",
+  () => {
+    const samples = makeMultiRunSeries();
+    const svg = renderMultiRunErrorChartSVG(samples, { logX: true });
+    // The footnote text must explain that the line is best-so-far so
+    // viewers do not misread the raw circle dots as regressions.
+    assertStringIncludes(svg, "best error so far");
+  },
+);
 
 Deno.test("renderMultiRunErrorChartSVG: run-boundary markers render at each runIndex transition", () => {
   const samples = makeMultiRunSeries();
