@@ -15,7 +15,7 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
 - Call a function with known input and assert the output value.
 - Create a creature, activate it, and check that the result is finite.
 - Generate data files and verify their existence and size.
-- Remove a neuron and confirm the creature still validates and produces different output.
+- Remove a neuron and confirm the creature still validates and produces different output
 
 ### ❌ "How" tests (bad — do not write these)
 
