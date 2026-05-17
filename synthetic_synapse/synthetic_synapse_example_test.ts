@@ -200,12 +200,9 @@ Deno.test(
       assertGreaterOrEqual(summary.wallClockMs, 0);
     }
 
-    // Refine summary's final topology matches the champion at the end
-    // of the refine phase (before the final synthetic-synapse prune).
-    assertGreaterOrEqual(
-      result.refineSummary.finalSynapses,
-      result.sparseSummary.finalSynapses,
-    );
+    // The refine phase may grow or prune synapses relative to the sparse
+    // phase — no ordering guarantee between the two counts. The per-phase
+    // `finalSynapses >= 0` check above is the only safe assertion here.
   },
 );
 

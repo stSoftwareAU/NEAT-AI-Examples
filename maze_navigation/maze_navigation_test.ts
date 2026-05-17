@@ -241,14 +241,17 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // evolveRL is deterministic given a pinned `seed`, so two runs with
-    // identical options must agree on the headline outcome (score,
-    // reached-state, step count). Byte-level JSON equality of the
-    // champion is no longer asserted because the upstream library is
-    // free to reorder internal genome fields between calls without
-    // changing observable behaviour.
-    const a = await evolveMazeController(DEFAULT_EVOLVE_OPTIONS);
-    const b = await evolveMazeController(DEFAULT_EVOLVE_OPTIONS);
+    // Use a fixed `iterations` cap rather than `timeoutMinutes` so the stop
+    // condition is deterministic regardless of CI machine speed. The comment
+    // in EvolveOptions explicitly recommends `iterations` for unit tests that
+    // need a deterministic generation count.
+    const fixedOptions = {
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 3,
+      timeoutMinutes: 1, // must be >= 1; `iterations` fires first
+    };
+    const a = await evolveMazeController(fixedOptions);
+    const b = await evolveMazeController(fixedOptions);
     assertEquals(a.bestScore, b.bestScore);
     assertEquals(a.championReached, b.championReached);
     assertEquals(a.championSteps, b.championSteps);
