@@ -198,6 +198,22 @@ Behaviour:
 
 The helper relies on Deno's built-in `fetch` and `crypto.subtle` — no extra dependencies are added.
 
+**Security — URL provenance (issue #420).** `fetchDataset` validates every supplied URL before
+invoking `fetch`:
+
+- Only `https://` URLs are accepted (plain `http://` is tolerated only against loopback hosts so the
+  in-process test server keeps working).
+- Schemes other than `http`/`https` — `file://`, `ftp://`, `data:` — are rejected.
+- Literal-IP hostnames in RFC1918 private ranges, the IPv4 link-local range (`169.254.0.0/16`, where
+  the AWS / GCP / Azure metadata service lives), IPv6 link-local (`fe80::/10`), IPv6 unique-local
+  (`fc00::/7`), and the `metadata.google.internal` DNS alias are rejected.
+- `fetch` is invoked with `redirect: "error"` so a 3xx response is reported as a per-URL failure
+  instead of transparently followed.
+
+These defences block accidental misuse but do not replace careful URL hygiene — callers must still
+supply URLs from a trusted source (hard-coded constants or a digest-pinned manifest) and should set
+`sha256` whenever the bytes come from a third party.
+
 ### Milestone telemetry helpers
 
 NEAT-AI does not expose telemetry on every generation — examples chart only the milestone statistics

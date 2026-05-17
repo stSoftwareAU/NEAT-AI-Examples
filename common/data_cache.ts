@@ -22,7 +22,7 @@
  *     on one mirror falls back to the next.
  *
  * Implementation uses Deno's built-in `fetch` and `crypto.subtle` — no
- * extra dependencies are required. 
+ * extra dependencies are required.
  */
 
 import { ensureDir } from "@std/fs";
@@ -45,6 +45,88 @@ export interface FetchDatasetOptions {
    * digest before being trusted.
    */
   sha256?: string;
+}
+
+/**
+ * Hosts on which plain `http://` is tolerated. These are loopback
+ * addresses that cannot be used to reach an internal network from the
+ * machine running the helper, so they are safe targets for the
+ * in-process test server used by `data_cache_test.ts`.
+ */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+/**
+ * Returns `true` when `hostname` is a literal IPv4/IPv6 address (or DNS
+ * alias) that points at a private, link-local, or cloud-metadata target.
+ * Used to block server-side request forgery (SSRF) against AWS / GCP /
+ * Azure instance-metadata services and RFC1918 networks even when the
+ * caller used `https://`.
+ *
+ * Note: this is best-effort literal-IP filtering. It cannot stop a
+ * malicious DNS name that resolves to a private address — callers must
+ * still pin URLs to trusted hosts (and ideally verify a SHA-256 digest).
+ */
+function isPrivateOrBlockedHost(hostname: string): boolean {
+  // WHATWG `URL.hostname` wraps IPv6 literals in `[...]`; strip them so
+  // the regexes below see the bare address.
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  // IPv4 link-local — covers AWS / GCP / Azure instance metadata
+  // (169.254.169.254) and the wider 169.254.0.0/16 range.
+  if (/^169\.254\./.test(h)) return true;
+  // IPv4 loopback range other than the explicit `127.0.0.1` allowlisted
+  // above is treated as private.
+  if (/^127\./.test(h) && h !== "127.0.0.1") return true;
+  // RFC1918 private networks.
+  if (/^10\./.test(h)) return true;
+  if (/^192\.168\./.test(h)) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h)) return true;
+  // IPv6 link-local (`fe80::/10`).
+  if (/^fe[89ab][0-9a-f]?:/.test(h)) return true;
+  // IPv6 unique-local (`fc00::/7`).
+  if (/^f[cd][0-9a-f]{0,2}:/.test(h)) return true;
+  // Well-known cloud-metadata DNS aliases.
+  if (h === "metadata.google.internal" || h === "metadata.goog") return true;
+  return false;
+}
+
+/**
+ * Validates a caller-supplied URL string and returns the parsed `URL`.
+ *
+ * Throws when the URL is malformed, uses a non-https scheme (loopback
+ * `http://` is the only exception, to keep the in-process test server
+ * working), or points at a private/link-local/metadata host.
+ */
+function validateUrl(raw: string): URL {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`fetchDataset: invalid URL "${raw}"`);
+  }
+  // Strip IPv6 brackets — `new URL("https://[::1]/")` returns `[::1]`
+  // as the hostname under WHATWG.
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const isLoopback = LOOPBACK_HOSTS.has(host);
+  if (url.protocol === "http:") {
+    if (!isLoopback) {
+      throw new Error(
+        `fetchDataset: refusing insecure URL "${raw}" — ` +
+          `only https:// URLs are allowed (http:// is tolerated only for loopback hosts)`,
+      );
+    }
+  } else if (url.protocol !== "https:") {
+    throw new Error(
+      `fetchDataset: refusing URL "${raw}" with unsupported scheme ` +
+        `"${url.protocol}" — only https:// is allowed`,
+    );
+  }
+  if (!isLoopback && isPrivateOrBlockedHost(host)) {
+    throw new Error(
+      `fetchDataset: refusing URL "${raw}" — host "${host}" is a ` +
+        `private, link-local, or cloud-metadata address`,
+    );
+  }
+  return url;
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -85,6 +167,31 @@ async function removeIfPresent(path: string): Promise<void> {
  * message that lists every attempted URL when no mirror succeeds, and
  * a digest-mismatch error (with the partial file removed) when the
  * downloaded bytes do not match the expected SHA-256.
+ *
+ * **Security — URL provenance.** Callers must supply URLs from a
+ * trusted source: hard-coded constants, a digest-pinned manifest, or a
+ * value the caller has otherwise validated. Do **not** pass an
+ * unvalidated `Deno.args` argument, environment variable, or
+ * user-supplied config field straight into this helper.
+ *
+ * The helper enforces several defences against server-side request
+ * forgery (SSRF) regardless, but they are not a substitute for
+ * verifying URL provenance:
+ *
+ * - Only `https://` URLs are accepted (plain `http://` is tolerated
+ *   only against loopback hosts for in-process test servers).
+ * - Schemes other than `http`/`https` — most importantly `file://`,
+ *   `ftp://`, and `data:` — are rejected outright.
+ * - Literal-IP hostnames in RFC1918 private ranges (10/8, 192.168/16,
+ *   172.16/12), the IPv4 link-local range (169.254/16, where the AWS /
+ *   GCP / Azure instance-metadata services live), IPv6 link-local
+ *   (`fe80::/10`), IPv6 unique-local (`fc00::/7`), and the
+ *   `metadata.google.internal` DNS alias are rejected.
+ * - `fetch` is invoked with `redirect: "error"` so a 3xx response is
+ *   reported as a per-URL failure rather than transparently followed —
+ *   that closes the redirect-to-internal-host bypass.
+ * - Always also supply `sha256` when downloading from a third-party
+ *   mirror so a compromised mirror cannot substitute the bytes.
  */
 export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
   const { path } = opts;
@@ -93,6 +200,13 @@ export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
 
   if (urls.length === 0) {
     throw new Error("fetchDataset: at least one URL must be provided");
+  }
+
+  // Validate every supplied URL up-front so a malformed or unsafe entry
+  // fails fast — before any network I/O or scratch-file creation —
+  // rather than after a partial cache write.
+  for (const url of urls) {
+    validateUrl(url);
   }
 
   // Cache hit? Optionally re-validate against the expected digest.
@@ -114,7 +228,11 @@ export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
   for (const url of urls) {
     let response: Response;
     try {
-      response = await fetch(url);
+      // `redirect: "error"` turns any 3xx into a fetch error, blocking
+      // the classic SSRF bypass where a legitimate host redirects to a
+      // private / metadata target. Callers that genuinely need to follow
+      // a redirect should resolve it themselves and pass the final URL.
+      response = await fetch(url, { redirect: "error" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       errors.push(`${url}: ${message}`);

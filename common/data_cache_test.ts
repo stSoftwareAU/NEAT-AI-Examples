@@ -248,6 +248,113 @@ Deno.test("fetchDataset cleans up .part on digest mismatch", async () => {
   }
 });
 
+Deno.test("fetchDataset rejects non-https schemes to prevent SSRF", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const dest = join(tmp, "blocked.bin");
+
+  try {
+    // file:// is the textbook SSRF/local-file disclosure target.
+    await assertRejects(
+      () => fetchDataset({ url: "file:///etc/passwd", path: dest }),
+      Error,
+      "https",
+    );
+    // ftp:// is also off-limits.
+    await assertRejects(
+      () => fetchDataset({ url: "ftp://example.com/x", path: dest }),
+      Error,
+      "https",
+    );
+    // Plain http on a public host is rejected (only loopback http is
+    // tolerated for testing convenience).
+    await assertRejects(
+      () => fetchDataset({ url: "http://example.com/x", path: dest }),
+      Error,
+      "https",
+    );
+    assertEquals(existsSync(dest), false, "no file should be written for a rejected URL");
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset rejects private and link-local hosts to prevent SSRF", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const dest = join(tmp, "blocked.bin");
+  const blocked = [
+    // AWS / GCP / Azure metadata service.
+    "https://169.254.169.254/latest/meta-data/",
+    // RFC1918 private networks.
+    "https://10.0.0.1/x",
+    "https://192.168.1.1/x",
+    "https://172.16.0.1/x",
+    // IPv6 link-local / unique-local.
+    "https://[fe80::1]/x",
+    "https://[fc00::1]/x",
+    // GCP metadata DNS alias.
+    "https://metadata.google.internal/x",
+  ];
+
+  try {
+    for (const url of blocked) {
+      await assertRejects(
+        () => fetchDataset({ url, path: dest }),
+        Error,
+        "private",
+        `expected ${url} to be rejected as a private/link-local target`,
+      );
+    }
+    assertEquals(existsSync(dest), false, "no file should be written for a rejected URL");
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset rejects malformed URLs without invoking fetch", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const dest = join(tmp, "blocked.bin");
+
+  try {
+    await assertRejects(
+      () => fetchDataset({ url: "not a url", path: dest }),
+      Error,
+      "invalid URL",
+    );
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset refuses to follow redirects", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const dest = join(tmp, "redirected.bin");
+  // A redirect to an arbitrary host is the classic SSRF bypass: the
+  // caller supplies a legitimate-looking URL, but the server hands back
+  // a 302 to a private/internal target. We require the helper to refuse
+  // rather than transparently follow.
+  const server = startServer(() =>
+    new Response("redirecting", {
+      status: 302,
+      headers: { Location: "http://169.254.169.254/" },
+    })
+  );
+
+  try {
+    await assertRejects(
+      () =>
+        fetchDataset({
+          url: `http://localhost:${server.port}/redir`,
+          path: dest,
+        }),
+      Error,
+    );
+    assertEquals(existsSync(dest), false, "no file should be written when a redirect is refused");
+  } finally {
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
 Deno.test("fetchDataset honours a matching digest as a cache hit", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
   const payload = new TextEncoder().encode("digest-match");
