@@ -120,7 +120,7 @@ export function renderMultiRunErrorChartSVG(
         plotX,
         plotY + plotH + 46,
         plotW,
-        "Linear error on Y · log₁₀ generations on X · one line segment per run (no cross-run spikes).",
+        "Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.",
       ),
     );
   }
@@ -129,8 +129,12 @@ export function renderMultiRunErrorChartSVG(
   // visually on top. Detect each runIndex transition in cumulative order.
   lines.push(renderRunBoundaries(ordered, xScale, plotY, plotH));
 
-  // One polyline segment per run so run restarts do not draw misleading
-  // vertical connectors on a log-scaled X axis.
+  // Issue #431: plot the best-error-so-far envelope as a single
+  // continuous polyline. The envelope is monotonically non-increasing,
+  // so re-evaluation noise at run boundaries (a resumed champion scoring
+  // worse on fresh stochastic episodes) no longer makes the
+  // evolution-progress line appear to regress. Raw measurements are
+  // still surfaced via circle markers.
   lines.push(renderErrorSeries(ordered, xScale, yScale));
 
   if (caption) {
@@ -297,16 +301,30 @@ function renderErrorSeries(
   xScale: (v: number) => number,
   yScale: (v: number) => number,
 ): string {
-  const segments = segmentSamplesByRun(samples);
+  // Issue #431: render a single best-error-so-far envelope as the
+  // evolution-progress line. Walking the samples in cumulative order
+  // and taking the running minimum guarantees the polyline is
+  // monotonically non-increasing in error — it never spikes up at run
+  // boundaries even when a resumed champion is re-measured slightly
+  // worse on fresh stochastic episodes.
+  const envelope: number[] = [];
+  let runningMin = Infinity;
+  for (const s of samples) {
+    if (s.error < runningMin) runningMin = s.error;
+    envelope.push(runningMin);
+  }
+
   const out: string[] = [];
   out.push(`  <g class="error-line">`);
-  for (const seg of segments) {
-    const points = seg.map((s) => `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(s.error))}`);
-    out.push(
-      `    <polyline fill="none" stroke="${ERROR_COLOUR}" stroke-width="1.5" ` +
-        `points="${points.join(" ")}"/>`,
-    );
-  }
+  const points = samples.map((s, i) =>
+    `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(envelope[i]))}`
+  );
+  out.push(
+    `    <polyline fill="none" stroke="${ERROR_COLOUR}" stroke-width="1.5" ` +
+      `points="${points.join(" ")}"/>`,
+  );
+  // Circles plot the raw milestone error — viewers can still see the
+  // re-evaluation noise that motivated the envelope.
   for (const s of samples) {
     out.push(
       `    <circle class="error-point" cx="${fmt(xScale(s.cumulativeGen))}" ` +
@@ -315,23 +333,6 @@ function renderErrorSeries(
   }
   out.push(`  </g>`);
   return out.join("\n");
-}
-
-/** Split milestones into contiguous runs so polylines do not draw vertical connectors at run boundaries. */
-function segmentSamplesByRun(
-  samples: readonly MultiRunMilestone[],
-): MultiRunMilestone[][] {
-  const out: MultiRunMilestone[][] = [];
-  let cur: MultiRunMilestone[] = [];
-  for (const s of samples) {
-    if (cur.length > 0 && s.runIndex !== cur[cur.length - 1].runIndex) {
-      out.push(cur);
-      cur = [];
-    }
-    cur.push(s);
-  }
-  if (cur.length > 0) out.push(cur);
-  return out;
 }
 
 function renderAxisFootnote(x: number, y: number, w: number, text: string): string {

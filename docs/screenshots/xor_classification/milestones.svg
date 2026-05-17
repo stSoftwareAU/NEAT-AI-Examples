@@ -26,7 +26,7 @@
     <text x="22" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 195)">error</text>
   </g>
   <g class="axis-footnote" font-family="sans-serif" font-size="10" fill="#666666">
-    <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · one line segment per run (no cross-run spikes).</text>
+    <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
     <line class="run-boundary" x1="116.03" y1="50" x2="116.03" y2="340" stroke="#cccccc" stroke-width="0.5"/>
@@ -35,9 +35,7 @@
     <text x="760" y="46" text-anchor="middle">run 3</text>
   </g>
   <g class="error-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,294.87"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="116.03,312.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="760,339.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,294.87 116.03,312.47 760,339.47"/>
     <circle class="error-point" cx="70" cy="294.87" r="2.4" fill="#d62728"/>
     <circle class="error-point" cx="116.03" cy="312.47" r="2.4" fill="#d62728"/>
     <circle class="error-point" cx="760" cy="339.47" r="2.4" fill="#d62728"/>

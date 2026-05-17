@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="Snake — multi-run error vs cumulative generations chart">
-  <title>Snake — multi-run error vs cumulative generations</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="Snake Game — multi-run error vs cumulative generations chart">
+  <title>Snake Game — multi-run error vs cumulative generations</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">Snake — multi-run error vs cumulative generations</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">Snake Game — multi-run error vs cumulative generations</text>
   <rect x="70" y="50" width="690" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1"/>
@@ -32,7 +32,7 @@
     <text x="22" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 195)">error</text>
   </g>
   <g class="axis-footnote" font-family="sans-serif" font-size="10" fill="#666666">
-    <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · one line segment per run (no cross-run spikes).</text>
+    <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
     <line class="run-boundary" x1="741.88" y1="50" x2="741.88" y2="340" stroke="#cccccc" stroke-width="0.5"/>
@@ -41,9 +41,7 @@
     <text x="759.6" y="46" text-anchor="middle">run 3</text>
   </g>
   <g class="error-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 137.41,50 226.52,64.65 293.93,74.19 361.34,74.19 450.45,78.91 517.86,88.54 585.27,88.54 674.38,129.17 741.78,305.88"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="741.88,289.44 741.98,296.39 742.27,296.39 742.75,328.43 743.71,328.43 746.53,328.43 751.05,328.43 759.51,328.43"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="759.6,298.33 759.68,298.33 759.92,298.33 760,340"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 137.41,50 226.52,64.65 293.93,74.19 361.34,74.19 450.45,78.91 517.86,88.54 585.27,88.54 674.38,129.17 741.78,305.88 741.88,305.88 741.98,305.88 742.27,305.88 742.75,328.43 743.71,328.43 746.53,328.43 751.05,328.43 759.51,328.43 759.6,328.43 759.68,328.43 759.92,328.43 760,340"/>
     <circle class="error-point" cx="70" cy="50" r="2.4" fill="#d62728"/>
     <circle class="error-point" cx="137.41" cy="50" r="2.4" fill="#d62728"/>
     <circle class="error-point" cx="226.52" cy="64.65" r="2.4" fill="#d62728"/>

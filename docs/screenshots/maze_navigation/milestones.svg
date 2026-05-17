@@ -34,7 +34,7 @@
     <text x="22" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 195)">error</text>
   </g>
   <g class="axis-footnote" font-family="sans-serif" font-size="10" fill="#666666">
-    <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · one line segment per run (no cross-run spikes).</text>
+    <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
     <line class="run-boundary" x1="672.58" y1="50" x2="672.58" y2="340" stroke="#cccccc" stroke-width="0.5"/>
@@ -45,10 +45,7 @@
     <text x="722.87" y="46" text-anchor="middle">run 4</text>
   </g>
   <g class="error-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 115.35,50 175.3,50 220.64,50 265.99,50 325.94,50 371.29,50 416.64,334.78 476.58,334.78 521.93,334.78 672.57,334.78"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="672.58,334.78 672.59,334.78 672.61,334.78 672.64,334.78 672.71,334.78 672.9,334.78 673.23,334.78 673.87,334.78 675.77,334.78 678.81,334.78"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="678.82,334.78 678.82,334.78 678.84,334.78 678.87,334.78 678.93,334.78 679.11,334.78 679.4,334.78 679.99,334.78 681.72,334.78 684.5,334.78 721.12,334.78 722.87,334.78"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="722.87,334.78 722.88,334.78 722.89,334.78 722.9,334.78 722.93,334.78 723.02,334.78 723.17,334.78 723.47,334.78 724.37,334.78 725.84,334.78 747.79,334.78 760,334.78"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 115.35,50 175.3,50 220.64,50 265.99,50 325.94,50 371.29,50 416.64,334.78 476.58,334.78 521.93,334.78 672.57,334.78 672.58,334.78 672.59,334.78 672.61,334.78 672.64,334.78 672.71,334.78 672.9,334.78 673.23,334.78 673.87,334.78 675.77,334.78 678.81,334.78 678.82,334.78 678.82,334.78 678.84,334.78 678.87,334.78 678.93,334.78 679.11,334.78 679.4,334.78 679.99,334.78 681.72,334.78 684.5,334.78 721.12,334.78 722.87,334.78 722.87,334.78 722.88,334.78 722.89,334.78 722.9,334.78 722.93,334.78 723.02,334.78 723.17,334.78 723.47,334.78 724.37,334.78 725.84,334.78 747.79,334.78 760,334.78"/>
     <circle class="error-point" cx="70" cy="50" r="2.4" fill="#d62728"/>
     <circle class="error-point" cx="115.35" cy="50" r="2.4" fill="#d62728"/>
     <circle class="error-point" cx="175.3" cy="50" r="2.4" fill="#d62728"/>
