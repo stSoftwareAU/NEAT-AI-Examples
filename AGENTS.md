@@ -15,7 +15,7 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
 - Call a function with known input and assert the output value.
 - Create a creature, activate it, and check that the result is finite.
 - Generate data files and verify their existence and size.
-- Remove a neuron and confirm the creature still validates and produces different output.
+- Remove a neuron and confirm the creature still validates and produces different output
 
 ### ❌ "How" tests (bad — do not write these)
 
@@ -189,8 +189,10 @@ Behaviour:
 
 - Skips the download when the file already exists (and, when a digest is supplied, when the on-disk
   digest matches).
-- Streams the response body straight to disk — no in-memory buffering.
-- Verifies the digest after writing; on mismatch the partial file is deleted and the call rejects.
+- Streams the response body to a sibling `<path>.part` scratch file and only renames it onto the
+  final path after the body is fully received (and the digest verified, when one is supplied). A
+  process kill or full disk mid-download cannot leave a truncated file at the final path.
+- Verifies the digest after writing; on mismatch the scratch file is deleted and the call rejects.
 - Tries each mirror in turn; an HTTP error or network failure on one mirror falls back to the next,
   and the final error message lists every URL that was tried.
 
