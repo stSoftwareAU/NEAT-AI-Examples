@@ -276,4 +276,3 @@ suggest_improvements/
 quality.sh                         — Runs all tests and examples
 deno.json                          — Deno configuration and dependencies
 ```
-
