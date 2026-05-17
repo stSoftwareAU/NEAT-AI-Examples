@@ -36,8 +36,10 @@ jobs:
           chmod +x gitleaks
 
       - name: Run Gitleaks
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           ./gitleaks detect \
             --source . \
-            --log-opts "origin/${{ github.base_ref }}..HEAD" \
+            --log-opts "origin/${BASE_REF}..HEAD" \
             --verbose
