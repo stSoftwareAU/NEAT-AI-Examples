@@ -22,12 +22,17 @@ echo "Suggest Improvements"
 echo "   Analysing project for improvement opportunities"
 echo ""
 
+# Scoped permissions (issue #419): allowlist env vars; --allow-net is
+# scoped to jsr.io for the runtime WASM activation fetch; no spawned
+# subprocesses.
+NEAT_AI_ENV_VARS="HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP"
+
 deno run \
   --v8-flags=--max-old-space-size=4096 \
   --allow-read \
   --allow-write \
-  --allow-env \
-  --allow-net \
+  --allow-env="${NEAT_AI_ENV_VARS},SUGGEST_QUICK" \
+  --allow-net=jsr.io \
   --allow-ffi \
   suggest_improvements/suggest_improvements.ts \
   "$@"

@@ -21,11 +21,16 @@ fi
 echo "🗺️  Maze Navigation Example"
 echo ""
 
+# Scoped permissions (issue #419): allowlist env vars; --allow-net is
+# scoped to jsr.io for the runtime WASM activation fetch; no spawned
+# subprocesses.
+NEAT_AI_ENV_VARS="HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP"
+
 deno run \
   --v8-flags=--max-old-space-size=4096 \
   --allow-read \
   --allow-write \
-  --allow-env \
-  --allow-net \
+  --allow-env="${NEAT_AI_ENV_VARS},MAZE_QUICK,NEAT_MULTI_RUN_BASE_DIR" \
+  --allow-net=jsr.io \
   maze_navigation/maze_navigation.ts \
   "$@"
