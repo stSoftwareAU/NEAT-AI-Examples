@@ -10,8 +10,13 @@
  *   - Skips the download when the file already exists (and, when an
  *     expected SHA-256 digest is supplied, when the on-disk digest matches).
  *   - Streams the response body to disk so large files do not need to be
- *     buffered in memory.
- *   - Verifies the digest after writing and deletes the partial file on
+ *     buffered in memory. Bytes are written to a sibling `<path>.part`
+ *     scratch file and only renamed onto the final path after the body
+ *     has been fully received (and the SHA-256 digest verified, when one
+ *     is supplied). This keeps the cache atomic — a process kill or full
+ *     disk during the download cannot leave a truncated file at the
+ *     final path that a later run would mistake for a cache hit.
+ *   - Verifies the digest after writing and deletes the scratch file on
  *     mismatch so the next call can retry cleanly.
  *   - Tries each mirror URL in turn so a 404 or transient network failure
  *     on one mirror falls back to the next.
@@ -132,25 +137,39 @@ export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
       continue;
     }
 
+    // Stream to a sibling scratch file and only rename onto the final
+    // path after the digest check passes. A process kill or full disk
+    // mid-download leaves the scratch file behind, never a truncated
+    // file at `path` that a later run would treat as a cache hit.
+    const partPath = `${path}.part`;
     try {
-      const file = await Deno.open(path, { write: true, create: true, truncate: true });
+      const file = await Deno.open(partPath, { write: true, create: true, truncate: true });
       await response.body.pipeTo(file.writable);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await removeIfPresent(path);
+      await removeIfPresent(partPath);
       errors.push(`${url}: ${message}`);
       continue;
     }
 
     if (expectedDigest) {
-      const actual = await computeSha256(path);
+      const actual = await computeSha256(partPath);
       if (actual !== expectedDigest) {
-        await removeIfPresent(path);
+        await removeIfPresent(partPath);
         throw new Error(
           `fetchDataset: digest mismatch for ${url} ` +
             `(expected ${expectedDigest}, got ${actual})`,
         );
       }
+    }
+
+    try {
+      await Deno.rename(partPath, path);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await removeIfPresent(partPath);
+      errors.push(`${url}: rename failed: ${message}`);
+      continue;
     }
 
     return path;

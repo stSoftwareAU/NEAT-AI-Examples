@@ -131,6 +131,123 @@ Deno.test("fetchDataset falls back to a mirror when the first URL 404s", async (
   }
 });
 
+Deno.test("fetchDataset writes atomically — final path never sees partial bytes", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const dest = join(tmp, "atomic.bin");
+  const partPath = `${dest}.part`;
+
+  // The server holds the response open until the test releases it,
+  // letting us inspect the on-disk state mid-flight.
+  let releaseFirstChunk!: () => void;
+  const firstChunkSent = new Promise<void>((resolve) => {
+    releaseFirstChunk = resolve;
+  });
+  let releaseSecondChunk!: () => void;
+  const secondChunkAllowed = new Promise<void>((resolve) => {
+    releaseSecondChunk = resolve;
+  });
+
+  const server = startServer(() => {
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(new TextEncoder().encode("first-chunk"));
+        releaseFirstChunk();
+        await secondChunkAllowed;
+        controller.enqueue(new TextEncoder().encode("-final"));
+        controller.close();
+      },
+    });
+    return new Response(stream);
+  });
+
+  const fetchPromise = fetchDataset({
+    url: `http://localhost:${server.port}/atomic`,
+    path: dest,
+  });
+  // Ensure we observe the fetchPromise regardless of teardown order.
+  fetchPromise.catch(() => {});
+
+  try {
+    // Wait for the first chunk to be enqueued and (likely) flushed to disk.
+    await firstChunkSent;
+    // Give the runtime a moment to pump the first chunk through pipeTo.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const destExistsMidFlight = existsSync(dest);
+    const partExistsMidFlight = existsSync(partPath);
+
+    releaseSecondChunk();
+    await fetchPromise;
+
+    assertEquals(
+      destExistsMidFlight,
+      false,
+      "final destination must not exist while download is in progress",
+    );
+    assertEquals(
+      partExistsMidFlight,
+      true,
+      "scratch .part file must hold the in-flight bytes",
+    );
+
+    assertEquals(existsSync(dest), true, "final destination should exist after success");
+    assertEquals(existsSync(partPath), false, "scratch .part file should be cleaned up");
+    const got = await Deno.readFile(dest);
+    assertEquals(got, new TextEncoder().encode("first-chunk-final"));
+  } finally {
+    releaseSecondChunk();
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset does not leave a .part file behind on success", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const payload = new TextEncoder().encode("clean success");
+  const server = startServer(() => new Response(payload));
+  const dest = join(tmp, "clean.bin");
+  const partPath = `${dest}.part`;
+
+  try {
+    await fetchDataset({
+      url: `http://localhost:${server.port}/x`,
+      path: dest,
+    });
+    assertEquals(existsSync(dest), true, "final file should exist on success");
+    assertEquals(existsSync(partPath), false, "no .part scratch file should remain");
+  } finally {
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset cleans up .part on digest mismatch", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const payload = new TextEncoder().encode("doesn't match the digest");
+  const server = startServer(() => new Response(payload));
+  const dest = join(tmp, "mismatch.bin");
+  const partPath = `${dest}.part`;
+  const wrongDigest = "0".repeat(64);
+
+  try {
+    await assertRejects(
+      () =>
+        fetchDataset({
+          url: `http://localhost:${server.port}/x`,
+          path: dest,
+          sha256: wrongDigest,
+        }),
+      Error,
+      "digest",
+    );
+    assertEquals(existsSync(dest), false, "final file must not exist on digest mismatch");
+    assertEquals(existsSync(partPath), false, "scratch .part file must be removed");
+  } finally {
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
 Deno.test("fetchDataset honours a matching digest as a cache hit", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
   const payload = new TextEncoder().encode("digest-match");
