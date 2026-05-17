@@ -21,12 +21,17 @@ fi
 echo "✂️  Neuron Pruning Demo"
 echo ""
 
+# Scoped permissions (issue #419): allowlist env vars; --allow-net is
+# scoped to jsr.io for the runtime WASM activation fetch; no --allow-run
+# (quality.sh injects --allow-run=df via the deno wrapper during the
+# full quality run).
+NEAT_AI_ENV_VARS="HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP"
+
 deno run \
   --allow-read \
   --allow-write \
-  --allow-env \
-  --allow-net \
+  --allow-env="${NEAT_AI_ENV_VARS}" \
+  --allow-net=jsr.io \
   --allow-ffi \
-  --allow-run \
   neuron_pruning/neuron_pruning.ts \
   "$@"
