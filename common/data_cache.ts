@@ -30,7 +30,7 @@ import { dirname } from "@std/path";
 
 /** Options for {@link fetchDataset}. */
 export interface FetchDatasetOptions {
-  /** A single URL or a list of mirror URLs to try in order. */
+  /** A single URL or a list of mirror URLs to try in order */
   url: string | string[];
   /**
    * Destination file path on disk. Parent directories are created
