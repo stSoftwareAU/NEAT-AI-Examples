@@ -4,6 +4,11 @@
 # on each pull request and push to the default branch. Rule
 # customisations live in `.markdownlint-cli2.jsonc` at the repository
 # root.
+#
+# The default branch in this repository is `Develop`; `main` and
+# `master` are kept for portability with forks. Issue #435 — without
+# `Develop` in the push branches list, the workflow never triggered
+# automatically after a PR was merged into `Develop`.
 
 name: Markdown Lint
 
@@ -11,7 +16,7 @@ on:
   pull_request:
     branches: ["*"]
   push:
-    branches: [main, master]
+    branches: [Develop, main, master]
 
 permissions:
   contents: read
