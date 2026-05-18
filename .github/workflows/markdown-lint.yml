@@ -19,7 +19,7 @@ on:
   pull_request:
     branches: ["**"]
   push:
-    branches: [Develop, main, master]
+    branches: [Develop]
 
 permissions:
   contents: read
