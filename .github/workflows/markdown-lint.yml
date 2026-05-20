@@ -37,8 +37,16 @@ jobs:
         with:
           node-version: "lts/*"
 
+      # Issue #442 — pin markdownlint-cli2 to an exact version. Leaving
+      # the name unpinned means each CI run resolves `latest` from npm,
+      # which undoes the 40-char SHA pins on the surrounding actions: a
+      # compromised package would execute on the next PR. The deno-
+      # outdated bot does not bump npm-installed CI tools, so bumps here
+      # are manual — when raising the pin, allow the project quarantine
+      # window (`VIBE_BUMP_QUARANTINE_HOURS`, default 24h) to elapse
+      # after the new release before merging.
       - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2
+        run: npm install -g markdownlint-cli2@0.22.1
 
       - name: Run markdownlint-cli2
         run: markdownlint-cli2 "**/*.md" "#node_modules"
