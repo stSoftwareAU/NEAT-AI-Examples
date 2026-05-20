@@ -55,3 +55,52 @@ Deno.test("markdown-lint workflow — triggers on pull_request to any branch", a
     `pull_request must run for PRs against any branch (got ${JSON.stringify(pr.branches)})`,
   );
 });
+
+// Issue #442 — supply-chain hardening. The previous step
+// `npm install -g markdownlint-cli2` resolved `latest` from npm on every
+// CI run, undoing the 40-char SHA pins on the surrounding actions. The
+// install must pin the package to an exact version (matching the pin
+// pattern `<name>@<version>`), so an attacker who compromises the
+// package cannot ship malicious bytes into the next PR run.
+Deno.test("markdown-lint workflow — markdownlint-cli2 install is version-pinned (#442)", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const steps = job.steps as Array<Record<string, unknown>>;
+
+  // Find every shell step that installs markdownlint-cli2 (covers
+  // `npm install`, `npm i`, and `npx --package=...` forms).
+  const installSteps = steps.filter((s) => {
+    const run = String(s.run ?? "");
+    return run.includes("markdownlint-cli2") &&
+      (run.includes("npm install") || run.includes("npm i ") ||
+        run.includes("npx"));
+  });
+
+  assert(
+    installSteps.length > 0,
+    "workflow must install markdownlint-cli2 via npm/npx",
+  );
+
+  // Match an exact-version pin like `markdownlint-cli2@0.18.1`. Reject
+  // tag specifiers (`@latest`, `@next`), range specifiers (`@^1.0.0`,
+  // `@~1.2`, `@>=1`), and bare names with no `@<version>` at all.
+  const pinPattern = /markdownlint-cli2@\d+\.\d+\.\d+(?:[-+][\w.-]+)?/;
+  for (const step of installSteps) {
+    const run = String(step.run);
+    assert(
+      pinPattern.test(run),
+      `install step must pin markdownlint-cli2 to an exact version (got: ${run.trim()})`,
+    );
+    // Defence in depth — reject obvious mutable specifiers even if a
+    // pinned version is also present somewhere in the same line.
+    assert(
+      !/markdownlint-cli2@latest\b/.test(run),
+      `install step must not reference markdownlint-cli2@latest (got: ${run.trim()})`,
+    );
+    assert(
+      !/markdownlint-cli2@next\b/.test(run),
+      `install step must not reference markdownlint-cli2@next (got: ${run.trim()})`,
+    );
+  }
+});
