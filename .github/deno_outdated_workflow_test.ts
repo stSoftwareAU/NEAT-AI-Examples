@@ -72,6 +72,25 @@ Deno.test("deno-outdated workflow — skips PRs from forks", async () => {
   );
 });
 
+Deno.test("deno-outdated workflow — pins VIBE_BUMP_QUARANTINE_HOURS so the supply-chain policy is auditable (#441)", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const jobEnv = (job.env ?? {}) as Record<string, string>;
+  const wfEnv = (wf.env ?? {}) as Record<string, string>;
+  const value = jobEnv.VIBE_BUMP_QUARANTINE_HOURS ?? wfEnv.VIBE_BUMP_QUARANTINE_HOURS;
+  assertExists(
+    value,
+    "auto-bump must pin VIBE_BUMP_QUARANTINE_HOURS so the supply-chain quarantine window is visible in CI config",
+  );
+  // The number must be a non-negative integer.
+  const n = Number(value);
+  assert(
+    Number.isFinite(n) && n >= 0,
+    `VIBE_BUMP_QUARANTINE_HOURS must be a non-negative number, got: ${value}`,
+  );
+});
+
 Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits the result", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
