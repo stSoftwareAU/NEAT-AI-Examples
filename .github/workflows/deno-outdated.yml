@@ -1,10 +1,16 @@
-# Deno Dependency Auto-Bump workflow for NEAT-AI-Examples (Issues #362, #364)
+# Deno Dependency Auto-Bump workflow for NEAT-AI-Examples (Issues #362, #364, #441)
 #
 # When a pull request is raised against `Develop`, this workflow runs
-# `./bump-deps.sh` (which invokes `deno update --latest`). If pinned
-# versions in `deno.json` lag the registry, the changes
-# are committed and pushed back to the PR head branch — so the PR ships
-# with up-to-date dependencies automatically (#362).
+# `./bump-deps.sh`, which invokes the quarantine-aware updater
+# (`bump_deps.ts`). External (non-`@stsoftware/*`) pins only bump to
+# versions that are at least `VIBE_BUMP_QUARANTINE_HOURS` hours old —
+# this is the supply-chain mitigation from #441. Internal
+# `@stsoftware/*` packages bypass the gate and bump immediately.
+#
+# If pinned versions in `deno.json` lag the registry (and have cleared
+# the quarantine for external packages), the changes are committed and
+# pushed back to the PR head branch — so the PR ships with up-to-date
+# dependencies automatically (#362).
 #
 # There is deliberately no weekly cron: dependency refreshes only
 # happen when a PR is raised, never as scheduled bot noise (#364).
@@ -26,6 +32,10 @@ jobs:
     name: Auto-bump Deno dependencies on PR
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    env:
+      # Supply-chain quarantine window for external packages (#441).
+      # Pinned in the workflow so the policy is auditable from CI config.
+      VIBE_BUMP_QUARANTINE_HOURS: "24"
     steps:
       - name: Check out PR head
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
