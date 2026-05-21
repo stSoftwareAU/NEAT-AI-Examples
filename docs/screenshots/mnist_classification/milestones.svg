@@ -1,15 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Handwritten-Digit Classification — multi-run error vs cumulative generations chart">
-  <title>MNIST Handwritten-Digit Classification — multi-run error vs cumulative generations</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Classification — multi-run error vs cumulative generations chart">
+  <title>MNIST Classification — multi-run error vs cumulative generations</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Handwritten-Digit Classification — multi-run error vs cumulative generations</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Classification — multi-run error vs cumulative generations</text>
   <rect x="70" y="50" width="690" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1"/>
     <text x="70" y="358" text-anchor="middle">94</text>
-    <line x1="104.08" y1="340" x2="104.08" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="104.08" y="358" text-anchor="middle">100</text>
+    <line x1="80.66" y1="340" x2="80.66" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="80.66" y="358" text-anchor="middle">100</text>
+    <line x1="477.26" y1="340" x2="477.26" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="477.26" y="358" text-anchor="middle">1000</text>
     <line x1="760" y1="340" x2="760" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="760" y="358" text-anchor="middle">329</text>
+    <text x="760" y="358" text-anchor="middle">5163</text>
     <text x="415" y="376" text-anchor="middle" font-weight="bold">cumulative generation (log scale)</text>
   </g>
   <g class="y-axis" font-family="sans-serif" font-size="11" fill="#333333">
@@ -31,15 +33,636 @@
     <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
+    <line class="run-boundary" x1="285.78" y1="50" x2="285.78" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="285.78" y="46" text-anchor="middle">run 2</text>
+    <line class="run-boundary" x1="352.98" y1="50" x2="352.98" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="352.98" y="46" text-anchor="middle">run 3</text>
+    <line class="run-boundary" x1="432.47" y1="50" x2="432.47" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="432.47" y="46" text-anchor="middle">run 4</text>
+    <line class="run-boundary" x1="479.83" y1="50" x2="479.83" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="479.83" y="46" text-anchor="middle">run 5</text>
+    <line class="run-boundary" x1="511.23" y1="50" x2="511.23" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="511.23" y="46" text-anchor="middle">run 6</text>
+    <line class="run-boundary" x1="536.07" y1="50" x2="536.07" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="536.07" y="46" text-anchor="middle">run 7</text>
+    <line class="run-boundary" x1="557.35" y1="50" x2="557.35" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="557.35" y="46" text-anchor="middle">run 8</text>
+    <line class="run-boundary" x1="586.08" y1="50" x2="586.08" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="586.08" y="46" text-anchor="middle">run 9</text>
+    <line class="run-boundary" x1="607.98" y1="50" x2="607.98" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="607.98" y="46" text-anchor="middle">run 10</text>
+    <line class="run-boundary" x1="622.73" y1="50" x2="622.73" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="622.73" y="46" text-anchor="middle">run 11</text>
+    <line class="run-boundary" x1="640.11" y1="50" x2="640.11" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="640.11" y="46" text-anchor="middle">run 12</text>
+    <line class="run-boundary" x1="652.87" y1="50" x2="652.87" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="652.87" y="46" text-anchor="middle">run 13</text>
+    <line class="run-boundary" x1="669" y1="50" x2="669" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="669" y="46" text-anchor="middle">run 14</text>
+    <line class="run-boundary" x1="683.43" y1="50" x2="683.43" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="683.43" y="46" text-anchor="middle">run 15</text>
+    <line class="run-boundary" x1="694.36" y1="50" x2="694.36" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="694.36" y="46" text-anchor="middle">run 16</text>
+    <line class="run-boundary" x1="704" y1="50" x2="704" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="704" y="46" text-anchor="middle">run 17</text>
+    <line class="run-boundary" x1="709.9" y1="50" x2="709.9" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="709.9" y="46" text-anchor="middle">run 18</text>
+    <line class="run-boundary" x1="710.22" y1="50" x2="710.22" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="710.22" y="46" text-anchor="middle">run 19</text>
+    <line class="run-boundary" x1="710.53" y1="50" x2="710.53" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="710.53" y="46" text-anchor="middle">run 20</text>
+    <line class="run-boundary" x1="710.79" y1="50" x2="710.79" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="710.79" y="46" text-anchor="middle">run 21</text>
+    <line class="run-boundary" x1="711.06" y1="50" x2="711.06" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="711.06" y="46" text-anchor="middle">run 22</text>
+    <line class="run-boundary" x1="711.33" y1="50" x2="711.33" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="711.33" y="46" text-anchor="middle">run 23</text>
+    <line class="run-boundary" x1="711.59" y1="50" x2="711.59" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="711.59" y="46" text-anchor="middle">run 24</text>
+    <line class="run-boundary" x1="711.86" y1="50" x2="711.86" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="711.86" y="46" text-anchor="middle">run 25</text>
+    <line class="run-boundary" x1="712.12" y1="50" x2="712.12" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="712.12" y="46" text-anchor="middle">run 26</text>
+    <line class="run-boundary" x1="712.38" y1="50" x2="712.38" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="712.38" y="46" text-anchor="middle">run 27</text>
+    <line class="run-boundary" x1="712.65" y1="50" x2="712.65" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="712.65" y="46" text-anchor="middle">run 28</text>
+    <line class="run-boundary" x1="712.91" y1="50" x2="712.91" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="712.91" y="46" text-anchor="middle">run 29</text>
+    <line class="run-boundary" x1="713.17" y1="50" x2="713.17" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="713.17" y="46" text-anchor="middle">run 30</text>
+    <line class="run-boundary" x1="713.44" y1="50" x2="713.44" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="713.44" y="46" text-anchor="middle">run 31</text>
+    <line class="run-boundary" x1="713.74" y1="50" x2="713.74" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="713.74" y="46" text-anchor="middle">run 32</text>
+    <line class="run-boundary" x1="714.09" y1="50" x2="714.09" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="714.09" y="46" text-anchor="middle">run 33</text>
+    <line class="run-boundary" x1="714.44" y1="50" x2="714.44" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="714.44" y="46" text-anchor="middle">run 34</text>
+    <line class="run-boundary" x1="714.74" y1="50" x2="714.74" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="714.74" y="46" text-anchor="middle">run 35</text>
+    <line class="run-boundary" x1="715.05" y1="50" x2="715.05" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="715.05" y="46" text-anchor="middle">run 36</text>
+    <line class="run-boundary" x1="715.39" y1="50" x2="715.39" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="715.39" y="46" text-anchor="middle">run 37</text>
+    <line class="run-boundary" x1="715.69" y1="50" x2="715.69" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="715.69" y="46" text-anchor="middle">run 38</text>
+    <line class="run-boundary" x1="716" y1="50" x2="716" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="716" y="46" text-anchor="middle">run 39</text>
+    <line class="run-boundary" x1="716.34" y1="50" x2="716.34" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="716.34" y="46" text-anchor="middle">run 40</text>
+    <line class="run-boundary" x1="716.68" y1="50" x2="716.68" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="716.68" y="46" text-anchor="middle">run 41</text>
+    <line class="run-boundary" x1="717.03" y1="50" x2="717.03" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="717.03" y="46" text-anchor="middle">run 42</text>
+    <line class="run-boundary" x1="717.37" y1="50" x2="717.37" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="717.37" y="46" text-anchor="middle">run 43</text>
+    <line class="run-boundary" x1="717.67" y1="50" x2="717.67" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="717.67" y="46" text-anchor="middle">run 44</text>
+    <line class="run-boundary" x1="717.97" y1="50" x2="717.97" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="717.97" y="46" text-anchor="middle">run 45</text>
+    <line class="run-boundary" x1="718.26" y1="50" x2="718.26" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="718.26" y="46" text-anchor="middle">run 46</text>
+    <line class="run-boundary" x1="718.56" y1="50" x2="718.56" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="718.56" y="46" text-anchor="middle">run 47</text>
+    <line class="run-boundary" x1="718.86" y1="50" x2="718.86" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="718.86" y="46" text-anchor="middle">run 48</text>
+    <line class="run-boundary" x1="719.2" y1="50" x2="719.2" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="719.2" y="46" text-anchor="middle">run 49</text>
+    <line class="run-boundary" x1="719.45" y1="50" x2="719.45" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="719.45" y="46" text-anchor="middle">run 50</text>
+    <line class="run-boundary" x1="719.7" y1="50" x2="719.7" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="719.7" y="46" text-anchor="middle">run 51</text>
+    <line class="run-boundary" x1="719.96" y1="50" x2="719.96" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="719.96" y="46" text-anchor="middle">run 52</text>
+    <line class="run-boundary" x1="720.21" y1="50" x2="720.21" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="720.21" y="46" text-anchor="middle">run 53</text>
+    <line class="run-boundary" x1="720.46" y1="50" x2="720.46" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="720.46" y="46" text-anchor="middle">run 54</text>
+    <line class="run-boundary" x1="720.71" y1="50" x2="720.71" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="720.71" y="46" text-anchor="middle">run 55</text>
+    <line class="run-boundary" x1="720.96" y1="50" x2="720.96" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="720.96" y="46" text-anchor="middle">run 56</text>
+    <line class="run-boundary" x1="721.21" y1="50" x2="721.21" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="721.21" y="46" text-anchor="middle">run 57</text>
+    <line class="run-boundary" x1="721.47" y1="50" x2="721.47" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="721.47" y="46" text-anchor="middle">run 58</text>
+    <line class="run-boundary" x1="721.72" y1="50" x2="721.72" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="721.72" y="46" text-anchor="middle">run 59</text>
+    <line class="run-boundary" x1="721.97" y1="50" x2="721.97" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="721.97" y="46" text-anchor="middle">run 60</text>
+    <line class="run-boundary" x1="722.26" y1="50" x2="722.26" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="722.26" y="46" text-anchor="middle">run 61</text>
+    <line class="run-boundary" x1="722.59" y1="50" x2="722.59" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="722.59" y="46" text-anchor="middle">run 62</text>
+    <line class="run-boundary" x1="722.88" y1="50" x2="722.88" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="722.88" y="46" text-anchor="middle">run 63</text>
+    <line class="run-boundary" x1="723.21" y1="50" x2="723.21" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="723.21" y="46" text-anchor="middle">run 64</text>
+    <line class="run-boundary" x1="723.54" y1="50" x2="723.54" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="723.54" y="46" text-anchor="middle">run 65</text>
+    <line class="run-boundary" x1="723.87" y1="50" x2="723.87" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="723.87" y="46" text-anchor="middle">run 66</text>
+    <line class="run-boundary" x1="724.2" y1="50" x2="724.2" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="724.2" y="46" text-anchor="middle">run 67</text>
+    <line class="run-boundary" x1="724.53" y1="50" x2="724.53" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="724.53" y="46" text-anchor="middle">run 68</text>
+    <line class="run-boundary" x1="724.81" y1="50" x2="724.81" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="724.81" y="46" text-anchor="middle">run 69</text>
+    <line class="run-boundary" x1="725.14" y1="50" x2="725.14" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="725.14" y="46" text-anchor="middle">run 70</text>
+    <line class="run-boundary" x1="725.47" y1="50" x2="725.47" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="725.47" y="46" text-anchor="middle">run 71</text>
+    <line class="run-boundary" x1="725.75" y1="50" x2="725.75" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="725.75" y="46" text-anchor="middle">run 72</text>
+    <line class="run-boundary" x1="726.04" y1="50" x2="726.04" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="726.04" y="46" text-anchor="middle">run 73</text>
+    <line class="run-boundary" x1="726.32" y1="50" x2="726.32" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="726.32" y="46" text-anchor="middle">run 74</text>
+    <line class="run-boundary" x1="726.6" y1="50" x2="726.6" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="726.6" y="46" text-anchor="middle">run 75</text>
+    <line class="run-boundary" x1="726.89" y1="50" x2="726.89" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="726.89" y="46" text-anchor="middle">run 76</text>
+    <line class="run-boundary" x1="727.17" y1="50" x2="727.17" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="727.17" y="46" text-anchor="middle">run 77</text>
+    <line class="run-boundary" x1="727.45" y1="50" x2="727.45" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="727.45" y="46" text-anchor="middle">run 78</text>
+    <line class="run-boundary" x1="727.69" y1="50" x2="727.69" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="727.69" y="46" text-anchor="middle">run 79</text>
+    <line class="run-boundary" x1="727.93" y1="50" x2="727.93" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="727.93" y="46" text-anchor="middle">run 80</text>
+    <line class="run-boundary" x1="728.18" y1="50" x2="728.18" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="728.18" y="46" text-anchor="middle">run 81</text>
+    <line class="run-boundary" x1="728.42" y1="50" x2="728.42" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="728.42" y="46" text-anchor="middle">run 82</text>
+    <line class="run-boundary" x1="728.66" y1="50" x2="728.66" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="728.66" y="46" text-anchor="middle">run 83</text>
+    <line class="run-boundary" x1="728.9" y1="50" x2="728.9" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="728.9" y="46" text-anchor="middle">run 84</text>
+    <line class="run-boundary" x1="729.14" y1="50" x2="729.14" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="729.14" y="46" text-anchor="middle">run 85</text>
+    <line class="run-boundary" x1="729.38" y1="50" x2="729.38" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="729.38" y="46" text-anchor="middle">run 86</text>
+    <line class="run-boundary" x1="729.61" y1="50" x2="729.61" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="729.61" y="46" text-anchor="middle">run 87</text>
+    <line class="run-boundary" x1="729.85" y1="50" x2="729.85" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="729.85" y="46" text-anchor="middle">run 88</text>
+    <line class="run-boundary" x1="730.13" y1="50" x2="730.13" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="730.13" y="46" text-anchor="middle">run 89</text>
+    <line class="run-boundary" x1="730.41" y1="50" x2="730.41" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="730.41" y="46" text-anchor="middle">run 90</text>
+    <line class="run-boundary" x1="730.69" y1="50" x2="730.69" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="730.69" y="46" text-anchor="middle">run 91</text>
+    <line class="run-boundary" x1="731" y1="50" x2="731" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="731" y="46" text-anchor="middle">run 92</text>
+    <line class="run-boundary" x1="731.28" y1="50" x2="731.28" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="731.28" y="46" text-anchor="middle">run 93</text>
+    <line class="run-boundary" x1="731.59" y1="50" x2="731.59" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="731.59" y="46" text-anchor="middle">run 94</text>
+    <line class="run-boundary" x1="731.91" y1="50" x2="731.91" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="731.91" y="46" text-anchor="middle">run 95</text>
+    <line class="run-boundary" x1="732.18" y1="50" x2="732.18" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="732.18" y="46" text-anchor="middle">run 96</text>
+    <line class="run-boundary" x1="732.46" y1="50" x2="732.46" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="732.46" y="46" text-anchor="middle">run 97</text>
+    <line class="run-boundary" x1="732.73" y1="50" x2="732.73" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="732.73" y="46" text-anchor="middle">run 98</text>
+    <line class="run-boundary" x1="733" y1="50" x2="733" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="733" y="46" text-anchor="middle">run 99</text>
+    <line class="run-boundary" x1="733.28" y1="50" x2="733.28" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="733.28" y="46" text-anchor="middle">run 100</text>
+    <line class="run-boundary" x1="733.59" y1="50" x2="733.59" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="733.59" y="46" text-anchor="middle">run 101</text>
+    <line class="run-boundary" x1="733.86" y1="50" x2="733.86" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="733.86" y="46" text-anchor="middle">run 102</text>
+    <line class="run-boundary" x1="734.17" y1="50" x2="734.17" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="734.17" y="46" text-anchor="middle">run 103</text>
+    <line class="run-boundary" x1="734.48" y1="50" x2="734.48" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="734.48" y="46" text-anchor="middle">run 104</text>
+    <line class="run-boundary" x1="734.75" y1="50" x2="734.75" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="734.75" y="46" text-anchor="middle">run 105</text>
+    <line class="run-boundary" x1="735.02" y1="50" x2="735.02" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="735.02" y="46" text-anchor="middle">run 106</text>
+    <line class="run-boundary" x1="735.25" y1="50" x2="735.25" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="735.25" y="46" text-anchor="middle">run 107</text>
+    <line class="run-boundary" x1="735.48" y1="50" x2="735.48" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="735.48" y="46" text-anchor="middle">run 108</text>
+    <line class="run-boundary" x1="735.71" y1="50" x2="735.71" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="735.71" y="46" text-anchor="middle">run 109</text>
+    <line class="run-boundary" x1="735.94" y1="50" x2="735.94" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="735.94" y="46" text-anchor="middle">run 110</text>
+    <line class="run-boundary" x1="736.17" y1="50" x2="736.17" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="736.17" y="46" text-anchor="middle">run 111</text>
+    <line class="run-boundary" x1="736.4" y1="50" x2="736.4" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="736.4" y="46" text-anchor="middle">run 112</text>
+    <line class="run-boundary" x1="736.63" y1="50" x2="736.63" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="736.63" y="46" text-anchor="middle">run 113</text>
+    <line class="run-boundary" x1="736.86" y1="50" x2="736.86" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="736.86" y="46" text-anchor="middle">run 114</text>
+    <line class="run-boundary" x1="737.09" y1="50" x2="737.09" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="737.09" y="46" text-anchor="middle">run 115</text>
+    <line class="run-boundary" x1="737.32" y1="50" x2="737.32" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="737.32" y="46" text-anchor="middle">run 116</text>
+    <line class="run-boundary" x1="737.55" y1="50" x2="737.55" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="737.55" y="46" text-anchor="middle">run 117</text>
+    <line class="run-boundary" x1="737.81" y1="50" x2="737.81" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="737.81" y="46" text-anchor="middle">run 118</text>
+    <line class="run-boundary" x1="738.08" y1="50" x2="738.08" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="738.08" y="46" text-anchor="middle">run 119</text>
+    <line class="run-boundary" x1="738.34" y1="50" x2="738.34" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="738.34" y="46" text-anchor="middle">run 120</text>
+    <line class="run-boundary" x1="738.65" y1="50" x2="738.65" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="738.65" y="46" text-anchor="middle">run 121</text>
+    <line class="run-boundary" x1="738.95" y1="50" x2="738.95" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="738.95" y="46" text-anchor="middle">run 122</text>
+    <line class="run-boundary" x1="739.21" y1="50" x2="739.21" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="739.21" y="46" text-anchor="middle">run 123</text>
+    <line class="run-boundary" x1="739.51" y1="50" x2="739.51" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="739.51" y="46" text-anchor="middle">run 124</text>
+    <line class="run-boundary" x1="739.78" y1="50" x2="739.78" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="739.78" y="46" text-anchor="middle">run 125</text>
+    <line class="run-boundary" x1="740.04" y1="50" x2="740.04" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="740.04" y="46" text-anchor="middle">run 126</text>
+    <line class="run-boundary" x1="740.3" y1="50" x2="740.3" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="740.3" y="46" text-anchor="middle">run 127</text>
+    <line class="run-boundary" x1="740.56" y1="50" x2="740.56" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="740.56" y="46" text-anchor="middle">run 128</text>
+    <line class="run-boundary" x1="740.82" y1="50" x2="740.82" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="740.82" y="46" text-anchor="middle">run 129</text>
+    <line class="run-boundary" x1="741.12" y1="50" x2="741.12" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="741.12" y="46" text-anchor="middle">run 130</text>
+    <line class="run-boundary" x1="741.38" y1="50" x2="741.38" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="741.38" y="46" text-anchor="middle">run 131</text>
+    <line class="run-boundary" x1="741.64" y1="50" x2="741.64" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="741.64" y="46" text-anchor="middle">run 132</text>
+    <line class="run-boundary" x1="741.94" y1="50" x2="741.94" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="741.94" y="46" text-anchor="middle">run 133</text>
+    <line class="run-boundary" x1="742.23" y1="50" x2="742.23" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="742.23" y="46" text-anchor="middle">run 134</text>
+    <line class="run-boundary" x1="742.49" y1="50" x2="742.49" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="742.49" y="46" text-anchor="middle">run 135</text>
+    <line class="run-boundary" x1="742.71" y1="50" x2="742.71" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="742.71" y="46" text-anchor="middle">run 136</text>
+    <line class="run-boundary" x1="742.94" y1="50" x2="742.94" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="742.94" y="46" text-anchor="middle">run 137</text>
+    <line class="run-boundary" x1="743.16" y1="50" x2="743.16" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="743.16" y="46" text-anchor="middle">run 138</text>
+    <line class="run-boundary" x1="743.38" y1="50" x2="743.38" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="743.38" y="46" text-anchor="middle">run 139</text>
+    <line class="run-boundary" x1="743.6" y1="50" x2="743.6" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="743.6" y="46" text-anchor="middle">run 140</text>
+    <line class="run-boundary" x1="743.82" y1="50" x2="743.82" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="743.82" y="46" text-anchor="middle">run 141</text>
+    <line class="run-boundary" x1="744.04" y1="50" x2="744.04" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="744.04" y="46" text-anchor="middle">run 142</text>
+    <line class="run-boundary" x1="744.26" y1="50" x2="744.26" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="744.26" y="46" text-anchor="middle">run 143</text>
+    <line class="run-boundary" x1="744.48" y1="50" x2="744.48" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="744.48" y="46" text-anchor="middle">run 144</text>
+    <line class="run-boundary" x1="744.69" y1="50" x2="744.69" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="744.69" y="46" text-anchor="middle">run 145</text>
+    <line class="run-boundary" x1="744.91" y1="50" x2="744.91" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="744.91" y="46" text-anchor="middle">run 146</text>
+    <line class="run-boundary" x1="745.13" y1="50" x2="745.13" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="745.13" y="46" text-anchor="middle">run 147</text>
+    <line class="run-boundary" x1="745.39" y1="50" x2="745.39" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="745.39" y="46" text-anchor="middle">run 148</text>
+    <line class="run-boundary" x1="745.68" y1="50" x2="745.68" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="745.68" y="46" text-anchor="middle">run 149</text>
+    <line class="run-boundary" x1="745.93" y1="50" x2="745.93" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="745.93" y="46" text-anchor="middle">run 150</text>
+    <line class="run-boundary" x1="746.22" y1="50" x2="746.22" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="746.22" y="46" text-anchor="middle">run 151</text>
+    <line class="run-boundary" x1="746.47" y1="50" x2="746.47" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="746.47" y="46" text-anchor="middle">run 152</text>
+    <line class="run-boundary" x1="746.72" y1="50" x2="746.72" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="746.72" y="46" text-anchor="middle">run 153</text>
+    <line class="run-boundary" x1="746.98" y1="50" x2="746.98" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="746.98" y="46" text-anchor="middle">run 154</text>
+    <line class="run-boundary" x1="747.23" y1="50" x2="747.23" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="747.23" y="46" text-anchor="middle">run 155</text>
+    <line class="run-boundary" x1="747.51" y1="50" x2="747.51" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="747.51" y="46" text-anchor="middle">run 156</text>
+    <line class="run-boundary" x1="747.77" y1="50" x2="747.77" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="747.77" y="46" text-anchor="middle">run 157</text>
+    <line class="run-boundary" x1="748.02" y1="50" x2="748.02" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="748.02" y="46" text-anchor="middle">run 158</text>
+    <line class="run-boundary" x1="748.27" y1="50" x2="748.27" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="748.27" y="46" text-anchor="middle">run 159</text>
+    <line class="run-boundary" x1="748.55" y1="50" x2="748.55" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="748.55" y="46" text-anchor="middle">run 160</text>
+    <line class="run-boundary" x1="748.84" y1="50" x2="748.84" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="748.84" y="46" text-anchor="middle">run 161</text>
+    <line class="run-boundary" x1="749.09" y1="50" x2="749.09" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="749.09" y="46" text-anchor="middle">run 162</text>
+    <line class="run-boundary" x1="749.33" y1="50" x2="749.33" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="749.33" y="46" text-anchor="middle">run 163</text>
+    <line class="run-boundary" x1="749.58" y1="50" x2="749.58" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="749.58" y="46" text-anchor="middle">run 164</text>
+    <line class="run-boundary" x1="749.87" y1="50" x2="749.87" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="749.87" y="46" text-anchor="middle">run 165</text>
+    <line class="run-boundary" x1="750.11" y1="50" x2="750.11" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="750.11" y="46" text-anchor="middle">run 166</text>
+    <line class="run-boundary" x1="750.36" y1="50" x2="750.36" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="750.36" y="46" text-anchor="middle">run 167</text>
+    <line class="run-boundary" x1="750.57" y1="50" x2="750.57" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="750.57" y="46" text-anchor="middle">run 168</text>
+    <line class="run-boundary" x1="750.78" y1="50" x2="750.78" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="750.78" y="46" text-anchor="middle">run 169</text>
+    <line class="run-boundary" x1="750.99" y1="50" x2="750.99" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="750.99" y="46" text-anchor="middle">run 170</text>
+    <line class="run-boundary" x1="751.21" y1="50" x2="751.21" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="751.21" y="46" text-anchor="middle">run 171</text>
+    <line class="run-boundary" x1="751.42" y1="50" x2="751.42" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="751.42" y="46" text-anchor="middle">run 172</text>
+    <line class="run-boundary" x1="751.63" y1="50" x2="751.63" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="751.63" y="46" text-anchor="middle">run 173</text>
+    <line class="run-boundary" x1="751.84" y1="50" x2="751.84" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="751.84" y="46" text-anchor="middle">run 174</text>
+    <line class="run-boundary" x1="752.05" y1="50" x2="752.05" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="752.05" y="46" text-anchor="middle">run 175</text>
+    <line class="run-boundary" x1="752.26" y1="50" x2="752.26" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="752.26" y="46" text-anchor="middle">run 176</text>
+    <line class="run-boundary" x1="752.46" y1="50" x2="752.46" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="752.46" y="46" text-anchor="middle">run 177</text>
+    <line class="run-boundary" x1="752.67" y1="50" x2="752.67" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="752.67" y="46" text-anchor="middle">run 178</text>
+    <line class="run-boundary" x1="752.95" y1="50" x2="752.95" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="752.95" y="46" text-anchor="middle">run 179</text>
+    <line class="run-boundary" x1="753.2" y1="50" x2="753.2" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="753.2" y="46" text-anchor="middle">run 180</text>
+    <line class="run-boundary" x1="753.44" y1="50" x2="753.44" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="753.44" y="46" text-anchor="middle">run 181</text>
+    <line class="run-boundary" x1="753.71" y1="50" x2="753.71" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="753.71" y="46" text-anchor="middle">run 182</text>
+    <line class="run-boundary" x1="753.99" y1="50" x2="753.99" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="753.99" y="46" text-anchor="middle">run 183</text>
+    <line class="run-boundary" x1="754.27" y1="50" x2="754.27" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="754.27" y="46" text-anchor="middle">run 184</text>
+    <line class="run-boundary" x1="754.51" y1="50" x2="754.51" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="754.51" y="46" text-anchor="middle">run 185</text>
+    <line class="run-boundary" x1="754.75" y1="50" x2="754.75" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="754.75" y="46" text-anchor="middle">run 186</text>
+    <line class="run-boundary" x1="755.02" y1="50" x2="755.02" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="755.02" y="46" text-anchor="middle">run 187</text>
+    <line class="run-boundary" x1="755.26" y1="50" x2="755.26" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="755.26" y="46" text-anchor="middle">run 188</text>
+    <line class="run-boundary" x1="755.5" y1="50" x2="755.5" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="755.5" y="46" text-anchor="middle">run 189</text>
+    <line class="run-boundary" x1="755.78" y1="50" x2="755.78" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="755.78" y="46" text-anchor="middle">run 190</text>
+    <line class="run-boundary" x1="756.02" y1="50" x2="756.02" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="756.02" y="46" text-anchor="middle">run 191</text>
+    <line class="run-boundary" x1="756.26" y1="50" x2="756.26" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="756.26" y="46" text-anchor="middle">run 192</text>
+    <line class="run-boundary" x1="756.5" y1="50" x2="756.5" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="756.5" y="46" text-anchor="middle">run 193</text>
+    <line class="run-boundary" x1="756.73" y1="50" x2="756.73" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="756.73" y="46" text-anchor="middle">run 194</text>
+    <line class="run-boundary" x1="757" y1="50" x2="757" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="757" y="46" text-anchor="middle">run 195</text>
+    <line class="run-boundary" x1="757.24" y1="50" x2="757.24" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="757.24" y="46" text-anchor="middle">run 196</text>
+    <line class="run-boundary" x1="757.48" y1="50" x2="757.48" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="757.48" y="46" text-anchor="middle">run 197</text>
+    <line class="run-boundary" x1="757.68" y1="50" x2="757.68" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="757.68" y="46" text-anchor="middle">run 198</text>
+    <line class="run-boundary" x1="757.89" y1="50" x2="757.89" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="757.89" y="46" text-anchor="middle">run 199</text>
+    <line class="run-boundary" x1="758.09" y1="50" x2="758.09" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="758.09" y="46" text-anchor="middle">run 200</text>
+    <line class="run-boundary" x1="758.29" y1="50" x2="758.29" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="758.29" y="46" text-anchor="middle">run 201</text>
+    <line class="run-boundary" x1="758.49" y1="50" x2="758.49" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="758.49" y="46" text-anchor="middle">run 202</text>
+    <line class="run-boundary" x1="758.69" y1="50" x2="758.69" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="758.69" y="46" text-anchor="middle">run 203</text>
+    <line class="run-boundary" x1="758.9" y1="50" x2="758.9" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="758.9" y="46" text-anchor="middle">run 204</text>
+    <line class="run-boundary" x1="759.13" y1="50" x2="759.13" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="759.13" y="46" text-anchor="middle">run 205</text>
+    <line class="run-boundary" x1="759.36" y1="50" x2="759.36" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="759.36" y="46" text-anchor="middle">run 206</text>
+    <line class="run-boundary" x1="759.57" y1="50" x2="759.57" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="759.57" y="46" text-anchor="middle">run 207</text>
+    <line class="run-boundary" x1="759.77" y1="50" x2="759.77" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="759.77" y="46" text-anchor="middle">run 208</text>
     <line class="run-boundary" x1="760" y1="50" x2="760" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="760" y="46" text-anchor="middle">run 2</text>
+    <text x="760" y="46" text-anchor="middle">run 209</text>
   </g>
   <g class="error-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 760,126.94"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 285.78,126.94 352.98,249.16 432.47,249.95 479.83,251.41 511.23,284.32 536.07,298.39 557.35,298.4 586.08,298.41 607.98,298.43 622.73,298.45 640.11,298.46 652.87,298.47 669,298.47 683.43,298.49 694.36,298.49 704,298.5 709.9,311.02 710.22,311.02 710.53,311.02 710.79,311.02 711.06,311.02 711.33,311.02 711.59,311.02 711.86,311.02 712.12,311.02 712.38,311.02 712.65,311.02 712.91,311.02 713.17,311.02 713.44,311.02 713.74,311.02 714.09,311.02 714.44,311.02 714.74,311.02 715.05,311.02 715.39,311.02 715.69,311.02 716,311.02 716.34,311.02 716.68,311.02 717.03,311.02 717.37,311.02 717.67,311.02 717.97,311.02 718.26,311.02 718.56,311.02 718.86,311.02 719.2,311.02 719.45,311.02 719.7,311.02 719.96,311.02 720.21,311.02 720.46,311.02 720.71,311.02 720.96,311.02 721.21,311.02 721.47,311.02 721.72,311.02 721.97,311.02 722.26,311.02 722.59,311.02 722.88,311.02 723.21,311.02 723.54,311.02 723.87,311.02 724.2,311.02 724.53,311.02 724.81,311.02 725.14,311.02 725.47,311.02 725.75,311.02 726.04,311.02 726.32,311.02 726.6,311.02 726.89,311.02 727.17,311.02 727.45,311.02 727.69,311.02 727.93,311.02 728.18,311.02 728.42,311.02 728.66,311.02 728.9,311.02 729.14,311.02 729.38,311.02 729.61,311.02 729.85,311.02 730.13,311.02 730.41,311.02 730.69,311.02 731,311.02 731.28,311.02 731.59,311.02 731.91,311.02 732.18,311.02 732.46,311.02 732.73,311.02 733,311.02 733.28,311.02 733.59,311.02 733.86,311.02 734.17,311.03 734.48,311.03 734.75,311.03 735.02,311.03 735.25,311.03 735.48,311.03 735.71,311.03 735.94,311.03 736.17,311.03 736.4,311.03 736.63,311.03 736.86,311.03 737.09,311.03 737.32,311.03 737.55,311.03 737.81,311.03 738.08,311.03 738.34,311.03 738.65,311.03 738.95,311.03 739.21,311.03 739.51,311.03 739.78,311.03 740.04,311.03 740.3,311.03 740.56,311.03 740.82,311.03 741.12,311.03 741.38,311.03 741.64,311.03 741.94,311.03 742.23,311.03 742.49,311.03 742.71,311.03 742.94,311.03 743.16,311.03 743.38,311.03 743.6,311.03 743.82,311.03 744.04,311.03 744.26,311.03 744.48,311.03 744.69,311.03 744.91,311.03 745.13,311.03 745.39,311.03 745.68,311.03 745.93,311.03 746.22,311.03 746.47,311.03 746.72,311.03 746.98,311.03 747.23,311.03 747.51,311.03 747.77,311.03 748.02,311.03 748.27,311.03 748.55,311.03 748.84,311.03 749.09,311.03 749.33,311.03 749.58,311.03 749.87,311.03 750.11,311.03 750.36,311.03 750.57,311.03 750.78,311.03 750.99,311.03 751.21,311.03 751.42,311.03 751.63,311.03 751.84,311.03 752.05,311.03 752.26,311.03 752.46,311.03 752.67,311.03 752.95,311.03 753.2,311.03 753.44,311.03 753.71,311.03 753.99,311.03 754.27,311.03 754.51,311.03 754.75,311.03 755.02,311.03 755.26,311.03 755.5,311.03 755.78,311.03 756.02,311.03 756.26,311.03 756.5,311.03 756.73,311.03 757,311.03 757.24,311.03 757.48,311.03 757.68,311.03 757.89,311.03 758.09,311.03 758.29,311.03 758.49,311.03 758.69,311.03 758.9,311.03 759.13,311.03 759.36,311.03 759.57,311.03 759.77,311.03 760,311.03"/>
     <circle class="error-point" cx="70" cy="50" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="760" cy="126.94" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="285.78" cy="126.94" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="352.98" cy="249.16" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="432.47" cy="249.95" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="479.83" cy="251.41" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="511.23" cy="284.32" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="536.07" cy="298.39" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="557.35" cy="298.4" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="586.08" cy="298.41" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="607.98" cy="298.43" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="622.73" cy="298.45" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="640.11" cy="298.46" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="652.87" cy="298.47" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="669" cy="298.47" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="683.43" cy="298.49" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="694.36" cy="298.49" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="704" cy="298.5" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="709.9" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="710.22" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="710.53" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="710.79" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="711.06" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="711.33" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="711.59" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="711.86" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="712.12" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="712.38" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="712.65" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="712.91" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="713.17" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="713.44" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="713.74" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="714.09" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="714.44" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="714.74" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="715.05" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="715.39" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="715.69" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="716" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="716.34" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="716.68" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="717.03" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="717.37" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="717.67" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="717.97" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="718.26" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="718.56" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="718.86" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="719.2" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="719.45" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="719.7" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="719.96" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="720.21" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="720.46" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="720.71" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="720.96" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="721.21" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="721.47" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="721.72" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="721.97" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="722.26" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="722.59" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="722.88" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="723.21" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="723.54" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="723.87" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="724.2" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="724.53" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="724.81" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="725.14" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="725.47" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="725.75" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="726.04" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="726.32" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="726.6" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="726.89" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="727.17" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="727.45" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="727.69" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="727.93" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="728.18" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="728.42" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="728.66" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="728.9" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="729.14" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="729.38" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="729.61" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="729.85" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="730.13" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="730.41" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="730.69" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="731" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="731.28" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="731.59" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="731.91" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="732.18" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="732.46" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="732.73" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="733" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="733.28" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="733.59" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="733.86" cy="311.02" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="734.17" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="734.48" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="734.75" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="735.02" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="735.25" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="735.48" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="735.71" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="735.94" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="736.17" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="736.4" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="736.63" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="736.86" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="737.09" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="737.32" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="737.55" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="737.81" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="738.08" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="738.34" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="738.65" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="738.95" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="739.21" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="739.51" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="739.78" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="740.04" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="740.3" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="740.56" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="740.82" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="741.12" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="741.38" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="741.64" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="741.94" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="742.23" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="742.49" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="742.71" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="742.94" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="743.16" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="743.38" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="743.6" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="743.82" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.04" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.26" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.48" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.69" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.91" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="745.13" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="745.39" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="745.68" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="745.93" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="746.22" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="746.47" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="746.72" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="746.98" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="747.23" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="747.51" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="747.77" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="748.02" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="748.27" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="748.55" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="748.84" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="749.09" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="749.33" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="749.58" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="749.87" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="750.11" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="750.36" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="750.57" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="750.78" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="750.99" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="751.21" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="751.42" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="751.63" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="751.84" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.05" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.26" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.46" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.67" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.95" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="753.2" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="753.44" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="753.71" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="753.99" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="754.27" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="754.51" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="754.75" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="755.02" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="755.26" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="755.5" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="755.78" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="756.02" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="756.26" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="756.5" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="756.73" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="757" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="757.24" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="757.48" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="757.68" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="757.89" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="758.09" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="758.29" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="758.49" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="758.69" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="758.9" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="759.13" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="759.36" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="759.57" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="759.77" cy="311.03" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="760" cy="311.03" r="2.4" fill="#d62728"/>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">
-    <text x="400" y="378" text-anchor="middle">final error 0.735 · 2 runs · 329 cumulative generations · 1213497 ms total · 16 gen/min</text>
+    <text x="400" y="378" text-anchor="middle">final error 0.1 · 209 runs · 5163 cumulative generations · 40497372 ms total · 7.6 gen/min</text>
   </g>
 </svg>

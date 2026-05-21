@@ -1,22 +1,2092 @@
 [
-  {
-    "runGen": 94,
-    "bestScore": -149290.70330350817,
-    "error": 1,
-    "neurons": 794,
-    "synapses": 7841,
-    "generationWallClockMs": 312607,
-    "runIndex": 1,
-    "cumulativeGen": 94
-  },
-  {
-    "runGen": 235,
-    "bestScore": 0.2652421690909943,
-    "error": 0.7346794199090441,
-    "neurons": 794,
-    "synapses": 7841,
-    "generationWallClockMs": 900890,
-    "runIndex": 2,
-    "cumulativeGen": 329
-  }
+ {
+  "runGen": 94,
+  "bestScore": -149290.70330350817,
+  "error": 1,
+  "neurons": 794,
+  "synapses": 7841,
+  "generationWallClockMs": 312607,
+  "runIndex": 1,
+  "cumulativeGen": 94
+ },
+ {
+  "runGen": 235,
+  "bestScore": 0.2652421690909943,
+  "error": 0.7346794199090441,
+  "neurons": 794,
+  "synapses": 7841,
+  "generationWallClockMs": 900890,
+  "runIndex": 2,
+  "cumulativeGen": 329
+ },
+ {
+  "runGen": 157,
+  "bestScore": 0.6866911498357858,
+  "error": 0.31323039916425255,
+  "neurons": 794,
+  "synapses": 7845,
+  "generationWallClockMs": 902434,
+  "runIndex": 3,
+  "cumulativeGen": 486
+ },
+ {
+  "runGen": 285,
+  "bestScore": 0.6894206178604507,
+  "error": 0.31050095113958764,
+  "neurons": 794,
+  "synapses": 7843,
+  "generationWallClockMs": 900217,
+  "runIndex": 4,
+  "cumulativeGen": 771
+ },
+ {
+  "runGen": 244,
+  "bestScore": 0.6944295692526243,
+  "error": 0.30549194974741406,
+  "neurons": 794,
+  "synapses": 7848,
+  "generationWallClockMs": 907375,
+  "runIndex": 5,
+  "cumulativeGen": 1015
+ },
+ {
+  "runGen": 203,
+  "bestScore": 0.8079273336484809,
+  "error": 0.1919941753515575,
+  "neurons": 794,
+  "synapses": 7849,
+  "generationWallClockMs": 904778,
+  "runIndex": 6,
+  "cumulativeGen": 1218
+ },
+ {
+  "runGen": 189,
+  "bestScore": 0.8564451503190929,
+  "error": 0.14347636868094552,
+  "neurons": 794,
+  "synapses": 7848,
+  "generationWallClockMs": 917622,
+  "runIndex": 7,
+  "cumulativeGen": 1407
+ },
+ {
+  "runGen": 185,
+  "bestScore": 0.8564804440815945,
+  "error": 0.14344108491844385,
+  "neurons": 794,
+  "synapses": 7847,
+  "generationWallClockMs": 928635,
+  "runIndex": 8,
+  "cumulativeGen": 1592
+ },
+ {
+  "runGen": 289,
+  "bestScore": 0.8565235195749175,
+  "error": 0.14339799942512083,
+  "neurons": 794,
+  "synapses": 7848,
+  "generationWallClockMs": 902111,
+  "runIndex": 9,
+  "cumulativeGen": 1881
+ },
+ {
+  "runGen": 255,
+  "bestScore": 0.8565871231847996,
+  "error": 0.14333440581523885,
+  "neurons": 794,
+  "synapses": 7847,
+  "generationWallClockMs": 930279,
+  "runIndex": 10,
+  "cumulativeGen": 2136
+ },
+ {
+  "runGen": 191,
+  "bestScore": 0.8566459915329938,
+  "error": 0.14327554746704452,
+  "neurons": 794,
+  "synapses": 7846,
+  "generationWallClockMs": 900685,
+  "runIndex": 11,
+  "cumulativeGen": 2327
+ },
+ {
+  "runGen": 247,
+  "bestScore": 0.8566837411705504,
+  "error": 0.14323789782948806,
+  "neurons": 794,
+  "synapses": 7836,
+  "generationWallClockMs": 930031,
+  "runIndex": 12,
+  "cumulativeGen": 2574
+ },
+ {
+  "runGen": 198,
+  "bestScore": 0.8567193950527991,
+  "error": 0.14320227394723922,
+  "neurons": 794,
+  "synapses": 7833,
+  "generationWallClockMs": 923987,
+  "runIndex": 13,
+  "cumulativeGen": 2772
+ },
+ {
+  "runGen": 272,
+  "bestScore": 0.856732063444163,
+  "error": 0.14318966555587545,
+  "neurons": 794,
+  "synapses": 7827,
+  "generationWallClockMs": 917922,
+  "runIndex": 14,
+  "cumulativeGen": 3044
+ },
+ {
+  "runGen": 266,
+  "bestScore": 0.8567851770738791,
+  "error": 0.14313658192615913,
+  "neurons": 794,
+  "synapses": 7824,
+  "generationWallClockMs": 935497,
+  "runIndex": 15,
+  "cumulativeGen": 3310
+ },
+ {
+  "runGen": 217,
+  "bestScore": 0.8567971521082455,
+  "error": 0.14312464689179283,
+  "neurons": 794,
+  "synapses": 7820,
+  "generationWallClockMs": 940751,
+  "runIndex": 16,
+  "cumulativeGen": 3527
+ },
+ {
+  "runGen": 203,
+  "bestScore": 0.8568335951871846,
+  "error": 0.14308827381285374,
+  "neurons": 794,
+  "synapses": 7813,
+  "generationWallClockMs": 935614,
+  "runIndex": 17,
+  "cumulativeGen": 3730
+ },
+ {
+  "runGen": 130,
+  "bestScore": 0.8999962606991971,
+  "error": 0.09992574830084118,
+  "neurons": 794,
+  "synapses": 7799,
+  "generationWallClockMs": 552152,
+  "runIndex": 18,
+  "cumulativeGen": 3860
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999963689053087,
+  "error": 0.09992564009472976,
+  "neurons": 794,
+  "synapses": 7799,
+  "generationWallClockMs": 138462,
+  "runIndex": 19,
+  "cumulativeGen": 3867
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999969060864772,
+  "error": 0.09992510291356116,
+  "neurons": 794,
+  "synapses": 7799,
+  "generationWallClockMs": 148316,
+  "runIndex": 20,
+  "cumulativeGen": 3874
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999969160864771,
+  "error": 0.09992510291356116,
+  "neurons": 794,
+  "synapses": 7798,
+  "generationWallClockMs": 93560,
+  "runIndex": 21,
+  "cumulativeGen": 3880
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999969160866071,
+  "error": 0.0999251029134312,
+  "neurons": 794,
+  "synapses": 7798,
+  "generationWallClockMs": 90626,
+  "runIndex": 22,
+  "cumulativeGen": 3886
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999969673167845,
+  "error": 0.09992506168325394,
+  "neurons": 794,
+  "synapses": 7797,
+  "generationWallClockMs": 93582,
+  "runIndex": 23,
+  "cumulativeGen": 3892
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999969797650129,
+  "error": 0.09992505923502544,
+  "neurons": 794,
+  "synapses": 7796,
+  "generationWallClockMs": 93026,
+  "runIndex": 24,
+  "cumulativeGen": 3898
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999969897650129,
+  "error": 0.09992505923502544,
+  "neurons": 794,
+  "synapses": 7795,
+  "generationWallClockMs": 93722,
+  "runIndex": 25,
+  "cumulativeGen": 3904
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999969897867182,
+  "error": 0.09992505921332018,
+  "neurons": 794,
+  "synapses": 7795,
+  "generationWallClockMs": 103936,
+  "runIndex": 26,
+  "cumulativeGen": 3910
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999971937237298,
+  "error": 0.09992485527630858,
+  "neurons": 794,
+  "synapses": 7795,
+  "generationWallClockMs": 88125,
+  "runIndex": 27,
+  "cumulativeGen": 3916
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999972029962267,
+  "error": 0.09992485600381175,
+  "neurons": 794,
+  "synapses": 7794,
+  "generationWallClockMs": 90545,
+  "runIndex": 28,
+  "cumulativeGen": 3922
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999972178282957,
+  "error": 0.09992485117174262,
+  "neurons": 794,
+  "synapses": 7793,
+  "generationWallClockMs": 94005,
+  "runIndex": 29,
+  "cumulativeGen": 3928
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999972258471243,
+  "error": 0.09992484315291407,
+  "neurons": 794,
+  "synapses": 7793,
+  "generationWallClockMs": 88639,
+  "runIndex": 30,
+  "cumulativeGen": 3934
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.8999972258471243,
+  "error": 0.09992484315291407,
+  "neurons": 794,
+  "synapses": 7793,
+  "generationWallClockMs": 84248,
+  "runIndex": 31,
+  "cumulativeGen": 3940
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999972359561426,
+  "error": 0.0999248430438958,
+  "neurons": 794,
+  "synapses": 7792,
+  "generationWallClockMs": 133886,
+  "runIndex": 32,
+  "cumulativeGen": 3947
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.8999978944183296,
+  "error": 0.09992418458170879,
+  "neurons": 794,
+  "synapses": 7792,
+  "generationWallClockMs": 164788,
+  "runIndex": 33,
+  "cumulativeGen": 3955
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.8999979144212897,
+  "error": 0.0999241845787486,
+  "neurons": 794,
+  "synapses": 7790,
+  "generationWallClockMs": 179861,
+  "runIndex": 34,
+  "cumulativeGen": 3963
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999979360878695,
+  "error": 0.09992417291216885,
+  "neurons": 794,
+  "synapses": 7789,
+  "generationWallClockMs": 150740,
+  "runIndex": 35,
+  "cumulativeGen": 3970
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999981042653109,
+  "error": 0.09992400473472741,
+  "neurons": 794,
+  "synapses": 7789,
+  "generationWallClockMs": 138534,
+  "runIndex": 36,
+  "cumulativeGen": 3977
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.8999990407521057,
+  "error": 0.09992307824793271,
+  "neurons": 794,
+  "synapses": 7788,
+  "generationWallClockMs": 179650,
+  "runIndex": 37,
+  "cumulativeGen": 3985
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999991303323741,
+  "error": 0.09992300866766424,
+  "neurons": 794,
+  "synapses": 7786,
+  "generationWallClockMs": 155823,
+  "runIndex": 38,
+  "cumulativeGen": 3992
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.8999991612562974,
+  "error": 0.09992297774374098,
+  "neurons": 794,
+  "synapses": 7786,
+  "generationWallClockMs": 151555,
+  "runIndex": 39,
+  "cumulativeGen": 3999
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000003674041157,
+  "error": 0.09992177159592261,
+  "neurons": 794,
+  "synapses": 7786,
+  "generationWallClockMs": 166448,
+  "runIndex": 40,
+  "cumulativeGen": 4007
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000004287508451,
+  "error": 0.09992171024919327,
+  "neurons": 794,
+  "synapses": 7786,
+  "generationWallClockMs": 165363,
+  "runIndex": 41,
+  "cumulativeGen": 4015
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000008382404138,
+  "error": 0.0999213007596246,
+  "neurons": 794,
+  "synapses": 7786,
+  "generationWallClockMs": 182867,
+  "runIndex": 42,
+  "cumulativeGen": 4023
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.900000849060523,
+  "error": 0.09992129993951536,
+  "neurons": 794,
+  "synapses": 7785,
+  "generationWallClockMs": 163215,
+  "runIndex": 43,
+  "cumulativeGen": 4031
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000008500867729,
+  "error": 0.09992129891326552,
+  "neurons": 794,
+  "synapses": 7785,
+  "generationWallClockMs": 151949,
+  "runIndex": 44,
+  "cumulativeGen": 4038
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000008916890365,
+  "error": 0.09992125731100183,
+  "neurons": 794,
+  "synapses": 7785,
+  "generationWallClockMs": 138756,
+  "runIndex": 45,
+  "cumulativeGen": 4045
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000009016890365,
+  "error": 0.09992125731100183,
+  "neurons": 794,
+  "synapses": 7784,
+  "generationWallClockMs": 156821,
+  "runIndex": 46,
+  "cumulativeGen": 4052
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.90000091205641,
+  "error": 0.09992125694362837,
+  "neurons": 794,
+  "synapses": 7783,
+  "generationWallClockMs": 154465,
+  "runIndex": 47,
+  "cumulativeGen": 4059
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.90000093205641,
+  "error": 0.09992125694362837,
+  "neurons": 794,
+  "synapses": 7781,
+  "generationWallClockMs": 138415,
+  "runIndex": 48,
+  "cumulativeGen": 4066
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000018886239484,
+  "error": 0.09992030037608997,
+  "neurons": 794,
+  "synapses": 7781,
+  "generationWallClockMs": 154164,
+  "runIndex": 49,
+  "cumulativeGen": 4074
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000018886772653,
+  "error": 0.09992030032277305,
+  "neurons": 794,
+  "synapses": 7781,
+  "generationWallClockMs": 96456,
+  "runIndex": 50,
+  "cumulativeGen": 4080
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000018986948529,
+  "error": 0.09992030030518544,
+  "neurons": 794,
+  "synapses": 7780,
+  "generationWallClockMs": 112224,
+  "runIndex": 51,
+  "cumulativeGen": 4086
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000019086951732,
+  "error": 0.09992030030486515,
+  "neurons": 794,
+  "synapses": 7779,
+  "generationWallClockMs": 100755,
+  "runIndex": 52,
+  "cumulativeGen": 4092
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000019186975419,
+  "error": 0.09992030030249643,
+  "neurons": 794,
+  "synapses": 7778,
+  "generationWallClockMs": 88067,
+  "runIndex": 53,
+  "cumulativeGen": 4098
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000019316491717,
+  "error": 0.09992028735086651,
+  "neurons": 794,
+  "synapses": 7778,
+  "generationWallClockMs": 88482,
+  "runIndex": 54,
+  "cumulativeGen": 4104
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000019880263956,
+  "error": 0.09992023097364267,
+  "neurons": 794,
+  "synapses": 7778,
+  "generationWallClockMs": 93838,
+  "runIndex": 55,
+  "cumulativeGen": 4110
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000019981883842,
+  "error": 0.09992023081165413,
+  "neurons": 794,
+  "synapses": 7777,
+  "generationWallClockMs": 109452,
+  "runIndex": 56,
+  "cumulativeGen": 4116
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000020996105289,
+  "error": 0.09992012938950942,
+  "neurons": 794,
+  "synapses": 7777,
+  "generationWallClockMs": 97554,
+  "runIndex": 57,
+  "cumulativeGen": 4122
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000021196105376,
+  "error": 0.09992012938950083,
+  "neurons": 794,
+  "synapses": 7775,
+  "generationWallClockMs": 80078,
+  "runIndex": 58,
+  "cumulativeGen": 4128
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.900002140652875,
+  "error": 0.09992012834716331,
+  "neurons": 794,
+  "synapses": 7773,
+  "generationWallClockMs": 95208,
+  "runIndex": 59,
+  "cumulativeGen": 4134
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000029089491045,
+  "error": 0.09991937005093385,
+  "neurons": 794,
+  "synapses": 7772,
+  "generationWallClockMs": 115790,
+  "runIndex": 60,
+  "cumulativeGen": 4140
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000030052014255,
+  "error": 0.09991928379861288,
+  "neurons": 794,
+  "synapses": 7771,
+  "generationWallClockMs": 143559,
+  "runIndex": 61,
+  "cumulativeGen": 4147
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000035737172658,
+  "error": 0.09991872528277253,
+  "neurons": 794,
+  "synapses": 7770,
+  "generationWallClockMs": 176898,
+  "runIndex": 62,
+  "cumulativeGen": 4155
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000041036791713,
+  "error": 0.09991819532086711,
+  "neurons": 794,
+  "synapses": 7770,
+  "generationWallClockMs": 146564,
+  "runIndex": 63,
+  "cumulativeGen": 4162
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000047129794266,
+  "error": 0.09991758602061175,
+  "neurons": 794,
+  "synapses": 7770,
+  "generationWallClockMs": 164007,
+  "runIndex": 64,
+  "cumulativeGen": 4170
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000047229814662,
+  "error": 0.0999175860185723,
+  "neurons": 794,
+  "synapses": 7769,
+  "generationWallClockMs": 165089,
+  "runIndex": 65,
+  "cumulativeGen": 4178
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000047330052419,
+  "error": 0.09991758599479647,
+  "neurons": 794,
+  "synapses": 7768,
+  "generationWallClockMs": 165664,
+  "runIndex": 66,
+  "cumulativeGen": 4186
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.900004892835746,
+  "error": 0.0999174361642924,
+  "neurons": 794,
+  "synapses": 7767,
+  "generationWallClockMs": 171065,
+  "runIndex": 67,
+  "cumulativeGen": 4194
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000049941493405,
+  "error": 0.09991733485069784,
+  "neurons": 794,
+  "synapses": 7767,
+  "generationWallClockMs": 172096,
+  "runIndex": 68,
+  "cumulativeGen": 4202
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000049953584267,
+  "error": 0.09991733364161172,
+  "neurons": 794,
+  "synapses": 7767,
+  "generationWallClockMs": 156287,
+  "runIndex": 69,
+  "cumulativeGen": 4209
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000050105379536,
+  "error": 0.0999173284620848,
+  "neurons": 794,
+  "synapses": 7766,
+  "generationWallClockMs": 160686,
+  "runIndex": 70,
+  "cumulativeGen": 4217
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000050267849865,
+  "error": 0.0999173222150519,
+  "neurons": 794,
+  "synapses": 7765,
+  "generationWallClockMs": 179672,
+  "runIndex": 71,
+  "cumulativeGen": 4225
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000050367849866,
+  "error": 0.0999173222150519,
+  "neurons": 794,
+  "synapses": 7764,
+  "generationWallClockMs": 154498,
+  "runIndex": 72,
+  "cumulativeGen": 4232
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000050620911461,
+  "error": 0.09991729690889241,
+  "neurons": 794,
+  "synapses": 7764,
+  "generationWallClockMs": 147638,
+  "runIndex": 73,
+  "cumulativeGen": 4239
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900006527539284,
+  "error": 0.09991583146075449,
+  "neurons": 794,
+  "synapses": 7764,
+  "generationWallClockMs": 144351,
+  "runIndex": 74,
+  "cumulativeGen": 4246
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900006537539284,
+  "error": 0.09991583146075449,
+  "neurons": 794,
+  "synapses": 7763,
+  "generationWallClockMs": 141598,
+  "runIndex": 75,
+  "cumulativeGen": 4253
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900006547539284,
+  "error": 0.09991583146075449,
+  "neurons": 794,
+  "synapses": 7762,
+  "generationWallClockMs": 149764,
+  "runIndex": 76,
+  "cumulativeGen": 4260
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000065578657652,
+  "error": 0.09991583113427313,
+  "neurons": 794,
+  "synapses": 7761,
+  "generationWallClockMs": 134925,
+  "runIndex": 77,
+  "cumulativeGen": 4267
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000065778657652,
+  "error": 0.09991583113427313,
+  "neurons": 794,
+  "synapses": 7759,
+  "generationWallClockMs": 136559,
+  "runIndex": 78,
+  "cumulativeGen": 4274
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.90000658833435,
+  "error": 0.0999158306656884,
+  "neurons": 794,
+  "synapses": 7758,
+  "generationWallClockMs": 104427,
+  "runIndex": 79,
+  "cumulativeGen": 4280
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000068001786343,
+  "error": 0.09991561882140415,
+  "neurons": 794,
+  "synapses": 7758,
+  "generationWallClockMs": 94262,
+  "runIndex": 80,
+  "cumulativeGen": 4286
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000070976298556,
+  "error": 0.09991532137018282,
+  "neurons": 794,
+  "synapses": 7758,
+  "generationWallClockMs": 100384,
+  "runIndex": 81,
+  "cumulativeGen": 4292
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000071079885192,
+  "error": 0.09991532101151912,
+  "neurons": 794,
+  "synapses": 7757,
+  "generationWallClockMs": 110612,
+  "runIndex": 82,
+  "cumulativeGen": 4298
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000071299080308,
+  "error": 0.0999153090920076,
+  "neurons": 794,
+  "synapses": 7756,
+  "generationWallClockMs": 108663,
+  "runIndex": 83,
+  "cumulativeGen": 4304
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000073018133036,
+  "error": 0.09991513718673489,
+  "neurons": 794,
+  "synapses": 7756,
+  "generationWallClockMs": 96859,
+  "runIndex": 84,
+  "cumulativeGen": 4310
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000075113892406,
+  "error": 0.09991492761079776,
+  "neurons": 794,
+  "synapses": 7756,
+  "generationWallClockMs": 102661,
+  "runIndex": 85,
+  "cumulativeGen": 4316
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000075454648127,
+  "error": 0.0999148935352258,
+  "neurons": 794,
+  "synapses": 7756,
+  "generationWallClockMs": 97106,
+  "runIndex": 86,
+  "cumulativeGen": 4322
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000075654648126,
+  "error": 0.0999148935352258,
+  "neurons": 794,
+  "synapses": 7754,
+  "generationWallClockMs": 83015,
+  "runIndex": 87,
+  "cumulativeGen": 4328
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000075755786406,
+  "error": 0.0999148934213978,
+  "neurons": 794,
+  "synapses": 7753,
+  "generationWallClockMs": 82131,
+  "runIndex": 88,
+  "cumulativeGen": 4334
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000075898567758,
+  "error": 0.09991487914326269,
+  "neurons": 794,
+  "synapses": 7753,
+  "generationWallClockMs": 122769,
+  "runIndex": 89,
+  "cumulativeGen": 4341
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000076034232285,
+  "error": 0.09991486557680991,
+  "neurons": 794,
+  "synapses": 7753,
+  "generationWallClockMs": 154815,
+  "runIndex": 90,
+  "cumulativeGen": 4348
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000076034232285,
+  "error": 0.09991486557680991,
+  "neurons": 794,
+  "synapses": 7753,
+  "generationWallClockMs": 142297,
+  "runIndex": 91,
+  "cumulativeGen": 4355
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000076235604738,
+  "error": 0.09991486543956464,
+  "neurons": 794,
+  "synapses": 7751,
+  "generationWallClockMs": 173868,
+  "runIndex": 92,
+  "cumulativeGen": 4363
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000076419778527,
+  "error": 0.09991485702218575,
+  "neurons": 794,
+  "synapses": 7750,
+  "generationWallClockMs": 144430,
+  "runIndex": 93,
+  "cumulativeGen": 4370
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000076596456753,
+  "error": 0.09991484935436308,
+  "neurons": 794,
+  "synapses": 7749,
+  "generationWallClockMs": 162626,
+  "runIndex": 94,
+  "cumulativeGen": 4378
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000076794863096,
+  "error": 0.09991484951372887,
+  "neurons": 794,
+  "synapses": 7747,
+  "generationWallClockMs": 165583,
+  "runIndex": 95,
+  "cumulativeGen": 4386
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000076874640734,
+  "error": 0.0999148515359649,
+  "neurons": 794,
+  "synapses": 7746,
+  "generationWallClockMs": 148976,
+  "runIndex": 96,
+  "cumulativeGen": 4393
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000077193078281,
+  "error": 0.09991484969221032,
+  "neurons": 794,
+  "synapses": 7743,
+  "generationWallClockMs": 152475,
+  "runIndex": 97,
+  "cumulativeGen": 4400
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000077294371391,
+  "error": 0.0999148495628993,
+  "neurons": 794,
+  "synapses": 7742,
+  "generationWallClockMs": 144690,
+  "runIndex": 98,
+  "cumulativeGen": 4407
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000077394371391,
+  "error": 0.0999148495628993,
+  "neurons": 794,
+  "synapses": 7741,
+  "generationWallClockMs": 142239,
+  "runIndex": 99,
+  "cumulativeGen": 4414
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000077394371399,
+  "error": 0.09991484956289849,
+  "neurons": 794,
+  "synapses": 7741,
+  "generationWallClockMs": 152352,
+  "runIndex": 100,
+  "cumulativeGen": 4421
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000077662665347,
+  "error": 0.09991484273350372,
+  "neurons": 794,
+  "synapses": 7739,
+  "generationWallClockMs": 172892,
+  "runIndex": 101,
+  "cumulativeGen": 4429
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000077903161643,
+  "error": 0.09991482868387416,
+  "neurons": 794,
+  "synapses": 7738,
+  "generationWallClockMs": 156464,
+  "runIndex": 102,
+  "cumulativeGen": 4436
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.900008975426542,
+  "error": 0.09991364357349637,
+  "neurons": 794,
+  "synapses": 7738,
+  "generationWallClockMs": 158294,
+  "runIndex": 103,
+  "cumulativeGen": 4444
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000089854265421,
+  "error": 0.09991364357349634,
+  "neurons": 794,
+  "synapses": 7737,
+  "generationWallClockMs": 160026,
+  "runIndex": 104,
+  "cumulativeGen": 4452
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000089954299488,
+  "error": 0.09991364357008958,
+  "neurons": 794,
+  "synapses": 7736,
+  "generationWallClockMs": 147865,
+  "runIndex": 105,
+  "cumulativeGen": 4459
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900009015608871,
+  "error": 0.09991364339116743,
+  "neurons": 794,
+  "synapses": 7734,
+  "generationWallClockMs": 153598,
+  "runIndex": 106,
+  "cumulativeGen": 4466
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000106822755704,
+  "error": 0.09991197672446803,
+  "neurons": 794,
+  "synapses": 7734,
+  "generationWallClockMs": 102744,
+  "runIndex": 107,
+  "cumulativeGen": 4472
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000107123284475,
+  "error": 0.09991197667159095,
+  "neurons": 794,
+  "synapses": 7731,
+  "generationWallClockMs": 102718,
+  "runIndex": 108,
+  "cumulativeGen": 4478
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000107226756761,
+  "error": 0.09991197632436237,
+  "neurons": 794,
+  "synapses": 7730,
+  "generationWallClockMs": 105178,
+  "runIndex": 109,
+  "cumulativeGen": 4484
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000107282483321,
+  "error": 0.09991197075170634,
+  "neurons": 794,
+  "synapses": 7730,
+  "generationWallClockMs": 104786,
+  "runIndex": 110,
+  "cumulativeGen": 4490
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000107706838852,
+  "error": 0.09991192831615314,
+  "neurons": 794,
+  "synapses": 7730,
+  "generationWallClockMs": 93160,
+  "runIndex": 111,
+  "cumulativeGen": 4496
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000108191635483,
+  "error": 0.09991187983649011,
+  "neurons": 794,
+  "synapses": 7730,
+  "generationWallClockMs": 92324,
+  "runIndex": 112,
+  "cumulativeGen": 4502
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000108191675036,
+  "error": 0.09991187983253479,
+  "neurons": 794,
+  "synapses": 7730,
+  "generationWallClockMs": 107351,
+  "runIndex": 113,
+  "cumulativeGen": 4508
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000108391675036,
+  "error": 0.09991187983253479,
+  "neurons": 794,
+  "synapses": 7728,
+  "generationWallClockMs": 93748,
+  "runIndex": 114,
+  "cumulativeGen": 4514
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.900010871227174,
+  "error": 0.09991184777286428,
+  "neurons": 794,
+  "synapses": 7728,
+  "generationWallClockMs": 95118,
+  "runIndex": 115,
+  "cumulativeGen": 4520
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.900010891227174,
+  "error": 0.09991184777286428,
+  "neurons": 794,
+  "synapses": 7726,
+  "generationWallClockMs": 100274,
+  "runIndex": 116,
+  "cumulativeGen": 4526
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000109372753067,
+  "error": 0.09991180172473164,
+  "neurons": 794,
+  "synapses": 7726,
+  "generationWallClockMs": 86676,
+  "runIndex": 117,
+  "cumulativeGen": 4532
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000109514703771,
+  "error": 0.09991178752966119,
+  "neurons": 794,
+  "synapses": 7726,
+  "generationWallClockMs": 147592,
+  "runIndex": 118,
+  "cumulativeGen": 4539
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000109714737496,
+  "error": 0.09991178752628876,
+  "neurons": 794,
+  "synapses": 7724,
+  "generationWallClockMs": 141517,
+  "runIndex": 119,
+  "cumulativeGen": 4546
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000109815147631,
+  "error": 0.0999117874852753,
+  "neurons": 794,
+  "synapses": 7723,
+  "generationWallClockMs": 143853,
+  "runIndex": 120,
+  "cumulativeGen": 4553
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000109917400826,
+  "error": 0.09991178725995574,
+  "neurons": 794,
+  "synapses": 7722,
+  "generationWallClockMs": 158006,
+  "runIndex": 121,
+  "cumulativeGen": 4561
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000110330551344,
+  "error": 0.09991174594490389,
+  "neurons": 794,
+  "synapses": 7722,
+  "generationWallClockMs": 176318,
+  "runIndex": 122,
+  "cumulativeGen": 4569
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000128715823195,
+  "error": 0.09990990741771885,
+  "neurons": 794,
+  "synapses": 7722,
+  "generationWallClockMs": 156344,
+  "runIndex": 123,
+  "cumulativeGen": 4576
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000128838625291,
+  "error": 0.09990990513750926,
+  "neurons": 794,
+  "synapses": 7721,
+  "generationWallClockMs": 167444,
+  "runIndex": 124,
+  "cumulativeGen": 4584
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000128838625291,
+  "error": 0.09990990513750926,
+  "neurons": 794,
+  "synapses": 7721,
+  "generationWallClockMs": 140859,
+  "runIndex": 125,
+  "cumulativeGen": 4591
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000128962362607,
+  "error": 0.09990989276377772,
+  "neurons": 794,
+  "synapses": 7721,
+  "generationWallClockMs": 132733,
+  "runIndex": 126,
+  "cumulativeGen": 4598
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000128962428181,
+  "error": 0.0999098927572203,
+  "neurons": 794,
+  "synapses": 7721,
+  "generationWallClockMs": 142818,
+  "runIndex": 127,
+  "cumulativeGen": 4605
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900012903116148,
+  "error": 0.09990988588389038,
+  "neurons": 794,
+  "synapses": 7721,
+  "generationWallClockMs": 142661,
+  "runIndex": 128,
+  "cumulativeGen": 4612
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000129217371137,
+  "error": 0.09990987726292481,
+  "neurons": 794,
+  "synapses": 7720,
+  "generationWallClockMs": 149816,
+  "runIndex": 129,
+  "cumulativeGen": 4619
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000129435092259,
+  "error": 0.09990986549081247,
+  "neurons": 794,
+  "synapses": 7719,
+  "generationWallClockMs": 157668,
+  "runIndex": 130,
+  "cumulativeGen": 4627
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900012943623227,
+  "error": 0.09990986537681135,
+  "neurons": 794,
+  "synapses": 7719,
+  "generationWallClockMs": 136963,
+  "runIndex": 131,
+  "cumulativeGen": 4634
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000143044134731,
+  "error": 0.09990850458656528,
+  "neurons": 794,
+  "synapses": 7719,
+  "generationWallClockMs": 146282,
+  "runIndex": 132,
+  "cumulativeGen": 4641
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000143244886181,
+  "error": 0.0999085045114203,
+  "neurons": 794,
+  "synapses": 7717,
+  "generationWallClockMs": 163121,
+  "runIndex": 133,
+  "cumulativeGen": 4649
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000143344886181,
+  "error": 0.0999085045114203,
+  "neurons": 794,
+  "synapses": 7716,
+  "generationWallClockMs": 176334,
+  "runIndex": 134,
+  "cumulativeGen": 4657
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000143544886181,
+  "error": 0.0999085045114203,
+  "neurons": 794,
+  "synapses": 7714,
+  "generationWallClockMs": 141369,
+  "runIndex": 135,
+  "cumulativeGen": 4664
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000143646511404,
+  "error": 0.09990850434889798,
+  "neurons": 794,
+  "synapses": 7713,
+  "generationWallClockMs": 108410,
+  "runIndex": 136,
+  "cumulativeGen": 4670
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000143646511404,
+  "error": 0.09990850434889798,
+  "neurons": 794,
+  "synapses": 7713,
+  "generationWallClockMs": 91944,
+  "runIndex": 137,
+  "cumulativeGen": 4676
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000143746511404,
+  "error": 0.09990850434889798,
+  "neurons": 794,
+  "synapses": 7712,
+  "generationWallClockMs": 96774,
+  "runIndex": 138,
+  "cumulativeGen": 4682
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000143846620123,
+  "error": 0.09990850433802614,
+  "neurons": 794,
+  "synapses": 7711,
+  "generationWallClockMs": 88875,
+  "runIndex": 139,
+  "cumulativeGen": 4688
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000143846645433,
+  "error": 0.09990850433549515,
+  "neurons": 794,
+  "synapses": 7711,
+  "generationWallClockMs": 92011,
+  "runIndex": 140,
+  "cumulativeGen": 4694
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000143957958251,
+  "error": 0.09990850320421325,
+  "neurons": 794,
+  "synapses": 7710,
+  "generationWallClockMs": 91804,
+  "runIndex": 141,
+  "cumulativeGen": 4700
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000144057976653,
+  "error": 0.09990850320237314,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 93505,
+  "runIndex": 142,
+  "cumulativeGen": 4706
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000144280547607,
+  "error": 0.09990848094527767,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 92557,
+  "runIndex": 143,
+  "cumulativeGen": 4712
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000144286447036,
+  "error": 0.09990848035533482,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 99072,
+  "runIndex": 144,
+  "cumulativeGen": 4718
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000144286463262,
+  "error": 0.0999084803537123,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 86332,
+  "runIndex": 145,
+  "cumulativeGen": 4724
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000145295479468,
+  "error": 0.09990837945209163,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 84831,
+  "runIndex": 146,
+  "cumulativeGen": 4730
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000145296839211,
+  "error": 0.09990837931611728,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 82152,
+  "runIndex": 147,
+  "cumulativeGen": 4736
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000146152149541,
+  "error": 0.09990829378508438,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 137518,
+  "runIndex": 148,
+  "cumulativeGen": 4743
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000148276753298,
+  "error": 0.09990808132470866,
+  "neurons": 794,
+  "synapses": 7709,
+  "generationWallClockMs": 183891,
+  "runIndex": 149,
+  "cumulativeGen": 4751
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000148599054439,
+  "error": 0.09990805909459438,
+  "neurons": 794,
+  "synapses": 7708,
+  "generationWallClockMs": 158034,
+  "runIndex": 150,
+  "cumulativeGen": 4758
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000165264837063,
+  "error": 0.09990639251633204,
+  "neurons": 794,
+  "synapses": 7708,
+  "generationWallClockMs": 163207,
+  "runIndex": 151,
+  "cumulativeGen": 4766
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000165364912414,
+  "error": 0.09990639250879703,
+  "neurons": 794,
+  "synapses": 7707,
+  "generationWallClockMs": 133671,
+  "runIndex": 152,
+  "cumulativeGen": 4773
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000165469393614,
+  "error": 0.09990639206067697,
+  "neurons": 794,
+  "synapses": 7706,
+  "generationWallClockMs": 143276,
+  "runIndex": 153,
+  "cumulativeGen": 4780
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000165570167395,
+  "error": 0.09990639198329891,
+  "neurons": 794,
+  "synapses": 7705,
+  "generationWallClockMs": 145028,
+  "runIndex": 154,
+  "cumulativeGen": 4787
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000165703851031,
+  "error": 0.09990638861493525,
+  "neurons": 794,
+  "synapses": 7704,
+  "generationWallClockMs": 141043,
+  "runIndex": 155,
+  "cumulativeGen": 4794
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000165803862191,
+  "error": 0.09990638861381927,
+  "neurons": 794,
+  "synapses": 7703,
+  "generationWallClockMs": 155372,
+  "runIndex": 156,
+  "cumulativeGen": 4802
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000165907734603,
+  "error": 0.0999063782265781,
+  "neurons": 794,
+  "synapses": 7703,
+  "generationWallClockMs": 152890,
+  "runIndex": 157,
+  "cumulativeGen": 4809
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000166147550618,
+  "error": 0.09990635424497665,
+  "neurons": 794,
+  "synapses": 7703,
+  "generationWallClockMs": 143113,
+  "runIndex": 158,
+  "cumulativeGen": 4816
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000166251571377,
+  "error": 0.0999063538429007,
+  "neurons": 794,
+  "synapses": 7702,
+  "generationWallClockMs": 137945,
+  "runIndex": 159,
+  "cumulativeGen": 4823
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000166351571377,
+  "error": 0.0999063538429007,
+  "neurons": 794,
+  "synapses": 7701,
+  "generationWallClockMs": 155780,
+  "runIndex": 160,
+  "cumulativeGen": 4831
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000166363213127,
+  "error": 0.09990635267872573,
+  "neurons": 794,
+  "synapses": 7701,
+  "generationWallClockMs": 166223,
+  "runIndex": 161,
+  "cumulativeGen": 4839
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000168020979175,
+  "error": 0.09990618690212089,
+  "neurons": 794,
+  "synapses": 7701,
+  "generationWallClockMs": 154878,
+  "runIndex": 162,
+  "cumulativeGen": 4846
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000170654450356,
+  "error": 0.09990592355500279,
+  "neurons": 794,
+  "synapses": 7701,
+  "generationWallClockMs": 158077,
+  "runIndex": 163,
+  "cumulativeGen": 4853
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000177407021849,
+  "error": 0.09990525829785357,
+  "neurons": 794,
+  "synapses": 7700,
+  "generationWallClockMs": 143399,
+  "runIndex": 164,
+  "cumulativeGen": 4860
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000177614253657,
+  "error": 0.09990525757467277,
+  "neurons": 794,
+  "synapses": 7698,
+  "generationWallClockMs": 158789,
+  "runIndex": 165,
+  "cumulativeGen": 4868
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000177614253657,
+  "error": 0.09990525757467277,
+  "neurons": 794,
+  "synapses": 7698,
+  "generationWallClockMs": 136356,
+  "runIndex": 166,
+  "cumulativeGen": 4875
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000177714255624,
+  "error": 0.09990525757447603,
+  "neurons": 794,
+  "synapses": 7697,
+  "generationWallClockMs": 132403,
+  "runIndex": 167,
+  "cumulativeGen": 4882
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000177814255624,
+  "error": 0.09990525757447603,
+  "neurons": 794,
+  "synapses": 7696,
+  "generationWallClockMs": 103312,
+  "runIndex": 168,
+  "cumulativeGen": 4888
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000177914255624,
+  "error": 0.09990525757447603,
+  "neurons": 794,
+  "synapses": 7695,
+  "generationWallClockMs": 91602,
+  "runIndex": 169,
+  "cumulativeGen": 4894
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000177914257197,
+  "error": 0.09990525757431871,
+  "neurons": 794,
+  "synapses": 7695,
+  "generationWallClockMs": 100782,
+  "runIndex": 170,
+  "cumulativeGen": 4900
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000178114257197,
+  "error": 0.09990525757431871,
+  "neurons": 794,
+  "synapses": 7693,
+  "generationWallClockMs": 93483,
+  "runIndex": 171,
+  "cumulativeGen": 4906
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000178214601562,
+  "error": 0.09990525753988219,
+  "neurons": 794,
+  "synapses": 7692,
+  "generationWallClockMs": 97664,
+  "runIndex": 172,
+  "cumulativeGen": 4912
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000178990782558,
+  "error": 0.09990517992178265,
+  "neurons": 794,
+  "synapses": 7692,
+  "generationWallClockMs": 107614,
+  "runIndex": 173,
+  "cumulativeGen": 4918
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000179178310601,
+  "error": 0.09990517116897826,
+  "neurons": 794,
+  "synapses": 7691,
+  "generationWallClockMs": 101785,
+  "runIndex": 174,
+  "cumulativeGen": 4924
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000198722021684,
+  "error": 0.09990321679786993,
+  "neurons": 794,
+  "synapses": 7691,
+  "generationWallClockMs": 86766,
+  "runIndex": 175,
+  "cumulativeGen": 4930
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000200555980449,
+  "error": 0.09990303340199345,
+  "neurons": 794,
+  "synapses": 7691,
+  "generationWallClockMs": 96105,
+  "runIndex": 176,
+  "cumulativeGen": 4936
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.900020055598091,
+  "error": 0.0999030334019474,
+  "neurons": 794,
+  "synapses": 7691,
+  "generationWallClockMs": 82254,
+  "runIndex": 177,
+  "cumulativeGen": 4942
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000206044783059,
+  "error": 0.09990248452173243,
+  "neurons": 794,
+  "synapses": 7691,
+  "generationWallClockMs": 108523,
+  "runIndex": 178,
+  "cumulativeGen": 4948
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000206144914817,
+  "error": 0.09990248450855664,
+  "neurons": 794,
+  "synapses": 7690,
+  "generationWallClockMs": 164580,
+  "runIndex": 179,
+  "cumulativeGen": 4956
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000206148349335,
+  "error": 0.09990248416510492,
+  "neurons": 794,
+  "synapses": 7690,
+  "generationWallClockMs": 140376,
+  "runIndex": 180,
+  "cumulativeGen": 4963
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000206248349335,
+  "error": 0.09990248416510492,
+  "neurons": 794,
+  "synapses": 7689,
+  "generationWallClockMs": 145279,
+  "runIndex": 181,
+  "cumulativeGen": 4970
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000210174857258,
+  "error": 0.09990210151431253,
+  "neurons": 794,
+  "synapses": 7688,
+  "generationWallClockMs": 169864,
+  "runIndex": 182,
+  "cumulativeGen": 4978
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000214058080178,
+  "error": 0.09990172319202062,
+  "neurons": 794,
+  "synapses": 7687,
+  "generationWallClockMs": 166863,
+  "runIndex": 183,
+  "cumulativeGen": 4986
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000218668773201,
+  "error": 0.09990126212271828,
+  "neurons": 794,
+  "synapses": 7687,
+  "generationWallClockMs": 179555,
+  "runIndex": 184,
+  "cumulativeGen": 4994
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900021880631291,
+  "error": 0.09990125836874739,
+  "neurons": 794,
+  "synapses": 7686,
+  "generationWallClockMs": 149245,
+  "runIndex": 185,
+  "cumulativeGen": 5001
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000219006466496,
+  "error": 0.09990125835338877,
+  "neurons": 794,
+  "synapses": 7684,
+  "generationWallClockMs": 142879,
+  "runIndex": 186,
+  "cumulativeGen": 5008
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000224592459385,
+  "error": 0.09990070975409993,
+  "neurons": 794,
+  "synapses": 7683,
+  "generationWallClockMs": 161436,
+  "runIndex": 187,
+  "cumulativeGen": 5016
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000224763660942,
+  "error": 0.09990070263394416,
+  "neurons": 794,
+  "synapses": 7682,
+  "generationWallClockMs": 135572,
+  "runIndex": 188,
+  "cumulativeGen": 5023
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000224843348177,
+  "error": 0.09990069466522065,
+  "neurons": 794,
+  "synapses": 7682,
+  "generationWallClockMs": 156817,
+  "runIndex": 189,
+  "cumulativeGen": 5030
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000224945192322,
+  "error": 0.09990069448080623,
+  "neurons": 794,
+  "synapses": 7681,
+  "generationWallClockMs": 160577,
+  "runIndex": 190,
+  "cumulativeGen": 5038
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000225047765399,
+  "error": 0.09990069422349844,
+  "neurons": 794,
+  "synapses": 7680,
+  "generationWallClockMs": 133597,
+  "runIndex": 191,
+  "cumulativeGen": 5045
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000225281072226,
+  "error": 0.09990068089281577,
+  "neurons": 794,
+  "synapses": 7679,
+  "generationWallClockMs": 144446,
+  "runIndex": 192,
+  "cumulativeGen": 5052
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000226122275874,
+  "error": 0.09990059677245096,
+  "neurons": 794,
+  "synapses": 7679,
+  "generationWallClockMs": 148787,
+  "runIndex": 193,
+  "cumulativeGen": 5059
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.900022637462144,
+  "error": 0.09990059153789446,
+  "neurons": 794,
+  "synapses": 7677,
+  "generationWallClockMs": 138748,
+  "runIndex": 194,
+  "cumulativeGen": 5066
+ },
+ {
+  "runGen": 8,
+  "bestScore": 0.9000226469996105,
+  "error": 0.09990058200042788,
+  "neurons": 794,
+  "synapses": 7677,
+  "generationWallClockMs": 162876,
+  "runIndex": 195,
+  "cumulativeGen": 5074
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000226600802496,
+  "error": 0.09990057891978883,
+  "neurons": 794,
+  "synapses": 7676,
+  "generationWallClockMs": 137466,
+  "runIndex": 196,
+  "cumulativeGen": 5081
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000226913811518,
+  "error": 0.09990056761888672,
+  "neurons": 794,
+  "synapses": 7674,
+  "generationWallClockMs": 120953,
+  "runIndex": 197,
+  "cumulativeGen": 5088
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000226926387256,
+  "error": 0.09990056636131288,
+  "neurons": 794,
+  "synapses": 7674,
+  "generationWallClockMs": 93492,
+  "runIndex": 198,
+  "cumulativeGen": 5094
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.90002270227386,
+  "error": 0.09990055672617842,
+  "neurons": 794,
+  "synapses": 7674,
+  "generationWallClockMs": 98727,
+  "runIndex": 199,
+  "cumulativeGen": 5100
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000227218034633,
+  "error": 0.09990054719657504,
+  "neurons": 794,
+  "synapses": 7673,
+  "generationWallClockMs": 97059,
+  "runIndex": 200,
+  "cumulativeGen": 5106
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000227318034634,
+  "error": 0.09990054719657504,
+  "neurons": 794,
+  "synapses": 7672,
+  "generationWallClockMs": 87121,
+  "runIndex": 201,
+  "cumulativeGen": 5112
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000227441733835,
+  "error": 0.09990054482665492,
+  "neurons": 794,
+  "synapses": 7671,
+  "generationWallClockMs": 105872,
+  "runIndex": 202,
+  "cumulativeGen": 5118
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000227642175362,
+  "error": 0.09990054478250211,
+  "neurons": 794,
+  "synapses": 7669,
+  "generationWallClockMs": 108395,
+  "runIndex": 203,
+  "cumulativeGen": 5124
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000227742175363,
+  "error": 0.09990054478250211,
+  "neurons": 794,
+  "synapses": 7668,
+  "generationWallClockMs": 100970,
+  "runIndex": 204,
+  "cumulativeGen": 5130
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000234805375583,
+  "error": 0.09989983846248007,
+  "neurons": 794,
+  "synapses": 7668,
+  "generationWallClockMs": 123142,
+  "runIndex": 205,
+  "cumulativeGen": 5137
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000234809761937,
+  "error": 0.09989983802384474,
+  "neurons": 794,
+  "synapses": 7668,
+  "generationWallClockMs": 147720,
+  "runIndex": 206,
+  "cumulativeGen": 5144
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000234809806401,
+  "error": 0.09989983801939827,
+  "neurons": 794,
+  "synapses": 7668,
+  "generationWallClockMs": 120178,
+  "runIndex": 207,
+  "cumulativeGen": 5150
+ },
+ {
+  "runGen": 6,
+  "bestScore": 0.9000239446882699,
+  "error": 0.09989937431176853,
+  "neurons": 794,
+  "synapses": 7668,
+  "generationWallClockMs": 114660,
+  "runIndex": 208,
+  "cumulativeGen": 5156
+ },
+ {
+  "runGen": 7,
+  "bestScore": 0.9000239449317349,
+  "error": 0.09989937406830354,
+  "neurons": 794,
+  "synapses": 7668,
+  "generationWallClockMs": 158413,
+  "runIndex": 209,
+  "cumulativeGen": 5163
+ }
 ]
