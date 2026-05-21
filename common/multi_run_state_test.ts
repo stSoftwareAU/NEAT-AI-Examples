@@ -5,7 +5,7 @@
  * temporary base directory and assert on the resulting state.
  */
 
-import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertNotEquals, assertRejects } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 
@@ -13,7 +13,9 @@ import type { CreatureExport } from "@stsoftware/neat-ai";
 
 import {
   appendMultiRunRun,
+  clampSubEpsilonRegression,
   loadMultiRunState,
+  MILESTONE_ERROR_EPSILON,
   type MultiRunMilestone,
   parseMultiRunFlags,
   wipeMultiRunState,
@@ -268,6 +270,159 @@ Deno.test("parseMultiRunFlags — passes unknown flags through (does not throw)"
   ]);
   assertEquals(flags.fresh, true);
 });
+
+Deno.test("clampSubEpsilonRegression — sub-epsilon increase is snapped to prev", () => {
+  // Reproduces the exact regression from issue #447: prev/curr differ
+  // by ~2e-11 at the 11th decimal place, well below the epsilon.
+  const prev = 0.09991484951372887;
+  const curr = 0.0999148515359649;
+  assertEquals(curr - prev > 0, true, "test data: curr must be greater than prev");
+  assertEquals(curr - prev < MILESTONE_ERROR_EPSILON, true, "test data: delta must be sub-epsilon");
+  assertEquals(clampSubEpsilonRegression(prev, curr), prev);
+});
+
+Deno.test("clampSubEpsilonRegression — above-epsilon regression is preserved", () => {
+  // A real regression — twice the epsilon — must pass through unchanged.
+  const prev = 0.1;
+  const curr = prev + MILESTONE_ERROR_EPSILON * 2;
+  assertEquals(clampSubEpsilonRegression(prev, curr), curr);
+});
+
+Deno.test("clampSubEpsilonRegression — improvement is preserved", () => {
+  // An improvement (curr < prev) must always pass through unchanged.
+  assertEquals(clampSubEpsilonRegression(0.5, 0.4), 0.4);
+  // Tiny improvement well below epsilon — also preserved.
+  assertEquals(clampSubEpsilonRegression(0.1, 0.1 - 1e-12), 0.1 - 1e-12);
+});
+
+Deno.test("clampSubEpsilonRegression — flat values pass through unchanged", () => {
+  // delta === 0 must not be clamped (no regression at all).
+  assertEquals(clampSubEpsilonRegression(0.25, 0.25), 0.25);
+});
+
+Deno.test("clampSubEpsilonRegression — non-finite values are passed through", () => {
+  // We never want the clamp to invent a finite value from a NaN/Inf input.
+  assertEquals(Number.isNaN(clampSubEpsilonRegression(NaN, 0.1)), false);
+  assertEquals(clampSubEpsilonRegression(NaN, 0.1), 0.1);
+  assertEquals(clampSubEpsilonRegression(0.1, Number.POSITIVE_INFINITY), Number.POSITIVE_INFINITY);
+});
+
+Deno.test(
+  "appendMultiRunRun clamps sub-epsilon regression between runs (issue #447)",
+  async () => {
+    const tmp = Deno.makeTempDirSync({ prefix: "neat_multirun_" });
+    try {
+      const slug = "mnist_classification";
+
+      // Run 1 ends at the exact value observed in issue #447.
+      const prevError = 0.09991484951372887;
+      await appendMultiRunRun(slug, {
+        creatureExport: tinyCreatureExport(1),
+        newSamples: [{
+          runGen: 95,
+          error: prevError,
+          bestScore: 1 - prevError,
+          neurons: 794,
+          synapses: 7841,
+          generationWallClockMs: 312607,
+        }],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      // Run 2 reports the (slightly noisier) re-evaluated error — sub-epsilon worse.
+      const noisyError = 0.0999148515359649;
+      await appendMultiRunRun(slug, {
+        creatureExport: tinyCreatureExport(2),
+        newSamples: [{
+          runGen: 1,
+          error: noisyError,
+          bestScore: 1 - noisyError,
+          neurons: 794,
+          synapses: 7841,
+          generationWallClockMs: 100,
+        }],
+        runIndex: 2,
+        baseCumulativeGen: 95,
+      }, tmp);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.milestones.length, 2);
+      // The clamp snaps the second sample's error to the prior value —
+      // the recorded history is monotonically non-increasing.
+      assertEquals(state.milestones[1].error, prevError);
+      assert(
+        state.milestones[1].error <= state.milestones[0].error,
+        "recorded error must never increase across runs",
+      );
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "appendMultiRunRun preserves a genuine above-epsilon regression",
+  async () => {
+    const tmp = Deno.makeTempDirSync({ prefix: "neat_multirun_" });
+    try {
+      const slug = "cart_pole";
+
+      await appendMultiRunRun(slug, {
+        creatureExport: tinyCreatureExport(1),
+        newSamples: [tinyMilestone(10, 0.1)],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      // A run that is 0.05 worse — well above any noise epsilon. Must
+      // be recorded unchanged so reviewers see the real regression.
+      const regressedError = 0.15;
+      await appendMultiRunRun(slug, {
+        creatureExport: tinyCreatureExport(2),
+        newSamples: [tinyMilestone(5, regressedError)],
+        runIndex: 2,
+        baseCumulativeGen: 10,
+      }, tmp);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.milestones.length, 2);
+      assertEquals(state.milestones[1].error, regressedError);
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "appendMultiRunRun clamps sub-epsilon regression within a single run too",
+  async () => {
+    // The clamp is applied per-sample against the previous milestone,
+    // so an intra-run float jitter sample also gets snapped down.
+    const tmp = Deno.makeTempDirSync({ prefix: "neat_multirun_" });
+    try {
+      const slug = "xor_classification";
+      const error1 = 0.2;
+      const error2 = 0.2 + 5e-12; // sub-epsilon "regression" within the run
+      await appendMultiRunRun(slug, {
+        creatureExport: tinyCreatureExport(1),
+        newSamples: [
+          tinyMilestone(1, error1),
+          { ...tinyMilestone(2, error2), error: error2 },
+        ],
+        runIndex: 1,
+        baseCumulativeGen: 0,
+      }, tmp);
+
+      const state = await loadMultiRunState(slug, tmp);
+      assertEquals(state.milestones.length, 2);
+      assertEquals(state.milestones[0].error, error1);
+      assertEquals(state.milestones[1].error, error1, "sub-epsilon jitter snaps to prev");
+    } finally {
+      Deno.removeSync(tmp, { recursive: true });
+    }
+  },
+);
 
 Deno.test("appendMultiRunRun writes deterministic JSON (round-trip identical)", async () => {
   const tmp = Deno.makeTempDirSync({ prefix: "neat_multirun_" });
