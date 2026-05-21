@@ -134,8 +134,49 @@ export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/mnist_classificat
  * harder problem than XOR, but the goal of the demo is the noise →
  * competent arc, so we keep the threshold tight (matches the historical
  * audit value).
+ *
+ * **Why so much smaller than 0.1?** For a K-way one-hot classification
+ * task the per-record MSE has a *trivial floor* at `1 / K` (issue #446):
+ * a network that simply outputs all zeros scores MSE = `1/K` because
+ * every record contributes one squared error of `1²` shared across `K`
+ * output positions. For 10-way MNIST that floor is `0.1` exactly — so
+ * any `targetError` ≥ 0.1 is satisfied by a chance-level (~10 %) argmax
+ * predictor. Tight defaults force evolution to climb well below the
+ * trivial floor before declaring success. See {@link trivialOneHotMseFloor}.
  */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.001;
+
+/**
+ * Per-record MSE achieved by the **trivial all-zero predictor** on a
+ * `K`-way one-hot classification task. Returns `1 / K`.
+ *
+ * For a one-hot target the labelled output is `1` and the other `K − 1`
+ * outputs are `0`. An all-zero predictor's squared error is therefore
+ * `(0 − 1)² = 1` on the labelled output and `0` elsewhere; averaged
+ * across the `K` output positions per record this is `1 / K`.
+ *
+ * The closely-related uniform `1/K` predictor scores a slightly tighter
+ * MSE of `(1 − 1/K) / K`, but both sit at the same chance-level argmax
+ * (any tie-broken constant output is correct on `1 / K` of records by
+ * construction).
+ *
+ * Use this to sanity-check `targetError` for the MNIST demo: a
+ * `targetError ≥ trivialOneHotMseFloor(CLASS_COUNT)` is met by a
+ * chance-level classifier and provides no signal that evolution has
+ * learned anything useful (issue #446).
+ *
+ * @param classCount Number of output classes (must be ≥ 2).
+ * @returns The trivial MSE floor `1 / classCount`.
+ * @throws When `classCount < 2`.
+ */
+export function trivialOneHotMseFloor(classCount: number): number {
+  if (!Number.isFinite(classCount) || classCount < 2) {
+    throw new Error(
+      `trivialOneHotMseFloor: classCount must be at least 2, got ${classCount}`,
+    );
+  }
+  return 1 / classCount;
+}
 
 /**
  * Default wall-clock budget for a single multi-run invocation, in
@@ -190,6 +231,20 @@ export interface MnistRunSummary {
   runIndex: number;
   /** Whether this run resumed from a prior persisted champion. */
   resumed: boolean;
+  /**
+   * Trivial per-record MSE floor for the configured `CLASS_COUNT`-way
+   * one-hot task — equal to `1 / CLASS_COUNT` (`0.1` for 10-way MNIST).
+   * A `targetError` ≥ this value is met by a chance-level classifier
+   * (issue #446); see {@link trivialOneHotMseFloor}.
+   */
+  trivialErrorFloor: number;
+  /**
+   * `true` iff the resolved `targetError` is strictly below the trivial
+   * one-hot MSE floor, i.e. evolution has to do meaningful work before
+   * the early-stop threshold fires. When `false` the run can early-stop
+   * at chance-level argmax and the README warns the reader (issue #446).
+   */
+  targetErrorBelowTrivialFloor: boolean;
 }
 
 /**
@@ -524,6 +579,21 @@ export interface MnistMultiRunResult {
   totalMilestones: number;
   /** `true` when the prior champion was reloaded as the seed creature. */
   resumed: boolean;
+  /**
+   * Trivial per-record MSE floor for `CLASS_COUNT`-way one-hot
+   * classification (equals `1 / CLASS_COUNT`). Surfaced so callers and
+   * tests can compare the resolved `targetError` against the
+   * chance-level threshold (issue #446).
+   */
+  trivialErrorFloor: number;
+  /**
+   * `true` iff `targetError < trivialErrorFloor` — i.e. the early-stop
+   * threshold is tight enough that a chance-level argmax classifier
+   * cannot satisfy it. When `false`, the runner emits a `console.warn`
+   * explaining that the configured target can be reached without
+   * learning anything useful for argmax (issue #446).
+   */
+  targetErrorBelowTrivialFloor: boolean;
 }
 
 /**
@@ -548,6 +618,21 @@ export async function runMultiRunMnist(
 
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
   const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+
+  // Sanity-check the requested early-stop threshold against the trivial
+  // one-hot MSE floor (issue #446). A `targetError >= 1 / CLASS_COUNT` is
+  // satisfied by a chance-level argmax classifier (e.g. all-zero output),
+  // so hitting it tells the operator nothing about generalisation.
+  const trivialErrorFloor = trivialOneHotMseFloor(CLASS_COUNT);
+  const targetErrorBelowTrivialFloor = targetError < trivialErrorFloor;
+  if (!targetErrorBelowTrivialFloor) {
+    console.warn(
+      `⚠️  targetError=${targetError} is at or above the trivial one-hot MSE ` +
+        `floor (${trivialErrorFloor} for ${CLASS_COUNT}-way classification). ` +
+        "A chance-level argmax classifier can satisfy this threshold — " +
+        "expect test accuracy ≈ 10 %. See issue #446.",
+    );
+  }
 
   const evolveOptions: MnistEvolveOptions = {
     dataDir: options.dataDir,
@@ -596,6 +681,8 @@ export async function runMultiRunMnist(
     lastCumulativeGen: merged.lastCumulativeGen,
     totalMilestones: merged.milestones.length,
     resumed,
+    trivialErrorFloor,
+    targetErrorBelowTrivialFloor,
   };
 }
 
@@ -796,6 +883,8 @@ if (import.meta.main) {
     evolveDirGenerations: result.generations,
     runIndex: multi.runIndex,
     resumed: multi.resumed,
+    trivialErrorFloor: multi.trivialErrorFloor,
+    targetErrorBelowTrivialFloor: multi.targetErrorBelowTrivialFloor,
   };
   const summaryPath = join(outputDir, "run_summary.json");
   await safeWriteJson(summaryPath, summary);

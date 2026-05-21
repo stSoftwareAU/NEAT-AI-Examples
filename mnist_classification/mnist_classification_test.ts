@@ -50,6 +50,7 @@ import {
   buildGridCells,
   classificationAccuracy,
   confusionMatrix,
+  DEFAULT_MULTI_RUN_TARGET_ERROR,
   evolveMnistClassifier,
   evolveResultToMultiRunSample,
   EXAMPLE_SLUG,
@@ -58,6 +59,7 @@ import {
   pickGridSamples,
   predict,
   runMultiRunMnist,
+  trivialOneHotMseFloor,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -552,6 +554,8 @@ Deno.test("MnistRunSummary round-trips the multi-run + evolveDir milestone field
     evolveDirGenerations: 42,
     runIndex: 1,
     resumed: false,
+    trivialErrorFloor: 0.1,
+    targetErrorBelowTrivialFloor: true,
   };
   const round = JSON.parse(JSON.stringify(summary)) as MnistRunSummary;
   assertEquals(round.evolveDirError, summary.evolveDirError);
@@ -562,6 +566,43 @@ Deno.test("MnistRunSummary round-trips the multi-run + evolveDir milestone field
   // Existing fields still survive the round-trip.
   assertEquals(round.trainingRecords, summary.trainingRecords);
   assertEquals(round.stopCondition, summary.stopCondition);
+  // Trivial-floor fields (issue #446) round-trip through JSON.
+  assertEquals(round.trivialErrorFloor, summary.trivialErrorFloor);
+  assertEquals(round.targetErrorBelowTrivialFloor, summary.targetErrorBelowTrivialFloor);
+});
+
+// ---------------------------------------------------------------------------
+// Trivial one-hot MSE floor (issue #446) — clarifies what `evolveDir` error
+// means for K-way one-hot classification and exposes it on the multi-run
+// outcome so a too-lenient `targetError` is detectable from the result alone.
+// ---------------------------------------------------------------------------
+
+Deno.test("trivialOneHotMseFloor returns 1/K for K-class one-hot", () => {
+  assertAlmostEquals(trivialOneHotMseFloor(2), 0.5, 1e-12);
+  assertAlmostEquals(trivialOneHotMseFloor(4), 0.25, 1e-12);
+  assertAlmostEquals(trivialOneHotMseFloor(10), 0.1, 1e-12);
+  assertAlmostEquals(trivialOneHotMseFloor(100), 0.01, 1e-12);
+});
+
+Deno.test("trivialOneHotMseFloor for MNIST's CLASS_COUNT is exactly 0.1", () => {
+  assertEquals(CLASS_COUNT, 10);
+  assertAlmostEquals(trivialOneHotMseFloor(CLASS_COUNT), 0.1, 1e-12);
+});
+
+Deno.test("trivialOneHotMseFloor rejects classCount < 2 with a clear error", () => {
+  assertThrows(() => trivialOneHotMseFloor(1), Error, "at least 2");
+  assertThrows(() => trivialOneHotMseFloor(0), Error, "at least 2");
+  assertThrows(() => trivialOneHotMseFloor(-3), Error, "at least 2");
+  assertThrows(() => trivialOneHotMseFloor(Number.NaN), Error, "at least 2");
+});
+
+Deno.test("DEFAULT_MULTI_RUN_TARGET_ERROR is strictly below the 10-way trivial floor", () => {
+  // Otherwise the default run could early-stop at chance-level argmax.
+  assert(
+    DEFAULT_MULTI_RUN_TARGET_ERROR < trivialOneHotMseFloor(CLASS_COUNT),
+    `default targetError ${DEFAULT_MULTI_RUN_TARGET_ERROR} must be < ` +
+      `${trivialOneHotMseFloor(CLASS_COUNT)} (1/${CLASS_COUNT})`,
+  );
 });
 
 Deno.test("README embeds the multi-run charts and drops the legacy evolution_summary path", () => {
@@ -857,6 +898,86 @@ Deno.test({
       assertEquals(state.milestones.length, 1);
       assertEquals(state.milestones[0].runIndex, 1);
     } finally {
+      await Deno.remove(tmp, { recursive: true });
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "runMultiRunMnist flags targetErrorBelowTrivialFloor=false when --target-error reaches the 1/K floor (issue #446)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "mnist_floor_lenient_" });
+    const dataDir = buildSyntheticBinDir(1);
+    // Capture console.warn so the test asserts the operator was warned.
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((a) => String(a)).join(" "));
+    };
+    try {
+      const outcome = await runMultiRunMnist({
+        dataDir,
+        argv: ["--target-error=0.1"],
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 4,
+          timeoutMinutes: 0,
+        },
+      });
+      assertEquals(outcome.targetError, 0.1);
+      assertAlmostEquals(outcome.trivialErrorFloor, 0.1, 1e-12);
+      assertEquals(outcome.targetErrorBelowTrivialFloor, false);
+      assert(
+        warnings.some((w) => w.includes("trivial one-hot MSE")),
+        `expected a warning about the trivial one-hot MSE floor; got: ${JSON.stringify(warnings)}`,
+      );
+    } finally {
+      console.warn = originalWarn;
+      await Deno.remove(tmp, { recursive: true });
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "runMultiRunMnist flags targetErrorBelowTrivialFloor=true and stays silent for the tight default target (issue #446)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "mnist_floor_tight_" });
+    const dataDir = buildSyntheticBinDir(1);
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((a) => String(a)).join(" "));
+    };
+    try {
+      const outcome = await runMultiRunMnist({
+        dataDir,
+        argv: [], // no --target-error → DEFAULT_MULTI_RUN_TARGET_ERROR (0.001)
+        baseDir: tmp,
+        evolveOverrides: {
+          maxGenerations: 2,
+          populationSize: 4,
+          timeoutMinutes: 0,
+        },
+      });
+      assertEquals(outcome.targetError, DEFAULT_MULTI_RUN_TARGET_ERROR);
+      assertAlmostEquals(outcome.trivialErrorFloor, 0.1, 1e-12);
+      assertEquals(outcome.targetErrorBelowTrivialFloor, true);
+      assertEquals(
+        warnings.filter((w) => w.includes("trivial one-hot MSE")).length,
+        0,
+        "default targetError must not emit the trivial-floor warning",
+      );
+    } finally {
+      console.warn = originalWarn;
       await Deno.remove(tmp, { recursive: true });
       Deno.removeSync(dataDir, { recursive: true });
     }

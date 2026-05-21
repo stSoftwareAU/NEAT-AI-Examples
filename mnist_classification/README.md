@@ -82,6 +82,16 @@ The runner forwards every flag to the underlying Deno program, which parses them
 | `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
 | `--target-error=<v>`  | 0.001   | Stop as soon as the champion's error falls below `v`.                 |
 
+> ⚠️ **Choosing `--target-error` for one-hot MNIST (issue
+> [#446](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/446)).** `Creature.evolveDir`'s
+> `error` is the per-record mean squared error over the 10 one-hot output positions. For a `K`-way
+> one-hot target the **trivial floor** is `1 / K` — an all-zero output predictor scores MSE =
+> `1 / 10 = 0.1` on MNIST while remaining chance-level (~10 %) on argmax. Any `--target-error ≥ 0.1`
+> is therefore satisfied by a classifier that has learned nothing useful; the runner logs a warning
+> and the persisted `run_summary.json` records `targetErrorBelowTrivialFloor: false` for the run.
+> Pick a threshold strictly below `1 / CLASS_COUNT` (the default `0.001` already is) if you want
+> hitting it to mean the champion is materially better than chance.
+
 Artefacts:
 
 - `.synthetic-mnist/creatures/champion.json` – working-directory copy of the fittest classifier from

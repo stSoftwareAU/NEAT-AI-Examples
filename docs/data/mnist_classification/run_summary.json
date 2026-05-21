@@ -14,5 +14,7 @@
   "evolveDirScore": 0.2652421690909943,
   "evolveDirGenerations": 235,
   "runIndex": 2,
-  "resumed": true
+  "resumed": true,
+  "trivialErrorFloor": 0.1,
+  "targetErrorBelowTrivialFloor": true
 }
