@@ -47,6 +47,7 @@ import {
   splitDataset,
 } from "./data.ts";
 import {
+  assertNoTargetErrorCliOverride,
   buildGridCells,
   classificationAccuracy,
   confusionMatrix,
@@ -59,7 +60,6 @@ import {
   pickGridSamples,
   predict,
   runMultiRunMnist,
-  trivialOneHotMseFloor,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -540,7 +540,7 @@ Deno.test("MnistRunSummary round-trips the multi-run + evolveDir milestone field
   const summary: MnistRunSummary = {
     trainingRecords: 60_000,
     evolveWallClockMs: 305_000,
-    targetError: 0.001,
+    targetError: 0.0001,
     timeoutMinutes: 5,
     seedNeurons: 794,
     seedSynapses: 7840,
@@ -554,8 +554,6 @@ Deno.test("MnistRunSummary round-trips the multi-run + evolveDir milestone field
     evolveDirGenerations: 42,
     runIndex: 1,
     resumed: false,
-    trivialErrorFloor: 0.1,
-    targetErrorBelowTrivialFloor: true,
   };
   const round = JSON.parse(JSON.stringify(summary)) as MnistRunSummary;
   assertEquals(round.evolveDirError, summary.evolveDirError);
@@ -566,42 +564,27 @@ Deno.test("MnistRunSummary round-trips the multi-run + evolveDir milestone field
   // Existing fields still survive the round-trip.
   assertEquals(round.trainingRecords, summary.trainingRecords);
   assertEquals(round.stopCondition, summary.stopCondition);
-  // Trivial-floor fields (issue #446) round-trip through JSON.
-  assertEquals(round.trivialErrorFloor, summary.trivialErrorFloor);
-  assertEquals(round.targetErrorBelowTrivialFloor, summary.targetErrorBelowTrivialFloor);
 });
 
-// ---------------------------------------------------------------------------
-// Trivial one-hot MSE floor (issue #446) — clarifies what `evolveDir` error
-// means for K-way one-hot classification and exposes it on the multi-run
-// outcome so a too-lenient `targetError` is detectable from the result alone.
-// ---------------------------------------------------------------------------
-
-Deno.test("trivialOneHotMseFloor returns 1/K for K-class one-hot", () => {
-  assertAlmostEquals(trivialOneHotMseFloor(2), 0.5, 1e-12);
-  assertAlmostEquals(trivialOneHotMseFloor(4), 0.25, 1e-12);
-  assertAlmostEquals(trivialOneHotMseFloor(10), 0.1, 1e-12);
-  assertAlmostEquals(trivialOneHotMseFloor(100), 0.01, 1e-12);
+Deno.test("assertNoTargetErrorCliOverride rejects --target-error flags", () => {
+  assertThrows(
+    () => assertNoTargetErrorCliOverride(["--target-error=0.1"]),
+    Error,
+    "does not accept --target-error",
+  );
+  assertThrows(
+    () => assertNoTargetErrorCliOverride(["--timeout=5", "--target-error"]),
+    Error,
+    "does not accept --target-error",
+  );
+  assertNoTargetErrorCliOverride(["--timeout=15"]);
 });
 
-Deno.test("trivialOneHotMseFloor for MNIST's CLASS_COUNT is exactly 0.1", () => {
-  assertEquals(CLASS_COUNT, 10);
-  assertAlmostEquals(trivialOneHotMseFloor(CLASS_COUNT), 0.1, 1e-12);
-});
-
-Deno.test("trivialOneHotMseFloor rejects classCount < 2 with a clear error", () => {
-  assertThrows(() => trivialOneHotMseFloor(1), Error, "at least 2");
-  assertThrows(() => trivialOneHotMseFloor(0), Error, "at least 2");
-  assertThrows(() => trivialOneHotMseFloor(-3), Error, "at least 2");
-  assertThrows(() => trivialOneHotMseFloor(Number.NaN), Error, "at least 2");
-});
-
-Deno.test("DEFAULT_MULTI_RUN_TARGET_ERROR is strictly below the 10-way trivial floor", () => {
-  // Otherwise the default run could early-stop at chance-level argmax.
+Deno.test("mnist run.sh grants --allow-ffi for Discovery and evolveDir training", async () => {
+  const script = await Deno.readTextFile("mnist_classification/run.sh");
   assert(
-    DEFAULT_MULTI_RUN_TARGET_ERROR < trivialOneHotMseFloor(CLASS_COUNT),
-    `default targetError ${DEFAULT_MULTI_RUN_TARGET_ERROR} must be < ` +
-      `${trivialOneHotMseFloor(CLASS_COUNT)} (1/${CLASS_COUNT})`,
+    script.includes("--allow-ffi"),
+    "mnist_classification/run.sh must pass --allow-ffi so NEAT-AI can load Discovery",
   );
 });
 
@@ -691,10 +674,8 @@ Deno.test(
     try {
       const result = await evolveMnistClassifier({
         dataDir,
-        targetError: 0.001,
         timeoutMinutes: 0,
-        maxGenerations: 2,
-        populationSize: 4,
+        testCaps: { maxGenerations: 2, populationSize: 4 },
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
@@ -718,10 +699,8 @@ Deno.test(
     try {
       const result = await evolveMnistClassifier({
         dataDir,
-        targetError: 0.001,
         timeoutMinutes: 0,
-        maxGenerations: 2,
-        populationSize: 4,
+        testCaps: { maxGenerations: 2, populationSize: 4 },
       });
       assert(Number.isFinite(result.bestError));
       assert(Number.isFinite(result.bestScore));
@@ -770,8 +749,7 @@ Deno.test({
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          maxGenerations: 2,
-          populationSize: 4,
+          testCaps: { maxGenerations: 2, populationSize: 4 },
           timeoutMinutes: 0,
         },
       });
@@ -839,8 +817,7 @@ Deno.test({
         argv: ["--fresh"],
         baseDir: tmp,
         evolveOverrides: {
-          maxGenerations: 2,
-          populationSize: 4,
+          testCaps: { maxGenerations: 2, populationSize: 4 },
           timeoutMinutes: 0,
         },
       });
@@ -863,81 +840,28 @@ Deno.test({
 });
 
 Deno.test({
-  name: "runMultiRunMnist honours --target-error override via the persisted milestone",
+  name: "runMultiRunMnist rejects --target-error CLI override",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const tmp = await Deno.makeTempDir({ prefix: "mnist_overrides_" });
+    const tmp = await Deno.makeTempDir({ prefix: "mnist_no_target_" });
     const dataDir = buildSyntheticBinDir(1);
     try {
-      // A trivial target (0.9) means evolveDir's early-exit threshold is
-      // already satisfied by the random seed, so the run completes
-      // almost immediately. We assert the milestone's error sits at or
-      // under that threshold to confirm the override flowed through.
-      const outcome = await runMultiRunMnist({
-        dataDir,
-        argv: ["--target-error=0.9"],
-        baseDir: tmp,
-        evolveOverrides: {
-          maxGenerations: 2,
-          populationSize: 4,
-          timeoutMinutes: 0,
-        },
-      });
-      // The flag propagated through to the resolved options. (MNIST's
-      // raw `bestError` is not normalised to [0,1] like XOR's MSE, so
-      // asserting `bestError <= 0.9` is not meaningful here — what
-      // matters is that the override actually reached evolveDir.)
-      assertEquals(outcome.targetError, 0.9);
-      const err = outcome.evolveResult.bestError;
-      assert(Number.isFinite(err));
-      assertGreaterOrEqual(err, 0);
-      // The persisted milestone exists for this run, and the chart
-      // artefacts were rendered.
-      const state = await loadMultiRunState(EXAMPLE_SLUG, tmp);
-      assertEquals(state.milestones.length, 1);
-      assertEquals(state.milestones[0].runIndex, 1);
-    } finally {
-      await Deno.remove(tmp, { recursive: true });
-      Deno.removeSync(dataDir, { recursive: true });
-    }
-  },
-});
-
-Deno.test({
-  name:
-    "runMultiRunMnist flags targetErrorBelowTrivialFloor=false when --target-error reaches the 1/K floor (issue #446)",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    const tmp = await Deno.makeTempDir({ prefix: "mnist_floor_lenient_" });
-    const dataDir = buildSyntheticBinDir(1);
-    // Capture console.warn so the test asserts the operator was warned.
-    const warnings: string[] = [];
-    const originalWarn = console.warn;
-    console.warn = (...args: unknown[]) => {
-      warnings.push(args.map((a) => String(a)).join(" "));
-    };
-    try {
-      const outcome = await runMultiRunMnist({
-        dataDir,
-        argv: ["--target-error=0.1"],
-        baseDir: tmp,
-        evolveOverrides: {
-          maxGenerations: 2,
-          populationSize: 4,
-          timeoutMinutes: 0,
-        },
-      });
-      assertEquals(outcome.targetError, 0.1);
-      assertAlmostEquals(outcome.trivialErrorFloor, 0.1, 1e-12);
-      assertEquals(outcome.targetErrorBelowTrivialFloor, false);
-      assert(
-        warnings.some((w) => w.includes("trivial one-hot MSE")),
-        `expected a warning about the trivial one-hot MSE floor; got: ${JSON.stringify(warnings)}`,
+      await assertRejects(
+        () =>
+          runMultiRunMnist({
+            dataDir,
+            argv: ["--target-error=0.1"],
+            baseDir: tmp,
+            evolveOverrides: {
+              testCaps: { maxGenerations: 2, populationSize: 4 },
+              timeoutMinutes: 0,
+            },
+          }),
+        Error,
+        "does not accept --target-error",
       );
     } finally {
-      console.warn = originalWarn;
       await Deno.remove(tmp, { recursive: true });
       Deno.removeSync(dataDir, { recursive: true });
     }
@@ -945,39 +869,24 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "runMultiRunMnist flags targetErrorBelowTrivialFloor=true and stays silent for the tight default target (issue #446)",
+  name: "runMultiRunMnist always uses the fixed DEFAULT_MULTI_RUN_TARGET_ERROR",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const tmp = await Deno.makeTempDir({ prefix: "mnist_floor_tight_" });
+    const tmp = await Deno.makeTempDir({ prefix: "mnist_fixed_target_" });
     const dataDir = buildSyntheticBinDir(1);
-    const warnings: string[] = [];
-    const originalWarn = console.warn;
-    console.warn = (...args: unknown[]) => {
-      warnings.push(args.map((a) => String(a)).join(" "));
-    };
     try {
       const outcome = await runMultiRunMnist({
         dataDir,
-        argv: [], // no --target-error → DEFAULT_MULTI_RUN_TARGET_ERROR (0.001)
+        argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          maxGenerations: 2,
-          populationSize: 4,
+          testCaps: { maxGenerations: 2, populationSize: 4 },
           timeoutMinutes: 0,
         },
       });
       assertEquals(outcome.targetError, DEFAULT_MULTI_RUN_TARGET_ERROR);
-      assertAlmostEquals(outcome.trivialErrorFloor, 0.1, 1e-12);
-      assertEquals(outcome.targetErrorBelowTrivialFloor, true);
-      assertEquals(
-        warnings.filter((w) => w.includes("trivial one-hot MSE")).length,
-        0,
-        "default targetError must not emit the trivial-floor warning",
-      );
     } finally {
-      console.warn = originalWarn;
       await Deno.remove(tmp, { recursive: true });
       Deno.removeSync(dataDir, { recursive: true });
     }
@@ -997,8 +906,7 @@ Deno.test({
         argv: ["--timeout=7"],
         baseDir: tmp,
         evolveOverrides: {
-          maxGenerations: 2,
-          populationSize: 4,
+          testCaps: { maxGenerations: 2, populationSize: 4 },
           // Override propagates from flag → resolved options; tests skip
           // the actual backstop because NEAT-AI's FFI cleanup tripts the
           // Deno sanitizer.

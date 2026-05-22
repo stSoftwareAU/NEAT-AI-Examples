@@ -12,25 +12,19 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
-# Add deno to PATH if not already available
-if ! command -v deno &> /dev/null; then
-  export PATH="$HOME/.deno/bin:$PATH"
-fi
+# shellcheck source=common/example_runner_preamble.sh
+source "${REPO_ROOT}/common/example_runner_preamble.sh"
 
 echo "🧬 CRISPR Gene Injection Example"
 echo ""
 
-# Scoped permissions (issue #419): allowlist env vars; --allow-net is
-# scoped to jsr.io for the runtime WASM activation fetch in
-# @stsoftware/neat-ai; no spawned subprocesses.
-NEAT_AI_ENV_VARS="HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP"
+# Scoped permissions (issue #419): shared flags via NEAT_EXAMPLE_DENO_FLAGS;
+# per-example --allow-env extras and --allow-net hosts below.
 
 deno run \
-  --v8-flags=--max-old-space-size=4096 \
-  --allow-read \
-  --allow-write \
+  "${NEAT_EXAMPLE_DENO_FLAGS[@]}" \
   --allow-env="${NEAT_AI_ENV_VARS},CRISPR_QUICK" \
   --allow-net=jsr.io \
-  --allow-ffi \
+  ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"} \
   crispr_injection/crispr_injection.ts \
   "$@"

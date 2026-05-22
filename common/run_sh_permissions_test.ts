@@ -145,6 +145,66 @@ Deno.test("every run.sh allows jsr.io for the NEAT-AI WASM fetch", async () => {
   }
 });
 
+Deno.test("every run.sh sources the shared example runner preamble", async () => {
+  const runners = await listRunners();
+  for (const path of runners) {
+    const script = await Deno.readTextFile(path);
+    assert(
+      script.includes('source "${REPO_ROOT}/common/example_runner_preamble.sh"'),
+      `${path} must source common/example_runner_preamble.sh (Discovery, rust scorer, Deno flags)`,
+    );
+    assert(
+      script.includes('"${NEAT_EXAMPLE_DENO_FLAGS[@]}"'),
+      `${path} must use NEAT_EXAMPLE_DENO_FLAGS from the shared preamble`,
+    );
+  }
+});
+
+Deno.test("example runner preamble grants required Deno flags", async () => {
+  const preamble = await Deno.readTextFile(
+    `${REPO_ROOT}common/example_runner_preamble.sh`,
+  );
+  const required = [
+    "--no-prompt",
+    "--unstable-worker-options",
+    "--allow-import",
+    "--allow-ffi",
+    "--allow-sys=systemMemoryInfo,hostname",
+  ];
+  for (const flag of required) {
+    assert(
+      preamble.includes(flag),
+      `common/example_runner_preamble.sh must include ${flag}`,
+    );
+  }
+  assert(
+    preamble.includes("NEAT_AI_RUST_SCORER_ENABLED"),
+    "preamble NEAT_AI_ENV_VARS must allowlist NEAT_AI_RUST_SCORER_ENABLED",
+  );
+  assert(
+    preamble.includes("NEAT_AI_RUST_SCORER_BINARY_PATH"),
+    "preamble NEAT_AI_ENV_VARS must allowlist NEAT_AI_RUST_SCORER_BINARY_PATH",
+  );
+});
+
+Deno.test("every run.sh that loads Discovery uses shared Deno flags with --allow-ffi", async () => {
+  const preamble = await Deno.readTextFile(
+    `${REPO_ROOT}common/example_runner_preamble.sh`,
+  );
+  assert(
+    preamble.includes("--allow-ffi"),
+    "common/example_runner_preamble.sh must pass --allow-ffi for Rust Discovery",
+  );
+  const runners = await listRunners();
+  for (const path of runners) {
+    const script = await Deno.readTextFile(path);
+    assert(
+      script.includes("example_runner_preamble.sh"),
+      `${path} must source the shared preamble (includes --allow-ffi for Discovery)`,
+    );
+  }
+});
+
 Deno.test("--allow-env allowlists exclude obvious secret-bearing names", async () => {
   // If a runner ever lists a known secret-bearing env var by accident
   // (e.g. GITHUB_TOKEN, AWS_SECRET_ACCESS_KEY), the allowlist exists

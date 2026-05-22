@@ -1,29 +1,21 @@
 /**
  * MNIST Handwritten-Digit Classification Example (multi-run persistence wired under #327).
  *
- * Direct supervised-batch demo: seed NEAT-AI with `new Creature(784, 10)`
- * — no hidden hint, no warm start, no `NeatOptions` overrides — and
- * call `Creature.evolveDir(dataDir, { targetError, timeoutMinutes })`
- * exactly once over the full 60 000-record MNIST training set encoded
- * as a binary `.bin` stream.
+ * Trains a digit classifier with `Creature.evolveDir` over the full 60 000-record
+ * MNIST training set encoded as a binary `.bin` stream. NEAT-AI runs its full
+ * supervised pipeline here — structural mutation, Rust Discovery, and weight
+ * fine-tuning — unless the host process withholds `--allow-ffi`.
  *
  *  - Inputs: the raw 28×28 source image, normalised into `[0, 1]`
  *    (784 features in row-major order). See `data.ts`.
- *  - Output topology: 10 outputs (one per digit class). The network's
- *    prediction is the argmax of the ten outputs.
+ *  - Output topology: 10 outputs (one per digit class). The predicted
+ *    digit is whichever output activation is highest.
  *
- * Under #327 the runner gained the multi-run idiom (issues #318, #319,
- * #320): with no prior state it behaves like a single random-noise run;
- * after a run it persists the champion + a per-run milestone summary so
- * the next invocation resumes from the saved creature. `--fresh` wipes
- * the persisted state, `--timeout=<minutes>` overrides the wall-clock
- * backstop, and `--target-error=<value>` overrides the early-exit
- * threshold. The runner emits two charts (`milestones.svg` and
- * `complexity.svg`) plus the prediction-grid SVG.
- *
- * The legacy single-run `evolution_summary.svg` artefact (seeded under
- * #285) is superseded by the multi-run chart pair and no longer
- * generated.
+ * Multi-run persistence (issues #318–#320, #327): when a saved champion
+ * exists the next invocation reloads it and continues evolution; only
+ * pass `--fresh` when you explicitly want to discard prior progress.
+ * `--timeout=<minutes>` overrides the wall-clock backstop per invocation.
+ * The early-stop `targetError` is fixed — not exposed on the CLI.
  */
 
 import { format } from "@std/fmt/duration";
@@ -130,60 +122,31 @@ export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/mnist_classification/m
 export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/mnist_classification/complexity.svg";
 
 /**
- * Default `targetError` for a multi-run invocation. MNIST is a much
- * harder problem than XOR, but the goal of the demo is the noise →
- * competent arc, so we keep the threshold tight (matches the historical
- * audit value).
- *
- * **Why so much smaller than 0.1?** For a K-way one-hot classification
- * task the per-record MSE has a *trivial floor* at `1 / K` (issue #446):
- * a network that simply outputs all zeros scores MSE = `1/K` because
- * every record contributes one squared error of `1²` shared across `K`
- * output positions. For 10-way MNIST that floor is `0.1` exactly — so
- * any `targetError` ≥ 0.1 is satisfied by a chance-level (~10 %) argmax
- * predictor. Tight defaults force evolution to climb well below the
- * trivial floor before declaring success. See {@link trivialOneHotMseFloor}.
+ * Fixed `targetError` passed to every `evolveDir` invocation (matches the
+ * GRQ `Learn.ts` pattern — tight threshold, not overridable from the CLI).
  */
-export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.001;
-
-/**
- * Per-record MSE achieved by the **trivial all-zero predictor** on a
- * `K`-way one-hot classification task. Returns `1 / K`.
- *
- * For a one-hot target the labelled output is `1` and the other `K − 1`
- * outputs are `0`. An all-zero predictor's squared error is therefore
- * `(0 − 1)² = 1` on the labelled output and `0` elsewhere; averaged
- * across the `K` output positions per record this is `1 / K`.
- *
- * The closely-related uniform `1/K` predictor scores a slightly tighter
- * MSE of `(1 − 1/K) / K`, but both sit at the same chance-level argmax
- * (any tie-broken constant output is correct on `1 / K` of records by
- * construction).
- *
- * Use this to sanity-check `targetError` for the MNIST demo: a
- * `targetError ≥ trivialOneHotMseFloor(CLASS_COUNT)` is met by a
- * chance-level classifier and provides no signal that evolution has
- * learned anything useful (issue #446).
- *
- * @param classCount Number of output classes (must be ≥ 2).
- * @returns The trivial MSE floor `1 / classCount`.
- * @throws When `classCount < 2`.
- */
-export function trivialOneHotMseFloor(classCount: number): number {
-  if (!Number.isFinite(classCount) || classCount < 2) {
-    throw new Error(
-      `trivialOneHotMseFloor: classCount must be at least 2, got ${classCount}`,
-    );
-  }
-  return 1 / classCount;
-}
+export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.0001;
 
 /**
  * Default wall-clock budget for a single multi-run invocation, in
- * minutes. Five minutes matches the audit-mandated stop condition and
- * the multi-run idiom shared with the other in-scope examples.
+ * minutes. Override with `--timeout=<minutes>` when you need longer
+ * evolution chunks; re-run without `--fresh` to continue from the
+ * saved champion.
  */
 export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
+
+/** Reject CLI attempts to override the fixed early-stop threshold. */
+export function assertNoTargetErrorCliOverride(argv: readonly string[]): void {
+  for (const arg of argv) {
+    if (arg === "--target-error" || arg.startsWith("--target-error=")) {
+      throw new Error(
+        `MNIST does not accept --target-error; the early-stop threshold is fixed at ` +
+          `${DEFAULT_MULTI_RUN_TARGET_ERROR}. Extend evolution with --timeout=<minutes> ` +
+          `and re-run without --fresh to continue from the saved champion.`,
+      );
+    }
+  }
+}
 
 /**
  * Small JSON written next to the champion + confusion matrix capturing
@@ -208,11 +171,11 @@ export interface MnistRunSummary {
   /** Synapse count of the post-evolution champion. */
   finalSynapses: number;
   /**
-   * Argmax accuracy on the held-out validation slice (tail of the
-   * 60 000-image training file).
+   * Fraction of validation samples where the highest output matches the
+   * true label.
    */
   validationAccuracy: number;
-  /** Argmax accuracy on the canonical 10 000-image test set. */
+  /** Fraction of test samples where the highest output matches the true label. */
   testAccuracy: number;
   /**
    * Which stop condition fired. Inferred from wall-clock vs the
@@ -231,25 +194,11 @@ export interface MnistRunSummary {
   runIndex: number;
   /** Whether this run resumed from a prior persisted champion. */
   resumed: boolean;
-  /**
-   * Trivial per-record MSE floor for the configured `CLASS_COUNT`-way
-   * one-hot task — equal to `1 / CLASS_COUNT` (`0.1` for 10-way MNIST).
-   * A `targetError` ≥ this value is met by a chance-level classifier
-   * (issue #446); see {@link trivialOneHotMseFloor}.
-   */
-  trivialErrorFloor: number;
-  /**
-   * `true` iff the resolved `targetError` is strictly below the trivial
-   * one-hot MSE floor, i.e. evolution has to do meaningful work before
-   * the early-stop threshold fires. When `false` the run can early-stop
-   * at chance-level argmax and the README warns the reader (issue #446).
-   */
-  targetErrorBelowTrivialFloor: boolean;
 }
 
 /**
- * Activate the creature on a single feature vector and return the
- * argmax of the ten outputs (the predicted digit class).
+ * Activate the creature on a single feature vector and return the index
+ * of the highest output (the predicted digit class, 0–9).
  */
 export function predict(creature: Creature, features: readonly number[]): number {
   creature.clearState();
@@ -438,8 +387,6 @@ export interface MnistEvolveOptions {
   /** Directory containing the binary `.bin` training stream consumed by
    * `Creature.evolveDir`. */
   dataDir: string;
-  /** `evolveDir` `targetError` option. */
-  targetError: number;
   /**
    * `evolveDir` `timeoutMinutes` option. Pass `0` from tests to skip the
    * wall-clock backstop (NEAT-AI activates a dynamic library on the
@@ -455,13 +402,13 @@ export interface MnistEvolveOptions {
    */
   seedCreatureExport?: CreatureExport;
   /**
-   * Optional hard cap on the number of generations. Used by tests to
-   * keep the run short without depending on wall-clock timing. Default
-   * is undefined (NEAT-AI's own internal cap applies).
+   * Unit-test-only caps — the runner never sets these; NEAT-AI defaults
+   * apply in production runs.
    */
-  maxGenerations?: number;
-  /** Optional population size override. Used by tests for speed. */
-  populationSize?: number;
+  testCaps?: {
+    maxGenerations?: number;
+    populationSize?: number;
+  };
 }
 
 /** Result of {@link evolveMnistClassifier}. */
@@ -503,12 +450,16 @@ export async function evolveMnistClassifier(
   const seedSynapses = creature.synapses.length;
 
   const neatOptions: NeatOptions = {
-    targetError: Math.max(0, Math.min(1, options.targetError)),
+    targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
     ...(options.timeoutMinutes > 0
       ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
       : {}),
-    ...(options.maxGenerations !== undefined ? { iterations: options.maxGenerations } : {}),
-    ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
+    ...(options.testCaps?.maxGenerations !== undefined
+      ? { iterations: options.testCaps.maxGenerations }
+      : {}),
+    ...(options.testCaps?.populationSize !== undefined
+      ? { populationSize: options.testCaps.populationSize }
+      : {}),
   };
 
   const start = Date.now();
@@ -552,15 +503,13 @@ export interface RunMultiRunMnistOptions {
   /** Directory containing the binary `.bin` training stream. */
   dataDir: string;
   /** Argv (defaults to `Deno.args`). Recognised flags: `--fresh`,
-   * `--timeout=<minutes>`, `--target-error=<value>`. */
+   * `--timeout=<minutes>`. */
   argv?: readonly string[];
   /** Base directory override for the multi-run persistence helpers and
    * chart artefacts (used by tests). Defaults to `docs`. */
   baseDir?: string;
-  /** Optional overrides applied to the resolved {@link MnistEvolveOptions}
-   * (used by tests to cap iterations without depending on wall-clock
-   * timing). */
-  evolveOverrides?: Partial<MnistEvolveOptions>;
+  /** Optional overrides applied in unit tests only (never by the runner). */
+  evolveOverrides?: Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes">;
 }
 
 /** Outcome of a single multi-run invocation. */
@@ -579,21 +528,6 @@ export interface MnistMultiRunResult {
   totalMilestones: number;
   /** `true` when the prior champion was reloaded as the seed creature. */
   resumed: boolean;
-  /**
-   * Trivial per-record MSE floor for `CLASS_COUNT`-way one-hot
-   * classification (equals `1 / CLASS_COUNT`). Surfaced so callers and
-   * tests can compare the resolved `targetError` against the
-   * chance-level threshold (issue #446).
-   */
-  trivialErrorFloor: number;
-  /**
-   * `true` iff `targetError < trivialErrorFloor` — i.e. the early-stop
-   * threshold is tight enough that a chance-level argmax classifier
-   * cannot satisfy it. When `false`, the runner emits a `console.warn`
-   * explaining that the configured target can be reached without
-   * learning anything useful for argmax (issue #446).
-   */
-  targetErrorBelowTrivialFloor: boolean;
 }
 
 /**
@@ -606,10 +540,15 @@ export async function runMultiRunMnist(
   options: RunMultiRunMnistOptions,
 ): Promise<MnistMultiRunResult> {
   const argv = options.argv ?? Deno.args;
+  assertNoTargetErrorCliOverride(argv);
   const flags = parseMultiRunFlags(argv);
   const slug = EXAMPLE_SLUG;
 
   if (flags.fresh) {
+    console.warn(
+      "⚠️  --fresh discards the saved champion and all milestone history. " +
+        "Omit --fresh to continue evolving the persisted creature.",
+    );
     await wipeMultiRunState(slug, options.baseDir);
   }
 
@@ -617,26 +556,10 @@ export async function runMultiRunMnist(
   const resumed = state.creatureExport !== undefined;
 
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
-  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
-
-  // Sanity-check the requested early-stop threshold against the trivial
-  // one-hot MSE floor (issue #446). A `targetError >= 1 / CLASS_COUNT` is
-  // satisfied by a chance-level argmax classifier (e.g. all-zero output),
-  // so hitting it tells the operator nothing about generalisation.
-  const trivialErrorFloor = trivialOneHotMseFloor(CLASS_COUNT);
-  const targetErrorBelowTrivialFloor = targetError < trivialErrorFloor;
-  if (!targetErrorBelowTrivialFloor) {
-    console.warn(
-      `⚠️  targetError=${targetError} is at or above the trivial one-hot MSE ` +
-        `floor (${trivialErrorFloor} for ${CLASS_COUNT}-way classification). ` +
-        "A chance-level argmax classifier can satisfy this threshold — " +
-        "expect test accuracy ≈ 10 %. See issue #446.",
-    );
-  }
+  const targetError = DEFAULT_MULTI_RUN_TARGET_ERROR;
 
   const evolveOptions: MnistEvolveOptions = {
     dataDir: options.dataDir,
-    targetError,
     timeoutMinutes,
     seedCreatureExport: state.creatureExport,
     ...options.evolveOverrides,
@@ -681,8 +604,6 @@ export async function runMultiRunMnist(
     lastCumulativeGen: merged.lastCumulativeGen,
     totalMilestones: merged.milestones.length,
     resumed,
-    trivialErrorFloor,
-    targetErrorBelowTrivialFloor,
   };
 }
 
@@ -777,8 +698,7 @@ if (import.meta.main) {
   );
 
   // Stage 1 — write the FULL 60 000-record training set as a binary
-  // `.bin` file. Per the audit (#270): no slice — every training image
-  // becomes one record.
+  // `.bin` file consumed by `Creature.evolveDir`.
   const binDir = BIN_TRAIN_DIR;
   ensureDirSync(binDir);
   const binPath = join(binDir, "mnist_train.bin");
@@ -790,10 +710,11 @@ if (import.meta.main) {
 
   // Stage 2 — multi-run flag parsing + evolve.
   const flags = parseMultiRunFlags(Deno.args);
+  assertNoTargetErrorCliOverride(Deno.args);
   if (flags.fresh) {
     console.log("🧹 --fresh: wiping prior multi-run state.");
   }
-  const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
+  const targetError = DEFAULT_MULTI_RUN_TARGET_ERROR;
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
   console.log(
     `\n🧪 Evolving via Creature.evolveDir(${binDir}, ` +
@@ -805,7 +726,7 @@ if (import.meta.main) {
     dataDir: binDir,
     baseDir: quickBaseDir,
     evolveOverrides: quick
-      ? { maxGenerations: 2, populationSize: 4, timeoutMinutes: 1 }
+      ? { testCaps: { maxGenerations: 2, populationSize: 4 }, timeoutMinutes: 1 }
       : undefined,
   });
   const { evolveResult: result } = multi;
@@ -869,7 +790,7 @@ if (import.meta.main) {
   const summary: MnistRunSummary = {
     trainingRecords: trainSamples.length,
     evolveWallClockMs: result.wallClockMs,
-    targetError: multi.targetError,
+    targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
     timeoutMinutes: multi.timeoutMinutes,
     seedNeurons: result.seedNeurons,
     seedSynapses: result.seedSynapses,
@@ -883,8 +804,6 @@ if (import.meta.main) {
     evolveDirGenerations: result.generations,
     runIndex: multi.runIndex,
     resumed: multi.resumed,
-    trivialErrorFloor: multi.trivialErrorFloor,
-    targetErrorBelowTrivialFloor: multi.targetErrorBelowTrivialFloor,
   };
   const summaryPath = join(outputDir, "run_summary.json");
   await safeWriteJson(summaryPath, summary);
