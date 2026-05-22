@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Handwritten-Digit Classification — multi-run error vs cumulative generations chart">
-  <title>MNIST Handwritten-Digit Classification — multi-run error vs cumulative generations</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Classification — multi-run error vs cumulative generations chart">
+  <title>MNIST Classification — multi-run error vs cumulative generations</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Handwritten-Digit Classification — multi-run error vs cumulative generations</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Classification — multi-run error vs cumulative generations</text>
   <rect x="70" y="50" width="690" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="70" y="358" text-anchor="middle">94</text>
-    <line x1="104.08" y1="340" x2="104.08" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="104.08" y="358" text-anchor="middle">100</text>
+    <text x="70" y="358" text-anchor="middle">187</text>
+    <line x1="515.55" y1="340" x2="515.55" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="515.55" y="358" text-anchor="middle">1000</text>
     <line x1="760" y1="340" x2="760" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="760" y="358" text-anchor="middle">329</text>
+    <text x="760" y="358" text-anchor="middle">2509</text>
     <text x="415" y="376" text-anchor="middle" font-weight="bold">cumulative generation (log scale)</text>
   </g>
   <g class="y-axis" font-family="sans-serif" font-size="11" fill="#333333">
@@ -31,15 +31,57 @@
     <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
+    <line class="run-boundary" x1="254.91" y1="50" x2="254.91" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="254.91" y="46" text-anchor="middle">run 2</text>
+    <line class="run-boundary" x1="380.25" y1="50" x2="380.25" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="380.25" y="46" text-anchor="middle">run 3</text>
+    <line class="run-boundary" x1="485.18" y1="50" x2="485.18" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="485.18" y="46" text-anchor="middle">run 4</text>
+    <line class="run-boundary" x1="530.28" y1="50" x2="530.28" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="530.28" y="46" text-anchor="middle">run 5</text>
+    <line class="run-boundary" x1="570.56" y1="50" x2="570.56" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="570.56" y="46" text-anchor="middle">run 6</text>
+    <line class="run-boundary" x1="596.09" y1="50" x2="596.09" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="596.09" y="46" text-anchor="middle">run 7</text>
+    <line class="run-boundary" x1="618.65" y1="50" x2="618.65" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="618.65" y="46" text-anchor="middle">run 8</text>
+    <line class="run-boundary" x1="638.11" y1="50" x2="638.11" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="638.11" y="46" text-anchor="middle">run 9</text>
+    <line class="run-boundary" x1="657.03" y1="50" x2="657.03" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="657.03" y="46" text-anchor="middle">run 10</text>
+    <line class="run-boundary" x1="680.89" y1="50" x2="680.89" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="680.89" y="46" text-anchor="middle">run 11</text>
+    <line class="run-boundary" x1="701.07" y1="50" x2="701.07" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="701.07" y="46" text-anchor="middle">run 12</text>
+    <line class="run-boundary" x1="723.86" y1="50" x2="723.86" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="723.86" y="46" text-anchor="middle">run 13</text>
+    <line class="run-boundary" x1="737" y1="50" x2="737" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="737" y="46" text-anchor="middle">run 14</text>
+    <line class="run-boundary" x1="747.31" y1="50" x2="747.31" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="747.31" y="46" text-anchor="middle">run 15</text>
     <line class="run-boundary" x1="760" y1="50" x2="760" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="760" y="46" text-anchor="middle">run 2</text>
+    <text x="760" y="46" text-anchor="middle">run 16</text>
   </g>
   <g class="error-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 760,126.94"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 254.91,217.97 380.25,248.93 485.18,311 530.28,311 570.56,311 596.09,311 618.65,311 638.11,311 657.03,311 680.89,311 701.07,311 723.86,311.01 737,311.01 747.31,311.01 760,311.01"/>
     <circle class="error-point" cx="70" cy="50" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="760" cy="126.94" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="254.91" cy="217.97" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="380.25" cy="248.93" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="485.18" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="530.28" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="570.56" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="596.09" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="618.65" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="638.11" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="657.03" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="680.89" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="701.07" cy="311" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="723.86" cy="311.01" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="737" cy="311.01" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="747.31" cy="311.01" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="760" cy="311.01" r="2.4" fill="#d62728"/>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">
-    <text x="400" y="378" text-anchor="middle">final error 0.735 · 2 runs · 329 cumulative generations · 1213497 ms total · 16 gen/min</text>
+    <text x="400" y="378" text-anchor="middle">final error 0.1 · 16 runs · 2509 cumulative generations · 14808976 ms total · 10 gen/min</text>
   </g>
 </svg>
