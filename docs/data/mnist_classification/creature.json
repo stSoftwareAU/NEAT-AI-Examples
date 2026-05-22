@@ -59,7 +59,7 @@
   {
    "type": "output",
    "uuid": "output-9",
-   "bias": 102.88102473717694,
+   "bias": 149.47562560006654,
    "squash": "LogSigmoid"
   }
  ],
@@ -2070,7 +2070,7 @@
    "toUUID": "output-6"
   },
   {
-   "weight": 16.468989341842402,
+   "weight": 11.749805027409575,
    "fromUUID": "input-44",
    "toUUID": "output-7"
   },
@@ -4713,11 +4713,6 @@
    "weight": 10.685046366126736,
    "fromUUID": "input-102",
    "toUUID": "output-7"
-  },
-  {
-   "weight": 24.727414679918297,
-   "fromUUID": "input-102",
-   "toUUID": "output-8"
   },
   {
    "weight": 14.16809247731105,
@@ -9960,7 +9955,7 @@
    "toUUID": "output-0"
   },
   {
-   "weight": 26.04589555068913,
+   "weight": 25.738343100555188,
    "fromUUID": "input-216",
    "toUUID": "output-1"
   },
@@ -12400,7 +12395,7 @@
    "toUUID": "output-1"
   },
   {
-   "weight": 11.674370080094988,
+   "weight": 11.674386078198957,
    "fromUUID": "input-268",
    "toUUID": "output-2"
   },
@@ -12860,7 +12855,7 @@
    "toUUID": "output-8"
   },
   {
-   "weight": 17.72228127457403,
+   "weight": -455.86802870983325,
    "fromUUID": "input-277",
    "toUUID": "output-9"
   },
@@ -15390,7 +15385,7 @@
    "toUUID": "output-8"
   },
   {
-   "weight": 360.43532563024644,
+   "weight": 598.6551699002665,
    "fromUUID": "input-331",
    "toUUID": "output-9"
   },
@@ -16098,11 +16093,6 @@
    "weight": 36.395174892504684,
    "fromUUID": "input-346",
    "toUUID": "output-6"
-  },
-  {
-   "weight": 9.618843600077476,
-   "fromUUID": "input-346",
-   "toUUID": "output-7"
   },
   {
    "weight": 21.864059448168774,
@@ -22305,7 +22295,7 @@
    "toUUID": "output-7"
   },
   {
-   "weight": 29.03629726400964,
+   "weight": 97.29210106977135,
    "fromUUID": "input-478",
    "toUUID": "output-8"
   },
@@ -22990,7 +22980,7 @@
    "toUUID": "output-2"
   },
   {
-   "weight": 9.61581195146141,
+   "weight": 9.623797200207589,
    "fromUUID": "input-493",
    "toUUID": "output-3"
   },
@@ -23415,7 +23405,7 @@
    "toUUID": "output-5"
   },
   {
-   "weight": 8.303067982168448,
+   "weight": 10.83099910023363,
    "fromUUID": "input-502",
    "toUUID": "output-6"
   },
@@ -23808,11 +23798,6 @@
    "weight": 3.991242076234838,
    "fromUUID": "input-511",
    "toUUID": "output-1"
-  },
-  {
-   "weight": 3.9674051551954914,
-   "fromUUID": "input-511",
-   "toUUID": "output-2"
   },
   {
    "weight": 5.22756973053826,
@@ -24720,7 +24705,7 @@
    "toUUID": "output-4"
   },
   {
-   "weight": 739119.3113800872,
+   "weight": -7885501.630227833,
    "fromUUID": "input-530",
    "toUUID": "output-5"
   },
@@ -25320,7 +25305,7 @@
    "toUUID": "output-1"
   },
   {
-   "weight": 7.132086402577241,
+   "weight": 7.344602334446098,
    "fromUUID": "input-543",
    "toUUID": "output-2"
   },
@@ -28320,7 +28305,7 @@
    "toUUID": "output-2"
   },
   {
-   "weight": 35.7711305311169,
+   "weight": 36.87893610079549,
    "fromUUID": "input-608",
    "toUUID": "output-3"
   },
@@ -28488,11 +28473,6 @@
    "weight": 36.555099765314466,
    "fromUUID": "input-611",
    "toUUID": "output-9"
-  },
-  {
-   "weight": 0.1160417000001756,
-   "fromUUID": "input-612",
-   "toUUID": "output-0"
   },
   {
    "weight": 8.394303440193797,
@@ -31845,7 +31825,7 @@
    "toUUID": "output-4"
   },
   {
-   "weight": 7.093545365606471,
+   "weight": 8.900392200191986,
    "fromUUID": "input-684",
    "toUUID": "output-5"
   },
@@ -33565,7 +33545,7 @@
    "toUUID": "output-8"
   },
   {
-   "weight": -3.4707899012542,
+   "weight": -23.343870100010392,
    "fromUUID": "input-721",
    "toUUID": "output-9"
   },
@@ -34930,7 +34910,7 @@
    "toUUID": "output-5"
   },
   {
-   "weight": 6.962749704789271,
+   "weight": 7.068287976933742,
    "fromUUID": "input-751",
    "toUUID": "output-6"
   },
@@ -36005,11 +35985,6 @@
    "toUUID": "output-9"
   },
   {
-   "weight": 5.815781842769558,
-   "fromUUID": "input-775",
-   "toUUID": "output-0"
-  },
-  {
    "weight": 475.9062880000121,
    "fromUUID": "input-775",
    "toUUID": "output-1"
@@ -36475,11 +36450,11 @@
  "tags": [
   {
    "name": "error",
-   "value": "0.09989928327099822"
+   "value": "0.09989904242337459"
   },
   {
    "name": "score",
-   "value": "0.9000279057290379"
+   "value": "0.9000281965766616"
   },
   {
    "name": "approach",
@@ -36487,7 +36462,7 @@
   },
   {
    "name": "adjusted",
-   "value": "4 weights, 1 bias"
+   "value": "6 weights"
   },
   {
    "name": "approach-logged",
@@ -36495,120 +36470,78 @@
   }
  ],
  "memetic": {
-  "generation": 4,
-  "score": 0.9000279056925573,
-  "biases": {
-   "output-9": 73.3534240516576
-  },
+  "generation": 2,
+  "score": 0.9000281965505998,
+  "biases": {},
   "weights": [
    {
-    "fromUUID": "input-331",
-    "toUUID": "output-9",
-    "weight": 47.17191223321982
+    "fromUUID": "input-216",
+    "toUUID": "output-1",
+    "weight": 26.67618340455736
    },
    {
-    "fromUUID": "input-530",
+    "fromUUID": "input-277",
+    "toUUID": "output-9",
+    "weight": 273.35031094669915
+   },
+   {
+    "fromUUID": "input-493",
+    "toUUID": "output-3",
+    "weight": 9.653650001649229
+   },
+   {
+    "fromUUID": "input-502",
+    "toUUID": "output-6",
+    "weight": 5.402459800922957
+   },
+   {
+    "fromUUID": "input-608",
+    "toUUID": "output-3",
+    "weight": 36.01169520615224
+   },
+   {
+    "fromUUID": "input-684",
     "toUUID": "output-5",
-    "weight": 4841.734436276639
-   },
-   {
-    "fromUUID": "input-543",
-    "toUUID": "output-2",
-    "weight": 7.21030562103532
-   },
-   {
-    "fromUUID": "input-721",
-    "toUUID": "output-9",
-    "weight": 9.564143532274457
+    "weight": 9.007585101538856
    }
   ],
   "ancestry": [
    {
-    "generation": 3,
-    "weights": [
-     {
-      "fromUUID": "input-331",
-      "toUUID": "output-9",
-      "weight": 47.17191223321982
-     },
-     {
-      "fromUUID": "input-530",
-      "toUUID": "output-5",
-      "weight": 4841.734436276639
-     },
-     {
-      "fromUUID": "input-543",
-      "toUUID": "output-2",
-      "weight": 7.21030562103532
-     },
-     {
-      "fromUUID": "input-721",
-      "toUUID": "output-9",
-      "weight": 9.564143532274457
-     }
-    ],
-    "biases": {
-     "output-9": 73.3534240516576
-    },
-    "score": 0.9000279056925573
-   },
-   {
-    "generation": 2,
-    "weights": [
-     {
-      "fromUUID": "input-331",
-      "toUUID": "output-9",
-      "weight": 47.17191223321982
-     },
-     {
-      "fromUUID": "input-530",
-      "toUUID": "output-5",
-      "weight": 4841.734436276639
-     },
-     {
-      "fromUUID": "input-543",
-      "toUUID": "output-2",
-      "weight": 7.21030562103532
-     },
-     {
-      "fromUUID": "input-721",
-      "toUUID": "output-9",
-      "weight": 9.564143532274457
-     }
-    ],
-    "biases": {
-     "output-9": 73.3534240516576
-    },
-    "score": 0.9000279056925573
-   },
-   {
     "generation": 1,
     "weights": [
      {
-      "fromUUID": "input-331",
-      "toUUID": "output-9",
-      "weight": 47.17191223321982
+      "fromUUID": "input-216",
+      "toUUID": "output-1",
+      "weight": 26.67618340455736
      },
      {
-      "fromUUID": "input-530",
+      "fromUUID": "input-277",
+      "toUUID": "output-9",
+      "weight": 273.35031094669915
+     },
+     {
+      "fromUUID": "input-493",
+      "toUUID": "output-3",
+      "weight": 9.653650001649229
+     },
+     {
+      "fromUUID": "input-502",
+      "toUUID": "output-6",
+      "weight": 5.402459800922957
+     },
+     {
+      "fromUUID": "input-608",
+      "toUUID": "output-3",
+      "weight": 36.01169520615224
+     },
+     {
+      "fromUUID": "input-684",
       "toUUID": "output-5",
-      "weight": 4841.734436276639
-     },
-     {
-      "fromUUID": "input-543",
-      "toUUID": "output-2",
-      "weight": 7.21030562103532
-     },
-     {
-      "fromUUID": "input-721",
-      "toUUID": "output-9",
-      "weight": 9.564143532274457
+      "weight": 9.007585101538856
      }
     ],
-    "biases": {
-     "output-9": 73.3534240516576
-    },
-    "score": 0.9000279056925573
+    "biases": {},
+    "score": 0.9000281965505998
    }
   ]
  }
