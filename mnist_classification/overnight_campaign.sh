@@ -25,7 +25,6 @@ ISSUES="${LOG_DIR}/issues_raised.txt"
 touch "${ISSUES}"
 
 SUMMARY="${REPO_ROOT}/docs/data/mnist_classification/run_summary.json"
-MILESTONES="${REPO_ROOT}/docs/data/mnist_classification/milestones.json"
 
 export NEAT_EXAMPLES_MAX_HEAP_MB="${NEAT_EXAMPLES_MAX_HEAP_MB:-8192}"
 
@@ -103,7 +102,7 @@ record_stats() {
   resumed="$(jq -r '.resumed // empty' "${SUMMARY}")"
   duration_s="$(jq -r '(.evolveWallClockMs / 1000) | floor' "${SUMMARY}")"
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${run}" "$(date -Iseconds)" "${duration_s}" "${error}" "${test_acc}" \
     "${val_acc}" "${neurons}" "${synapses}" "${stop}" "${resumed}" >> "${STATS}"
 

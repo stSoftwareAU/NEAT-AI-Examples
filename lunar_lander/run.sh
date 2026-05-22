@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
-NEAT_EXAMPLES_MAX_HEAP_MB=8192
+export NEAT_EXAMPLES_MAX_HEAP_MB=8192
 # shellcheck source=common/example_runner_preamble.sh
 source "${REPO_ROOT}/common/example_runner_preamble.sh"
 

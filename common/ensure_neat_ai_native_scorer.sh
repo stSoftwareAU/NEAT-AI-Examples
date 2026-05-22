@@ -38,23 +38,18 @@ ensure_neat_ai_native_scorer_use_js_fallback() {
 # Populate ALLOW_RUN_ARGS for a scoped --allow-run when rust_scorer is built.
 # Callers splice with: ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"}
 rust_scorer_allow_run_args() {
-  ALLOW_RUN_ARGS=()
+  export ALLOW_RUN_ARGS=()
   if [[ -n "${NEAT_AI_RUST_SCORER_BINARY_PATH:-}" ]]; then
-    ALLOW_RUN_ARGS=("--allow-run=${NEAT_AI_RUST_SCORER_BINARY_PATH}")
+    export ALLOW_RUN_ARGS=("--allow-run=${NEAT_AI_RUST_SCORER_BINARY_PATH}")
   fi
 }
 
 prepend_path_if_dir_exists() {
   local dir="${1:?}"
   [[ -d "${dir}" ]] || return 0
-  local path_entry=""
-  local IFS=':'
-  read -r -a path_parts <<< "${PATH:-}"
-  for path_entry in "${path_parts[@]}"; do
-    if [ "${path_entry}" = "${dir}" ]; then
-      return 0
-    fi
-  done
+  case ":${PATH}:" in
+    *":${dir}:"*) return 0 ;;
+  esac
   PATH="${dir}:${PATH}"
   export PATH
 }
