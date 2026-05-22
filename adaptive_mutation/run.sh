@@ -12,28 +12,19 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
-if ! command -v deno &> /dev/null; then
-  export PATH="$HOME/.deno/bin:$PATH"
-fi
+# shellcheck source=common/example_runner_preamble.sh
+source "${REPO_ROOT}/common/example_runner_preamble.sh"
 
 echo "🧬 Adaptive Mutation Rate Demo"
 echo ""
 
-# Scoped permissions (issue #419):
-#   --allow-env: HOME/USERPROFILE for cache lookups; the NEAT_AI_* vars
-#     are read by @stsoftware/neat-ai; DENO_TEST is set by `deno test`.
-#   --allow-net=jsr.io: @stsoftware/neat-ai fetches the WASM activation
-#     payload from jsr.io at runtime (WasmActivationPayload.ts).
-#   --allow-run is not granted — no Deno.run/Command calls. The
-#     `quality.sh` wrapper injects --allow-run=df for the NEAT-AI
-#     discovery disk-space check during the full quality run.
-NEAT_AI_ENV_VARS="HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP"
+# Scoped permissions (issue #419): shared flags via NEAT_EXAMPLE_DENO_FLAGS;
+# per-example --allow-env extras and --allow-net hosts below.
 
 deno run \
-  --allow-read \
-  --allow-write \
+  "${NEAT_EXAMPLE_DENO_FLAGS[@]}" \
   --allow-env="${NEAT_AI_ENV_VARS}" \
   --allow-net=jsr.io \
-  --allow-ffi \
+  ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"} \
   adaptive_mutation/adaptive_mutation.ts \
   "$@"

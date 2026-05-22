@@ -3,20 +3,19 @@
 **Acronyms.** _MNIST_ = Modified National Institute of Standards and Technology — the 70 000-image
 handwritten-digit dataset (LeCun et al. 1998). _NEAT_ = NeuroEvolution of Augmenting Topologies.
 
-A minimal-seed `Creature.evolveDir` run over the **full 60 000-record** MNIST training file, kept to
-the audit-mandated stop conditions (`targetError` + `timeoutMinutes`) and wired into the multi-run
-persistence + chart pipeline (issues
+Evolves a digit classifier with `Creature.evolveDir` over the **full 60 000-record** MNIST training
+file (binary `.bin` stream), persisting the champion between runs so evolution continues where it
+left off. Issues
 [#318](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/318),
 [#319](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/319),
-[#320](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/320),
-[#327](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/327)) shared with the other in-scope
-examples. Audit context: **#268** (parent) and **#270** (the runner rewrite this README reports
-against).
+[#320](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/320), and
+[#327](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/327) wired the multi-run chart
+pipeline shared with the other in-scope examples.
 
-> 🌱 **Generation 1 starts from random noise** (when no prior champion exists). The seed handed to
-> NEAT-AI is `new Creature(784, 10)` — 784 input neurons, 10 output neurons, no hidden hint and no
-> warm start. NEAT-AI random-initialises every weight, bias, and activation function from there.
-> Subsequent runs without `--fresh` reload the saved champion as the seed and continue evolution.
+> 🌱 **First run only:** when no saved champion exists, NEAT-AI seeds `new Creature(784, 10)` —
+> 784 input neurons, 10 output neurons — and random-initialises every weight, bias, and activation
+> function. **Every subsequent run reloads the saved champion and continues evolution.** Do not
+> pass `--fresh` unless you explicitly want to discard all prior progress.
 
 ```mermaid
 flowchart LR
@@ -24,7 +23,7 @@ flowchart LR
     BIN["📦 writeMnistTrainingBin()<br/>full 60 000 records<br/>784 features + 10 one-hot targets"]
     LOAD["💾 loadMultiRunState<br/>prior champion if any"]
     SEED["🌱 new Creature(784, 10)<br/>(only when no prior state)"]
-    EVOLVE["🧪 creature.evolveDir(<br/>{ targetError, timeoutMinutes })"]
+    EVOLVE["🧪 creature.evolveDir(<br/>Discovery + fine-tuning)"]
     APPEND["📝 appendMultiRunRun<br/>persist champion + milestone"]
     CHARTS["📈 milestones.svg + complexity.svg"]
     GRID["🖼️ prediction-grid SVG"]
@@ -55,42 +54,33 @@ so reviewers can verify every value. The milestone history (one record per run) 
 and the saved champion at
 [`docs/data/mnist_classification/creature.json`](../docs/data/mnist_classification/creature.json).
 
-The 5-minute default budget (and the wider audit-honest stop-condition policy) is well short of what
-minimal-seed mutation-only evolution needs to drive argmax above chance on full 28×28 MNIST — the
-demo quotes the measurement exactly as observed ("results are the results"). For a competent MNIST
-classifier reach for NEAT-AI's hybrid memetic evolution; see the footer for links.
-
 ## 🚀 Running the example
 
 ```bash
-# First run — random seed, writes creature + milestones + both charts.
-./mnist_classification/run.sh --fresh
-
-# Subsequent runs — resume from the saved champion and append a milestone.
+# Continue evolution from the saved champion (default workflow).
 ./mnist_classification/run.sh
 
-# Override the wall-clock budget and / or early-stop target error.
-./mnist_classification/run.sh --timeout=10 --target-error=0.0005
+# Longer wall-clock budget for this invocation.
+./mnist_classification/run.sh --timeout=15
+
+# Explicit reset — discards saved champion, milestones, and charts.
+./mnist_classification/run.sh --fresh
 ```
 
-The runner forwards every flag to the underlying Deno program, which parses them via
+The runner forwards flags to the underlying Deno program, which parses them via
 `parseMultiRunFlags` from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
 
-| Flag                  | Default | Meaning                                                               |
-| --------------------- | ------- | --------------------------------------------------------------------- |
-| `--fresh`             | absent  | Wipe prior creature, milestones, and both chart SVGs before evolving. |
-| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.           |
-| `--target-error=<v>`  | 0.001   | Stop as soon as the champion's error falls below `v`.                 |
+| Flag                  | Default | Meaning                                                                 |
+| --------------------- | ------- | ----------------------------------------------------------------------- |
+| _(none)_              | —       | Resume from the saved champion when present; otherwise start from noise. |
+| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.             |
+| `--fresh`             | absent  | **Discard** prior creature, milestones, and both chart SVGs before running. |
 
-> ⚠️ **Choosing `--target-error` for one-hot MNIST (issue
-> [#446](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/446)).** `Creature.evolveDir`'s
-> `error` is the per-record mean squared error over the 10 one-hot output positions. For a `K`-way
-> one-hot target the **trivial floor** is `1 / K` — an all-zero output predictor scores MSE =
-> `1 / 10 = 0.1` on MNIST while remaining chance-level (~10 %) on argmax. Any `--target-error ≥ 0.1`
-> is therefore satisfied by a classifier that has learned nothing useful; the runner logs a warning
-> and the persisted `run_summary.json` records `targetErrorBelowTrivialFloor: false` for the run.
-> Pick a threshold strictly below `1 / CLASS_COUNT` (the default `0.001` already is) if you want
-> hitting it to mean the champion is materially better than chance.
+The early-stop `targetError` passed to `evolveDir` is **fixed at `0.0001`** — it is not overridable
+from the CLI.
+
+`run.sh` grants `--allow-ffi` so NEAT-AI can load the Rust Discovery library (structural growth)
+and run the full supervised training pipeline inside `evolveDir`.
 
 Artefacts:
 
@@ -126,12 +116,10 @@ matrix + prediction-grid SVG. See
 Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
 milestone-cadence telemetry. For the supervised MNIST run, `Creature.evolveDir` returns a single
 end-of-run summary `{ error, score, time, generation }` — so each invocation contributes one
-milestone to the merged history. The legacy single-run summary chart was superseded by the multi-run
-chart pair under issue [#327](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/327). Each
-subsequent run reloads the saved champion via
+milestone to the merged history. Each subsequent run reloads the saved champion via
 [`common/multi_run_state.ts`](../common/multi_run_state.ts), evolves further, and appends a fresh
-milestone with a monotonically-increasing `cumulativeGen` — so the charts show one continuous noise
-→ competent arc across every run combined.
+milestone with a monotonically-increasing `cumulativeGen` — so the charts show one continuous arc
+across every run combined.
 
 ```mermaid
 sequenceDiagram
@@ -161,7 +149,7 @@ sequenceDiagram
 
 ![MNIST multi-run complexity chart — best-creature neuron and synapse counts vs cumulative generation](../docs/screenshots/mnist_classification/complexity.svg)
 
-Re-run `./mnist_classification/run.sh` (without `--fresh`) to extend both charts with another run.
+Re-run `./mnist_classification/run.sh` to extend both charts with another evolution chunk.
 
 ### Champion prediction grid (held-out test set)
 
@@ -182,31 +170,17 @@ Re-run `./mnist_classification/run.sh` (without `--fresh`) to extend both charts
 
 ## 🎯 Inputs and Outputs
 
-| Channel      | Type       | Meaning                                                                |
-| ------------ | ---------- | ---------------------------------------------------------------------- |
+| Channel      | Type       | Meaning                                                                 |
+| ------------ | ---------- | ----------------------------------------------------------------------- |
 | Input 0..783 | feature    | Raw pixel intensity (`[0, 1]`) at the 28 × 28 grid position, row-major |
-| Output 0..9  | activation | Class score; argmax over the ten outputs is the predicted digit        |
-
-## ⚡ Where NEAT-AI is faster than this demo suggests
-
-This README reports a stripped-down audit demo. NEAT-AI's production training pipeline pairs
-evolutionary search with backpropagation and several accelerators that this demo deliberately sets
-aside; reach for them on real workloads:
-
-- [`memetic_evolution/README.md`](../memetic_evolution/README.md) — hybrid memetic evolution (NEAT
-  structural search + backpropagation weight refinement).
-- [`discovery/README.md`](../discovery/README.md) — error-driven Discovery analysis suggesting
-  beneficial structural changes instead of rolling dice on every mutation.
-- [`mcmc_acceptance/README.md`](../mcmc_acceptance/README.md) — Metropolis–Hastings acceptance to
-  escape plateaus that pure greedy mutation gets stuck on.
+| Output 0..9  | activation | Class score; the predicted digit is whichever output is highest       |
 
 ## 🧰 NEAT-AI Features Used
 
-This audit demo runs `Creature.evolveDir` exactly once per invocation from a minimal
-`new Creature(784, 10)` seed (or the persisted champion from a prior run) over the full 60
-000-record MNIST training file. The demonstrated capability is NEAT-AI's evolutionary topology
-search driven by a binary `.bin` training stream; NEAT-AI's full training pipeline (backpropagation,
-dropout, L1/L2, K-fold, synthetic synapses) is intentionally **not** wired into this audit run.
+Each invocation runs `Creature.evolveDir` from the persisted champion (or a minimal
+`new Creature(784, 10)` seed on the very first run) over the full 60 000-record MNIST training
+file. With `--allow-ffi` enabled in `run.sh`, NEAT-AI's supervised pipeline inside `evolveDir`
+includes structural mutation, Rust Discovery analysis, and weight fine-tuning.
 
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
@@ -215,6 +189,8 @@ Features exercised (links go to upstream
   — structural mutation co-evolved with weights and biases against a per-record fitness signal.
 - **[Genetic Operators](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
   — weight, bias, and add-node mutation paired with selection pressure on per-record error.
+- **[Discovery](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
+  — error-driven structural suggestions via the Rust Discovery library (requires `--allow-ffi`).
 - **[Binary `.bin` training stream](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
   — `Creature.evolveDir` consumes pre-decoded Float32 records straight from disk (see
   [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)).

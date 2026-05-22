@@ -20,24 +20,19 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
-if ! command -v deno &> /dev/null; then
-  export PATH="$HOME/.deno/bin:$PATH"
-fi
+# shellcheck source=common/example_runner_preamble.sh
+source "${REPO_ROOT}/common/example_runner_preamble.sh"
 
 echo "🔬 Discovery-at-Scale Demo"
 echo ""
 
-# Scoped permissions (issue #419): allowlist env vars; --allow-net is
-# scoped to jsr.io for the runtime WASM activation fetch; no spawned
-# subprocesses.
-NEAT_AI_ENV_VARS="HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP"
+# Scoped permissions (issue #419): shared flags via NEAT_EXAMPLE_DENO_FLAGS;
+# per-example --allow-env extras and --allow-net hosts below.
 
 deno run \
-  --v8-flags=--max-old-space-size=4096 \
-  --allow-read \
-  --allow-write \
+  "${NEAT_EXAMPLE_DENO_FLAGS[@]}" \
   --allow-env="${NEAT_AI_ENV_VARS}" \
   --allow-net=jsr.io \
-  --allow-ffi \
+  ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"} \
   discovery_at_scale/discovery_at_scale.ts \
   "$@"
