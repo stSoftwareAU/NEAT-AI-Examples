@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" width="480" height="480" role="img" aria-label="TSP-constructive champion tour for burma14">
+  <title>TSP-constructive — burma14 champion tour</title>
+  <desc>Deterministic SVG of the champion tour. Cities are dots; the champion tour is the orange polyline; the optional dashed underlay (when present) is the reference tour.</desc>
+  <rect width="480" height="480" fill="#0d1b2a"/>
+  <rect x="24" y="56" width="432" height="400" fill="#1b263b"/>
+  <polyline class="optimal" points="117.51,318.44 145.72,311.10 119.83,268.98 110.94,268.98 24.00,240.39 117.51,382.58 257.39,378.33 312.64,338.15 331.19,320.37 272.07,282.89 231.11,278.64 257.39,456.00 346.26,423.93 456.00,274.39 117.51,318.44" fill="none" stroke="#9ec5fe" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.7"/>
+  <polyline class="champion" points="117.51,318.44 145.72,311.10 119.83,268.98 110.94,268.98 24.00,240.39 117.51,382.58 257.39,378.33 257.39,456.00 346.26,423.93 312.64,338.15 456.00,274.39 331.19,320.37 272.07,282.89 231.11,278.64 117.51,318.44" fill="none" stroke="#ffb703" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <g class="cities">
+    <circle cx="117.51" cy="318.44" r="4" fill="#e0e1dd"/>
+    <circle cx="117.51" cy="382.58" r="4" fill="#e0e1dd"/>
+    <circle cx="257.39" cy="456.00" r="4" fill="#e0e1dd"/>
+    <circle cx="346.26" cy="423.93" r="4" fill="#e0e1dd"/>
+    <circle cx="456.00" cy="274.39" r="4" fill="#e0e1dd"/>
+    <circle cx="331.19" cy="320.37" r="4" fill="#e0e1dd"/>
+    <circle cx="272.07" cy="282.89" r="4" fill="#e0e1dd"/>
+    <circle cx="145.72" cy="311.10" r="4" fill="#e0e1dd"/>
+    <circle cx="110.94" cy="268.98" r="4" fill="#e0e1dd"/>
+    <circle cx="24.00" cy="240.39" r="4" fill="#e0e1dd"/>
+    <circle cx="119.83" cy="268.98" r="4" fill="#e0e1dd"/>
+    <circle cx="312.64" cy="338.15" r="4" fill="#e0e1dd"/>
+    <circle cx="231.11" cy="278.64" r="4" fill="#e0e1dd"/>
+    <circle cx="257.39" cy="378.33" r="4" fill="#e0e1dd"/>
+  </g>
+  <text x="24" y="28" font-family="monospace" font-size="14" fill="#f1faee">📍 TSP-constructive · burma14</text>
+  <text x="24" y="46" font-family="monospace" font-size="11" fill="#f1faee" opacity="0.85">length=3588.00 · optimum=3323.00 · score=0.93</text>
+  <rect x="386" y="14" width="70" height="28" rx="6" fill="#1b9aaa" stroke="#0d3b66" stroke-width="1"/>
+  <text x="421" y="33" text-anchor="middle" font-family="monospace" font-size="13" fill="#f1faee">0.93</text>
+</svg>
