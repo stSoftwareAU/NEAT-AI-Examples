@@ -130,7 +130,7 @@ fi
 # --- Example Programs ---
 # Clean up any previous synthetic data
 echo "Cleaning up previous runs..."
-rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .neuron-pruning .adaptive-mutation .discovery .discovery-at-scale
+rm -rf .synthetic-discovery .synthetic-intelligent-design .synthetic-suggest-improvements .synthetic-crossover .synthetic-crispr-injection .synthetic-cart-pole .synthetic-lunar-lander .synthetic-mountain-car .synthetic-snake .synthetic-maze .synthetic-xor .synthetic-stock .synthetic-mnist .synthetic-mcmc .synthetic-memetic-evolution .synthetic-synapse .synthetic-tsp-constructive .neuron-pruning .adaptive-mutation .discovery .discovery-at-scale
 echo ""
 
 # The NEAT-AI runtime checks disk space with `df` during some discovery
@@ -226,6 +226,14 @@ run_example_with_env "Snake Game Example" "./snake_game/run.sh" "SNAKE_QUICK=1"
 # direct `./maze_navigation/run.sh` invocation still uses the realistic
 # 5-minute / target-error=0.01 defaults.
 run_example_with_env "Maze Navigation Example" "./maze_navigation/run.sh" "MAZE_QUICK=1"
+
+# Run the TSP Constructive example (issue #458). The CI/quality budget
+# caps the section via `TSP_CONSTRUCTIVE_QUICK=1`: the runner forces a
+# tiny iterations cap, writes its artefacts under a temp directory, and
+# never overwrites the canonical docs creature/milestones/screenshots.
+# A direct `./tsp_constructive/run.sh` invocation still uses the
+# realistic 5-minute / target-error=0.05 defaults on burma14.
+run_example_with_env "TSP Constructive Example" "./tsp_constructive/run.sh" "TSP_CONSTRUCTIVE_QUICK=1"
 
 # Run the XOR Classification example. The CI/quality budget caps the
 # section via `XOR_QUICK=1` (issue #326): the runner forces a low
