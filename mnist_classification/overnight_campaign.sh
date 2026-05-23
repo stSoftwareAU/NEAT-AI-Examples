@@ -1,8 +1,11 @@
 #!/bin/bash
-# 11-hour MNIST evolution campaign — full runs, no quick mode, resume champion.
+# MNIST evolution campaign — 15-minute chunks, optional fresh ReLU MLP seed.
 #
 # Usage (from repo root):
 #   ./mnist_classification/overnight_campaign.sh
+#
+# First run uses `--fresh --hidden-seed` unless MNIST_CAMPAIGN_SKIP_FRESH=1.
+# Override duration: MNIST_CAMPAIGN_MAX_HOURS=4 MNIST_CAMPAIGN_RUN_MINUTES=15
 #
 # Logs: .synthetic-mnist/overnight/campaign.log
 # Stats: .synthetic-mnist/overnight/stats.tsv
@@ -14,8 +17,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
 RUN_MINUTES="${MNIST_CAMPAIGN_RUN_MINUTES:-15}"
-MAX_HOURS="${MNIST_CAMPAIGN_MAX_HOURS:-11}"
+MAX_HOURS="${MNIST_CAMPAIGN_MAX_HOURS:-4}"
 MAX_RUNS="${MNIST_CAMPAIGN_MAX_RUNS:-$(( MAX_HOURS * 60 / RUN_MINUTES ))}"
+SKIP_FRESH="${MNIST_CAMPAIGN_SKIP_FRESH:-0}"
 
 LOG_DIR="${REPO_ROOT}/.synthetic-mnist/overnight"
 mkdir -p "${LOG_DIR}"
@@ -26,7 +30,7 @@ touch "${ISSUES}"
 
 SUMMARY="${REPO_ROOT}/docs/data/mnist_classification/run_summary.json"
 
-export NEAT_EXAMPLES_MAX_HEAP_MB="${NEAT_EXAMPLES_MAX_HEAP_MB:-8192}"
+export NEAT_EXAMPLES_MAX_HEAP_MB="${NEAT_EXAMPLES_MAX_HEAP_MB:-12288}"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq is required for overnight monitoring" >&2
@@ -63,7 +67,7 @@ scan_log_for_footguns() {
       "MNIST overnight: FFI permission denied for Discovery library" \
       "Run ${run} log shows FFI permission denied. Check \`run.sh\` passes \`--allow-ffi\` and \`example_runner_preamble.sh\` runs \`ensure_neat_ai_discovery\`."
   fi
-  if grep -q "discards the saved champion" "${slice}"; then
+  if grep -q "discards the saved champion" "${slice}" && [[ "${run}" -ne 1 || ${SKIP_FRESH} -ne 0 ]]; then
     raise_issue_once "fresh-used" \
       "MNIST overnight: --fresh detected during campaign" \
       "Run ${run} invoked with \`--fresh\`, wiping persisted progress."
@@ -92,11 +96,12 @@ record_stats() {
     return 1
   fi
 
-  local error test_acc val_acc neurons synapses stop resumed duration_s
+  local error test_acc val_acc neurons synapses seed_neurons stop resumed duration_s
   error="$(jq -r '.evolveDirError // empty' "${SUMMARY}")"
   test_acc="$(jq -r '.testAccuracy // empty' "${SUMMARY}")"
   val_acc="$(jq -r '.validationAccuracy // empty' "${SUMMARY}")"
   neurons="$(jq -r '.finalNeurons // empty' "${SUMMARY}")"
+  seed_neurons="$(jq -r '.seedNeurons // empty' "${SUMMARY}")"
   synapses="$(jq -r '.finalSynapses // empty' "${SUMMARY}")"
   stop="$(jq -r '.stopCondition // empty' "${SUMMARY}")"
   resumed="$(jq -r '.resumed // empty' "${SUMMARY}")"
@@ -106,18 +111,18 @@ record_stats() {
     "${run}" "$(date -Iseconds)" "${duration_s}" "${error}" "${test_acc}" \
     "${val_acc}" "${neurons}" "${synapses}" "${stop}" "${resumed}" >> "${STATS}"
 
-  echo "[stats] run=${run} error=${error} test=${test_acc} neurons=${neurons} synapses=${synapses} stop=${stop}" | tee -a "${LOG}"
+  echo "[stats] run=${run} error=${error} test=${test_acc} seed_neurons=${seed_neurons} neurons=${neurons} synapses=${synapses} stop=${stop}" | tee -a "${LOG}"
 
-  if [[ "${run}" -eq 1 && "${resumed}" != "true" ]]; then
+  if [[ "${run}" -eq 1 && "${SKIP_FRESH}" -eq 1 && "${resumed}" != "true" ]]; then
     raise_issue_once "not-resumed" \
       "MNIST overnight: first campaign run did not resume saved champion" \
       "Expected \`resumed: true\` in run_summary.json but got \`${resumed}\`. Prior champion may have been lost."
   fi
 
-  if [[ "${neurons}" == "794" && "${run}" -ge 3 ]]; then
-    raise_issue_once "neurons-flat-794" \
-      "MNIST overnight: neuron count stuck at 794 (784+10) after ${run} runs" \
-      "Discovery may not be adding hidden neurons. Latest error=${error}, test accuracy=${test_acc}. See ${LOG}."
+  if [[ -n "${seed_neurons}" && "${neurons}" == "${seed_neurons}" && "${run}" -ge 3 ]]; then
+    raise_issue_once "neurons-flat-${seed_neurons}" \
+      "MNIST overnight: neuron count stuck at seed size ${seed_neurons} after ${run} runs" \
+      "Topology may not be growing. Latest error=${error}, test accuracy=${test_acc}. See ${LOG}."
   fi
 
   if [[ -n "${prev_error}" && -n "${error}" ]]; then
@@ -139,7 +144,7 @@ record_stats() {
 
 echo "=== MNIST overnight campaign ===" | tee "${LOG}"
 echo "repo=${REPO_ROOT} run_minutes=${RUN_MINUTES} max_hours=${MAX_HOURS} max_runs=${MAX_RUNS}" | tee -a "${LOG}"
-echo "heap_mb=${NEAT_EXAMPLES_MAX_HEAP_MB} resumed_champion=$(test -f docs/data/mnist_classification/creature.json && echo yes || echo no)" | tee -a "${LOG}"
+echo "fresh_hidden_seed=$([[ ${SKIP_FRESH} -eq 0 ]] && echo yes || echo no) heap_mb=${NEAT_EXAMPLES_MAX_HEAP_MB}" | tee -a "${LOG}"
 echo -e "run\tstart\tduration_s\terror\ttest_acc\tval_acc\tneurons\tsynapses\tstop\tresumed" > "${STATS}"
 
 DEADLINE=$(($(date +%s) + MAX_HOURS * 3600))
@@ -151,8 +156,13 @@ while [[ $(date +%s) -lt ${DEADLINE} && ${run} -lt ${MAX_RUNS} ]]; do
   echo "" | tee -a "${LOG}"
   echo "=== Run ${run}/${MAX_RUNS} $(date -Iseconds) timeout=${RUN_MINUTES}m ===" | tee -a "${LOG}"
 
+  RUN_ARGS=(--timeout="${RUN_MINUTES}")
+  if [[ ${run} -eq 1 && ${SKIP_FRESH} -eq 0 ]]; then
+    RUN_ARGS=(--fresh --hidden-seed --timeout="${RUN_MINUTES}")
+  fi
+
   set +e
-  "${REPO_ROOT}/mnist_classification/run.sh" --timeout="${RUN_MINUTES}" 2>&1 | tee -a "${LOG}"
+  "${REPO_ROOT}/mnist_classification/run.sh" "${RUN_ARGS[@]}" 2>&1 | tee -a "${LOG}"
   exit_code=${PIPESTATUS[0]}
   set -e
 
