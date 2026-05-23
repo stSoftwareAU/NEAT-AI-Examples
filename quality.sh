@@ -261,6 +261,14 @@ run_example_with_env "Stock Market Direction Prediction Example" "./stock_market
 # defaults.
 run_example_with_env "MNIST Handwritten-Digit Classification Example" "./mnist_classification/run.sh" "MNIST_QUICK=1"
 
+# Run the tsp_two_opt example (issue #459) — learned 2-opt local-search
+# heuristic on a TSPLIB instance. The CI/quality budget caps the section
+# via `TSP_TWO_OPT_QUICK=1`: the runner forces a tiny iterations cap,
+# writes artefacts under a temp directory, and never overwrites the
+# canonical docs SVG. A direct `./tsp_two_opt/run.sh` invocation still
+# uses the realistic 5-minute / target-error=0.05 defaults.
+run_example_with_env "TSP Two-Opt Local Search Example" "./tsp_two_opt/run.sh" "TSP_TWO_OPT_QUICK=1"
+
 # Run the MCMC Mutation Acceptance demo
 run_example "MCMC Mutation Acceptance Demo" "./mcmc_acceptance/run.sh"
 
