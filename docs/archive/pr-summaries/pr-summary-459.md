@@ -1,7 +1,7 @@
 ## Summary
 
 Adds the `tsp_two_opt/` example — a "learned local-search operator" demonstration of NEAT-AI
-evolving a 2-opt move selector on top of a deterministic nearest-neighbour seed tour. Closes #459.
+evolving a 2-opt move selector on top of a deterministic nearest-neighbour seed tour. Closes #459
 
 The example reuses the shared `common/tsp_instances.ts` helpers (cities, `tourLength`,
 `nearestNeighbourTour`) from #457, so the city data and length arithmetic stay aligned with the
