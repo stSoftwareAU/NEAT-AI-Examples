@@ -1,32 +1,32 @@
 [
- {
-  "runGen": 6,
-  "bestScore": -0.33206619215263067,
-  "error": 1,
-  "neurons": 1049,
-  "synapses": 201071,
-  "generationWallClockMs": 1317319,
-  "runIndex": 1,
-  "cumulativeGen": 6
- },
- {
-  "runGen": 5,
-  "bestScore": -0.20280942055401746,
-  "error": 1,
-  "neurons": 1048,
-  "synapses": 200286,
-  "generationWallClockMs": 1228373,
-  "runIndex": 2,
-  "cumulativeGen": 11
- },
- {
-  "runGen": 1,
-  "bestScore": -0.1935105071596373,
-  "error": 1,
-  "neurons": 1048,
-  "synapses": 200286,
-  "generationWallClockMs": 424559,
-  "runIndex": 3,
-  "cumulativeGen": 12
- }
+  {
+    "runGen": 6,
+    "bestScore": -0.33206619215263067,
+    "error": 1,
+    "neurons": 1049,
+    "synapses": 201071,
+    "generationWallClockMs": 1317319,
+    "runIndex": 1,
+    "cumulativeGen": 6
+  },
+  {
+    "runGen": 5,
+    "bestScore": -0.20280942055401746,
+    "error": 1,
+    "neurons": 1048,
+    "synapses": 200286,
+    "generationWallClockMs": 1228373,
+    "runIndex": 2,
+    "cumulativeGen": 11
+  },
+  {
+    "runGen": 1,
+    "bestScore": -0.1935105071596373,
+    "error": 1,
+    "neurons": 1048,
+    "synapses": 200286,
+    "generationWallClockMs": 424559,
+    "runIndex": 3,
+    "cumulativeGen": 12
+  }
 ]
