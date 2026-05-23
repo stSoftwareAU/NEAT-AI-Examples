@@ -640,4 +640,3 @@ standards, and the pull request checklist.
 ## 📄 Licence
 
 Apache Licence 2.0 — see [LICENSE](LICENSE).
-
