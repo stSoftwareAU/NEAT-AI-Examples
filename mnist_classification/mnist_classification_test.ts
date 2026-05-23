@@ -49,6 +49,7 @@ import {
 import {
   assertNoTargetErrorCliOverride,
   buildGridCells,
+  buildMnistHiddenReluSeed,
   classificationAccuracy,
   confusionMatrix,
   DEFAULT_MULTI_RUN_TARGET_ERROR,
@@ -112,6 +113,16 @@ function buildSyntheticIdx(
 Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
   assertEquals(FEATURE_COUNT, 784);
   assertEquals(FEATURE_COUNT, IMAGE_SIZE * IMAGE_SIZE);
+});
+
+Deno.test("buildMnistHiddenReluSeed uses NEAT-AI layered Creature init", () => {
+  const creature = buildMnistHiddenReluSeed();
+  assertEquals(creature.neurons.length, FEATURE_COUNT + 128 + 64 + CLASS_COUNT);
+  const hidden = creature.neurons.slice(FEATURE_COUNT, -CLASS_COUNT);
+  assertGreater(hidden.length, 0);
+  for (const neuron of hidden) {
+    assertEquals(neuron.squash, "ReLU");
+  }
 });
 
 Deno.test("parseIdxImages parses synthetic header and body", () => {

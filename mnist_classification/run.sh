@@ -17,6 +17,7 @@ set -euo pipefail
 # Recognised flags (forwarded verbatim to the Deno program):
 #   --timeout=<minutes>  Override the wall-clock budget (default 5).
 #   --fresh              Discard saved champion + history (use sparingly).
+#   --hidden-seed        With --fresh, seed via Creature layers (784→128→64→10 ReLU).
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
@@ -37,7 +38,7 @@ echo ""
 
 deno run \
   "${NEAT_EXAMPLE_DENO_FLAGS[@]}" \
-  --allow-env="${NEAT_AI_ENV_VARS},MNIST_QUICK,NEAT_MULTI_RUN_BASE_DIR" \
+  --allow-env="${NEAT_AI_ENV_VARS},MNIST_QUICK,NEAT_MULTI_RUN_BASE_DIR,MNIST_HIDDEN_LAYER_SIZES" \
   --allow-net=storage.googleapis.com,jsr.io \
   ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"} \
   mnist_classification/mnist_classification.ts \

@@ -51,6 +51,29 @@ import {
 } from "./data.ts";
 import { type CellFrame, type DigitCell, GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
 
+/** Default hidden layer widths for `--hidden-seed` (784 → 128 → 64 → 10). */
+export const DEFAULT_MNIST_HIDDEN_LAYER_SIZES = [128, 64] as const;
+
+/** NEAT-AI core initialisation: layered feed-forward seed with ReLU hiddens. */
+export function buildMnistHiddenReluSeed(
+  layerSizes: readonly number[] = DEFAULT_MNIST_HIDDEN_LAYER_SIZES,
+): Creature {
+  return new Creature(FEATURE_COUNT, CLASS_COUNT, {
+    layers: layerSizes.map((count) => ({ count, squash: "ReLU" })),
+  });
+}
+
+/** Optional `MNIST_HIDDEN_LAYER_SIZES=64,32` override for memory tuning. */
+export function resolveMnistHiddenLayerSizes(
+  envValue = Deno.env.get("MNIST_HIDDEN_LAYER_SIZES"),
+): readonly number[] {
+  if (!envValue) return DEFAULT_MNIST_HIDDEN_LAYER_SIZES;
+  const sizes = envValue.split(",").map((part) => Number(part.trim())).filter((n) =>
+    Number.isFinite(n) && n > 0
+  );
+  return sizes.length > 0 ? sizes : DEFAULT_MNIST_HIDDEN_LAYER_SIZES;
+}
+
 /** Working-directory root for this example. */
 export const MNIST_ROOT = ".synthetic-mnist";
 
@@ -382,6 +405,15 @@ export function inferStopCondition(
   return evolveWallClockMs >= budgetMs * 0.95 ? "timeoutMinutes" : "targetError";
 }
 
+/** Recognised MNIST-specific CLI flags (in addition to multi-run flags). */
+export function parseMnistRunnerFlags(argv: readonly string[]): { hiddenSeed: boolean } {
+  let hiddenSeed = false;
+  for (const arg of argv) {
+    if (arg === "--hidden-seed") hiddenSeed = true;
+  }
+  return { hiddenSeed };
+}
+
 /** Options accepted by {@link evolveMnistClassifier}. */
 export interface MnistEvolveOptions {
   /** Directory containing the binary `.bin` training stream consumed by
@@ -401,6 +433,12 @@ export interface MnistEvolveOptions {
    * fresh `new Creature(784, 10)`.
    */
   seedCreatureExport?: CreatureExport;
+  /**
+   * When true and no `seedCreatureExport` is supplied, seed via
+   * {@link buildMnistHiddenReluSeed} (`new Creature` with `layers: [...]`)
+   * instead of the minimal direct-only seed.
+   */
+  hiddenReluSeed?: boolean;
   /**
    * Unit-test-only caps — the runner never sets these; NEAT-AI defaults
    * apply in production runs.
@@ -433,8 +471,9 @@ export interface MnistEvolveResult {
  * Run NEAT structural evolution on an MNIST binary `.bin` data directory.
  *
  * When `seedCreatureExport` is supplied (multi-run resume), rebuilds
- * the prior champion via {@link Creature.fromJSON}; otherwise builds the
- * uniform-random `new Creature(FEATURE_COUNT, CLASS_COUNT)` minimal seed.
+ * the prior champion via {@link Creature.fromJSON}; when
+ * `hiddenReluSeed` is set, uses {@link buildMnistHiddenReluSeed}; otherwise
+ * builds the uniform-random `new Creature(FEATURE_COUNT, CLASS_COUNT)` minimal seed.
  *
  * One `evolveDir` call covers the whole budget. The return value's
  * `{ error, score, time, generation }` fields plus the seed and final
@@ -445,6 +484,8 @@ export async function evolveMnistClassifier(
 ): Promise<MnistEvolveResult> {
   const creature = options.seedCreatureExport !== undefined
     ? Creature.fromJSON(options.seedCreatureExport)
+    : options.hiddenReluSeed
+    ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
     : new Creature(FEATURE_COUNT, CLASS_COUNT);
   const seedNeurons = creature.neurons.length;
   const seedSynapses = creature.synapses.length;
@@ -509,7 +550,9 @@ export interface RunMultiRunMnistOptions {
    * chart artefacts (used by tests). Defaults to `docs`. */
   baseDir?: string;
   /** Optional overrides applied in unit tests only (never by the runner). */
-  evolveOverrides?: Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes">;
+  evolveOverrides?: Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "hiddenReluSeed">;
+  /** When true, first run seeds the two-layer ReLU MLP instead of minimal noise. */
+  hiddenReluSeed?: boolean;
 }
 
 /** Outcome of a single multi-run invocation. */
@@ -542,6 +585,7 @@ export async function runMultiRunMnist(
   const argv = options.argv ?? Deno.args;
   assertNoTargetErrorCliOverride(argv);
   const flags = parseMultiRunFlags(argv);
+  const mnistFlags = parseMnistRunnerFlags(argv);
   const slug = EXAMPLE_SLUG;
 
   if (flags.fresh) {
@@ -562,6 +606,8 @@ export async function runMultiRunMnist(
     dataDir: options.dataDir,
     timeoutMinutes,
     seedCreatureExport: state.creatureExport,
+    hiddenReluSeed: !resumed &&
+      (options.hiddenReluSeed === true || mnistFlags.hiddenSeed),
     ...options.evolveOverrides,
   };
 
@@ -710,9 +756,17 @@ if (import.meta.main) {
 
   // Stage 2 — multi-run flag parsing + evolve.
   const flags = parseMultiRunFlags(Deno.args);
+  const mnistFlags = parseMnistRunnerFlags(Deno.args);
   assertNoTargetErrorCliOverride(Deno.args);
   if (flags.fresh) {
     console.log("🧹 --fresh: wiping prior multi-run state.");
+  }
+  if (mnistFlags.hiddenSeed) {
+    const layerSizes = resolveMnistHiddenLayerSizes();
+    console.log(
+      `🧠 --hidden-seed: first run uses layered Creature seed ` +
+        `(${layerSizes.join(" → ")}) instead of minimal noise.`,
+    );
   }
   const targetError = DEFAULT_MULTI_RUN_TARGET_ERROR;
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
@@ -725,6 +779,7 @@ if (import.meta.main) {
   const multi = await runMultiRunMnist({
     dataDir: binDir,
     baseDir: quickBaseDir,
+    hiddenReluSeed: mnistFlags.hiddenSeed,
     evolveOverrides: quick
       ? { testCaps: { maxGenerations: 2, populationSize: 4 }, timeoutMinutes: 1 }
       : undefined,
@@ -734,7 +789,8 @@ if (import.meta.main) {
   if (multi.resumed) {
     console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
   } else {
-    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+    const seedKind = mnistFlags.hiddenSeed ? "layered Creature seed" : "random noise";
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from ${seedKind}.`);
   }
 
   console.log(
