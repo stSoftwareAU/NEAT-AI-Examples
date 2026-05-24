@@ -26,6 +26,44 @@ Deno.test("loadInstance returns ulysses22 with 22 cities and optimum 7013", () =
   assertEquals(inst.optimum, 7013);
 });
 
+Deno.test("loadInstance returns pcb442 with 442 cities and optimum 50778", () => {
+  const inst = loadInstance("pcb442");
+  assertEquals(inst.name, "pcb442");
+  assertEquals(inst.cities.length, 442);
+  assertEquals(inst.optimum, 50778);
+});
+
+Deno.test("every pcb442 city has finite x and y", () => {
+  const { cities } = loadInstance("pcb442");
+  for (const c of cities) {
+    assert(Number.isFinite(c.x), `non-finite x ${c.x}`);
+    assert(Number.isFinite(c.y), `non-finite y ${c.y}`);
+  }
+});
+
+Deno.test("tourLength is invariant under tour reversal (pcb442)", () => {
+  const { cities } = loadInstance("pcb442");
+  const forward = cities.map((_, i) => i);
+  const reversed = [...forward].reverse();
+  assertAlmostEquals(tourLength(cities, forward), tourLength(cities, reversed), 1e-6);
+});
+
+Deno.test("nearestNeighbourTour visits every pcb442 city exactly once", () => {
+  const { cities } = loadInstance("pcb442");
+  const tour = nearestNeighbourTour(cities, 0);
+  assertEquals(tour.length, 442);
+  assertEquals(tour[0], 0);
+  const seen = new Set(tour);
+  assertEquals(seen.size, 442);
+  for (let i = 0; i < 442; i++) {
+    assert(seen.has(i), `city ${i} missing from NN tour`);
+  }
+});
+
+Deno.test("boundingBoxDiagonal is positive on pcb442", () => {
+  assert(boundingBoxDiagonal(loadInstance("pcb442").cities) > 0);
+});
+
 Deno.test("loadInstance rejects an unknown instance name", () => {
   assertThrows(
     // deno-lint-ignore no-explicit-any
