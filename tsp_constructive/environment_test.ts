@@ -100,17 +100,40 @@ Deno.test("geoDistance — symmetric and zero between identical cities", () => {
   assertEquals(geoDistance(a, a), Math.trunc(0 + 1));
 });
 
-Deno.test("geoTourLength — totals match recomputed sum of geoDistance edges", () => {
+// Replaces the HOW test that re-summed `geoDistance` inline (issue #490).
+// These property-based WHAT tests assert observable invariants of
+// `geoTourLength` — cyclic invariance and reversal invariance follow
+// from "closed tour" + "symmetric edge" and would survive any future
+// re-implementation that preserves the contract.
+Deno.test("geoTourLength — closed-tour length is invariant under cyclic rotation", () => {
   const burma14 = loadInstance("burma14");
   const tour = [0, 7, 12, 6, 5, 3, 13, 2, 4, 11, 8, 10, 9, 1];
-  let expected = 0;
-  for (let i = 0; i < tour.length; i++) {
-    expected += geoDistance(
-      burma14.cities[tour[i]],
-      burma14.cities[tour[(i + 1) % tour.length]],
-    );
-  }
-  assertAlmostEquals(geoTourLength(burma14.cities, tour), expected, 1e-9);
+  const rotated = [...tour.slice(5), ...tour.slice(0, 5)];
+  assertAlmostEquals(
+    geoTourLength(burma14.cities, tour),
+    geoTourLength(burma14.cities, rotated),
+    1e-9,
+  );
+});
+
+Deno.test("geoTourLength — reversed tour has the same length (symmetric edges)", () => {
+  const burma14 = loadInstance("burma14");
+  const tour = [0, 7, 12, 6, 5, 3, 13, 2, 4, 11, 8, 10, 9, 1];
+  const reversed = [...tour].reverse();
+  assertAlmostEquals(
+    geoTourLength(burma14.cities, tour),
+    geoTourLength(burma14.cities, reversed),
+    1e-9,
+  );
+});
+
+Deno.test("geoTourLength — throws when tour length differs from cities length", () => {
+  const burma14 = loadInstance("burma14");
+  assertThrows(() => geoTourLength(burma14.cities, [0, 1, 2]));
+});
+
+Deno.test("geoTourLength — empty cities returns 0", () => {
+  assertEquals(geoTourLength([], []), 0);
 });
 
 Deno.test("runConstructiveEpisode — empty city list returns the empty tour", () => {
