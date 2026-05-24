@@ -144,12 +144,41 @@ export interface PolicyLike {
   clearState?: () => void;
 }
 
+/**
+ * 2-opt swap acceptance rule (issue #482).
+ *
+ * - `"strict"` — accept iff `delta < 0` (the original rule used on
+ *   `burma14` and `ulysses22`). Default.
+ * - `"mh"` — Metropolis-Hastings: improving swaps (`delta < 0`) are
+ *   always accepted; worsening swaps (`delta >= 0`) are accepted with
+ *   probability `exp(-delta / (T · seedLength))`. Used by the
+ *   `pcb442` hybrid orchestrator so the search can climb out of local
+ *   optima. At `T → 0` the rule degenerates back to strict-improvement.
+ */
+export type TwoOptAcceptanceMode = "strict" | "mh";
+
 /** Options for {@link runEpisode}. */
 export interface RunEpisodeOptions {
   /** Number of proposals to issue. Default {@link DEFAULT_PROPOSAL_BUDGET}. */
   proposalBudget?: number;
   /** When true the runner records a {@link StepFrame} per proposal. */
   recordFrames?: boolean;
+  /** Acceptance rule for proposed 2-opt swaps. Default {@link "strict"}. */
+  acceptanceMode?: TwoOptAcceptanceMode;
+  /**
+   * Dimensionless MH temperature (only consulted when `acceptanceMode`
+   * is `"mh"`). The accept probability for a worsening swap is
+   * `exp(-delta / (temperature · seedLength))` so the temperature is
+   * comparable across instances of different scales. Defaults to `0`
+   * (strict-improvement behaviour, no MH lift).
+   */
+  temperature?: number;
+  /**
+   * Optional deterministic `[0, 1)` RNG for MH accept tests. When
+   * omitted, `Math.random` is used. Tests pass a seeded PRNG so the
+   * acceptance trace is reproducible.
+   */
+  random?: () => number;
 }
 
 /** Full record of an episode, including optional per-step frames. */
@@ -171,6 +200,9 @@ export function runEpisode(
   options: RunEpisodeOptions = {},
 ): EpisodeRecord {
   const proposalBudget = options.proposalBudget ?? DEFAULT_PROPOSAL_BUDGET;
+  const acceptanceMode: TwoOptAcceptanceMode = options.acceptanceMode ?? "strict";
+  const temperature = options.temperature ?? 0;
+  const random = options.random ?? Math.random;
   const cities = instance.cities;
 
   const seedTour = nearestNeighbourTour(cities, 0);
@@ -181,6 +213,12 @@ export function runEpisode(
   let accepted = 0;
   let issued = 0;
   let currentLength = seedLength;
+
+  // MH temperature is scaled by the seed length so the same dimensionless
+  // `temperature` value translates across instances of different scales
+  // (pcb442 tour ~50 000, burma14 tour ~32). At `temperature === 0` the
+  // rule collapses to strict-improvement regardless of `acceptanceMode`.
+  const mhScale = temperature > 0 ? temperature * Math.max(1e-9, seedLength) : 0;
 
   for (let step = 0; step < proposalBudget; step++) {
     issued++;
@@ -201,7 +239,8 @@ export function runEpisode(
     let wasAccepted = false;
     if (!proposal.noop) {
       const delta = twoOptDelta(cities, tour, proposal.i, proposal.j);
-      if (delta < 0) {
+      const accept = shouldAcceptSwap(delta, acceptanceMode, mhScale, random);
+      if (accept) {
         applyTwoOptSwap(tour, proposal.i, proposal.j);
         currentLength += delta;
         accepted++;
@@ -235,6 +274,34 @@ export function runEpisode(
     proposalsAccepted: accepted,
     frames,
   };
+}
+
+/**
+ * Decide whether a proposed 2-opt swap is accepted given its `delta`
+ * (post-swap minus pre-swap tour length), the acceptance `mode`, the
+ * pre-scaled MH denominator `mhScale` (= `temperature · seedLength`),
+ * and an injected `random` source.
+ *
+ * - Strictly improving swaps (`delta < 0`) are always accepted.
+ * - Strict mode rejects every non-improving swap (this matches the
+ *   original `burma14` / `ulysses22` rule).
+ * - MH mode accepts a worsening swap with probability
+ *   `exp(-delta / mhScale)`. When `mhScale` is `0` the probability is
+ *   `0` (`T → 0` degenerates to strict-improvement).
+ *
+ * Exported for unit tests so the acceptance edge cases can be exercised
+ * without spinning up a full episode.
+ */
+export function shouldAcceptSwap(
+  delta: number,
+  mode: TwoOptAcceptanceMode,
+  mhScale: number,
+  random: () => number,
+): boolean {
+  if (delta < 0) return true;
+  if (mode !== "mh" || mhScale <= 0) return false;
+  const probability = Math.exp(-delta / mhScale);
+  return random() < probability;
 }
 
 // Re-export K_LONGEST so callers do not have to reach into agent.ts just
