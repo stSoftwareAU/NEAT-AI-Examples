@@ -12,6 +12,11 @@
 # pushed back to the PR head branch — so the PR ships with up-to-date
 # dependencies automatically (#362).
 #
+# Pushes via GITHUB_TOKEN do not re-trigger other `pull_request`
+# workflows. After a successful push this job dispatches the required
+# checks via `workflow_dispatch` so branch protection still sees fresh
+# results on the bumped HEAD (#485).
+#
 # There is deliberately no weekly cron: dependency refreshes only
 # happen when a PR is raised, never as scheduled bot noise (#364).
 #
@@ -26,6 +31,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   auto-bump:
@@ -42,9 +48,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
-          # Use GITHUB_TOKEN so the resulting push is attributed to the
-          # workflow. Pushes via GITHUB_TOKEN do not re-trigger workflows
-          # by design — no infinite loop.
+          # GITHUB_TOKEN pushes do not re-trigger other workflows; required
+          # checks are re-dispatched explicitly after a bump push (#485).
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Deno
@@ -53,6 +58,7 @@ jobs:
           deno-version: v2.x
 
       - name: Bump and commit dependency updates
+        id: bump
         run: |
           set -euo pipefail
           bash bump-deps.sh
@@ -60,6 +66,7 @@ jobs:
           # commit import-map pins in `deno.json`.
           if git diff --quiet deno.json; then
             echo "All Deno dependencies already match \`deno update --latest\`."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "Pinned versions lag the registry — committing the bump."
@@ -69,3 +76,23 @@ jobs:
           git add deno.json
           git commit -m "chore: auto-bump Deno dependencies (#362)"
           git push origin HEAD:"${GITHUB_HEAD_REF}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Re-dispatch required checks after bump push
+        if: steps.bump.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for wf in \
+            quality.yml \
+            shellcheck.yml \
+            markdown-lint.yml \
+            semgrep.yml \
+            gitleaks.yml \
+            dependency-review.yml
+          do
+            echo "Dispatching ${wf} on ${GITHUB_HEAD_REF}"
+            gh workflow run "${wf}" --ref "${GITHUB_HEAD_REF}" \
+              -f pr_head_ref="${GITHUB_HEAD_REF}"
+          done

@@ -18,6 +18,12 @@ on:
   pull_request:
     branches:
       - Develop
+  workflow_dispatch:
+    inputs:
+      pr_head_ref:
+        description: PR head branch to check out after an auto-bump push
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,6 +36,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.pr_head_ref || github.ref }}
 
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
