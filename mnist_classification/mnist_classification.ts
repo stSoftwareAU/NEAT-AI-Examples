@@ -593,6 +593,23 @@ export interface MnistEvolveResult {
   seedSynapses: number;
 }
 
+/** Serialises `evolveDir` calls — parallel unit tests share NEAT-AI global state. */
+let evolveDirSerial: Promise<void> = Promise.resolve();
+
+async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
+  const prior = evolveDirSerial;
+  let release!: () => void;
+  evolveDirSerial = new Promise((resolve) => {
+    release = resolve;
+  });
+  await prior;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
 /**
  * Run NEAT structural evolution on an MNIST binary `.bin` data directory.
  *
@@ -608,60 +625,63 @@ export interface MnistEvolveResult {
 export async function evolveMnistClassifier(
   options: MnistEvolveOptions,
 ): Promise<MnistEvolveResult> {
-  const creature = options.seedCreatureExport !== undefined
-    ? Creature.fromJSON(options.seedCreatureExport)
-    : options.hiddenReluSeed
-    ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
-    : new Creature(FEATURE_COUNT, CLASS_COUNT);
-  const seedNeurons = creature.neurons.length;
-  const seedSynapses = creature.synapses.length;
+  return await withEvolveDirLock(async () => {
+    const creature = options.seedCreatureExport !== undefined
+      ? Creature.fromJSON(options.seedCreatureExport)
+      : options.hiddenReluSeed
+      ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
+      : new Creature(FEATURE_COUNT, CLASS_COUNT);
+    const seedNeurons = creature.neurons.length;
+    const seedSynapses = creature.synapses.length;
 
-  const neatOptions: NeatOptions = {
-    costName: MNIST_EVOLVE_COST_NAME,
-    targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
-    trainingSampleRate: options.trainingSampleRate ?? 1,
-    costOfGrowth: options.costOfGrowth ?? 0,
-    ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
-    ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),
-    ...(options.mutationAmount !== undefined ? { mutationAmount: options.mutationAmount } : {}),
-    ...(options.timeoutMinutes > 0
-      ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
-      : {}),
-    ...(options.maxGenerations !== undefined
-      ? { iterations: options.maxGenerations }
-      : options.testCaps?.maxGenerations !== undefined
-      ? { iterations: options.testCaps.maxGenerations }
-      : {}),
-    ...(options.testCaps?.populationSize !== undefined
-      ? { populationSize: options.testCaps.populationSize }
-      : {}),
-    ...(options.testCaps?.disableGenerationLog
-      ? {}
-      : {
+    const neatOptions: NeatOptions = {
+      costName: MNIST_EVOLVE_COST_NAME,
+      targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
+      trainingSampleRate: options.trainingSampleRate ?? 1,
+      costOfGrowth: options.costOfGrowth ?? 0,
+      verbose: false,
+      log: 0,
+      threads: 1,
+      ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
+      ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),
+      ...(options.mutationAmount !== undefined ? { mutationAmount: options.mutationAmount } : {}),
+      ...(options.timeoutMinutes > 0
+        ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
+        : {}),
+      ...(options.maxGenerations !== undefined
+        ? { iterations: options.maxGenerations }
+        : options.testCaps?.maxGenerations !== undefined
+        ? { iterations: options.testCaps.maxGenerations }
+        : {}),
+      ...(options.testCaps?.populationSize !== undefined
+        ? { populationSize: options.testCaps.populationSize }
+        : {}),
+      ...(options.testCaps?.disableGenerationLog ? {} : {
         onTrainingEvent: createMnistGenerationLogger({
           runIndex: options.runIndex ?? 1,
           logPath: options.generationLogPath,
         }),
       }),
-  };
+    };
 
-  const start = Date.now();
-  const result = await creature.evolveDir(options.dataDir, neatOptions);
-  const wallClockMs = Date.now() - start;
+    const start = Date.now();
+    const result = await creature.evolveDir(options.dataDir, neatOptions);
+    const wallClockMs = Date.now() - start;
 
-  const bestError = Number.isFinite(result.error) ? result.error : 0;
-  const bestScore = Number.isFinite(result.score) ? result.score : 0;
-  const generations = Math.max(1, result.generation ?? 1);
+    const bestError = Number.isFinite(result.error) ? result.error : 0;
+    const bestScore = Number.isFinite(result.score) ? result.score : 0;
+    const generations = Math.max(1, result.generation ?? 1);
 
-  return {
-    champion: creature,
-    bestError,
-    bestScore,
-    generations,
-    wallClockMs,
-    seedNeurons,
-    seedSynapses,
-  };
+    return {
+      champion: creature,
+      bestError,
+      bestScore,
+      generations,
+      wallClockMs,
+      seedNeurons,
+      seedSynapses,
+    };
+  });
 }
 
 /**
@@ -932,7 +952,10 @@ if (import.meta.main) {
     baseDir: quickBaseDir,
     hiddenReluSeed: mnistFlags.hiddenSeed,
     evolveOverrides: quick
-      ? { testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true }, timeoutMinutes: 1 }
+      ? {
+        testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+        timeoutMinutes: 1,
+      }
       : undefined,
   });
   const { evolveResult: result } = multi;

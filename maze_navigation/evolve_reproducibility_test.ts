@@ -7,13 +7,10 @@
  */
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path";
-import {
-  DEFAULT_EVOLVE_OPTIONS,
-  type EvolveResult,
-} from "./maze_navigation.ts";
+import { DEFAULT_EVOLVE_OPTIONS, type EvolveResult } from "./maze_navigation.ts";
 
 const REPO_ROOT = new URL("..", import.meta.url).pathname;
-const ONCE_SCRIPT = join(REPO_ROOT, "maze_navigation/evolve_once_for_test.ts");
+const ONCE_SCRIPT = join(REPO_ROOT, "maze_navigation/evolve_once_cli.ts");
 
 type EvolveSnapshot = Pick<
   EvolveResult,
@@ -41,14 +38,14 @@ async function evolveOnceInFreshProcess(
   });
   const { code, stdout } = await cmd.output();
   if (code !== 0) {
-    throw new Error(`evolve_once_for_test.ts exited with code ${code}`);
+    throw new Error(`evolve_once_cli.ts exited with code ${code}`);
   }
   const lines = new TextDecoder().decode(stdout).trim().split("\n").filter((line) =>
     line.length > 0
   );
   const jsonLine = lines.at(-1);
   if (jsonLine === undefined) {
-    throw new Error("evolve_once_for_test.ts produced no stdout");
+    throw new Error("evolve_once_cli.ts produced no stdout");
   }
   return JSON.parse(jsonLine) as EvolveSnapshot;
 }
