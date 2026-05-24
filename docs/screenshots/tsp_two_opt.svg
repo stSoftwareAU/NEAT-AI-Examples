@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 712 408" width="712" height="408" role="img" aria-label="TSP 2-opt side-by-side comparison for burma14">
+  <title>TSP 2-opt — burma14 (seed vs improved tour)</title>
+  <desc>Side-by-side static comparison of the nearest-neighbour seed tour (length 38.69) and the post-evolution improved tour (length 34.19). Published optimum: 3323.</desc>
+  <rect width="712" height="408" fill="#fafafa"/>
+  <text x="12" y="22" font-family="monospace" font-size="14" fill="#1a2230">🧭 tsp_two_opt · burma14 · optimum 3323</text>
+  <rect x="24" y="36" width="320" height="320" fill="#ffffff" stroke="#cccccc" stroke-width="1"/>
+  <text x="32" y="30" font-family="monospace" font-size="12" fill="#1a2230">Nearest-neighbour seed — length 38.69 (×0.01 optimum)</text>
+  <polyline points="106.9,158.5 124.6,149.2 108.3,96.1 102.7,96.1 48.0,60.0 106.9,239.4 194.9,234.0 229.7,183.3 241.4,160.9 204.2,113.6 178.4,108.3 194.9,332.0 250.9,291.5 320.0,102.9 106.9,158.5" fill="none" stroke="#888888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="106.9" cy="158.5" r="2.5" fill="#1a2230"/>
+  <circle cx="106.9" cy="239.4" r="2.5" fill="#1a2230"/>
+  <circle cx="194.9" cy="332.0" r="2.5" fill="#1a2230"/>
+  <circle cx="250.9" cy="291.5" r="2.5" fill="#1a2230"/>
+  <circle cx="320.0" cy="102.9" r="2.5" fill="#1a2230"/>
+  <circle cx="241.4" cy="160.9" r="2.5" fill="#1a2230"/>
+  <circle cx="204.2" cy="113.6" r="2.5" fill="#1a2230"/>
+  <circle cx="124.6" cy="149.2" r="2.5" fill="#1a2230"/>
+  <circle cx="102.7" cy="96.1" r="2.5" fill="#1a2230"/>
+  <circle cx="48.0" cy="60.0" r="2.5" fill="#1a2230"/>
+  <circle cx="108.3" cy="96.1" r="2.5" fill="#1a2230"/>
+  <circle cx="229.7" cy="183.3" r="2.5" fill="#1a2230"/>
+  <circle cx="178.4" cy="108.3" r="2.5" fill="#1a2230"/>
+  <circle cx="194.9" cy="234.0" r="2.5" fill="#1a2230"/>
+  <rect x="368" y="36" width="320" height="320" fill="#ffffff" stroke="#cccccc" stroke-width="1"/>
+  <text x="376" y="30" font-family="monospace" font-size="12" fill="#1a2230">Post-evolution improved — length 34.19 (×0.01 optimum)</text>
+  <polyline points="450.9,158.5 468.6,149.2 452.3,96.1 446.7,96.1 392.0,60.0 522.4,108.3 548.2,113.6 585.4,160.9 573.7,183.3 538.9,234.0 664.0,102.9 594.9,291.5 538.9,332.0 450.9,239.4 450.9,158.5" fill="none" stroke="#1f7a1f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="450.9" cy="158.5" r="2.5" fill="#1a2230"/>
+  <circle cx="450.9" cy="239.4" r="2.5" fill="#1a2230"/>
+  <circle cx="538.9" cy="332.0" r="2.5" fill="#1a2230"/>
+  <circle cx="594.9" cy="291.5" r="2.5" fill="#1a2230"/>
+  <circle cx="664.0" cy="102.9" r="2.5" fill="#1a2230"/>
+  <circle cx="585.4" cy="160.9" r="2.5" fill="#1a2230"/>
+  <circle cx="548.2" cy="113.6" r="2.5" fill="#1a2230"/>
+  <circle cx="468.6" cy="149.2" r="2.5" fill="#1a2230"/>
+  <circle cx="446.7" cy="96.1" r="2.5" fill="#1a2230"/>
+  <circle cx="392.0" cy="60.0" r="2.5" fill="#1a2230"/>
+  <circle cx="452.3" cy="96.1" r="2.5" fill="#1a2230"/>
+  <circle cx="573.7" cy="183.3" r="2.5" fill="#1a2230"/>
+  <circle cx="522.4" cy="108.3" r="2.5" fill="#1a2230"/>
+  <circle cx="538.9" cy="234.0" r="2.5" fill="#1a2230"/>
+  <rect x="24" y="368" width="664" height="6" fill="#dddddd" rx="3"/>
+  <rect class="playhead" x="24" y="368" width="0" height="6" fill="#ff7f50" rx="3">
+    <animate attributeName="width" values="0;664" dur="8s" repeatCount="indefinite" fill="freeze"/>
+  </rect>
+  <text x="24" y="390" font-family="monospace" font-size="11" fill="#555555">Proposal budget: 200</text>
+</svg>

@@ -105,22 +105,22 @@ Artefacts:
   (`renderMultiRunTimelineChartSVG` from
   [`common/multi_run_timeline_chart.ts`](../common/multi_run_timeline_chart.ts))
 - [`docs/data/mnist_classification/campaign_record.json`](../docs/data/mnist_classification/campaign_record.json)
-  – campaign metadata when using the recorded-evolution pipeline (start time, total
-  wall-clock, phase count, best hold-out score)
+  – campaign metadata when using the recorded-evolution pipeline (start time, total wall-clock,
+  phase count, best hold-out score)
 
 > [!TIP]
 > The script writes its working data to `.synthetic-mnist/`, a hidden directory ignored by git.
 
 ## 🔬 Recorded-evolution campaign (recommended for a fully trained champion)
 
-The standard `run.sh` workflow appends one milestone per invocation. For a long-form
-run that produces a **fully trained creature** with charts showing **how long the
-journey took**, use the exploration campaign instead. It mirrors the GRQ `sampler.sh`
-cadence: early phases subsample the training set and use a low `costOfGrowth` so NEAT
-can grow structure quickly; the final phase trains on the full 60 000-record set.
+The standard `run.sh` workflow appends one milestone per invocation. For a long-form run that
+produces a **fully trained creature** with charts showing **how long the journey took**, use the
+exploration campaign instead. It mirrors the GRQ `sampler.sh` cadence: early phases subsample the
+training set and use a low `costOfGrowth` so NEAT can grow structure quickly; the final phase trains
+on the full 60 000-record set.
 
-Every phase is persisted immediately under `docs/` — safe to interrupt overnight runs
-and resume later.
+Every phase is persisted immediately under `docs/` — safe to interrupt overnight runs and resume
+later.
 
 ```bash
 # One ~60 min loop (two repeats of structure-1…4 + polish). Resumes by default.
@@ -145,35 +145,37 @@ and resume later.
 
 Each loop runs **two repeats** of the five-phase cadence (10 phases total):
 
-| Phase | Sample rate | costOfGrowth | Budget |
-| ----- | ----------- | ------------ | ------ |
-| structure-1…4 | 5%–15% | 5e-10 → 1e-7 | ~6 min each — as many generations as fit |
-| polish | 100% | 0 | **2 generations** max (5 min backstop) |
+| Phase         | Sample rate | costOfGrowth | Budget                                   |
+| ------------- | ----------- | ------------ | ---------------------------------------- |
+| structure-1…4 | 5%–15%      | 5e-10 → 1e-7 | ~6 min each — as many generations as fit |
+| polish        | 100%        | 0            | **2 generations** max (5 min backstop)   |
 
-Structure phases subsample training fitness but always score hold-out on the full validation + test sets. Polish uses the full 60 000-record set for only a few generations so the loop stays near 60 minutes while still giving intelligent-design a well-trained champion.
+Structure phases subsample training fitness but always score hold-out on the full validation + test
+sets. Polish uses the full 60 000-record set for only a few generations so the loop stays near 60
+minutes while still giving intelligent-design a well-trained champion.
 
-| Flag / env | Meaning |
-| ---------- | ------- |
-| `--fresh` | Wipe `creature.json`, `milestones.json`, all three chart SVGs, `campaign_record.json`, and `run_summary.json`, then begin a new campaign clock. |
-| `--hidden-seed` | With `--fresh`, seed a layered ReLU MLP instead of `new Creature(784, 10)`. |
-| `--squash-scan` | Run an intelligent-design activation scan (GELU, Swish, LeakyReLU, Mish) after the loop. |
-| `--loop-minutes=<n>` | Target wall-clock per invocation (default `60`). |
-| `--repeats=<n>` | How many times to repeat structure-1…4 + polish (default `2`). |
-| `MNIST_TARGET_ACCURACY` | Stop the overnight loop at this test accuracy (default `0.90`). |
-| `MNIST_CAMPAIGN_MAX_HOURS` | Wall-clock budget for the overnight loop (default `48`). |
-| `MNIST_LOOP_MINUTES` | Same as `--loop-minutes` for the overnight shell wrapper. |
-| `MNIST_LOOP_REPEATS` | Same as `--repeats` for the overnight shell wrapper. |
+| Flag / env                 | Meaning                                                                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--fresh`                  | Wipe `creature.json`, `milestones.json`, all three chart SVGs, `campaign_record.json`, and `run_summary.json`, then begin a new campaign clock. |
+| `--hidden-seed`            | With `--fresh`, seed a layered ReLU MLP instead of `new Creature(784, 10)`.                                                                     |
+| `--squash-scan`            | Run an intelligent-design activation scan (GELU, Swish, LeakyReLU, Mish) after the loop.                                                        |
+| `--loop-minutes=<n>`       | Target wall-clock per invocation (default `60`).                                                                                                |
+| `--repeats=<n>`            | How many times to repeat structure-1…4 + polish (default `2`).                                                                                  |
+| `MNIST_TARGET_ACCURACY`    | Stop the overnight loop at this test accuracy (default `0.90`).                                                                                 |
+| `MNIST_CAMPAIGN_MAX_HOURS` | Wall-clock budget for the overnight loop (default `48`).                                                                                        |
+| `MNIST_LOOP_MINUTES`       | Same as `--loop-minutes` for the overnight shell wrapper.                                                                                       |
+| `MNIST_LOOP_REPEATS`       | Same as `--repeats` for the overnight shell wrapper.                                                                                            |
 
 Scratch logs (gitignored): `.synthetic-mnist/exploration/` (`phases.jsonl`, `overnight.log`).
 
-When a better training recipe is found, reset and re-record with `--fresh` — the
-statistics and charts reset together.
+When a better training recipe is found, reset and re-record with `--fresh` — the statistics and
+charts reset together.
 
 > [!NOTE]
-> The first generation of an in-scope example must still start from uniform-random
-> noise unless you explicitly pass `--hidden-seed` with `--fresh`. The hidden-seed
-> topology is a hand-crafted layer layout (weights remain random) — use it only when
-> exploring that seed strategy, not as the default demo narrative.
+> The first generation of an in-scope example must still start from uniform-random noise unless you
+> explicitly pass `--hidden-seed` with `--fresh`. The hidden-seed topology is a hand-crafted layer
+> layout (weights remain random) — use it only when exploring that seed strategy, not as the default
+> demo narrative.
 
 The runner downloads the IDX gzip files into `.synthetic-mnist/data/` (cached on disk after the
 first run), encodes the full 60 000-record training file into `.synthetic-mnist/bin/mnist_train.bin`
@@ -221,7 +223,9 @@ sequenceDiagram
 
 ![MNIST wall-clock timeline — test accuracy vs cumulative evolution time](../docs/screenshots/mnist_classification/timeline.svg)
 
-Re-run `./mnist_classification/run.sh` to extend the error and complexity charts with another evolution chunk, or use `./mnist_classification/exploration_campaign.sh` for the full recorded-evolution pipeline.
+Re-run `./mnist_classification/run.sh` to extend the error and complexity charts with another
+evolution chunk, or use `./mnist_classification/exploration_campaign.sh` for the full
+recorded-evolution pipeline.
 
 ### Champion prediction grid (held-out test set)
 

@@ -293,12 +293,55 @@ export function parseInstanceFlag(argv: readonly string[]): TspInstanceName {
     default: { instance: "burma14" },
   });
   const value = String(args.instance);
-  if (value !== "burma14" && value !== "ulysses22") {
+  if (value !== "burma14" && value !== "ulysses22" && value !== "pcb442") {
     throw new Error(
-      `Unknown --instance=${value}; valid options are burma14|ulysses22`,
+      `Unknown --instance=${value}; valid options are burma14|ulysses22|pcb442`,
     );
   }
   return value;
+}
+
+/**
+ * Parse the `--time-seconds=<N>` CLI flag. Returns `undefined` when the
+ * flag is absent so callers can fall back to `--timeout=<minutes>` or the
+ * documented default. A non-integer or non-positive value throws.
+ *
+ * The flag is the bounded "smoke mode" budget — `quality.sh` passes a
+ * sub-minute value so CI can exercise the harness in seconds rather than
+ * waiting on a multi-hour run.
+ */
+export function parseTimeSecondsFlag(argv: readonly string[]): number | undefined {
+  const args = parseArgs(argv as string[], {
+    string: ["time-seconds"],
+  });
+  const raw = args["time-seconds"];
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `Invalid --time-seconds=${raw}; expected a positive number of seconds`,
+    );
+  }
+  return value;
+}
+
+/**
+ * Resolve the effective wall-clock budget in minutes from the CLI flags.
+ *
+ * Precedence (smoke beats human run):
+ * 1. `--time-seconds=<N>` — converted via `N / 60`.
+ * 2. `--timeout=<minutes>` (forwarded from {@link parseMultiRunFlags}).
+ * 3. Documented {@link DEFAULT_MULTI_RUN_TIMEOUT_MINUTES} default.
+ */
+export function resolveTimeoutMinutes(
+  argv: readonly string[],
+  timeoutMinutesFromFlags: number | undefined,
+  defaultMinutes: number = DEFAULT_MULTI_RUN_TIMEOUT_MINUTES,
+): number {
+  const seconds = parseTimeSecondsFlag(argv);
+  if (seconds !== undefined) return seconds / 60;
+  if (timeoutMinutesFromFlags !== undefined) return timeoutMinutesFromFlags;
+  return defaultMinutes;
 }
 
 if (import.meta.main) {
@@ -330,7 +373,7 @@ if (import.meta.main) {
   const persisted = await loadMultiRunState(EXAMPLE_SLUG, quickBaseDir);
   const resumed = persisted.creatureExport !== undefined;
 
-  const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
+  const timeoutMinutes = resolveTimeoutMinutes(Deno.args, flags.timeoutMinutes);
   const targetError = flags.targetError ?? DEFAULT_MULTI_RUN_TARGET_ERROR;
 
   console.log(

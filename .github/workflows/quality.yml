@@ -83,7 +83,7 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           set -euo pipefail
-          deno test --frozen --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df,git,deno --coverage=.coverage
+          deno test --parallel --frozen --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df,git,deno --coverage=.coverage
 
       - name: Generate lcov coverage report
         run: deno coverage .coverage --lcov --output=.coverage/coverage.lcov
