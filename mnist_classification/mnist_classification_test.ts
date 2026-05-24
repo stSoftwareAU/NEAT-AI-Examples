@@ -29,7 +29,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { existsSync } from "@std/fs";
-import { Creature, Costs } from "@stsoftware/neat-ai";
+import { Costs, Creature } from "@stsoftware/neat-ai";
 import { join } from "@std/path";
 
 import { asCreatureExport } from "../common/legacy_types.ts";
@@ -699,16 +699,24 @@ function buildSyntheticBinDir(perClass: number): string {
   return dir;
 }
 
+/** Fast caps for evolveDir tests — populations must stay large enough that NEAT-AI never treats every elitist score as falsy (0). */
+const EVOLVE_DIR_TEST_CAPS = {
+  maxGenerations: 2,
+  populationSize: 12,
+  disableGenerationLog: true,
+} as const;
+const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 2;
+
 Deno.test(
   "evolveResultToMultiRunSample carries error/score/topology onto the milestone shape",
   { sanitizeOps: false, sanitizeResources: false },
   async () => {
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const result = await evolveMnistClassifier({
         dataDir,
         timeoutMinutes: 0,
-        testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+        testCaps: EVOLVE_DIR_TEST_CAPS,
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
@@ -728,12 +736,12 @@ Deno.test(
   "evolveMnistClassifier exposes finite seed and wall-clock fields on the result",
   { sanitizeOps: false, sanitizeResources: false },
   async () => {
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const result = await evolveMnistClassifier({
         dataDir,
         timeoutMinutes: 0,
-        testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+        testCaps: EVOLVE_DIR_TEST_CAPS,
       });
       assert(Number.isFinite(result.bestError));
       assert(Number.isFinite(result.bestScore));
@@ -756,7 +764,7 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_resume_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
 
@@ -782,7 +790,7 @@ Deno.test({
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           timeoutMinutes: 0,
         },
       });
@@ -827,7 +835,7 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_fresh_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
       // Pre-seed with a prior run's state.
@@ -850,7 +858,7 @@ Deno.test({
         argv: ["--fresh"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           timeoutMinutes: 0,
         },
       });
@@ -878,7 +886,7 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_no_target_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       await assertRejects(
         () =>
@@ -887,7 +895,7 @@ Deno.test({
             argv: ["--target-error=0.1"],
             baseDir: tmp,
             evolveOverrides: {
-              testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+              testCaps: EVOLVE_DIR_TEST_CAPS,
               timeoutMinutes: 0,
             },
           }),
@@ -907,14 +915,14 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_fixed_target_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const outcome = await runMultiRunMnist({
         dataDir,
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           timeoutMinutes: 0,
         },
       });
@@ -932,14 +940,14 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_timeout_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const outcome = await runMultiRunMnist({
         dataDir,
         argv: ["--timeout=7"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           // Override propagates from flag → resolved options; tests skip
           // the actual backstop because NEAT-AI's FFI cleanup tripts the
           // Deno sanitizer.

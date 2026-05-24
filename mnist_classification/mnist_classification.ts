@@ -593,21 +593,20 @@ export interface MnistEvolveResult {
   seedSynapses: number;
 }
 
-/** Serialises `evolveDir` calls — parallel unit tests share NEAT-AI global state. */
-let evolveDirSerial: Promise<void> = Promise.resolve();
+/** Cross-process lock so parallel `deno test` workers do not share NEAT-AI global state. */
+const EVOLVE_DIR_LOCK_PATH = join(
+  Deno.env.get("TMPDIR") ?? Deno.env.get("TEMP") ?? "/tmp",
+  "neat-ai-examples-evolve-dir.lock",
+);
 
 async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
-  const prior = evolveDirSerial;
-  let release!: () => void;
-  evolveDirSerial = new Promise((resolve) => {
-    release = resolve;
+  await using lockFile = await Deno.open(EVOLVE_DIR_LOCK_PATH, {
+    create: true,
+    read: true,
+    write: true,
   });
-  await prior;
-  try {
-    return await fn();
-  } finally {
-    release();
-  }
+  await lockFile.lock(true);
+  return await fn();
 }
 
 /**
@@ -642,6 +641,7 @@ export async function evolveMnistClassifier(
       verbose: false,
       log: 0,
       threads: 1,
+      ...(options.testCaps ? { seed: 424242 } : {}),
       ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
       ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),
       ...(options.mutationAmount !== undefined ? { mutationAmount: options.mutationAmount } : {}),

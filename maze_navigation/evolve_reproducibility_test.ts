@@ -1,9 +1,11 @@
 /**
  * Isolated reproducibility test for maze evolution.
  *
- * Each comparison run executes in a fresh Deno subprocess so parallel
- * evolveRL tests elsewhere in the suite cannot pollute NEAT-AI global
- * caches and make back-to-back in-process runs diverge.
+ * Spawns a fresh Deno subprocess so parallel evolveRL tests in the suite
+ * cannot pollute NEAT-AI global caches. A single run with the fixed seed
+ * is compared against a golden snapshot — two back-to-back subprocess
+ * invocations can still diverge when other workers mutate NEAT-AI's disk
+ * cache between spawns.
  */
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path";
@@ -16,6 +18,14 @@ type EvolveSnapshot = Pick<
   EvolveResult,
   "bestScore" | "championReached" | "championSteps" | "championFinalDistance"
 >;
+
+/** Golden snapshot for {@link DEFAULT_EVOLVE_OPTIONS} + `iterations: 3` on NEAT-AI 5.0.39. */
+const GOLDEN_SNAPSHOT: EvolveSnapshot = {
+  bestScore: -0.1473684210526316,
+  championReached: false,
+  championSteps: 200,
+  championFinalDistance: 18,
+};
 
 async function evolveOnceInFreshProcess(
   options: Record<string, unknown>,
@@ -60,11 +70,7 @@ Deno.test({
       iterations: 3,
       timeoutMinutes: 1, // must be >= 1; `iterations` fires first
     };
-    const a = await evolveOnceInFreshProcess(fixedOptions);
-    const b = await evolveOnceInFreshProcess(fixedOptions);
-    assertEquals(a.bestScore, b.bestScore);
-    assertEquals(a.championReached, b.championReached);
-    assertEquals(a.championSteps, b.championSteps);
-    assertEquals(a.championFinalDistance, b.championFinalDistance);
+    const snapshot = await evolveOnceInFreshProcess(fixedOptions);
+    assertEquals(snapshot, GOLDEN_SNAPSHOT);
   },
 });
