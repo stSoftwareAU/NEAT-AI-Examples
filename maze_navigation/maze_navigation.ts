@@ -422,6 +422,7 @@ export async function evolveMazeController(
     // Deterministic environment — one episode per creature is enough.
     episodesPerCreature: 1,
     statistics: true,
+    threads: 1,
   };
 
   const result = await seedCreature.evolveRL(adapter, evolveOptions);
