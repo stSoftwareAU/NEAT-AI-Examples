@@ -81,10 +81,10 @@ SUCCESS: Unit Tests
 
 `./quality.sh` also reports `FAILED: MNIST Handwritten-Digit Classification Example`. This is a
 pre-existing TMPDIR permission bug introduced by #485 — the MNIST runner calls
-`Deno.env.get("TMPDIR")` (mnist_classification.ts:598) but `common/example_runner_preamble.sh`
-does not allowlist `TMPDIR` in `NEAT_AI_ENV_VARS`. Reproduced identically on the base commit
-`ef3afee` with `mnist_classification/` checked out unchanged. Out of scope for #490; should be
-tracked under a separate issue.
+`Deno.env.get("TMPDIR")` (mnist_classification.ts:598) but `common/example_runner_preamble.sh` does
+not allowlist `TMPDIR` in `NEAT_AI_ENV_VARS`. Reproduced identically on the base commit `ef3afee`
+with `mnist_classification/` checked out unchanged. Out of scope for #490; should be tracked under a
+separate issue.
 
 ## Test Plan
 

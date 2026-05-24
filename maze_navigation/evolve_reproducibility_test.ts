@@ -37,6 +37,11 @@ async function evolveOnceInFreshProcess(
     args: [
       "run",
       "--no-check",
+      // Match the parent test runner's heap budget so the subprocess's
+      // MemoryMonitor does not fire and evict WASM activation caches
+      // mid-run — cache evictions change which creatures are recompiled
+      // vs cached and break the determinism guarantee.
+      "--v8-flags=--max-old-space-size=8192",
       "--allow-read",
       "--allow-write",
       "--allow-env",
