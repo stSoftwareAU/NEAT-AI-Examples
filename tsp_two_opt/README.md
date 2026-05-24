@@ -99,6 +99,44 @@ overwritten.
 | Warm start?   | No (random seed only)    | Hand-crafted NN seed tour      |
 
 The two examples deliberately share `common/tsp_instances.ts` so the city coordinates and the
-`tourLength` arithmetic cannot drift apart. Move acceptance in `tsp_two_opt` is the
-strictly-improving rule; for a follow-up demo the same proposal loop could be wrapped in the
-Metropolis-Hastings sampler from `mcmc_acceptance` to explore noisier acceptance criteria.
+`tourLength` arithmetic cannot drift apart.
+
+## Hybrid orchestrator for `pcb442` (issue #482)
+
+The 442-city instance is large enough that pure NEAT struggles inside a sane wall-clock budget, so
+`--instance=pcb442` dispatches to a **hybrid orchestrator** (`tsp_two_opt/hybrid.ts`) that wires
+three NEAT-AI hybrid techniques on top of the learned 2-opt local search:
+
+```mermaid
+flowchart LR
+    SEED["🎲 Random NEAT seed"] --> CHUNK1["🧪 evolveEnv chunk #1<br/>strict acceptance"]
+    CHUNK1 --> CHECK{"📈 improvement<br/>over prior chunk?"}
+    CHECK -- "yes" --> ARCHIVE["📦 Append to fittest archive"]
+    CHECK -- "no (stalled)" --> CRISPR["🧬 CRISPR splice<br/>edit gene"]
+    CRISPR --> ARCHIVE
+    ARCHIVE --> RESEED["🧠 Memetic re-seed<br/>from archive"]
+    RESEED --> CHUNK2["🧪 evolveEnv chunk #2<br/>MH acceptance"]
+    CHUNK2 --> RESULT["🏁 Champion"]
+```
+
+| Technique          | Where in `pcb442`                                                                                                                                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🧠 Memetic re-seed | Every chunk after the first is seeded from the previous chunk's exported champion (the analogue of the "fittest archive" in `memetic_evolution`).                                                                                                                                                  |
+| 🧬 CRISPR splice   | When a chunk fails to improve over its predecessor (or always on the smoke run, via `forceCrispr`), the champion is spliced with a hand-crafted edit gene before the next chunk. The splicer reuses `injectGene` from `crispr_injection/` — the hand-crafted gene is the demo's exempt warm piece. |
+| 🌡️ MH acceptance   | Chunks after the first run with the Metropolis-Hastings accept rule (`exp(-delta / (T · seedLength))`) so the search can climb out of local optima. At `T → 0` the rule degenerates to strict-improvement.                                                                                         |
+
+`burma14` and `ulysses22` still take the original single-`evolveEnv` path with strict-improvement
+acceptance — their CLI output is byte-identical to the pre-hybrid runner.
+
+The orchestrator emits one of these markers per technique to `stdout` so the harness can grep for
+each on a smoke run:
+
+```
+🧠 memetic re-seed chunk 2/2 seeded from prior champion.
+🧬 CRISPR splice chunk 2/2 spliced edit gene into stalled champion (...).
+🌡️ MH accept chunk 2/2 using MH acceptance T=0.002.
+```
+
+A 60-second smoke (`./tsp_two_opt/run.sh --instance=pcb442 --time-seconds=60`) exercises every code
+path without expecting SOTA tour lengths — the parent issue's "within 25% of 50,778" target is
+verified by the user's overnight run, not by this orchestrator.
