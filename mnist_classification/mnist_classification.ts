@@ -16,19 +16,23 @@
  * pass `--fresh` when you explicitly want to discard prior progress.
  * `--timeout=<minutes>` overrides the wall-clock backstop per invocation.
  * The early-stop `targetError` is fixed — not exposed on the CLI.
+ * Scoring uses NEAT-AI `CATEGORICAL_ERROR` (argmax misclassification rate;
+ * `error = 1 − training accuracy`), not MSE on one-hot outputs.
  */
 
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import { join } from "@std/path";
+import { dirname, join } from "@std/path";
 import {
   Creature,
   type CreatureExport,
   type NeatOptions,
   safeWriteJson,
+  type TrainingEvent,
 } from "@stsoftware/neat-ai";
 
 import { fetchDataset } from "../common/data_cache.ts";
+import { wipeCampaignRecord } from "../common/campaign_record.ts";
 import {
   appendMultiRunRun,
   loadMultiRunState,
@@ -38,6 +42,7 @@ import {
 } from "../common/multi_run_state.ts";
 import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts";
 import { renderMultiRunComplexityChartSVG } from "../common/multi_run_complexity_chart.ts";
+import { renderMultiRunTimelineChartSVG } from "../common/multi_run_timeline_chart.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import {
   buildDigitSamples,
@@ -76,6 +81,85 @@ export function resolveMnistHiddenLayerSizes(
 
 /** Working-directory root for this example. */
 export const MNIST_ROOT = ".synthetic-mnist";
+
+/** Per-generation TSV log (`onTrainingEvent` / `generation_complete`). */
+export const MNIST_GENERATION_LOG_PATH = join(MNIST_ROOT, "overnight", "generations.tsv");
+
+const GENERATION_LOG_HEADER =
+  "timestamp\trun_index\tgeneration\tbest_fitness\taverage_fitness\tpopulation\telapsed_ms\n";
+
+/** Payload for a single `generation_complete` training event. */
+export interface MnistGenerationCompleteEvent {
+  generation: number;
+  bestFitness: number;
+  averageFitness: number;
+  populationSize: number;
+  elapsedMs: number;
+}
+
+/**
+ * Format one `generation_complete` row for {@link MNIST_GENERATION_LOG_PATH}.
+ * With {@link MNIST_EVOLVE_COST_NAME}, `best_fitness` tracks NEAT-AI's best
+ * population fitness for the generation (higher is better).
+ */
+export function formatGenerationLogLine(
+  runIndex: number,
+  event: MnistGenerationCompleteEvent,
+  timestamp = new Date().toISOString(),
+): string {
+  return [
+    timestamp,
+    runIndex,
+    event.generation,
+    event.bestFitness,
+    event.averageFitness,
+    event.populationSize,
+    event.elapsedMs,
+  ].join("\t");
+}
+
+async function ensureGenerationLogHeader(logPath: string): Promise<void> {
+  ensureDirSync(dirname(logPath));
+  try {
+    const stat = await Deno.stat(logPath);
+    if (stat.size > 0) return;
+  } catch {
+    // File does not exist yet.
+  }
+  await Deno.writeTextFile(logPath, GENERATION_LOG_HEADER);
+}
+
+async function appendGenerationLogLine(logPath: string, line: string): Promise<void> {
+  await ensureGenerationLogHeader(logPath);
+  await Deno.writeTextFile(logPath, `${line}\n`, { append: true });
+}
+
+/** Log every NEAT-AI generation to stdout and the overnight TSV. */
+export function createMnistGenerationLogger(options: {
+  runIndex: number;
+  logPath?: string;
+}): NonNullable<NeatOptions["onTrainingEvent"]> {
+  const logPath = options.logPath ?? MNIST_GENERATION_LOG_PATH;
+  return (event: TrainingEvent) => {
+    if (event.kind !== "generation_complete") return;
+    const row: MnistGenerationCompleteEvent = {
+      generation: event.generation,
+      bestFitness: event.bestFitness,
+      averageFitness: event.averageFitness,
+      populationSize: event.populationSize,
+      elapsedMs: event.elapsedMs,
+    };
+    const line = formatGenerationLogLine(options.runIndex, row, event.timestamp);
+    console.log(
+      `[gen ${row.generation}] bestFitness=${row.bestFitness.toFixed(4)} ` +
+        `avgFitness=${row.averageFitness.toFixed(4)} pop=${row.populationSize} ` +
+        `elapsed=${format(row.elapsedMs, { ignoreZero: true })}`,
+    );
+    appendGenerationLogLine(logPath, line).catch((err) => {
+      console.warn(`⚠️  Failed to append generation log: ${err}`);
+    });
+  };
+}
 
 /**
  * Canonical MNIST IDX gzip mirror hosted by the Common Visual Data
@@ -144,9 +228,13 @@ export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/mnist_classification/m
  */
 export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/mnist_classification/complexity.svg";
 
+/** `costName` passed to every `evolveDir` invocation (NEAT-AI 5.0.30+). */
+export const MNIST_EVOLVE_COST_NAME = "CATEGORICAL_ERROR" as const;
+
 /**
- * Fixed `targetError` passed to every `evolveDir` invocation (matches the
- * GRQ `Learn.ts` pattern — tight threshold, not overridable from the CLI).
+ * Fixed `targetError` passed to every `evolveDir` invocation — with
+ * {@link MNIST_EVOLVE_COST_NAME} this is the training-set misclassification
+ * rate (`1 − argmax accuracy`). Not overridable from the CLI.
  */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.0001;
 
@@ -217,6 +305,14 @@ export interface MnistRunSummary {
   runIndex: number;
   /** Whether this run resumed from a prior persisted champion. */
   resumed: boolean;
+  /** ISO-8601 start of the current recorded-evolution campaign. */
+  campaignStartedAt?: string;
+  /** Cumulative wall-clock across every recorded phase this campaign (ms). */
+  totalCampaignWallClockMs?: number;
+  /** Number of exploration phases recorded this campaign. */
+  campaignPhaseCount?: number;
+  /** Name of the most recently completed exploration phase. */
+  lastPhaseName?: string;
 }
 
 /**
@@ -446,7 +542,37 @@ export interface MnistEvolveOptions {
   testCaps?: {
     maxGenerations?: number;
     populationSize?: number;
+    /** When true, skip per-generation logging (unit tests). */
+    disableGenerationLog?: boolean;
   };
+  /** 1-based multi-run index for generation log rows (default 1). */
+  runIndex?: number;
+  /** Override path for the per-generation TSV log. */
+  generationLogPath?: string;
+  /**
+   * Fraction of each `.bin` file scored per generation (NEAT-AI
+   * `trainingSampleRate`). Defaults to `1` (full training set). Lower
+   * values — e.g. `0.15` — mirror the GRQ sampler idiom for faster
+   * structure exploration before a full-data polish pass.
+   */
+  trainingSampleRate?: number;
+  /**
+   * Topology growth penalty forwarded to NEAT-AI. Near-zero during
+   * exploration encourages add-neuron / add-synapse mutations; `0`
+   * (default) during polish lets weight tuning dominate.
+   */
+  costOfGrowth?: number;
+  /** NEAT population size (defaults to library default when omitted). */
+  populationSize?: number;
+  /**
+   * Generation cap forwarded to NEAT-AI `iterations`. Used by polish
+   * phases; structure phases omit this and run until timeout.
+   */
+  maxGenerations?: number;
+  /** Per-generation mutation rate (defaults to library default when omitted). */
+  mutationRate?: number;
+  /** Mutation operators per mutated creature (library default when omitted). */
+  mutationAmount?: number;
 }
 
 /** Result of {@link evolveMnistClassifier}. */
@@ -467,6 +593,22 @@ export interface MnistEvolveResult {
   seedSynapses: number;
 }
 
+/** Cross-process lock so parallel `deno test` workers do not share NEAT-AI global state. */
+const EVOLVE_DIR_LOCK_PATH = join(
+  Deno.env.get("TMPDIR") ?? Deno.env.get("TEMP") ?? "/tmp",
+  "neat-ai-examples-evolve-dir.lock",
+);
+
+async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
+  await using lockFile = await Deno.open(EVOLVE_DIR_LOCK_PATH, {
+    create: true,
+    read: true,
+    write: true,
+  });
+  await lockFile.lock(true);
+  return await fn();
+}
+
 /**
  * Run NEAT structural evolution on an MNIST binary `.bin` data directory.
  *
@@ -482,44 +624,64 @@ export interface MnistEvolveResult {
 export async function evolveMnistClassifier(
   options: MnistEvolveOptions,
 ): Promise<MnistEvolveResult> {
-  const creature = options.seedCreatureExport !== undefined
-    ? Creature.fromJSON(options.seedCreatureExport)
-    : options.hiddenReluSeed
-    ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
-    : new Creature(FEATURE_COUNT, CLASS_COUNT);
-  const seedNeurons = creature.neurons.length;
-  const seedSynapses = creature.synapses.length;
+  return await withEvolveDirLock(async () => {
+    const creature = options.seedCreatureExport !== undefined
+      ? Creature.fromJSON(options.seedCreatureExport)
+      : options.hiddenReluSeed
+      ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
+      : new Creature(FEATURE_COUNT, CLASS_COUNT);
+    const seedNeurons = creature.neurons.length;
+    const seedSynapses = creature.synapses.length;
 
-  const neatOptions: NeatOptions = {
-    targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
-    ...(options.timeoutMinutes > 0
-      ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
-      : {}),
-    ...(options.testCaps?.maxGenerations !== undefined
-      ? { iterations: options.testCaps.maxGenerations }
-      : {}),
-    ...(options.testCaps?.populationSize !== undefined
-      ? { populationSize: options.testCaps.populationSize }
-      : {}),
-  };
+    const neatOptions: NeatOptions = {
+      costName: MNIST_EVOLVE_COST_NAME,
+      targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
+      trainingSampleRate: options.trainingSampleRate ?? 1,
+      costOfGrowth: options.costOfGrowth ?? 0,
+      verbose: false,
+      log: 0,
+      threads: 1,
+      ...(options.testCaps ? { seed: 424242 } : {}),
+      ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
+      ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),
+      ...(options.mutationAmount !== undefined ? { mutationAmount: options.mutationAmount } : {}),
+      ...(options.timeoutMinutes > 0
+        ? { timeoutMinutes: Math.max(1, Math.floor(options.timeoutMinutes)) }
+        : {}),
+      ...(options.maxGenerations !== undefined
+        ? { iterations: options.maxGenerations }
+        : options.testCaps?.maxGenerations !== undefined
+        ? { iterations: options.testCaps.maxGenerations }
+        : {}),
+      ...(options.testCaps?.populationSize !== undefined
+        ? { populationSize: options.testCaps.populationSize }
+        : {}),
+      ...(options.testCaps?.disableGenerationLog ? {} : {
+        onTrainingEvent: createMnistGenerationLogger({
+          runIndex: options.runIndex ?? 1,
+          logPath: options.generationLogPath,
+        }),
+      }),
+    };
 
-  const start = Date.now();
-  const result = await creature.evolveDir(options.dataDir, neatOptions);
-  const wallClockMs = Date.now() - start;
+    const start = Date.now();
+    const result = await creature.evolveDir(options.dataDir, neatOptions);
+    const wallClockMs = Date.now() - start;
 
-  const bestError = Number.isFinite(result.error) ? result.error : 0;
-  const bestScore = Number.isFinite(result.score) ? result.score : 0;
-  const generations = Math.max(1, result.generation ?? 1);
+    const bestError = Number.isFinite(result.error) ? result.error : 0;
+    const bestScore = Number.isFinite(result.score) ? result.score : 0;
+    const generations = Math.max(1, result.generation ?? 1);
 
-  return {
-    champion: creature,
-    bestError,
-    bestScore,
-    generations,
-    wallClockMs,
-    seedNeurons,
-    seedSynapses,
-  };
+    return {
+      champion: creature,
+      bestError,
+      bestScore,
+      generations,
+      wallClockMs,
+      seedNeurons,
+      seedSynapses,
+    };
+  });
 }
 
 /**
@@ -594,6 +756,7 @@ export async function runMultiRunMnist(
         "Omit --fresh to continue evolving the persisted creature.",
     );
     await wipeMultiRunState(slug, options.baseDir);
+    await wipeCampaignRecord(slug, options.baseDir);
   }
 
   const state = await loadMultiRunState(slug, options.baseDir);
@@ -605,6 +768,7 @@ export async function runMultiRunMnist(
   const evolveOptions: MnistEvolveOptions = {
     dataDir: options.dataDir,
     timeoutMinutes,
+    runIndex: state.nextRunIndex,
     seedCreatureExport: state.creatureExport,
     hiddenReluSeed: !resumed &&
       (options.hiddenReluSeed === true || mnistFlags.hiddenSeed),
@@ -640,6 +804,12 @@ export async function runMultiRunMnist(
       caption: true,
     });
     await Deno.writeTextFile(join(screenshotsDir, "complexity.svg"), complexitySvg);
+
+    const timelineSvg = renderMultiRunTimelineChartSVG(merged.milestones, {
+      title: "MNIST Classification — test accuracy vs wall-clock time",
+      caption: true,
+    });
+    await Deno.writeTextFile(join(screenshotsDir, "timeline.svg"), timelineSvg);
   }
 
   return {
@@ -772,7 +942,8 @@ if (import.meta.main) {
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
   console.log(
     `\n🧪 Evolving via Creature.evolveDir(${binDir}, ` +
-      `{ targetError: ${targetError}, timeoutMinutes: ${timeoutMinutes} })…` +
+      `{ costName: ${MNIST_EVOLVE_COST_NAME}, targetError: ${targetError}, ` +
+      `timeoutMinutes: ${timeoutMinutes} })…` +
       (quick ? " (quick mode: maxGenerations=2)" : ""),
   );
 
@@ -781,7 +952,10 @@ if (import.meta.main) {
     baseDir: quickBaseDir,
     hiddenReluSeed: mnistFlags.hiddenSeed,
     evolveOverrides: quick
-      ? { testCaps: { maxGenerations: 2, populationSize: 4 }, timeoutMinutes: 1 }
+      ? {
+        testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
+        timeoutMinutes: 1,
+      }
       : undefined,
   });
   const { evolveResult: result } = multi;

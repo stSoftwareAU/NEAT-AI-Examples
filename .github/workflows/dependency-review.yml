@@ -16,17 +16,49 @@ name: Dependency Review
 on:
   pull_request:
     branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      pr_head_ref:
+        description: PR head branch to check out after an auto-bump push
+        required: true
+        type: string
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   dependency-review:
     name: Review dependency changes
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve PR comparison refs
+        if: github.event_name == 'workflow_dispatch'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_HEAD_REF: ${{ inputs.pr_head_ref }}
+        run: |
+          set -euo pipefail
+          read -r base_sha head_sha <<EOF
+          $(gh pr list --head "${PR_HEAD_REF}" \
+            --json baseRefOid,headRefOid \
+            --jq '.[0] | "\(.baseRefOid) \(.headRefOid)"')
+          EOF
+          if [ -z "${base_sha}" ] || [ "${base_sha}" = "null" ]; then
+            echo "No open PR found for branch ${PR_HEAD_REF}"
+            exit 1
+          fi
+          echo "base_sha=${base_sha}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${head_sha}" >> "$GITHUB_OUTPUT"
+
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.pr_head_ref || github.ref }}
 
       - name: Review dependencies
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          base-ref: ${{ steps.pr.outputs.base_sha || github.event.pull_request.base.sha }}
+          head-ref: ${{ steps.pr.outputs.head_sha || github.event.pull_request.head.sha }}

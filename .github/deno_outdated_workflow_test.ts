@@ -61,6 +61,16 @@ Deno.test("deno-outdated workflow — auto-bump job requests contents:write so i
   assertEquals(contents, "write", "auto-bump must have contents: write to push");
 });
 
+Deno.test("deno-outdated workflow — requests actions:write so it can re-dispatch checks after push (#485)", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const jobPerms = (job.permissions ?? {}) as Record<string, string>;
+  const wfPerms = (wf.permissions ?? {}) as Record<string, string>;
+  const actions = jobPerms.actions ?? wfPerms.actions;
+  assertEquals(actions, "write", "auto-bump must have actions: write to re-dispatch CI");
+});
+
 Deno.test("deno-outdated workflow — skips PRs from forks", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
@@ -131,4 +141,50 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
   // checkout must be pinned to a 40-char SHA per supply-chain policy.
   const sha = (checkout.uses as string).split("@")[1].split(" ")[0];
   assertEquals(sha.length, 40, `actions/checkout must be pinned to a 40-char SHA, got "${sha}"`);
+});
+
+Deno.test("deno-outdated workflow — re-dispatches required checks after a bump push (#485)", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const steps = job.steps as Array<Record<string, unknown>>;
+
+  const bump = steps.find((s) => s.id === "bump");
+  assertExists(bump, "bump step must expose pushed output via id: bump");
+  const bumpRun = String(bump.run ?? "");
+  assert(
+    bumpRun.includes('echo "pushed=true"') && bumpRun.includes('echo "pushed=false"'),
+    "bump step must record whether a push occurred",
+  );
+  assert(
+    bumpRun.includes("git add deno.json deno.lock"),
+    "bump step must commit both deno.json and deno.lock (issue #418)",
+  );
+
+  const redispatch = steps.find((s) =>
+    typeof s.run === "string" && (s.run as string).includes("gh workflow run")
+  );
+  assertExists(redispatch, "must re-dispatch required workflows after a bump push");
+  assertEquals(
+    redispatch.if,
+    "steps.bump.outputs.pushed == 'true'",
+    "re-dispatch must run only when the bump step pushed",
+  );
+
+  const dispatchRun = String(redispatch.run ?? "");
+  for (
+    const wfName of [
+      "quality.yml",
+      "shellcheck.yml",
+      "markdown-lint.yml",
+      "semgrep.yml",
+      "gitleaks.yml",
+      "dependency-review.yml",
+    ]
+  ) {
+    assert(
+      dispatchRun.includes(wfName),
+      `re-dispatch must include ${wfName}`,
+    );
+  }
 });

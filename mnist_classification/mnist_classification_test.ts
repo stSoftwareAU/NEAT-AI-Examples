@@ -29,7 +29,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { existsSync } from "@std/fs";
-import { Creature } from "@stsoftware/neat-ai";
+import { Costs, Creature } from "@stsoftware/neat-ai";
 import { join } from "@std/path";
 
 import { asCreatureExport } from "../common/legacy_types.ts";
@@ -56,7 +56,9 @@ import {
   evolveMnistClassifier,
   evolveResultToMultiRunSample,
   EXAMPLE_SLUG,
+  formatGenerationLogLine,
   inferStopCondition,
+  MNIST_EVOLVE_COST_NAME,
   type MnistRunSummary,
   pickGridSamples,
   predict,
@@ -109,6 +111,26 @@ function buildSyntheticIdx(
   }
   return { images: imageBuf, labels: labelBuf };
 }
+
+Deno.test("formatGenerationLogLine writes one TSV row per generation", () => {
+  const line = formatGenerationLogLine(3, {
+    generation: 7,
+    bestFitness: 0.142,
+    averageFitness: 0.118,
+    populationSize: 50,
+    elapsedMs: 12_345,
+  }, "2026-05-23T10:00:00.000Z");
+  assertEquals(line, "2026-05-23T10:00:00.000Z\t3\t7\t0.142\t0.118\t50\t12345");
+});
+
+Deno.test("MNIST_EVOLVE_COST_NAME is registered in NEAT-AI", () => {
+  assertEquals(MNIST_EVOLVE_COST_NAME, "CATEGORICAL_ERROR");
+  assertEquals(Costs.getAvailableCosts().includes(MNIST_EVOLVE_COST_NAME), true);
+  const target = new Float32Array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+  const zeros = new Float32Array(10);
+  const cost = Costs.find(MNIST_EVOLVE_COST_NAME);
+  assertEquals(cost.calculate(target, zeros), 1);
+});
 
 Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
   assertEquals(FEATURE_COUNT, 784);
@@ -677,16 +699,24 @@ function buildSyntheticBinDir(perClass: number): string {
   return dir;
 }
 
+/** Fast caps for evolveDir tests — populations must stay large enough that NEAT-AI never treats every elitist score as falsy (0). */
+const EVOLVE_DIR_TEST_CAPS = {
+  maxGenerations: 2,
+  populationSize: 12,
+  disableGenerationLog: true,
+} as const;
+const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 2;
+
 Deno.test(
   "evolveResultToMultiRunSample carries error/score/topology onto the milestone shape",
   { sanitizeOps: false, sanitizeResources: false },
   async () => {
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const result = await evolveMnistClassifier({
         dataDir,
         timeoutMinutes: 0,
-        testCaps: { maxGenerations: 2, populationSize: 4 },
+        testCaps: EVOLVE_DIR_TEST_CAPS,
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
@@ -706,12 +736,12 @@ Deno.test(
   "evolveMnistClassifier exposes finite seed and wall-clock fields on the result",
   { sanitizeOps: false, sanitizeResources: false },
   async () => {
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const result = await evolveMnistClassifier({
         dataDir,
         timeoutMinutes: 0,
-        testCaps: { maxGenerations: 2, populationSize: 4 },
+        testCaps: EVOLVE_DIR_TEST_CAPS,
       });
       assert(Number.isFinite(result.bestError));
       assert(Number.isFinite(result.bestScore));
@@ -734,7 +764,7 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_resume_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
 
@@ -760,7 +790,7 @@ Deno.test({
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           timeoutMinutes: 0,
         },
       });
@@ -805,7 +835,7 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_fresh_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
       // Pre-seed with a prior run's state.
@@ -828,7 +858,7 @@ Deno.test({
         argv: ["--fresh"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           timeoutMinutes: 0,
         },
       });
@@ -856,7 +886,7 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_no_target_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       await assertRejects(
         () =>
@@ -865,7 +895,7 @@ Deno.test({
             argv: ["--target-error=0.1"],
             baseDir: tmp,
             evolveOverrides: {
-              testCaps: { maxGenerations: 2, populationSize: 4 },
+              testCaps: EVOLVE_DIR_TEST_CAPS,
               timeoutMinutes: 0,
             },
           }),
@@ -885,14 +915,14 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_fixed_target_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const outcome = await runMultiRunMnist({
         dataDir,
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           timeoutMinutes: 0,
         },
       });
@@ -910,14 +940,14 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const tmp = await Deno.makeTempDir({ prefix: "mnist_timeout_" });
-    const dataDir = buildSyntheticBinDir(1);
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const outcome = await runMultiRunMnist({
         dataDir,
         argv: ["--timeout=7"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: EVOLVE_DIR_TEST_CAPS,
           // Override propagates from flag → resolved options; tests skip
           // the actual backstop because NEAT-AI's FFI cleanup tripts the
           // Deno sanitizer.
