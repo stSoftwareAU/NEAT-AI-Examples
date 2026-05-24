@@ -28,9 +28,9 @@
     <text class="callout-label" x="421" y="158.5" dominant-baseline="middle">final score</text>
     <text class="callout-value" x="684" y="158.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">0.995</text>
     <text class="callout-label" x="421" y="213.5" dominant-baseline="middle">generations</text>
-    <text class="callout-value" x="684" y="213.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">104</text>
+    <text class="callout-value" x="684" y="213.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">255</text>
     <text class="callout-label" x="421" y="268.5" dominant-baseline="middle">wall clock</text>
-    <text class="callout-value" x="684" y="268.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">2m 22s</text>
+    <text class="callout-value" x="684" y="268.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">3s</text>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#555">
     <text x="360" y="348" text-anchor="middle">stop conditions: target error 0.005 · timeout 20 min</text>
