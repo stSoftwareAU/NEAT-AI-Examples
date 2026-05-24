@@ -6,7 +6,7 @@
    "type": "output",
    "uuid": "output-0",
    "bias": -91.43377479718104,
-   "squash": "LOGISTIC"
+   "squash": "SOFTSIGN"
   },
   {
    "type": "output",
@@ -23,31 +23,31 @@
   {
    "type": "output",
    "uuid": "output-3",
-   "bias": 0.23573012146063066,
+   "bias": 0.5251690461151365,
    "squash": "Swish"
   },
   {
    "type": "output",
    "uuid": "output-4",
-   "bias": -265.3123590504005,
+   "bias": -274.2733233933075,
    "squash": "Mish"
   },
   {
    "type": "output",
    "uuid": "output-5",
-   "bias": -222.6261997348867,
-   "squash": "SELU"
+   "bias": 58.73853673523094,
+   "squash": "TANH"
   },
   {
    "type": "output",
    "uuid": "output-6",
    "bias": -431.0026422531386,
-   "squash": "ArcTan"
+   "squash": "HARD_TANH"
   },
   {
    "type": "output",
    "uuid": "output-7",
-   "bias": 37.71871896697735,
+   "bias": -51.793166912206466,
    "squash": "Mish"
   },
   {
@@ -59,7 +59,7 @@
   {
    "type": "output",
    "uuid": "output-9",
-   "bias": 24660014.765108358,
+   "bias": 18783362.071522,
    "squash": "HARD_TANH"
   }
  ],
@@ -2700,7 +2700,7 @@
    "toUUID": "output-6"
   },
   {
-   "weight": 14.581937908902097,
+   "weight": 35.592609914299764,
    "fromUUID": "input-52",
    "toUUID": "output-7"
   },
@@ -5745,7 +5745,7 @@
    "toUUID": "output-5"
   },
   {
-   "weight": 35.12745689864248,
+   "weight": 38.663196175994614,
    "fromUUID": "input-113",
    "toUUID": "output-6"
   },
@@ -5905,7 +5905,7 @@
    "toUUID": "output-7"
   },
   {
-   "weight": 7.213054747479559,
+   "weight": 17.127407567467145,
    "fromUUID": "input-116",
    "toUUID": "output-8"
   },
@@ -6420,7 +6420,7 @@
    "toUUID": "output-0"
   },
   {
-   "weight": 25.806838524755264,
+   "weight": -426.0761776748566,
    "fromUUID": "input-127",
    "toUUID": "output-1"
   },
@@ -8895,7 +8895,7 @@
    "toUUID": "output-6"
   },
   {
-   "weight": 18.138941446107907,
+   "weight": 13.475027186150056,
    "fromUUID": "input-176",
    "toUUID": "output-7"
   },
@@ -11420,7 +11420,7 @@
    "toUUID": "output-1"
   },
   {
-   "weight": 26.46171087152673,
+   "weight": 17.54907837739382,
    "fromUUID": "input-227",
    "toUUID": "output-2"
   },
@@ -21045,7 +21045,7 @@
    "toUUID": "output-6"
   },
   {
-   "weight": 8.121880148972073,
+   "weight": 8.222292730931152,
    "fromUUID": "input-419",
    "toUUID": "output-7"
   },
@@ -21325,7 +21325,7 @@
    "toUUID": "output-2"
   },
   {
-   "weight": 36.75731963205285,
+   "weight": 64.96534677310711,
    "fromUUID": "input-425",
    "toUUID": "output-3"
   },
@@ -23080,7 +23080,7 @@
    "toUUID": "output-3"
   },
   {
-   "weight": 14.613323276314265,
+   "weight": 105.68385590247304,
    "fromUUID": "input-460",
    "toUUID": "output-4"
   },
@@ -24940,7 +24940,7 @@
    "toUUID": "output-6"
   },
   {
-   "weight": 23.553816790848234,
+   "weight": 24.112495335698824,
    "fromUUID": "input-497",
    "toUUID": "output-7"
   },
@@ -27200,7 +27200,7 @@
    "toUUID": "output-8"
   },
   {
-   "weight": 38.44092198440962,
+   "weight": 37.17585499452754,
    "fromUUID": "input-542",
    "toUUID": "output-9"
   },
@@ -28265,7 +28265,7 @@
    "toUUID": "output-1"
   },
   {
-   "weight": 26.858791612088886,
+   "weight": 29.17987312074299,
    "fromUUID": "input-564",
    "toUUID": "output-2"
   },
@@ -39265,9 +39265,19 @@
    "toUUID": "output-2"
   },
   {
+   "weight": -0.00004606823831261874,
+   "fromUUID": "output-2",
+   "toUUID": "output-3"
+  },
+  {
    "weight": 0.0008702468287526427,
    "fromUUID": "output-2",
    "toUUID": "output-4"
+  },
+  {
+   "weight": 0.00006350744613540245,
+   "fromUUID": "output-2",
+   "toUUID": "output-7"
   },
   {
    "weight": 0.1296853904623073,
@@ -39290,19 +39300,19 @@
  "tags": [
   {
    "name": "error",
-   "value": "0.6473333333333333"
+   "value": "0.6371666666666667"
   },
   {
    "name": "score",
-   "value": "0.3526666666666667"
+   "value": "0.36283333333333334"
+  },
+  {
+   "name": "adjusted",
+   "value": "3 weights, 1 bias"
   },
   {
    "name": "approach",
    "value": "fine"
-  },
-  {
-   "name": "adjusted",
-   "value": "2 weights, 1 bias"
   },
   {
    "name": "approach-logged",
@@ -39310,61 +39320,45 @@
   }
  ],
  "memetic": {
-  "generation": 3,
-  "score": 0.34940000000000004,
+  "generation": 2,
+  "score": 0.36106666666666665,
   "biases": {
-   "output-4": 19.67270327928017
+   "output-9": 56886387.90315659
   },
   "weights": [
    {
-    "fromUUID": "input-116",
-    "toUUID": "output-8",
-    "weight": 4.995151885259772
+    "fromUUID": "input-176",
+    "toUUID": "output-7",
+    "weight": 22.238476882814005
    },
    {
-    "fromUUID": "input-605",
-    "toUUID": "output-0",
-    "weight": 9.822167576730813
+    "fromUUID": "input-497",
+    "toUUID": "output-7",
+    "weight": 23.553816790848234
+   },
+   {
+    "fromUUID": "output-2",
+    "toUUID": "output-7",
+    "weight": 0
    }
   ],
   "ancestry": [
    {
-    "generation": 2,
-    "weights": [
-     {
-      "fromUUID": "input-116",
-      "toUUID": "output-8",
-      "weight": 4.995151885259772
-     },
-     {
-      "fromUUID": "input-605",
-      "toUUID": "output-0",
-      "weight": 9.822167576730813
-     }
-    ],
-    "biases": {
-     "output-4": 19.67270327928017
-    },
-    "score": 0.34940000000000004
-   },
-   {
     "generation": 1,
     "weights": [
      {
-      "fromUUID": "input-116",
-      "toUUID": "output-8",
-      "weight": 4.995151885259772
+      "fromUUID": "input-497",
+      "toUUID": "output-7",
+      "weight": 23.553816790848234
      },
      {
-      "fromUUID": "input-605",
-      "toUUID": "output-0",
-      "weight": 9.822167576730813
+      "fromUUID": "output-2",
+      "toUUID": "output-7",
+      "weight": 0
      }
     ],
-    "biases": {
-     "output-4": 19.67270327928017
-    },
-    "score": 0.34940000000000004
+    "biases": {},
+    "score": 0.36106666666666665
    }
   ]
  }

@@ -162,5 +162,16 @@
   "runIndex": 62,
   "cumulativeGen": 645,
   "cumulativeWallClockMs": 9200666
+ },
+ {
+  "runGen": 176,
+  "bestScore": 0.36283333333333334,
+  "error": 0.6371666666666667,
+  "neurons": 794,
+  "synapses": 7846,
+  "generationWallClockMs": 900625,
+  "runIndex": 63,
+  "cumulativeGen": 821,
+  "cumulativeWallClockMs": 10101291
  }
 ]
