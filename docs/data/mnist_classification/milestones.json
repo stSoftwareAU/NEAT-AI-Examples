@@ -173,5 +173,27 @@
   "runIndex": 63,
   "cumulativeGen": 821,
   "cumulativeWallClockMs": 10101291
+ },
+ {
+  "runGen": 150,
+  "bestScore": 0.38816666666666666,
+  "error": 0.6118333333333333,
+  "neurons": 794,
+  "synapses": 7850,
+  "generationWallClockMs": 900624,
+  "runIndex": 64,
+  "cumulativeGen": 971,
+  "cumulativeWallClockMs": 11001915
+ },
+ {
+  "runGen": 139,
+  "bestScore": 0.41946666666666665,
+  "error": 0.5805333333333333,
+  "neurons": 794,
+  "synapses": 7851,
+  "generationWallClockMs": 900777,
+  "runIndex": 65,
+  "cumulativeGen": 1110,
+  "cumulativeWallClockMs": 11902692
  }
 ]
