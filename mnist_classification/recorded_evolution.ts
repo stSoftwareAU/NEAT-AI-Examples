@@ -44,8 +44,7 @@ export interface HoldoutScores {
 }
 
 /** Timeline chart path — hold-out score vs cumulative wall-clock. */
-export const MULTI_RUN_TIMELINE_SVG_PATH =
-  "docs/screenshots/mnist_classification/timeline.svg";
+export const MULTI_RUN_TIMELINE_SVG_PATH = "docs/screenshots/mnist_classification/timeline.svg";
 
 /** Build a multi-run milestone from one exploration phase. */
 export function phaseResultToMultiRunSample(
@@ -71,11 +70,13 @@ export function phaseResultToMultiRunSample(
 export async function wipeRecordedEvolution(baseDir = "docs"): Promise<void> {
   await wipeMultiRunState(EXAMPLE_SLUG, baseDir);
   await wipeCampaignRecord(EXAMPLE_SLUG, baseDir);
-  for (const path of [
-    RUN_SUMMARY_DOCS_PATH,
-    SCREENSHOT_PATH,
-    join(baseDir, "data", EXAMPLE_SLUG, "run_summary.json"),
-  ]) {
+  for (
+    const path of [
+      RUN_SUMMARY_DOCS_PATH,
+      SCREENSHOT_PATH,
+      join(baseDir, "data", EXAMPLE_SLUG, "run_summary.json"),
+    ]
+  ) {
     try {
       await Deno.remove(path);
     } catch (err) {

@@ -4,7 +4,13 @@
  * "What" tests only — deterministic inputs, observable outputs.
  */
 
-import { assert, assertAlmostEquals, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertGreater,
+  assertGreaterOrEqual,
+} from "@std/assert";
 import { Creature } from "@stsoftware/neat-ai";
 
 import { CLASS_COUNT, type DigitSample, FEATURE_COUNT } from "./data.ts";

@@ -175,9 +175,7 @@ export function structureSampleRatesForCalibration(
     ? 1
     : Math.min(1, targetMsPerGen / measuredMsPerGenAtFullData);
   const rates = STRUCTURE_SAMPLE_LADDER.map((templateRate) =>
-    scale >= 1
-      ? templateRate
-      : Math.max(0.001, (scale * templateRate) / 0.15)
+    scale >= 1 ? templateRate : Math.max(0.001, (scale * templateRate) / 0.15)
   ) as [number, number, number, number];
   return { rates, scale };
 }
@@ -311,8 +309,7 @@ export function buildExplorationLoopPhases(options?: {
  * Training fitness uses subsamples during structure phases;
  * {@link evaluateOnHoldout} always scores the full validation + test sets.
  */
-export const DEFAULT_EXPLORATION_PHASES: readonly ExplorationPhase[] =
-  buildExplorationLoopPhases();
+export const DEFAULT_EXPLORATION_PHASES: readonly ExplorationPhase[] = buildExplorationLoopPhases();
 
 /** Squash candidates for the intelligent-design pass (one scan each). */
 export const DEFAULT_SQUASH_CANDIDATES = ["GELU", "Swish", "LeakyReLU", "Mish"] as const;
@@ -547,7 +544,9 @@ export async function runExplorationCampaign(
           `\n📏 Calibrating on full training data (target ${TARGET_MS_PER_GENERATION} ms/generation)…`,
         );
         console.log(
-          `   Training binary ≈${(options.trainingRecords * (FEATURE_COUNT + CLASS_COUNT) * 4 / 1024 / 1024).toFixed(0)} MiB ` +
+          `   Training binary ≈${
+            (options.trainingRecords * (FEATURE_COUNT + CLASS_COUNT) * 4 / 1024 / 1024).toFixed(0)
+          } MiB ` +
             `(${options.trainingRecords.toLocaleString()} records).`,
         );
         const calibration = await calibrateTrainingSampleRate({
@@ -588,7 +587,9 @@ export async function runExplorationCampaign(
           structureSampleRates = saved.sampleRates;
           console.log(
             `📏 Reusing calibration: ≈${(saved.msPerGeneration / 1000).toFixed(2)} s/gen at 100% ` +
-              `(structure ladder ${saved.sampleRates.map((r) => `${(r * 100).toFixed(2)}%`).join(", ")}).`,
+              `(structure ladder ${
+                saved.sampleRates.map((r) => `${(r * 100).toFixed(2)}%`).join(", ")
+              }).`,
           );
         }
       }
@@ -795,6 +796,8 @@ if (import.meta.main) {
       `${result.champion.synapses.length} synapses`,
   );
   console.log(`   Phases this invocation: ${result.phaseRecords.length}`);
-  console.log("   Charts: docs/screenshots/mnist_classification/{milestones,complexity,timeline}.svg");
+  console.log(
+    "   Charts: docs/screenshots/mnist_classification/{milestones,complexity,timeline}.svg",
+  );
   if (result.squashImproved) console.log("   Intelligent design: improvements applied");
 }
