@@ -1,0 +1,88 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.863365689771191,
+      "squash": "Mish"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": 0.9071924756495674,
+      "squash": "Swish"
+    },
+    {
+      "type": "output",
+      "uuid": "output-2",
+      "bias": 0.6154395000144014,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-3",
+      "bias": -0.6305448000147549,
+      "squash": "Swish"
+    },
+    {
+      "type": "output",
+      "uuid": "output-4",
+      "bias": -0.8938961399862485,
+      "squash": "LogSigmoid"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.6953117001034846,
+      "fromUUID": "input-4",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.8748424610890817,
+      "fromUUID": "input-5",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.153726,
+      "fromUUID": "input-5",
+      "toUUID": "output-4"
+    },
+    {
+      "weight": -0.28674248412072234,
+      "fromUUID": "input-7",
+      "toUUID": "output-3"
+    },
+    {
+      "weight": -0.9469820877495555,
+      "fromUUID": "input-10",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": -0.994349803330934,
+      "fromUUID": "input-12",
+      "toUUID": "output-1"
+    }
+  ],
+  "input": 13,
+  "output": 5,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0.054341963322545817"
+    },
+    {
+      "name": "score",
+      "value": "0.9456579766774542"
+    },
+    {
+      "name": "trialRewards",
+      "value": "-0.054341963322545817"
+    },
+    {
+      "name": "meanReward",
+      "value": "-0.054341963322545817"
+    }
+  ]
+}

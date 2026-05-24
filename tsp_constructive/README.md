@@ -83,10 +83,10 @@ mean a longer (worse) tour. The agent's `(dx, dy)` observation channels use plai
 
 ### 🎯 Achieved Ratio
 
-| Instance    | Published optimum | Achieved tour length | Score (optimum / length) | Notes                                        |
-| ----------- | ----------------: | -------------------: | -----------------------: | -------------------------------------------- |
-| `burma14`   |             3,323 |                3,588 |                    0.926 | 2-minute single-run from random noise        |
-| `ulysses22` |             7,013 |                  TBD |                      TBD | run `--instance=ulysses22` for fresh numbers |
+| Instance    | Published optimum | Achieved tour length | Score (optimum / length) | Notes                                 |
+| ----------- | ----------------: | -------------------: | -----------------------: | ------------------------------------- |
+| `burma14`   |             3,323 |                3,588 |                    0.926 | 2-minute single-run from random noise |
+| `ulysses22` |             7,013 |                7,416 |                    0.946 | 5-minute single-run from random noise |
 
 The achieved ratio is well within the 10% acceptance envelope (`>= 0.909`) and improves further when
 multiple runs are stacked via the multi-run resume flow.
