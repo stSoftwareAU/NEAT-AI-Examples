@@ -22,7 +22,7 @@
     "jsr:@std/testing@1.0.18": "1.0.18",
     "jsr:@std/uuid@1.1.1": "1.1.1",
     "jsr:@std/yaml@1.1.0": "1.1.0",
-    "jsr:@stsoftware/neat-ai@5.0.32": "5.0.32",
+    "jsr:@stsoftware/neat-ai@5.0.34": "5.0.34",
     "jsr:@stsoftware/tags@1.0.13": "1.0.13"
   },
   "jsr": {
@@ -95,8 +95,8 @@
     "@std/yaml@1.1.0": {
       "integrity": "fc1c5c63e05c4c5eb6118355f557958035d41940d6c29d35b306ef7155d6edb0"
     },
-    "@stsoftware/neat-ai@5.0.32": {
-      "integrity": "41785d49deeea746dd5ecd928c12d8dead26852f4518e02488d2d4d70450ba7f",
+    "@stsoftware/neat-ai@5.0.34": {
+      "integrity": "2a35059b51a9bc0b27fbb4e7a1a33ca6711e543d09d8837c1f132eb55a7939de",
       "dependencies": [
         "jsr:@std/assert@1.0.19",
         "jsr:@std/bytes@1.0.6",
@@ -128,7 +128,7 @@
       "jsr:@std/testing@1.0.18",
       "jsr:@std/uuid@1.1.1",
       "jsr:@std/yaml@1.1.0",
-      "jsr:@stsoftware/neat-ai@5.0.32",
+      "jsr:@stsoftware/neat-ai@5.0.34",
       "jsr:@stsoftware/tags@1.0.13"
     ]
   }
