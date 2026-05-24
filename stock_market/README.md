@@ -165,6 +165,92 @@ Artefacts:
   (`renderMultiRunComplexityChartSVG` from
   [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
+## 🧭 GRQ-Style Exploration Campaign (issue #476)
+
+The standard `run.sh` invocation evolves the full training set with a single set of NEAT options.
+That works when the task is well understood and a single sensible schedule converges quickly. For
+the "unknown problem" narrative — when you do not yet know how much topology the task needs — issue
+[#476](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/476) wires a second runner that
+deliberately separates **structure discovery** from **weight polishing**, mirroring the GRQ-style
+sampler pattern.
+
+```bash
+# Tiny smoke test — finishes in under a minute on a developer machine.
+./stock_market/exploration_campaign.sh --fast
+
+# Full campaign — runs the structure → polish schedule on the real dataset.
+./stock_market/exploration_campaign.sh
+
+# Also run scanForSquashImprovements on the polished champion.
+./stock_market/exploration_campaign.sh --squash-scan
+
+# Promote the resulting champion + summary to docs/data/ (otherwise the
+# artefacts stay under the hidden working dir).
+./stock_market/exploration_campaign.sh --promote
+```
+
+```mermaid
+flowchart LR
+    SEED["🌱 new Creature(10, 1)<br/>uniform-random seed"]
+    S1["🪵 Structure phase 1<br/>sampleRate=0.05<br/>costOfGrowth=1e-6"]
+    S2["🪵 Structure phase 2<br/>sampleRate=0.10<br/>costOfGrowth=1e-6"]
+    S3["🪵 Structure phase 3<br/>sampleRate=0.15<br/>costOfGrowth=1e-6"]
+    POL["✨ Polish phase<br/>sampleRate=1<br/>costOfGrowth=0"]
+    SQ["🧪 Optional squash scan<br/>(scanForSquashImprovements)"]
+    SCORE["🎯 Honest scoring<br/>full train / val / test<br/>after every phase"]
+    WORK["🗂️ .synthetic-stock/exploration/<br/>(hidden, gitignored)"]
+    PROMOTE["🚚 docs/data/stock_market/exploration/<br/>(only on --promote)"]
+
+    SEED --> S1 --> S2 --> S3 --> POL --> SQ
+    POL --> SCORE
+    S1 --> SCORE
+    S2 --> SCORE
+    S3 --> SCORE
+    SQ --> SCORE
+    SCORE --> WORK
+    WORK -. --promote .-> PROMOTE
+
+    style SEED fill:#bd10e0,stroke:#333,color:#fff
+    style S1 fill:#e67e22,stroke:#333,color:#fff
+    style S2 fill:#e67e22,stroke:#333,color:#fff
+    style S3 fill:#e67e22,stroke:#333,color:#fff
+    style POL fill:#1abc9c,stroke:#333,color:#fff
+    style SQ fill:#9b59b6,stroke:#333,color:#fff
+    style SCORE fill:#f5a623,stroke:#333,color:#fff
+    style WORK fill:#7ed321,stroke:#333,color:#fff
+    style PROMOTE fill:#4a90d9,stroke:#333,color:#fff
+```
+
+What each piece does:
+
+- **Structure phases.** Three short bursts that subsample the training set heavily
+  (`trainingSampleRate` 5 → 10 → 15%) and pay a very small but positive `costOfGrowth`. Many
+  generations land per wall-clock minute because each generation's fitness eval is cheap, and the
+  cost term keeps NEAT-AI biased toward genuinely useful add-neuron / add-synapse moves.
+- **Polish phase.** Full training set (`trainingSampleRate = 1`) with `costOfGrowth = 0`, so the
+  remaining wall-clock is spent on weight and bias tuning rather than topology growth.
+- **Optional intelligent design (`--squash-scan`).** Runs `scanForSquashImprovements` and
+  `combineImprovements` on the polished champion — useful when activation function choice matters.
+- **Honest scoring.** Subsampling only affects training fitness. After every phase the champion is
+  evaluated on the **full** train, validation, and test windows using `directionalAccuracy` and
+  `balancedDirectionalAccuracy`, so the recorded series is apples-to-apples across phases.
+- **Hidden working state.** Every artefact (per-phase records, `champion.json`, `summary.json`,
+  optional `squash_scan.json`) lands under `.synthetic-stock/exploration/`. The directory is
+  gitignored — exploration runs never pollute the working tree.
+- **Explicit promote.** Pass `--promote` to copy the champion and summary into
+  `docs/data/stock_market/exploration/`. Without that flag the canonical artefacts stay untouched,
+  so a casual local run cannot silently overwrite documented numbers.
+
+The campaign deliberately starts from `new Creature(WINDOW_SIZE, 1)` every time — no warm start,
+consistent with the project-wide
+[no-warm-starts](../AGENTS.md#-no-warm-starts--evolution-must-start-from-random-noise) policy.
+
+The pattern lives in [`stock_market/exploration_campaign.ts`](exploration_campaign.ts); the CLI
+surface and shell wrapper sit in [`exploration_campaign_cli.ts`](exploration_campaign_cli.ts) and
+[`exploration_campaign.sh`](exploration_campaign.sh). When a second in-scope example adopts the
+pipeline and the duplication exceeds ~100 lines, the orchestrator will move to `common/` (acceptance
+criterion from issue #476).
+
 ## Evolution Progress (Multi-Run)
 
 Per issue [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) NEAT-AI surfaces only
