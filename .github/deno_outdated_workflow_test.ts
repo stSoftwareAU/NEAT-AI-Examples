@@ -156,6 +156,10 @@ Deno.test("deno-outdated workflow — re-dispatches required checks after a bump
     bumpRun.includes('echo "pushed=true"') && bumpRun.includes('echo "pushed=false"'),
     "bump step must record whether a push occurred",
   );
+  assert(
+    bumpRun.includes("git add deno.json deno.lock"),
+    "bump step must commit both deno.json and deno.lock (issue #418)",
+  );
 
   const redispatch = steps.find((s) =>
     typeof s.run === "string" && (s.run as string).includes("gh workflow run")
