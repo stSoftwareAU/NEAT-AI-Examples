@@ -195,5 +195,38 @@
   "runIndex": 65,
   "cumulativeGen": 1110,
   "cumulativeWallClockMs": 11902692
+ },
+ {
+  "runGen": 165,
+  "bestScore": 0.4302,
+  "error": 0.5698,
+  "neurons": 794,
+  "synapses": 7852,
+  "generationWallClockMs": 900988,
+  "runIndex": 66,
+  "cumulativeGen": 1275,
+  "cumulativeWallClockMs": 12803680
+ },
+ {
+  "runGen": 150,
+  "bestScore": 0.4361333333333334,
+  "error": 0.5638666666666666,
+  "neurons": 794,
+  "synapses": 7856,
+  "generationWallClockMs": 920037,
+  "runIndex": 67,
+  "cumulativeGen": 1425,
+  "cumulativeWallClockMs": 13723717
+ },
+ {
+  "runGen": 16,
+  "bestScore": 0.44194999999999995,
+  "error": 0.55805,
+  "neurons": 794,
+  "synapses": 7856,
+  "generationWallClockMs": 952222,
+  "runIndex": 68,
+  "cumulativeGen": 1441,
+  "cumulativeWallClockMs": 14675939
  }
 ]
