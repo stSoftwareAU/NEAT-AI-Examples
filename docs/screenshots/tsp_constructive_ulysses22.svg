@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" width="480" height="480" role="img" aria-label="TSP-constructive champion tour for ulysses22">
+  <title>TSP-constructive — ulysses22 champion tour</title>
+  <desc>Deterministic SVG of the champion tour. Cities are dots; the champion tour is the orange polyline; the optional dashed underlay (when present) is the reference tour.</desc>
+  <rect width="480" height="480" fill="#0d1b2a"/>
+  <rect x="24" y="56" width="432" height="400" fill="#1b263b"/>
+  <polyline class="optimal" points="84.71,129.09 75.53,128.83 99.00,140.06 76.17,101.79 59.46,94.65 57.29,96.18 82.80,78.83 101.68,56.00 114.31,66.59 83.57,193.76 87.65,196.56 75.40,196.05 49.64,206.89 76.04,234.06 87.01,222.33 112.78,216.46 111.37,209.06 111.88,208.04 122.09,223.09 122.85,273.47 24.00,255.11 57.16,456.00 84.71,129.09" fill="none" stroke="#9ec5fe" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.7"/>
+  <polyline class="champion" points="84.71,129.09 75.53,128.83 57.29,96.18 59.46,94.65 76.17,101.79 82.80,78.83 101.68,56.00 114.31,66.59 99.00,140.06 87.65,196.56 83.57,193.76 75.40,196.05 49.64,206.89 76.04,234.06 87.01,222.33 112.78,216.46 111.37,209.06 111.88,208.04 122.09,223.09 122.85,273.47 57.16,456.00 24.00,255.11 84.71,129.09" fill="none" stroke="#ffb703" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <g class="cities">
+    <circle cx="84.71" cy="129.09" r="4" fill="#e0e1dd"/>
+    <circle cx="101.68" cy="56.00" r="4" fill="#e0e1dd"/>
+    <circle cx="114.31" cy="66.59" r="4" fill="#e0e1dd"/>
+    <circle cx="59.46" cy="94.65" r="4" fill="#e0e1dd"/>
+    <circle cx="24.00" cy="255.11" r="4" fill="#e0e1dd"/>
+    <circle cx="76.04" cy="234.06" r="4" fill="#e0e1dd"/>
+    <circle cx="87.01" cy="222.33" r="4" fill="#e0e1dd"/>
+    <circle cx="75.53" cy="128.83" r="4" fill="#e0e1dd"/>
+    <circle cx="122.85" cy="273.47" r="4" fill="#e0e1dd"/>
+    <circle cx="122.09" cy="223.09" r="4" fill="#e0e1dd"/>
+    <circle cx="57.16" cy="456.00" r="4" fill="#e0e1dd"/>
+    <circle cx="87.65" cy="196.56" r="4" fill="#e0e1dd"/>
+    <circle cx="83.57" cy="193.76" r="4" fill="#e0e1dd"/>
+    <circle cx="75.40" cy="196.05" r="4" fill="#e0e1dd"/>
+    <circle cx="49.64" cy="206.89" r="4" fill="#e0e1dd"/>
+    <circle cx="99.00" cy="140.06" r="4" fill="#e0e1dd"/>
+    <circle cx="82.80" cy="78.83" r="4" fill="#e0e1dd"/>
+    <circle cx="57.29" cy="96.18" r="4" fill="#e0e1dd"/>
+    <circle cx="112.78" cy="216.46" r="4" fill="#e0e1dd"/>
+    <circle cx="111.37" cy="209.06" r="4" fill="#e0e1dd"/>
+    <circle cx="111.88" cy="208.04" r="4" fill="#e0e1dd"/>
+    <circle cx="76.17" cy="101.79" r="4" fill="#e0e1dd"/>
+  </g>
+  <text x="24" y="28" font-family="monospace" font-size="14" fill="#f1faee">📍 TSP-constructive · ulysses22</text>
+  <text x="24" y="46" font-family="monospace" font-size="11" fill="#f1faee" opacity="0.85">length=7416.00 · optimum=7013.00 · score=0.95</text>
+  <rect x="386" y="14" width="70" height="28" rx="6" fill="#1b9aaa" stroke="#0d3b66" stroke-width="1"/>
+  <text x="421" y="33" text-anchor="middle" font-family="monospace" font-size="13" fill="#f1faee">0.95</text>
+</svg>
