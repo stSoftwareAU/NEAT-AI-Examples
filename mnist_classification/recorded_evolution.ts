@@ -9,7 +9,7 @@
 
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import { type Creature, safeWriteJson } from "@stsoftware/neat-ai";
+import { safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
   appendCampaignPhase,

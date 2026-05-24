@@ -200,7 +200,6 @@ export async function calibrateTrainingSampleRate(options: {
   finalNeurons: number;
   finalSynapses: number;
 }> {
-  const probeGenerations = options.probeGenerations ?? CALIBRATION_PROBE_GENERATIONS;
   const target = options.targetMsPerGeneration ?? TARGET_MS_PER_GENERATION;
   const seedCreature = Creature.fromJSON(options.seedCreatureExport);
   const probe = await evolveMnistClassifier({
@@ -517,7 +516,7 @@ export async function runExplorationCampaign(
 
   ensureDirSync(EXPLORATION_ROOT);
 
-  let multiState = await loadMultiRunState("mnist_classification");
+  const multiState = await loadMultiRunState("mnist_classification");
   let runIndex = multiState.nextRunIndex;
   let baseCumulativeGen = multiState.lastCumulativeGen;
 
