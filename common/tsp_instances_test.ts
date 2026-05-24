@@ -60,14 +60,12 @@ Deno.test("tourLength computes the perimeter of a unit square", () => {
 });
 
 Deno.test("tourLength is invariant under tour reversal (burma14)", () => {
+  // Issue #489: this invariant is independent of the specific instance —
+  // tour reversal symmetry is a property of `tourLength` itself, not of
+  // any particular TSP problem. The duplicate `(ulysses22)` test was
+  // removed because it asserts exactly the same observable behaviour
+  // on the same equivalence class of inputs (any TSP tour).
   const { cities } = loadInstance("burma14");
-  const forward = cities.map((_, i) => i);
-  const reversed = [...forward].reverse();
-  assertAlmostEquals(tourLength(cities, forward), tourLength(cities, reversed), 1e-9);
-});
-
-Deno.test("tourLength is invariant under tour reversal (ulysses22)", () => {
-  const { cities } = loadInstance("ulysses22");
   const forward = cities.map((_, i) => i);
   const reversed = [...forward].reverse();
   assertAlmostEquals(tourLength(cities, forward), tourLength(cities, reversed), 1e-9);
