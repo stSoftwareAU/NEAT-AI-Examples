@@ -43,6 +43,19 @@ export interface MultiRunMilestone {
   meanEpisodeSteps?: number;
   /** Wall-clock duration of the generation that produced this milestone (ms). */
   generationWallClockMs: number;
+  /**
+   * Cumulative wall-clock elapsed since the campaign began, in
+   * milliseconds. Sum of every prior milestone's `generationWallClockMs`
+   * plus this sample's own. Back-filled by
+   * {@link enrichMilestonesWithCumulativeWallClock} when absent on disk.
+   */
+  cumulativeWallClockMs?: number;
+  /**
+   * Optional hold-out score in `[0, 1]` measured on the full test set
+   * after this phase (classification examples). When present, timeline
+   * charts prefer this over `1 − error`.
+   */
+  holdoutScore?: number;
 }
 
 /** Loaded multi-run state. */
@@ -128,6 +141,49 @@ function milestoneSvgPath(slug: string, baseDir: string): string {
 
 function complexitySvgPath(slug: string, baseDir: string): string {
   return join(baseDir, "screenshots", slug, "complexity.svg");
+}
+
+function timelineSvgPath(slug: string, baseDir: string): string {
+  return join(baseDir, "screenshots", slug, "timeline.svg");
+}
+
+/**
+ * Sum `generationWallClockMs` for milestones `[0..index]` inclusive.
+ * Uses stored {@link MultiRunMilestone.cumulativeWallClockMs} when present.
+ */
+export function cumulativeWallClockMsForMilestone(
+  milestone: MultiRunMilestone,
+  index: number,
+  all: readonly MultiRunMilestone[],
+): number {
+  if (milestone.cumulativeWallClockMs !== undefined) {
+    return milestone.cumulativeWallClockMs;
+  }
+  let sum = 0;
+  for (let i = 0; i <= index && i < all.length; i++) {
+    sum += all[i].generationWallClockMs;
+  }
+  return sum;
+}
+
+/** Hold-out score for timeline charts — prefers `holdoutScore`, else `1 − error`. */
+export function holdoutScoreForMilestone(milestone: MultiRunMilestone): number {
+  if (milestone.holdoutScore !== undefined) return milestone.holdoutScore;
+  return Math.max(0, Math.min(1, 1 - milestone.error));
+}
+
+/** Return a copy of milestones with `cumulativeWallClockMs` filled in. */
+export function enrichMilestonesWithCumulativeWallClock(
+  milestones: readonly MultiRunMilestone[],
+): MultiRunMilestone[] {
+  let running = 0;
+  return milestones.map((m) => {
+    running += m.generationWallClockMs;
+    return {
+      ...m,
+      cumulativeWallClockMs: m.cumulativeWallClockMs ?? running,
+    };
+  });
 }
 
 async function readJsonIfPresent<T>(path: string): Promise<T | undefined> {
@@ -216,16 +272,23 @@ export async function appendMultiRunRun(
   ) ?? [];
 
   const merged: MultiRunMilestone[] = [...existing];
+  let runningWallClock = merged.length > 0
+    ? (merged[merged.length - 1].cumulativeWallClockMs ??
+      merged.reduce((s, m) => s + m.generationWallClockMs, 0))
+    : 0;
+
   for (const s of newSamples) {
     const prevError = merged.length > 0 ? merged[merged.length - 1].error : undefined;
     const clampedError = prevError !== undefined
       ? clampSubEpsilonRegression(prevError, s.error)
       : s.error;
+    runningWallClock += s.generationWallClockMs;
     merged.push({
       ...s,
       error: clampedError,
       runIndex,
       cumulativeGen: baseCumulativeGen + s.runGen,
+      cumulativeWallClockMs: runningWallClock,
     });
   }
 
@@ -257,6 +320,7 @@ export async function wipeMultiRunState(
   await removeIfExists(milestonesPath(exampleSlug, base));
   await removeIfExists(milestoneSvgPath(exampleSlug, base));
   await removeIfExists(complexitySvgPath(exampleSlug, base));
+  await removeIfExists(timelineSvgPath(exampleSlug, base));
 }
 
 /** Parse a numeric `--name=value` argument; returns `undefined` if missing,

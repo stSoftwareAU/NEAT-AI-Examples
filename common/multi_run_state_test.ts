@@ -79,6 +79,8 @@ Deno.test("appendMultiRunRun → loadMultiRunState round trip preserves data", a
     assertEquals(state.milestones.length, 2);
     assertEquals(state.milestones[0].runIndex, 1);
     assertEquals(state.milestones[0].cumulativeGen, 1);
+    assertEquals(state.milestones[0].cumulativeWallClockMs, 100);
+    assertEquals(state.milestones[1].cumulativeWallClockMs, 100 + 1000);
     assertEquals(state.milestones[0].runGen, 1);
     assertEquals(state.milestones[1].runIndex, 1);
     assertEquals(state.milestones[1].cumulativeGen, 10);

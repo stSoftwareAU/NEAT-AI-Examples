@@ -29,7 +29,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { existsSync } from "@std/fs";
-import { Creature } from "@stsoftware/neat-ai";
+import { Creature, Costs } from "@stsoftware/neat-ai";
 import { join } from "@std/path";
 
 import { asCreatureExport } from "../common/legacy_types.ts";
@@ -56,7 +56,9 @@ import {
   evolveMnistClassifier,
   evolveResultToMultiRunSample,
   EXAMPLE_SLUG,
+  formatGenerationLogLine,
   inferStopCondition,
+  MNIST_EVOLVE_COST_NAME,
   type MnistRunSummary,
   pickGridSamples,
   predict,
@@ -109,6 +111,26 @@ function buildSyntheticIdx(
   }
   return { images: imageBuf, labels: labelBuf };
 }
+
+Deno.test("formatGenerationLogLine writes one TSV row per generation", () => {
+  const line = formatGenerationLogLine(3, {
+    generation: 7,
+    bestFitness: 0.142,
+    averageFitness: 0.118,
+    populationSize: 50,
+    elapsedMs: 12_345,
+  }, "2026-05-23T10:00:00.000Z");
+  assertEquals(line, "2026-05-23T10:00:00.000Z\t3\t7\t0.142\t0.118\t50\t12345");
+});
+
+Deno.test("MNIST_EVOLVE_COST_NAME is registered in NEAT-AI", () => {
+  assertEquals(MNIST_EVOLVE_COST_NAME, "CATEGORICAL_ERROR");
+  assertEquals(Costs.getAvailableCosts().includes(MNIST_EVOLVE_COST_NAME), true);
+  const target = new Float32Array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+  const zeros = new Float32Array(10);
+  const cost = Costs.find(MNIST_EVOLVE_COST_NAME);
+  assertEquals(cost.calculate(target, zeros), 1);
+});
 
 Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
   assertEquals(FEATURE_COUNT, 784);
@@ -686,7 +708,7 @@ Deno.test(
       const result = await evolveMnistClassifier({
         dataDir,
         timeoutMinutes: 0,
-        testCaps: { maxGenerations: 2, populationSize: 4 },
+        testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
@@ -711,7 +733,7 @@ Deno.test(
       const result = await evolveMnistClassifier({
         dataDir,
         timeoutMinutes: 0,
-        testCaps: { maxGenerations: 2, populationSize: 4 },
+        testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
       });
       assert(Number.isFinite(result.bestError));
       assert(Number.isFinite(result.bestScore));
@@ -760,7 +782,7 @@ Deno.test({
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
           timeoutMinutes: 0,
         },
       });
@@ -828,7 +850,7 @@ Deno.test({
         argv: ["--fresh"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
           timeoutMinutes: 0,
         },
       });
@@ -865,7 +887,7 @@ Deno.test({
             argv: ["--target-error=0.1"],
             baseDir: tmp,
             evolveOverrides: {
-              testCaps: { maxGenerations: 2, populationSize: 4 },
+              testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
               timeoutMinutes: 0,
             },
           }),
@@ -892,7 +914,7 @@ Deno.test({
         argv: [],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
           timeoutMinutes: 0,
         },
       });
@@ -917,7 +939,7 @@ Deno.test({
         argv: ["--timeout=7"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: { maxGenerations: 2, populationSize: 4 },
+          testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
           // Override propagates from flag → resolved options; tests skip
           // the actual backstop because NEAT-AI's FFI cleanup tripts the
           // Deno sanitizer.
