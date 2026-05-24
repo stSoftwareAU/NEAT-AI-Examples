@@ -2,10 +2,12 @@
  * Isolated reproducibility test for maze evolution.
  *
  * Spawns a fresh Deno subprocess so parallel evolveRL tests in the suite
- * cannot pollute NEAT-AI global caches. A single run with the fixed seed
- * is compared against a golden snapshot — two back-to-back subprocess
- * invocations can still diverge when other workers mutate NEAT-AI's disk
- * cache between spawns.
+ * cannot pollute NEAT-AI global WASM caches. Each run also receives a
+ * unique temporary directory as `experimentStore` so NEAT-AI cannot read
+ * creatures written by prior parallel runs — without this, the subprocess
+ * inherits the shared experiment store populated by other tests and finds
+ * a "previous experiment" that gives it a head start, diverging from the
+ * clean-state golden snapshot.
  */
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path";
@@ -65,12 +67,26 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const fixedOptions = {
-      ...DEFAULT_EVOLVE_OPTIONS,
-      iterations: 3,
-      timeoutMinutes: 1, // must be >= 1; `iterations` fires first
-    };
-    const snapshot = await evolveOnceInFreshProcess(fixedOptions);
-    assertEquals(snapshot, GOLDEN_SNAPSHOT);
+    // Use a fresh isolated experimentStore so this subprocess cannot read
+    // creatures written by other parallel evolveRL tests. Without isolation,
+    // NEAT-AI finds a "previous experiment" and achieves a better result
+    // than the clean-state golden snapshot.
+    const experimentStore = await Deno.makeTempDir({
+      prefix: "maze_repro_",
+    });
+    try {
+      const fixedOptions = {
+        ...DEFAULT_EVOLVE_OPTIONS,
+        iterations: 3,
+        timeoutMinutes: 1, // must be >= 1; `iterations` fires first
+        experimentStore,
+      };
+      const snapshot = await evolveOnceInFreshProcess(fixedOptions);
+      assertEquals(snapshot, GOLDEN_SNAPSHOT);
+    } finally {
+      await Deno.remove(experimentStore, { recursive: true }).catch(() => {
+        // Tolerable — temp dir cleanup is best-effort.
+      });
+    }
   },
 });

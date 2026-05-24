@@ -137,6 +137,14 @@ export interface EvolveOptions {
    * for a `--fresh` run).
    */
   seedCreatureExport?: CreatureExport;
+  /**
+   * Optional directory for NEAT-AI's experiment store. When supplied,
+   * `evolveRL` reads and writes creatures under this path instead of the
+   * shared default, isolating the run from prior experiments. Pass a
+   * fresh temp directory in tests to prevent disk-cache pollution from
+   * parallel evolveRL runs from tainting the golden snapshot.
+   */
+  experimentStore?: string;
 }
 
 /** Result of the evolutionary search. */
@@ -423,6 +431,9 @@ export async function evolveMazeController(
     episodesPerCreature: 1,
     statistics: true,
     threads: 1,
+    // Isolate the experiment store when the caller requests it, so the
+    // run is not influenced by creatures written by prior parallel runs.
+    experimentStore: options.experimentStore,
   };
 
   const result = await seedCreature.evolveRL(adapter, evolveOptions);
