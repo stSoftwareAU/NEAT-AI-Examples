@@ -55,10 +55,16 @@ flowchart LR
 ## Run instructions
 
 ```bash
-./tsp_two_opt/run.sh                       # burma14 (default)
-./tsp_two_opt/run.sh --instance=ulysses22  # the 22-city instance
-./tsp_two_opt/run.sh --fresh               # wipe prior multi-run state
+./tsp_two_opt/run.sh                            # burma14 (default)
+./tsp_two_opt/run.sh --instance=ulysses22       # the 22-city instance
+./tsp_two_opt/run.sh --instance=pcb442          # the 442-city PCB instance
+./tsp_two_opt/run.sh --time-seconds=60          # bounded "smoke" budget (CI)
+./tsp_two_opt/run.sh --fresh                    # wipe prior multi-run state
 ```
+
+The `--time-seconds=<N>` flag converts to `timeoutMinutes = N / 60` and overrides
+`--timeout=<minutes>` when both are supplied (smoke beats human run). When absent, behaviour is
+unchanged from the documented default.
 
 A complete run finishes in roughly five minutes wall-clock on a commodity laptop for the `burma14`
 default. The CI quick-mode (used by `./quality.sh`) caps the run via `TSP_TWO_OPT_QUICK=1` and
