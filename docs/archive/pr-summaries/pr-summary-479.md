@@ -7,7 +7,7 @@ layout. Ran a fresh 5-minute evolution against the `ulysses22` TSPLIB instance v
 SVG, milestones SVG, champion JSON, and merged milestone history, and filled in the previously
 `TBD` `ulysses22` row in the "Achieved Ratio" table with the run's actual numbers. Closes #479.
 
-**Run results**
+### Run results
 
 - Champion tour length: **7,416** (GEO km)
 - Score (`optimum / length` = `7013 / 7416`): **0.946**
