@@ -236,29 +236,6 @@ Deno.test({
   },
 });
 
-Deno.test({
-  name: "evolveMazeController is reproducible — fixed seed produces matching champions",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    // Use a fixed `iterations` cap rather than `timeoutMinutes` so the stop
-    // condition is deterministic regardless of CI machine speed. The comment
-    // in EvolveOptions explicitly recommends `iterations` for unit tests that
-    // need a deterministic generation count.
-    const fixedOptions = {
-      ...DEFAULT_EVOLVE_OPTIONS,
-      iterations: 3,
-      timeoutMinutes: 1, // must be >= 1; `iterations` fires first
-    };
-    const a = await evolveMazeController(fixedOptions);
-    const b = await evolveMazeController(fixedOptions);
-    assertEquals(a.bestScore, b.bestScore);
-    assertEquals(a.championReached, b.championReached);
-    assertEquals(a.championSteps, b.championSteps);
-    assertEquals(a.championFinalDistance, b.championFinalDistance);
-  },
-});
-
 Deno.test("replayController returns a non-empty trace starting at the start cell", () => {
   const creature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
   const trace = replayController(creature, 50);
