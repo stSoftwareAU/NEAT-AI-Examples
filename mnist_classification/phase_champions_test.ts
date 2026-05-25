@@ -43,7 +43,12 @@ Deno.test("elitismForArchivedChampions reserves slots for archived sample-level 
 
 Deno.test("savePhaseChampion round-trips and loadPriorStructureChampions finds earlier rungs", async () => {
   const exportA = { input: 784, output: 10, neurons: [], synapses: [] };
-  const exportB = { input: 784, output: 10, neurons: [{ uuid: "n1" }], synapses: [] };
+  const exportB = {
+    input: 784,
+    output: 10,
+    neurons: [{ uuid: "n1", type: "hidden" as const, bias: 0 }],
+    synapses: [],
+  };
   try {
     await savePhaseChampion("structure-1", exportA);
     await savePhaseChampion("structure-2", exportB);
