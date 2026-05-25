@@ -594,10 +594,7 @@ export interface MnistEvolveResult {
 }
 
 /** Cross-process lock so parallel `deno test` workers do not share NEAT-AI global state. */
-const EVOLVE_DIR_LOCK_PATH = join(
-  Deno.env.get("TMPDIR") ?? Deno.env.get("TEMP") ?? "/tmp",
-  "neat-ai-examples-evolve-dir.lock",
-);
+const EVOLVE_DIR_LOCK_PATH = join(".synthetic-mnist", "evolve-dir.lock");
 
 async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
   await using lockFile = await Deno.open(EVOLVE_DIR_LOCK_PATH, {
