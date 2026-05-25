@@ -10,9 +10,9 @@ import { assert, assertEquals, assertGreaterOrEqual } from "@std/assert";
 import { join } from "@std/path";
 import {
   DEFAULT_EVOLVE_OPTIONS,
+  type EvolveResult,
   MAX_STEPS,
   SOLVED_THRESHOLD,
-  type EvolveResult,
 } from "./maze_navigation.ts";
 
 const REPO_ROOT = new URL("..", import.meta.url).pathname;
@@ -58,7 +58,10 @@ async function evolveOnceInFreshProcess(
 }
 
 function assertValidEvolveSnapshot(snapshot: EvolveSnapshot): void {
-  assert(Number.isFinite(snapshot.bestScore), `expected finite bestScore, got ${snapshot.bestScore}`);
+  assert(
+    Number.isFinite(snapshot.bestScore),
+    `expected finite bestScore, got ${snapshot.bestScore}`,
+  );
   assertGreaterOrEqual(snapshot.championSteps, 1);
   assertGreaterOrEqual(snapshot.championFinalDistance, 0);
   assert(snapshot.championSteps <= MAX_STEPS);
