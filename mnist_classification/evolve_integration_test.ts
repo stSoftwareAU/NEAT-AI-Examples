@@ -34,6 +34,7 @@ import {
   parseIdxLabels,
 } from "./data.ts";
 import {
+  buildMnistHiddenReluSeed,
   DEFAULT_MULTI_RUN_TARGET_ERROR,
   evolveMnistClassifier,
   evolveResultToMultiRunSample,
@@ -116,6 +117,20 @@ const EVOLVE_DIR_TEST_CAPS = {
   populationSize: 8,
   disableGenerationLog: true,
 } as const;
+
+/**
+ * Smaller population cap for the resume-flow test.
+ *
+ * The resume test runs as the third filter in a serial CI loop. By that point
+ * the OS has less free RAM from prior processes, so the MemoryMonitor hits
+ * Critical immediately. Halving the population reduces per-generation WASM
+ * compilation cycles enough to keep scoring reliable under that pressure.
+ */
+const EVOLVE_DIR_RESUME_CAPS = {
+  ...EVOLVE_DIR_TEST_CAPS,
+  populationSize: 4,
+} as const;
+
 const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
 const EVOLVE_DIR_MAX_ATTEMPTS = 5;
 const EVOLVE_DIR_BASE_SEED = 424242;
@@ -135,6 +150,13 @@ const EVOLVE_DIR_FRESH_OPTIONS = {
 function testCapsForAttempt(attempt: number) {
   return {
     ...EVOLVE_DIR_TEST_CAPS,
+    seed: EVOLVE_DIR_BASE_SEED + attempt,
+  };
+}
+
+function resumeTestCapsForAttempt(attempt: number) {
+  return {
+    ...EVOLVE_DIR_RESUME_CAPS,
     seed: EVOLVE_DIR_BASE_SEED + attempt,
   };
 }
@@ -161,6 +183,7 @@ async function evolveMnistClassifierWithRetry(
 async function runMultiRunMnistWithRetry(
   options: Parameters<typeof runMultiRunMnist>[0],
   prepareState?: () => Promise<void>,
+  capsForAttempt: (attempt: number) => { maxGenerations?: number; populationSize?: number; disableGenerationLog?: boolean; seed?: number } = testCapsForAttempt,
 ) {
   let lastError: unknown;
   for (let attempt = 0; attempt < EVOLVE_DIR_MAX_ATTEMPTS; attempt++) {
@@ -172,7 +195,7 @@ async function runMultiRunMnistWithRetry(
         ...options,
         evolveOverrides: {
           ...options.evolveOverrides,
-          testCaps: testCapsForAttempt(attempt),
+          testCaps: capsForAttempt(attempt),
         },
       });
     } catch (error) {
@@ -254,7 +277,13 @@ Deno.test({
     const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
-      const prior = new Creature(FEATURE_COUNT, CLASS_COUNT);
+      // Use a tiny hidden-layer seed (784→4ReLU→10) so the prior creature has
+      // concrete random weights that survive the JSON round-trip and produce
+      // diverse CATEGORICAL_ERROR scores across the mutated population.
+      // A plain `new Creature(784, 10)` with no synapses causes all population
+      // members to score identically after round-trip, preventing the NEAT
+      // library from identifying a fittest creature (#509).
+      const prior = buildMnistHiddenReluSeed([4]);
 
       const seedResumeState = async () => {
         await Deno.remove(tmp, { recursive: true });
@@ -273,8 +302,15 @@ Deno.test({
         dataDir,
         argv: [],
         baseDir: tmp,
-        evolveOverrides: EVOLVE_DIR_TEST_OVERRIDES,
-      }, seedResumeState);
+        evolveOverrides: {
+          ...EVOLVE_DIR_TEST_OVERRIDES,
+          // Use smaller population for this test: it runs third in the serial
+          // CI filter loop and the OS has less free RAM by that point.
+          // Halving the population reduces per-generation WASM compilation
+          // cycles and keeps scoring reliable under memory pressure (#509).
+          testCaps: { ...EVOLVE_DIR_RESUME_CAPS, seed: EVOLVE_DIR_BASE_SEED },
+        },
+      }, seedResumeState, resumeTestCapsForAttempt);
 
       assertEquals(outcome.resumed, true);
       assertEquals(outcome.runIndex, 2);
