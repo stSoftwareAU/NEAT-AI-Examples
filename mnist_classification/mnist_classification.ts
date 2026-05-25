@@ -22,12 +22,13 @@
 
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import { dirname, join } from "@std/path";
+import { dirname, fromFileUrl, join } from "@std/path";
 import {
   Creature,
   type CreatureExport,
   type NeatOptions,
   safeWriteJson,
+  setMaxCachedWasmCreatureActivations,
   type TrainingEvent,
 } from "@stsoftware/neat-ai";
 
@@ -81,6 +82,8 @@ export function resolveMnistHiddenLayerSizes(
 
 /** Working-directory root for this example. */
 export const MNIST_ROOT = ".synthetic-mnist";
+
+const MNIST_MODULE_DIR = fromFileUrl(new URL(".", import.meta.url));
 
 /** Per-generation TSV log (`onTrainingEvent` / `generation_complete`). */
 export const MNIST_GENERATION_LOG_PATH = join(MNIST_ROOT, "overnight", "generations.tsv");
@@ -573,6 +576,16 @@ export interface MnistEvolveOptions {
   mutationRate?: number;
   /** Mutation operators per mutated creature (library default when omitted). */
   mutationAmount?: number;
+  /**
+   * Additional creature exports seeded into the initial population (NEAT-AI
+   * `creatures`). Used by the exploration campaign to inject fittest
+   * champions from earlier training-sample levels before a full-data pass.
+   */
+  populationSeedExports?: readonly CreatureExport[];
+  /** NEAT-AI `verbose` logging (defaults to true outside unit-test caps). */
+  verbose?: boolean;
+  /** NEAT-AI elitism override (derived from archive count when omitted). */
+  elitism?: number;
 }
 
 /** Result of {@link evolveMnistClassifier}. */
@@ -594,7 +607,9 @@ export interface MnistEvolveResult {
 }
 
 /** Cross-process lock so parallel `deno test` workers do not share NEAT-AI global state. */
-const EVOLVE_DIR_LOCK_PATH = join(MNIST_ROOT, "evolve-dir.lock");
+const EVOLVE_DIR_LOCK_PATH = join(MNIST_MODULE_DIR, MNIST_ROOT, "evolve-dir.lock");
+/** Serialises all unit-test `evolveDir` calls (shared NEAT/WASM globals between cases). */
+const TEST_EVOLVE_DIR_LOCK_PATH = join(MNIST_MODULE_DIR, MNIST_ROOT, "evolve-dir-test.lock");
 
 async function withEvolveDirLock<T>(
   lockPath: string,
@@ -625,18 +640,12 @@ async function withEvolveDirLock<T>(
 export async function evolveMnistClassifier(
   options: MnistEvolveOptions,
 ): Promise<MnistEvolveResult> {
-  const lockPath = options.testCaps
-    ? join(options.dataDir, ".evolve-dir-test.lock")
-    : EVOLVE_DIR_LOCK_PATH;
+  const lockPath = options.testCaps ? TEST_EVOLVE_DIR_LOCK_PATH : EVOLVE_DIR_LOCK_PATH;
   return await withEvolveDirLock(lockPath, async () => {
     if (options.testCaps) {
-      for (const key of ["NEAT_AI_RUST_SCORER_ENABLED", "NEAT_AI_RUST_SCORER_BINARY_PATH"]) {
-        try {
-          Deno.env.delete(key);
-        } catch {
-          // Permission denied in some sandboxes — ignore.
-        }
-      }
+      // Trim WASM caches so a long test file does not leave prior cases in a
+      // critical heap state that makes the next evolveDir elitist score falsy.
+      setMaxCachedWasmCreatureActivations(1);
     }
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
@@ -646,14 +655,22 @@ export async function evolveMnistClassifier(
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;
 
+    const populationSeedExports = options.populationSeedExports ?? [];
+    const elitism = options.elitism ??
+      (populationSeedExports.length > 0
+        ? Math.min(10, Math.max(2, populationSeedExports.length + 1))
+        : 1);
+
     const neatOptions: NeatOptions = {
       costName: MNIST_EVOLVE_COST_NAME,
       targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
       trainingSampleRate: options.trainingSampleRate ?? 1,
       costOfGrowth: options.costOfGrowth ?? 0,
-      verbose: false,
-      log: 0,
+      verbose: options.verbose ?? options.testCaps === undefined,
+      log: options.testCaps ? 0 : 1,
       threads: 1,
+      elitism,
+      ...(populationSeedExports.length > 0 ? { creatures: [...populationSeedExports] } : {}),
       ...(options.testCaps ? { seed: 424242 } : {}),
       ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
       ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),

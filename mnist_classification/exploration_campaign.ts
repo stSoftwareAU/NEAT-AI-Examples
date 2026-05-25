@@ -60,6 +60,12 @@ import {
   persistMnistRecordedPhase,
   wipeRecordedEvolution,
 } from "./recorded_evolution.ts";
+import {
+  elitismForArchivedChampions,
+  loadPriorStructureChampions,
+  priorStructurePhaseNames,
+  savePhaseChampion,
+} from "./phase_champions.ts";
 
 /** Hidden working directory for exploration state (never checked in). */
 export const EXPLORATION_ROOT = join(MNIST_ROOT, "exploration");
@@ -614,6 +620,14 @@ export async function runExplorationCampaign(
   const campaignFresh = options.fresh === true;
 
   for (const phase of phases) {
+    const populationSeedExports = await loadPriorStructureChampions(phase.name);
+    if (populationSeedExports.length > 0) {
+      console.log(
+        `   📦 Seeding population with ${populationSeedExports.length} archived champion(s) ` +
+          `from prior sample levels (${priorStructurePhaseNames(phase.name).join(", ")}).`,
+      );
+    }
+
     console.log(
       `\n🧬 Phase "${phase.name}": trainingSampleRate=${phase.trainingSampleRate}, ` +
         `costOfGrowth=${phase.costOfGrowth}, timeout=${phase.timeoutMinutes}m` +
@@ -631,10 +645,17 @@ export async function runExplorationCampaign(
       maxGenerations: phase.maxGenerations,
       generationLogPath: join(EXPLORATION_ROOT, "generations.tsv"),
       runIndex,
+      populationSeedExports,
+      elitism: elitismForArchivedChampions(populationSeedExports.length),
+      verbose: true,
     });
 
     creature = evolveResult.champion;
     await saveExplorationChampion(creature);
+
+    if (phase.name.startsWith("structure") || phase.name.startsWith("polish")) {
+      await savePhaseChampion(phase.name, creature.exportJSON());
+    }
 
     const holdout = evaluateOnHoldout(creature, options.split);
     const campaign = await persistMnistRecordedPhase({

@@ -82,6 +82,9 @@ ensure_neat_ai_native_scorer() {
   repo_root="$(cd -P "${common_dir}/.." && pwd -P)"
   parent_dir="$(cd -P "${repo_root}/.." && pwd -P)"
   scorer_repo="${parent_dir}/NEAT-AI-scorer"
+  if [[ ! -d "${scorer_repo}" ]]; then
+    scorer_repo="${repo_root}/NEAT-AI-scorer"
+  fi
 
   maybe_load_rust_environment
 
