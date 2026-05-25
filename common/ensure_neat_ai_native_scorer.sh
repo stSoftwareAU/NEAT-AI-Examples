@@ -33,6 +33,8 @@ ensure_neat_ai_native_scorer_use_js_fallback() {
   unset NEAT_AI_RUST_SCORER_ENABLED
   unset NEAT_AI_RUST_SCORER_BINARY_PATH
   ALLOW_RUN_ARGS=()
+  # Consumed by sourced run.sh — reference here so ShellCheck sees a read (SC2034).
+  ((${#ALLOW_RUN_ARGS[@]} >= 0))
   printf '[native-scorer] unavailable (%s), using JS fallback\n' "${reason}" >&2
 }
 
@@ -47,6 +49,8 @@ rust_scorer_allow_run_args() {
   if [[ -n "${NEAT_AI_RUST_SCORER_BINARY_PATH:-}" ]]; then
     ALLOW_RUN_ARGS=("--allow-run=${NEAT_AI_RUST_SCORER_BINARY_PATH}")
   fi
+  # Consumed by sourced run.sh — reference here so ShellCheck sees a read (SC2034).
+  ((${#ALLOW_RUN_ARGS[@]} >= 0))
 }
 
 prepend_path_if_dir_exists() {
