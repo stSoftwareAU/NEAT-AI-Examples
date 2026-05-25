@@ -42,6 +42,10 @@ run_example() {
 # Like run_example but invokes the runner with environment overrides,
 # used for the lunar-lander "quick" CI budget so the section finishes
 # in seconds without overwriting the canonical docs artefacts.
+#
+# The `script` argument may include positional arguments (e.g.
+# `./tsp_two_opt/run.sh --instance=pcb442 --time-seconds=60`) — they are
+# split on whitespace before invocation.
 run_example_with_env() {
   local name="$1"
   local script="$2"
@@ -51,7 +55,12 @@ run_example_with_env() {
   echo "Running: ${name} (${env_assignment})"
   echo "----------------------------------------"
 
-  if env "${env_assignment}" "${script}"; then
+  # Split the script string on whitespace so callers may pass positional
+  # arguments alongside the runner path. No quoting is supported.
+  # shellcheck disable=SC2206
+  local cmd=(${script})
+
+  if env "${env_assignment}" "${cmd[@]}"; then
     echo ""
     echo "SUCCESS: ${name}"
     echo ""
@@ -268,6 +277,19 @@ run_example_with_env "MNIST Handwritten-Digit Classification Example" "./mnist_c
 # canonical docs SVG. A direct `./tsp_two_opt/run.sh` invocation still
 # uses the realistic 5-minute / target-error=0.05 defaults.
 run_example_with_env "TSP Two-Opt Local Search Example" "./tsp_two_opt/run.sh" "TSP_TWO_OPT_QUICK=1"
+
+# Run the pcb442 hybrid smoke (issue #483) — exercises the three NEAT-AI
+# hybrid techniques (memetic re-seed, CRISPR splice, MH acceptance) on
+# the 442-city instance with a 60-second wall-clock budget. The smoke
+# inherits the `TSP_TWO_OPT_QUICK=1` discipline so its ephemeral
+# artefacts go under a temp directory and the canonical
+# docs/screenshots/tsp_two_opt.svg (burma14 default) is never
+# overwritten. The committed pcb442 SVG at
+# docs/screenshots/tsp_two_opt_pcb442.svg is produced by the user's
+# manual smoke run, not by quality.sh.
+run_example_with_env "TSP Two-Opt pcb442 Smoke" \
+  "./tsp_two_opt/run.sh --instance=pcb442 --time-seconds=60" \
+  "TSP_TWO_OPT_QUICK=1"
 
 # Run the MCMC Mutation Acceptance demo
 run_example "MCMC Mutation Acceptance Demo" "./mcmc_acceptance/run.sh"
