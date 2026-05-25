@@ -755,7 +755,7 @@ export interface RunMultiRunMnistOptions {
    * chart artefacts (used by tests). Defaults to `docs`. */
   baseDir?: string;
   /** Optional overrides applied in unit tests only (never by the runner). */
-  evolveOverrides?: Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "hiddenReluSeed">;
+  evolveOverrides?: Partial<Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "hiddenReluSeed">>;
   /** When true, first run seeds the two-layer ReLU MLP instead of minimal noise. */
   hiddenReluSeed?: boolean;
 }
