@@ -50,7 +50,6 @@ import {
   buildMnistHiddenReluSeed,
   classificationAccuracy,
   confusionMatrix,
-  EXAMPLE_SLUG,
   formatGenerationLogLine,
   inferStopCondition,
   MNIST_EVOLVE_COST_NAME,
