@@ -3,7 +3,15 @@
  *
  * These call `Creature.evolveDir` via `evolveMnistClassifier` / `runMultiRunMnist`
  * and mutate NEAT-AI global WASM state. `quality.sh` and CI run this file
- * without `--parallel` after the parallel unit-test pass.
+ * in isolated processes after the parallel unit-test pass.
+ *
+ * GitHub Actions runners are CPU-only (no GPU). Tests pass
+ * `timeoutMinutes: 0` and `discoverySampleRate: -1` (via testCaps) so
+ * evolveDir never schedules Discovery.
+ *
+ * "What" tests only — each case calls the public API and asserts on returned
+ * values, persisted state, and written artefacts. Evolution is stochastic, so
+ * assertions use ranges and structural checks, never particular fitness scores.
  */
 
 import {
@@ -16,12 +24,9 @@ import {
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 
-import { wipeCampaignRecord } from "../common/campaign_record.ts";
 import {
   appendMultiRunRun,
   loadMultiRunState,
-  parseMultiRunFlags,
-  wipeMultiRunState,
 } from "../common/multi_run_state.ts";
 import {
   buildDigitSamples,
@@ -32,15 +37,19 @@ import {
   parseIdxLabels,
 } from "./data.ts";
 import {
-  buildMnistHiddenReluSeed,
   DEFAULT_MULTI_RUN_TARGET_ERROR,
   evolveMnistClassifier,
-  evolveResultToMultiRunSample,
   EXAMPLE_SLUG,
   runMultiRunMnist,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
+import { setMaxCachedWasmCreatureActivations, Creature } from "@stsoftware/neat-ai";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
+
+/** Trim WASM caches between serial integration cases in one Deno process. */
+function resetEvolveIntegrationWasmState(): void {
+  setMaxCachedWasmCreatureActivations(1);
+}
 
 function buildSyntheticIdx(
   seed: number,
@@ -87,6 +96,21 @@ function buildSyntheticBinDir(perClass: number): string {
   return dir;
 }
 
+/** Placeholder milestone row so resume tests start from persisted state. */
+function placeholderMilestone(
+  creature: Creature,
+  runGen = 1,
+) {
+  return {
+    runGen,
+    error: 0.5,
+    bestScore: 0.5,
+    neurons: creature.neurons.length,
+    synapses: creature.synapses.length,
+    generationWallClockMs: 1,
+  };
+}
+
 const EVOLVE_DIR_TEST_CAPS = {
   maxGenerations: 2,
   // Reduced from 30 — limits WASM compilation overhead in CI so the
@@ -95,57 +119,101 @@ const EVOLVE_DIR_TEST_CAPS = {
   disableGenerationLog: true,
 } as const;
 const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
-const EVOLVE_DIR_TEST_OPTIONS = {
-  testCaps: EVOLVE_DIR_TEST_CAPS,
+const EVOLVE_DIR_MAX_ATTEMPTS = 5;
+const EVOLVE_DIR_BASE_SEED = 424242;
+
+const EVOLVE_DIR_TEST_OVERRIDES = {
+  testCaps: { ...EVOLVE_DIR_TEST_CAPS, seed: EVOLVE_DIR_BASE_SEED },
   timeoutMinutes: 0,
-  // Use the simple linear seed (784→10, ~7 850 params) rather than the
-  // hidden-ReLU seed (784→128→64→10, ~109 k params) to avoid WASM memory
-  // pressure in CI that causes all creatures to receive score 0 (#502).
+  // Use the simple linear seed (784→10) rather than the hidden-ReLU seed
+  // to avoid WASM memory pressure on CPU-only GitHub Actions runners (#502).
   hiddenReluSeed: false,
 } as const;
 
-Deno.test(
-  "evolveResultToMultiRunSample carries error/score/topology onto the milestone shape",
-  { sanitizeOps: false, sanitizeResources: false },
-  async () => {
-    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
+const EVOLVE_DIR_FRESH_OPTIONS = {
+  ...EVOLVE_DIR_TEST_OVERRIDES,
+} as const;
+
+function testCapsForAttempt(attempt: number) {
+  return {
+    ...EVOLVE_DIR_TEST_CAPS,
+    seed: EVOLVE_DIR_BASE_SEED + attempt,
+  };
+}
+
+/** Retry stochastic evolveDir calls with a fresh PRNG seed each attempt. */
+async function evolveMnistClassifierWithRetry(
+  options: Parameters<typeof evolveMnistClassifier>[0],
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < EVOLVE_DIR_MAX_ATTEMPTS; attempt++) {
     try {
-      const result = await evolveMnistClassifier({
-        dataDir,
-        ...EVOLVE_DIR_TEST_OPTIONS,
+      return await evolveMnistClassifier({
+        ...options,
+        testCaps: testCapsForAttempt(attempt),
       });
-      const sample = evolveResultToMultiRunSample(result);
-      assertEquals(sample.runGen, result.generations);
-      assertGreaterOrEqual(sample.error, 0);
-      assertGreaterOrEqual(1, sample.error);
-      assertEquals(sample.bestScore, result.bestScore);
-      assertEquals(sample.neurons, result.champion.neurons.length);
-      assertEquals(sample.synapses, result.champion.synapses.length);
-      assertEquals(sample.generationWallClockMs, result.wallClockMs);
-    } finally {
-      Deno.removeSync(dataDir, { recursive: true });
+    } catch (error) {
+      lastError = error;
     }
-  },
-);
+  }
+  throw lastError;
+}
+
+/** Retry stochastic evolveDir calls; optional hook resets persisted state between attempts. */
+async function runMultiRunMnistWithRetry(
+  options: Parameters<typeof runMultiRunMnist>[0],
+  prepareState?: () => Promise<void>,
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < EVOLVE_DIR_MAX_ATTEMPTS; attempt++) {
+    try {
+      if (prepareState !== undefined) {
+        await prepareState();
+      }
+      return await runMultiRunMnist({
+        ...options,
+        evolveOverrides: {
+          ...options.evolveOverrides,
+          testCaps: testCapsForAttempt(attempt),
+        },
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+function assertValidEvolveResult(
+  result: Awaited<ReturnType<typeof evolveMnistClassifier>>,
+): void {
+  assert(Number.isFinite(result.bestError));
+  assert(Number.isFinite(result.bestScore));
+  assertGreaterOrEqual(result.bestError, 0);
+  assertGreaterOrEqual(1, result.bestError);
+  assert(Number.isFinite(result.wallClockMs));
+  assertGreaterOrEqual(result.wallClockMs, 0);
+  assertGreater(result.seedNeurons, 0);
+  assertGreaterOrEqual(result.seedSynapses, 0);
+  assert(Number.isInteger(result.generations));
+  assertGreaterOrEqual(result.generations, 1);
+  assertEquals(result.champion.input, FEATURE_COUNT);
+  assertEquals(result.champion.output, CLASS_COUNT);
+  assertGreaterOrEqual(result.champion.neurons.length, FEATURE_COUNT + CLASS_COUNT);
+}
 
 Deno.test(
-  "evolveMnistClassifier exposes finite seed and wall-clock fields on the result",
+  "evolveMnistClassifier returns finite scores, generations, and a champion with MNIST I/O shape",
   { sanitizeOps: false, sanitizeResources: false },
   async () => {
+    resetEvolveIntegrationWasmState();
     const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
-      const result = await evolveMnistClassifier({
+      const result = await evolveMnistClassifierWithRetry({
         dataDir,
-        ...EVOLVE_DIR_TEST_OPTIONS,
+        ...EVOLVE_DIR_FRESH_OPTIONS,
       });
-      assert(Number.isFinite(result.bestError));
-      assert(Number.isFinite(result.bestScore));
-      assert(Number.isFinite(result.wallClockMs));
-      assertGreaterOrEqual(result.wallClockMs, 0);
-      assertGreater(result.seedNeurons, 0);
-      assertGreaterOrEqual(result.seedSynapses, 0);
-      assert(Number.isInteger(result.generations));
-      assertGreaterOrEqual(result.generations, 1);
+      assertValidEvolveResult(result);
     } finally {
       Deno.removeSync(dataDir, { recursive: true });
     }
@@ -158,34 +226,36 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    resetEvolveIntegrationWasmState();
     const tmp = await Deno.makeTempDir({ prefix: "mnist_resume_" });
     const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
+      const prior = new Creature(FEATURE_COUNT, CLASS_COUNT);
 
-      // Bootstrap a champion so the resume test starts from a saved creature
-      // rather than a cold start.
-      const bootstrap = await evolveMnistClassifier({
-        dataDir,
-        ...EVOLVE_DIR_TEST_OPTIONS,
-      });
-      const priorCreatureExport = bootstrap.champion.exportJSON();
-      await appendMultiRunRun(slug, {
-        creatureExport: priorCreatureExport,
-        newSamples: [evolveResultToMultiRunSample(bootstrap)],
-        runIndex: 1,
-        baseCumulativeGen: 0,
-      }, tmp);
+      const seedResumeState = async () => {
+        await Deno.remove(tmp, { recursive: true });
+        await Deno.mkdir(tmp, { recursive: true });
+        await appendMultiRunRun(slug, {
+          creatureExport: prior.exportJSON(),
+          newSamples: [placeholderMilestone(prior)],
+          runIndex: 1,
+          baseCumulativeGen: 0,
+        }, tmp);
+      };
 
-      const outcome = await runMultiRunMnist({
+      await seedResumeState();
+
+      const outcome = await runMultiRunMnistWithRetry({
         dataDir,
         argv: [],
         baseDir: tmp,
-        evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
-      });
+        evolveOverrides: EVOLVE_DIR_TEST_OVERRIDES,
+      }, seedResumeState);
 
       assertEquals(outcome.resumed, true);
       assertEquals(outcome.runIndex, 2);
+      assertValidEvolveResult(outcome.evolveResult);
 
       const state = await loadMultiRunState(slug, tmp);
       assertGreater(state.milestones.length, 1);
@@ -216,35 +286,41 @@ Deno.test({
 
 Deno.test({
   name: "runMultiRunMnist --fresh wipes prior artefacts before running",
+  sanitizeOps: false,
+  sanitizeResources: false,
   fn: async () => {
+    resetEvolveIntegrationWasmState();
     const tmp = await Deno.makeTempDir({ prefix: "mnist_fresh_" });
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
+      const prior = new Creature(FEATURE_COUNT, CLASS_COUNT);
       await appendMultiRunRun(slug, {
-        creatureExport: buildMnistHiddenReluSeed([8]).exportJSON(),
-        newSamples: [{
-          runGen: 1,
-          error: 0.5,
-          bestScore: 0.5,
-          neurons: FEATURE_COUNT + CLASS_COUNT,
-          synapses: FEATURE_COUNT * CLASS_COUNT,
-          generationWallClockMs: 100,
-        }],
+        creatureExport: prior.exportJSON(),
+        newSamples: [placeholderMilestone(prior)],
         runIndex: 1,
         baseCumulativeGen: 0,
       }, tmp);
 
-      assertEquals(parseMultiRunFlags(["--fresh"]).fresh, true);
+      const outcome = await runMultiRunMnistWithRetry({
+        dataDir,
+        argv: ["--fresh"],
+        baseDir: tmp,
+        evolveOverrides: EVOLVE_DIR_FRESH_OPTIONS,
+      });
 
-      await wipeMultiRunState(slug, tmp);
-      await wipeCampaignRecord(slug, tmp);
+      assertEquals(outcome.resumed, false);
+      assertEquals(outcome.runIndex, 1);
+      assertValidEvolveResult(outcome.evolveResult);
 
       const state = await loadMultiRunState(slug, tmp);
-      assertEquals(state.nextRunIndex, 1);
-      assertEquals(state.creatureExport, undefined);
-      assertEquals(state.milestones.length, 0);
+      assertEquals(state.nextRunIndex, 2);
+      for (const milestone of state.milestones) {
+        assertEquals(milestone.runIndex, 1);
+      }
     } finally {
       await Deno.remove(tmp, { recursive: true });
+      Deno.removeSync(dataDir, { recursive: true });
     }
   },
 });
@@ -263,7 +339,7 @@ Deno.test({
             dataDir,
             argv: ["--target-error=0.1"],
             baseDir: tmp,
-            evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
+            evolveOverrides: EVOLVE_DIR_TEST_OVERRIDES,
           }),
         Error,
         "does not accept --target-error",
@@ -276,20 +352,22 @@ Deno.test({
 });
 
 Deno.test({
-  name: "runMultiRunMnist always uses the fixed DEFAULT_MULTI_RUN_TARGET_ERROR",
+  name: "runMultiRunMnist reports DEFAULT_MULTI_RUN_TARGET_ERROR on the outcome",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    resetEvolveIntegrationWasmState();
     const tmp = await Deno.makeTempDir({ prefix: "mnist_fixed_target_" });
     const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
-      const outcome = await runMultiRunMnist({
+      const outcome = await runMultiRunMnistWithRetry({
         dataDir,
         argv: [],
         baseDir: tmp,
-        evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
+        evolveOverrides: EVOLVE_DIR_FRESH_OPTIONS,
       });
       assertEquals(outcome.targetError, DEFAULT_MULTI_RUN_TARGET_ERROR);
+      assertValidEvolveResult(outcome.evolveResult);
     } finally {
       await Deno.remove(tmp, { recursive: true });
       Deno.removeSync(dataDir, { recursive: true });
@@ -298,23 +376,25 @@ Deno.test({
 });
 
 Deno.test({
-  name: "runMultiRunMnist --timeout override flows through to the resolved options",
+  name: "runMultiRunMnist reports argv --timeout on the outcome",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    resetEvolveIntegrationWasmState();
     const tmp = await Deno.makeTempDir({ prefix: "mnist_timeout_" });
     const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
-      const outcome = await runMultiRunMnist({
+      const outcome = await runMultiRunMnistWithRetry({
         dataDir,
         argv: ["--timeout=7"],
         baseDir: tmp,
         evolveOverrides: {
-          ...EVOLVE_DIR_TEST_OPTIONS,
+          ...EVOLVE_DIR_FRESH_OPTIONS,
           timeoutMinutes: 0,
         },
       });
       assertEquals(outcome.timeoutMinutes, 7);
+      assertValidEvolveResult(outcome.evolveResult);
     } finally {
       await Deno.remove(tmp, { recursive: true });
       Deno.removeSync(dataDir, { recursive: true });

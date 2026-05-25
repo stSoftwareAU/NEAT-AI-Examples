@@ -111,10 +111,14 @@ jobs:
       #
       # --coverage produces a profile that is converted to lcov and
       # uploaded to Codecov below. Issue #51.
+      # GitHub-hosted runners are CPU-only (no GPU). MNIST evolveDir tests
+      # pass timeoutMinutes: 0 and discoverySampleRate: -1 so Discovery is
+      # never scheduled; only the CPU rust_scorer batch path is exercised.
       - name: Run unit tests with coverage
         env:
           NEAT_AI_RUST_SCORER_ENABLED: "true"
           NEAT_AI_RUST_SCORER_BINARY_PATH: ${{ github.workspace }}/NEAT-AI-scorer/target/release/rust_scorer
+          NEAT_AI_RUST_SCORER_BATCH: "true"
         run: |
           set -euo pipefail
           # Probe the built rust_scorer for CATEGORICAL_ERROR support (#502).
@@ -142,8 +146,7 @@ jobs:
           deno test --parallel "${DENO_TEST_FLAGS[@]}" \
             --ignore=mnist_classification/evolve_integration_test.ts
           EVOLVE_INTEGRATION_FILTERS=(
-            "evolveResultToMultiRunSample"
-            "evolveMnistClassifier exposes finite"
+            "evolveMnistClassifier returns finite"
             "resume flow"
             "--fresh wipes"
             "rejects --target-error"

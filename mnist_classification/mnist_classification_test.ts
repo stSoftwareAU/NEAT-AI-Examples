@@ -50,6 +50,7 @@ import {
   buildMnistHiddenReluSeed,
   classificationAccuracy,
   confusionMatrix,
+  evolveResultToMultiRunSample,
   formatGenerationLogLine,
   inferStopCondition,
   MNIST_EVOLVE_COST_NAME,
@@ -130,14 +131,53 @@ Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
   assertEquals(FEATURE_COUNT, IMAGE_SIZE * IMAGE_SIZE);
 });
 
-Deno.test("buildMnistHiddenReluSeed uses NEAT-AI layered Creature init", () => {
+Deno.test("buildMnistHiddenReluSeed returns a layered creature with MNIST I/O and ReLU hiddens", () => {
   const creature = buildMnistHiddenReluSeed();
+  assertEquals(creature.input, FEATURE_COUNT);
+  assertEquals(creature.output, CLASS_COUNT);
   assertEquals(creature.neurons.length, FEATURE_COUNT + 128 + 64 + CLASS_COUNT);
   const hidden = creature.neurons.slice(FEATURE_COUNT, -CLASS_COUNT);
   assertGreater(hidden.length, 0);
   for (const neuron of hidden) {
     assertEquals(neuron.squash, "ReLU");
   }
+});
+
+Deno.test(
+  "evolveResultToMultiRunSample maps evolve result fields onto the milestone shape",
+  () => {
+    const champion = buildMnistHiddenReluSeed([8]);
+    const result = {
+      champion,
+      bestError: 0.75,
+      bestScore: 0.25,
+      generations: 2,
+      wallClockMs: 1234,
+      seedNeurons: champion.neurons.length,
+      seedSynapses: champion.synapses.length,
+    };
+    const sample = evolveResultToMultiRunSample(result);
+    assertEquals(sample.runGen, result.generations);
+    assertEquals(sample.error, 0.75);
+    assertEquals(sample.bestScore, result.bestScore);
+    assertEquals(sample.neurons, result.champion.neurons.length);
+    assertEquals(sample.synapses, result.champion.synapses.length);
+    assertEquals(sample.generationWallClockMs, result.wallClockMs);
+  },
+);
+
+Deno.test("evolveResultToMultiRunSample clamps error into [0, 1]", () => {
+  const champion = buildMnistHiddenReluSeed([8]);
+  const base = {
+    champion,
+    bestScore: 0.25,
+    generations: 1,
+    wallClockMs: 1,
+    seedNeurons: champion.neurons.length,
+    seedSynapses: champion.synapses.length,
+  };
+  assertEquals(evolveResultToMultiRunSample({ ...base, bestError: -0.2 }).error, 0);
+  assertEquals(evolveResultToMultiRunSample({ ...base, bestError: 1.5 }).error, 1);
 });
 
 Deno.test("parseIdxImages parses synthetic header and body", () => {

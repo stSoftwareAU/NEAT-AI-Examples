@@ -519,10 +519,11 @@ export interface MnistEvolveOptions {
    * `Creature.evolveDir`. */
   dataDir: string;
   /**
-   * `evolveDir` `timeoutMinutes` option. Pass `0` from tests to skip the
-   * wall-clock backstop (NEAT-AI activates a dynamic library on the
-   * backstop code path that Deno's `--allow-ffi` sanitizer flags as a
-   * leak).
+   * `evolveDir` `timeoutMinutes` option. Pass `0` from tests and CI quick
+   * mode to skip the wall-clock backstop and Discovery scheduling (GitHub
+   * Actions runners have no GPU). NEAT-AI also loads FFI cleanup machinery
+   * on the backstop path that Deno's `--allow-ffi` sanitiser flags as a
+   * leak in unit tests.
    */
   timeoutMinutes: number;
   /**
@@ -547,6 +548,8 @@ export interface MnistEvolveOptions {
     populationSize?: number;
     /** When true, skip per-generation logging (unit tests). */
     disableGenerationLog?: boolean;
+    /** NEAT-AI PRNG seed for reproducible test runs (default 424242). */
+    seed?: number;
   };
   /** 1-based multi-run index for generation log rows (default 1). */
   runIndex?: number;
@@ -637,6 +640,13 @@ async function withEvolveDirLock<T>(
  * `{ error, score, time, generation }` fields plus the seed and final
  * topology counts feed the multi-run milestone history (issue #327).
  */
+/** True when evolveDir must not schedule Discovery (tests / CPU-only CI). */
+function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
+  return options.testCaps !== undefined ||
+    options.timeoutMinutes <= 0 ||
+    Deno.env.get("CI") === "true";
+}
+
 export async function evolveMnistClassifier(
   options: MnistEvolveOptions,
 ): Promise<MnistEvolveResult> {
@@ -650,7 +660,9 @@ export async function evolveMnistClassifier(
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
       : options.hiddenReluSeed
-      ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
+      ? buildMnistHiddenReluSeed(
+        options.testCaps ? [8] : resolveMnistHiddenLayerSizes(),
+      )
       : new Creature(FEATURE_COUNT, CLASS_COUNT);
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;
@@ -671,7 +683,7 @@ export async function evolveMnistClassifier(
       threads: 1,
       elitism,
       ...(populationSeedExports.length > 0 ? { creatures: [...populationSeedExports] } : {}),
-      ...(options.testCaps ? { seed: 424242 } : {}),
+      ...(options.testCaps ? { seed: options.testCaps.seed ?? 424242 } : {}),
       ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
       ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),
       ...(options.mutationAmount !== undefined ? { mutationAmount: options.mutationAmount } : {}),
@@ -692,6 +704,7 @@ export async function evolveMnistClassifier(
           logPath: options.generationLogPath,
         }),
       }),
+      ...(shouldDisableDiscovery(options) ? { discoverySampleRate: -1 } : {}),
     };
 
     const start = Date.now();
@@ -984,7 +997,7 @@ if (import.meta.main) {
     evolveOverrides: quick
       ? {
         testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
-        timeoutMinutes: 1,
+        timeoutMinutes: 0,
       }
       : undefined,
   });

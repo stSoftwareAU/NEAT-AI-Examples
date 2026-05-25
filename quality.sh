@@ -166,11 +166,12 @@ fi
 
 echo "----------------------------------------"
 echo "Running: MNIST evolveDir integration tests (isolated processes)"
+echo "GitHub Actions runners are CPU-only; tests use timeoutMinutes: 0"
+echo "and discoverySampleRate: -1 so evolveDir never schedules Discovery."
 echo "----------------------------------------"
 
 EVOLVE_INTEGRATION_FILTERS=(
-  "evolveResultToMultiRunSample"
-  "evolveMnistClassifier exposes finite"
+  "evolveMnistClassifier returns finite"
   "resume flow"
   "--fresh wipes"
   "rejects --target-error"
