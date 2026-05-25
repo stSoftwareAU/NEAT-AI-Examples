@@ -198,6 +198,7 @@ export function legacyJSONFromCreature(creature: Creature): LegacyCreatureJSON {
     from: s.from,
     to: s.to,
     weight: s.weight,
+    ...(s.type ? { type: s.type as LegacySynapse["type"] } : {}),
   }));
   return {
     neurons,
