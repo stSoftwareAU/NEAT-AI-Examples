@@ -641,9 +641,7 @@ export async function evolveMnistClassifier(
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
       : options.hiddenReluSeed
-      ? buildMnistHiddenReluSeed(
-        options.testCaps ? [8] : resolveMnistHiddenLayerSizes(),
-      )
+      ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
       : new Creature(FEATURE_COUNT, CLASS_COUNT);
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;

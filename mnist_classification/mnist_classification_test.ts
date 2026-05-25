@@ -706,11 +706,10 @@ const EVOLVE_DIR_TEST_CAPS = {
   disableGenerationLog: true,
 } as const;
 const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 2;
-/** Shared evolveDir options — hidden-layer seed keeps CATEGORICAL_ERROR error below 1 so score stays truthy. */
+/** Shared evolveDir options for unit tests — minimal seed avoids near-zero CATEGORICAL_ERROR scores. */
 const EVOLVE_DIR_TEST_OPTIONS = {
   testCaps: EVOLVE_DIR_TEST_CAPS,
   timeoutMinutes: 0,
-  hiddenReluSeed: true,
 } as const;
 
 Deno.test(
