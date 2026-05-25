@@ -130,7 +130,9 @@ source "${SCRIPT_DIR}/common/ensure_neat_ai_native_scorer.sh"
 ensure_neat_ai_native_scorer
 ensure_rust_scorer_supports_cost CATEGORICAL_ERROR || true
 rust_scorer_allow_run_args
-export NEAT_AI_RUST_SCORER_ENABLED="${NEAT_AI_RUST_SCORER_ENABLED:-true}"
+# Preserve fallback state — do NOT default to "true" here; the probe above may
+# have unset the variable intentionally when CATEGORICAL_ERROR is unsupported.
+export NEAT_AI_RUST_SCORER_ENABLED="${NEAT_AI_RUST_SCORER_ENABLED:-false}"
 export NEAT_AI_RUST_SCORER_BINARY_PATH="${NEAT_AI_RUST_SCORER_BINARY_PATH:-}"
 
 DENO_TEST_ALLOW_RUN="df,bash,git,deno"

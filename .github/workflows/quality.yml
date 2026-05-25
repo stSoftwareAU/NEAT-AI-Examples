@@ -117,7 +117,16 @@ jobs:
           NEAT_AI_RUST_SCORER_BINARY_PATH: ${{ github.workspace }}/NEAT-AI-scorer/target/release/rust_scorer
         run: |
           set -euo pipefail
-          DENO_TEST_ALLOW_RUN="df,bash,git,deno,${NEAT_AI_RUST_SCORER_BINARY_PATH}"
+          # Probe the built rust_scorer for CATEGORICAL_ERROR support (#502).
+          # If unsupported, the helper unsets NEAT_AI_RUST_SCORER_BINARY_PATH and
+          # NEAT_AI_RUST_SCORER_ENABLED so the MNIST evolve tests fall back to JS.
+          # shellcheck source=common/ensure_neat_ai_native_scorer.sh
+          source "common/ensure_neat_ai_native_scorer.sh"
+          ensure_rust_scorer_supports_cost CATEGORICAL_ERROR || true
+          DENO_TEST_ALLOW_RUN="df,bash,git,deno"
+          if [[ -n "${NEAT_AI_RUST_SCORER_BINARY_PATH:-}" ]]; then
+            DENO_TEST_ALLOW_RUN="${DENO_TEST_ALLOW_RUN},${NEAT_AI_RUST_SCORER_BINARY_PATH}"
+          fi
           DENO_TEST_FLAGS=(
             --frozen
             --v8-flags=--max-old-space-size=8192

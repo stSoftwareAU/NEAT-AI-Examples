@@ -89,7 +89,9 @@ function buildSyntheticBinDir(perClass: number): string {
 
 const EVOLVE_DIR_TEST_CAPS = {
   maxGenerations: 2,
-  populationSize: 30,
+  // Reduced from 30 — limits WASM compilation overhead in CI so the
+  // MemoryMonitor never reaches Critical level mid-evolution (#502).
+  populationSize: 8,
   disableGenerationLog: true,
 } as const;
 const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
