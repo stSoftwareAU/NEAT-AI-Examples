@@ -596,9 +596,12 @@ export interface MnistEvolveResult {
 /** Cross-process lock so parallel `deno test` workers do not share NEAT-AI global state. */
 const EVOLVE_DIR_LOCK_PATH = join(MNIST_ROOT, "evolve-dir.lock");
 
-async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
-  ensureDirSync(dirname(EVOLVE_DIR_LOCK_PATH));
-  await using lockFile = await Deno.open(EVOLVE_DIR_LOCK_PATH, {
+async function withEvolveDirLock<T>(
+  lockPath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  ensureDirSync(dirname(lockPath));
+  await using lockFile = await Deno.open(lockPath, {
     create: true,
     read: true,
     write: true,
@@ -622,11 +625,25 @@ async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
 export async function evolveMnistClassifier(
   options: MnistEvolveOptions,
 ): Promise<MnistEvolveResult> {
-  return await withEvolveDirLock(async () => {
+  const lockPath = options.testCaps
+    ? join(options.dataDir, ".evolve-dir-test.lock")
+    : EVOLVE_DIR_LOCK_PATH;
+  return await withEvolveDirLock(lockPath, async () => {
+    if (options.testCaps) {
+      for (const key of ["NEAT_AI_RUST_SCORER_ENABLED", "NEAT_AI_RUST_SCORER_BINARY_PATH"]) {
+        try {
+          Deno.env.delete(key);
+        } catch {
+          // Permission denied in some sandboxes — ignore.
+        }
+      }
+    }
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
       : options.hiddenReluSeed
-      ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
+      ? buildMnistHiddenReluSeed(
+        options.testCaps ? [8] : resolveMnistHiddenLayerSizes(),
+      )
       : new Creature(FEATURE_COUNT, CLASS_COUNT);
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;

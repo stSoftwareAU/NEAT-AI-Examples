@@ -706,6 +706,12 @@ const EVOLVE_DIR_TEST_CAPS = {
   disableGenerationLog: true,
 } as const;
 const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 2;
+/** Shared evolveDir options — hidden-layer seed keeps CATEGORICAL_ERROR error below 1 so score stays truthy. */
+const EVOLVE_DIR_TEST_OPTIONS = {
+  testCaps: EVOLVE_DIR_TEST_CAPS,
+  timeoutMinutes: 0,
+  hiddenReluSeed: true,
+} as const;
 
 Deno.test(
   "evolveResultToMultiRunSample carries error/score/topology onto the milestone shape",
@@ -715,8 +721,7 @@ Deno.test(
     try {
       const result = await evolveMnistClassifier({
         dataDir,
-        timeoutMinutes: 0,
-        testCaps: EVOLVE_DIR_TEST_CAPS,
+        ...EVOLVE_DIR_TEST_OPTIONS,
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
@@ -740,8 +745,7 @@ Deno.test(
     try {
       const result = await evolveMnistClassifier({
         dataDir,
-        timeoutMinutes: 0,
-        testCaps: EVOLVE_DIR_TEST_CAPS,
+        ...EVOLVE_DIR_TEST_OPTIONS,
       });
       assert(Number.isFinite(result.bestError));
       assert(Number.isFinite(result.bestScore));
@@ -789,10 +793,7 @@ Deno.test({
         dataDir,
         argv: [],
         baseDir: tmp,
-        evolveOverrides: {
-          testCaps: EVOLVE_DIR_TEST_CAPS,
-          timeoutMinutes: 0,
-        },
+        evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
       });
 
       // Prior champion must have been reloaded as the evolveDir seed.
@@ -857,10 +858,7 @@ Deno.test({
         dataDir,
         argv: ["--fresh"],
         baseDir: tmp,
-        evolveOverrides: {
-          testCaps: EVOLVE_DIR_TEST_CAPS,
-          timeoutMinutes: 0,
-        },
+        evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
       });
 
       // `--fresh` wiped the prior state, so this is run 1 and there was
@@ -894,10 +892,7 @@ Deno.test({
             dataDir,
             argv: ["--target-error=0.1"],
             baseDir: tmp,
-            evolveOverrides: {
-              testCaps: EVOLVE_DIR_TEST_CAPS,
-              timeoutMinutes: 0,
-            },
+            evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
           }),
         Error,
         "does not accept --target-error",
@@ -921,10 +916,7 @@ Deno.test({
         dataDir,
         argv: [],
         baseDir: tmp,
-        evolveOverrides: {
-          testCaps: EVOLVE_DIR_TEST_CAPS,
-          timeoutMinutes: 0,
-        },
+        evolveOverrides: EVOLVE_DIR_TEST_OPTIONS,
       });
       assertEquals(outcome.targetError, DEFAULT_MULTI_RUN_TARGET_ERROR);
     } finally {
@@ -947,7 +939,7 @@ Deno.test({
         argv: ["--timeout=7"],
         baseDir: tmp,
         evolveOverrides: {
-          testCaps: EVOLVE_DIR_TEST_CAPS,
+          ...EVOLVE_DIR_TEST_OPTIONS,
           // Override propagates from flag → resolved options; tests skip
           // the actual backstop because NEAT-AI's FFI cleanup tripts the
           // Deno sanitizer.
