@@ -330,6 +330,70 @@ Deno.test(
   },
 );
 
+Deno.test(
+  "injectGene preserves synapse type (condition) through re-indexing — regression for IF-neuron validation",
+  () => {
+    // Build a minimal host that has an IF output neuron.  An IF neuron
+    // requires at least one incoming synapse with type "condition"; without
+    // it Creature.validate() throws "-10) 'IF' should have a condition(s)".
+    // This test reproduces the failure that occurred when injectGene
+    // silently dropped the `type` field during index re-mapping.
+    const host = {
+      input: 2,
+      output: 1,
+      neurons: [
+        { type: "input" as const, squash: undefined, index: 0, uuid: "h-in-0" },
+        { type: "input" as const, squash: undefined, index: 1, uuid: "h-in-1" },
+        { type: "hidden" as const, squash: "TANH", index: 2, bias: 0.1, uuid: "h-hidden-0" },
+        // IF output neuron — needs a condition synapse to pass validate().
+        { type: "output" as const, squash: "IF", index: 3, bias: 0.0, uuid: "h-out-0" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 0.5 },
+        // Condition synapse — the IF neuron gate.
+        { from: 0, to: 3, weight: 1.0, type: "condition" as const },
+        // Positive branch synapse through hidden.
+        { from: 2, to: 3, weight: 0.8, type: "positive" as const },
+        // Negative branch synapse — IF neurons require at least one.
+        { from: 1, to: 3, weight: -0.5, type: "negative" as const },
+      ],
+    };
+
+    // Construct a simple one-output gene that wires into the same output neuron.
+    const gene = {
+      hidden: [
+        { type: "hidden" as const, squash: "TANH", index: 0, bias: 0.2, uuid: "g-h-0" },
+      ],
+      inputSynapses: [{ fromInputIndex: 1, toUUID: "g-h-0", weight: 0.6 }],
+      // Gene adds an extra (positive) edge to the IF output — condition
+      // synapses still belong solely to the host and must survive intact.
+      outputSynapses: [{ fromUUID: "g-h-0", toOutputUUID: "h-out-0", weight: 0.4 }],
+      internalSynapses: [],
+    };
+
+    const merged = injectGene(host, gene);
+
+    // All three typed synapses from the host must survive the re-index.
+    const conditionSynapses = merged.synapses.filter((s) => s.type === "condition");
+    assertEquals(
+      conditionSynapses.length,
+      1,
+      "condition synapse must be preserved through injectGene re-indexing",
+    );
+    const negativeSynapses = merged.synapses.filter((s) => s.type === "negative");
+    assertEquals(
+      negativeSynapses.length,
+      1,
+      "negative synapse must be preserved through injectGene re-indexing",
+    );
+
+    // The merged creature must validate — the IF neuron must still have its
+    // condition and negative synapses after the gene is applied.
+    const c = Creature.fromJSON(asCreatureExport(merged));
+    c.validate();
+  },
+);
+
 Deno.test("renderCrisprInjectionSvg renders gene topology + before/after milestone", () => {
   const pre: EvolveDirSummary = {
     finalError: 0.32,

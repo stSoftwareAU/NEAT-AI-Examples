@@ -339,7 +339,12 @@ export function injectGene(host: LegacyCreatureJSON, gene: InjectedGene): Legacy
     const fromIdx = uuidToIndex.get(fromUUID);
     const toIdx = uuidToIndex.get(toUUID);
     if (fromIdx === undefined || toIdx === undefined) continue;
-    synapses.push({ from: fromIdx, to: toIdx, weight: s.weight });
+    synapses.push({
+      from: fromIdx,
+      to: toIdx,
+      weight: s.weight,
+      ...(s.type ? { type: s.type } : {}),
+    });
   }
 
   // Add gene synapses, deduplicating against any host edges already present.
