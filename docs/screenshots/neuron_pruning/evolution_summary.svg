@@ -28,7 +28,7 @@
     <text class="callout-label" x="421" y="158.5" dominant-baseline="middle">final score</text>
     <text class="callout-value" x="684" y="158.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">0.996</text>
     <text class="callout-label" x="421" y="213.5" dominant-baseline="middle">generations</text>
-    <text class="callout-value" x="684" y="213.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">96</text>
+    <text class="callout-value" x="684" y="213.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">90</text>
     <text class="callout-label" x="421" y="268.5" dominant-baseline="middle">wall clock</text>
     <text class="callout-value" x="684" y="268.5" text-anchor="end" dominant-baseline="middle" font-weight="bold" fill="#2ca02c">1s</text>
   </g>
