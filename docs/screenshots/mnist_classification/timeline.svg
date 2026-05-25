@@ -1,54 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Classification — test accuracy vs wall-clock time chart">
-  <title>MNIST Classification — test accuracy vs wall-clock time</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST — test accuracy vs wall-clock time chart">
+  <title>MNIST — test accuracy vs wall-clock time</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Classification — test accuracy vs wall-clock time</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST — test accuracy vs wall-clock time</text>
   <rect x="70" y="50" width="690" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <text x="415" y="376" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#333">Wall-clock time (hours)</text>
   <line x1="70.00" y1="340" x2="70.00" y2="344" stroke="#333"/>
   <text x="70.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">0.2</text>
   <line x1="208.00" y1="340" x2="208.00" y2="344" stroke="#333"/>
-  <text x="208.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">0.9</text>
+  <text x="208.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">1.6</text>
   <line x1="346.00" y1="340" x2="346.00" y2="344" stroke="#333"/>
-  <text x="346.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">1.7</text>
+  <text x="346.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">3.0</text>
   <line x1="484.00" y1="340" x2="484.00" y2="344" stroke="#333"/>
-  <text x="484.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">2.5</text>
+  <text x="484.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">4.4</text>
   <line x1="622.00" y1="340" x2="622.00" y2="344" stroke="#333"/>
-  <text x="622.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">3.3</text>
+  <text x="622.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">5.8</text>
   <line x1="760.00" y1="340" x2="760.00" y2="344" stroke="#333"/>
-  <text x="760.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">4.1</text>
+  <text x="760.00" y="356" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">7.2</text>
   <text x="16" y="195" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#333" transform="rotate(-90 16 195)">Hold-out score</text>
   <line x1="66" y1="340.00" x2="70" y2="340.00" stroke="#333"/>
   <text x="62" y="344.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">0%</text>
   <line x1="66" y1="282.00" x2="70" y2="282.00" stroke="#333"/>
-  <text x="62" y="286.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">9%</text>
+  <text x="62" y="286.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">10%</text>
   <line x1="66" y1="224.00" x2="70" y2="224.00" stroke="#333"/>
-  <text x="62" y="228.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">18%</text>
+  <text x="62" y="228.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">20%</text>
   <line x1="66" y1="166.00" x2="70" y2="166.00" stroke="#333"/>
-  <text x="62" y="170.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">27%</text>
+  <text x="62" y="170.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">30%</text>
   <line x1="66" y1="108.00" x2="70" y2="108.00" stroke="#333"/>
-  <text x="62" y="112.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">35%</text>
+  <text x="62" y="112.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">41%</text>
   <line x1="66" y1="50.00" x2="70" y2="50.00" stroke="#333"/>
-  <text x="62" y="54.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">44%</text>
-  <path d="M70.00,259.49 L87.62,229.04 L105.34,211.32 L242.10,198.89 L259.77,184.88 L275.36,184.88 L293.08,160.80 L339.30,160.80 L356.97,150.36 L375.88,145.70 L393.70,139.47 L439.76,139.47 L446.96,139.47 L492.69,108.59 L536.66,101.91 L580.63,85.29 L624.61,64.75 L668.59,57.71 L713.51,53.82 L760.00,50.00" fill="none" stroke="#1f77b4" stroke-width="2"/>
-  <circle cx="70.00" cy="259.49" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="87.62" cy="229.04" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="105.34" cy="211.32" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="242.10" cy="198.89" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="259.77" cy="184.88" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="275.36" cy="184.88" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="293.08" cy="160.80" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="339.30" cy="173.31" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="356.97" cy="150.36" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="375.88" cy="145.70" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="393.70" cy="139.47" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="439.76" cy="167.89" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="446.96" cy="139.47" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="492.69" cy="108.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="536.66" cy="101.91" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="580.63" cy="85.29" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="624.61" cy="64.75" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="668.59" cy="57.71" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <circle cx="713.51" cy="53.82" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <text x="62" y="54.00" text-anchor="end" font-family="sans-serif" font-size="10" fill="#333">51%</text>
+  <path d="M70.00,269.72 L79.81,243.14 L89.67,227.68 L165.78,216.82 L175.61,204.59 L184.29,204.59 L194.15,183.57 L219.87,183.57 L229.70,174.47 L240.23,170.40 L250.14,164.96 L275.78,164.96 L279.78,164.96 L305.23,138.00 L329.71,132.18 L354.18,117.66 L378.65,99.74 L403.13,93.59 L428.13,90.19 L454.00,86.86 L466.29,81.79 L478.40,81.39 L489.97,80.59 L501.76,80.59 L505.42,80.59 L516.81,80.47 L527.81,79.21 L539.75,75.09 L551.71,66.67 L561.40,66.67 L573.69,65.75 L586.31,64.15 L599.67,64.15 L611.22,63.63 L614.84,63.63 L626.57,63.57 L637.44,62.60 L650.69,60.94 L663.35,60.14 L672.74,60.14 L686.51,59.97 L698.82,59.97 L711.04,59.45 L722.37,58.88 L725.78,58.88 L737.18,57.39 L748.04,56.30 L760.00,50.00" fill="none" stroke="#1f77b4" stroke-width="2"/>
+  <circle cx="70.00" cy="269.72" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="79.81" cy="243.14" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="89.67" cy="227.68" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="165.78" cy="216.82" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="175.61" cy="204.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="184.29" cy="204.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="194.15" cy="183.57" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="219.87" cy="194.49" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="229.70" cy="174.47" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="240.23" cy="170.40" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="250.14" cy="164.96" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="275.78" cy="189.77" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="279.78" cy="164.96" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="305.23" cy="138.00" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="329.71" cy="132.18" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="354.18" cy="117.66" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="378.65" cy="99.74" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="403.13" cy="93.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="428.13" cy="90.19" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="454.00" cy="86.86" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="466.29" cy="81.79" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="478.40" cy="81.39" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="489.97" cy="80.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="501.76" cy="80.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="505.42" cy="80.59" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="516.81" cy="80.47" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="527.81" cy="79.21" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="539.75" cy="75.09" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="551.71" cy="66.67" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="561.40" cy="66.67" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="573.69" cy="65.75" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="586.31" cy="64.15" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="599.67" cy="64.15" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="611.22" cy="63.63" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="614.84" cy="63.63" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="626.57" cy="63.57" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="637.44" cy="62.60" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="650.69" cy="60.94" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="663.35" cy="60.14" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="672.74" cy="60.14" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="686.51" cy="59.97" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="698.82" cy="59.97" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="711.04" cy="59.45" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="722.37" cy="58.88" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="725.78" cy="58.88" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="737.18" cy="57.39" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
+  <circle cx="748.04" cy="56.30" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
   <circle cx="760.00" cy="50.00" r="3" fill="#ffffff" stroke="#1f77b4" stroke-width="1.5"/>
-  <text x="400" y="392" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">Total wall-clock: 4.08 h · Final hold-out score: 44.19% · 20 recorded phase(s)</text>
+  <text x="400" y="392" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#444">Total wall-clock: 7.21 h · Final hold-out score: 50.63% · 48 recorded phase(s)</text>
 </svg>

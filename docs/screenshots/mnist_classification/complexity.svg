@@ -1,19 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Classification — multi-run creature complexity dual-axis chart">
-  <title>MNIST Classification — multi-run creature complexity</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST — creature complexity vs cumulative generations dual-axis chart">
+  <title>MNIST — creature complexity vs cumulative generations</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Classification — multi-run creature complexity</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST — creature complexity vs cumulative generations</text>
   <rect x="70" y="50" width="660" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1"/>
     <text x="70" y="358" text-anchor="middle">5</text>
-    <line x1="150.77" y1="340" x2="150.77" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="150.77" y="358" text-anchor="middle">10</text>
-    <line x1="419.1" y1="340" x2="419.1" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="419.1" y="358" text-anchor="middle">100</text>
-    <line x1="687.43" y1="340" x2="687.43" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="687.43" y="358" text-anchor="middle">1000</text>
+    <line x1="147.36" y1="340" x2="147.36" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="147.36" y="358" text-anchor="middle">10</text>
+    <line x1="404.35" y1="340" x2="404.35" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="404.35" y="358" text-anchor="middle">100</text>
+    <line x1="661.34" y1="340" x2="661.34" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="661.34" y="358" text-anchor="middle">1000</text>
     <line x1="730" y1="340" x2="730" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="730" y="358" text-anchor="middle">1441</text>
+    <text x="730" y="358" text-anchor="middle">1850</text>
     <text x="400" y="376" text-anchor="middle" font-weight="bold">cumulative generation (log scale)</text>
   </g>
   <g class="left-axis" font-family="sans-serif" font-size="11" fill="#333333">
@@ -49,127 +49,295 @@
     <text x="778" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(90 778 195)">synapses</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
-    <line class="run-boundary" x1="312.32" y1="50" x2="312.32" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="312.32" y="46" text-anchor="middle">run 2</text>
-    <line class="run-boundary" x1="398.78" y1="50" x2="398.78" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="398.78" y="46" text-anchor="middle">run 3</text>
-    <line class="run-boundary" x1="454.07" y1="50" x2="454.07" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="454.07" y="46" text-anchor="middle">run 4</text>
-    <line class="run-boundary" x1="464.79" y1="50" x2="464.79" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="464.79" y="46" text-anchor="middle">run 5</text>
-    <line class="run-boundary" x1="486.95" y1="50" x2="486.95" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="486.95" y="46" text-anchor="middle">run 6</text>
-    <line class="run-boundary" x1="515.65" y1="50" x2="515.65" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="515.65" y="46" text-anchor="middle">run 7</text>
-    <line class="run-boundary" x1="536.56" y1="50" x2="536.56" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="536.56" y="46" text-anchor="middle">run 59</text>
-    <line class="run-boundary" x1="536.98" y1="50" x2="536.98" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="536.98" y="46" text-anchor="middle">run 8</text>
-    <line class="run-boundary" x1="557.52" y1="50" x2="557.52" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="557.52" y="46" text-anchor="middle">run 9</text>
-    <line class="run-boundary" x1="560.33" y1="50" x2="560.33" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="560.33" y="46" text-anchor="middle">run 10</text>
-    <line class="run-boundary" x1="570.93" y1="50" x2="570.93" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="570.93" y="46" text-anchor="middle">run 60</text>
-    <line class="run-boundary" x1="601.65" y1="50" x2="601.65" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="601.65" y="46" text-anchor="middle">run 61</text>
-    <line class="run-boundary" x1="636.33" y1="50" x2="636.33" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="636.33" y="46" text-anchor="middle">run 62</text>
-    <line class="run-boundary" x1="664.44" y1="50" x2="664.44" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="664.44" y="46" text-anchor="middle">run 63</text>
-    <line class="run-boundary" x1="684" y1="50" x2="684" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="684" y="46" text-anchor="middle">run 64</text>
-    <line class="run-boundary" x1="699.59" y1="50" x2="699.59" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="699.59" y="46" text-anchor="middle">run 65</text>
-    <line class="run-boundary" x1="715.74" y1="50" x2="715.74" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="715.74" y="46" text-anchor="middle">run 66</text>
-    <line class="run-boundary" x1="728.7" y1="50" x2="728.7" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="728.7" y="46" text-anchor="middle">run 67</text>
+    <line class="run-boundary" x1="302.08" y1="50" x2="302.08" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="302.08" y="46" text-anchor="middle">run 2</text>
+    <line class="run-boundary" x1="384.89" y1="50" x2="384.89" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="384.89" y="46" text-anchor="middle">run 3</text>
+    <line class="run-boundary" x1="437.84" y1="50" x2="437.84" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="437.84" y="46" text-anchor="middle">run 4</text>
+    <line class="run-boundary" x1="448.11" y1="50" x2="448.11" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="448.11" y="46" text-anchor="middle">run 5</text>
+    <line class="run-boundary" x1="469.33" y1="50" x2="469.33" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="469.33" y="46" text-anchor="middle">run 6</text>
+    <line class="run-boundary" x1="496.82" y1="50" x2="496.82" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="496.82" y="46" text-anchor="middle">run 7</text>
+    <line class="run-boundary" x1="516.85" y1="50" x2="516.85" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="516.85" y="46" text-anchor="middle">run 59</text>
+    <line class="run-boundary" x1="517.25" y1="50" x2="517.25" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="517.25" y="46" text-anchor="middle">run 8</text>
+    <line class="run-boundary" x1="536.92" y1="50" x2="536.92" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="536.92" y="46" text-anchor="middle">run 9</text>
+    <line class="run-boundary" x1="539.61" y1="50" x2="539.61" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="539.61" y="46" text-anchor="middle">run 10</text>
+    <line class="run-boundary" x1="549.77" y1="50" x2="549.77" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="549.77" y="46" text-anchor="middle">run 60</text>
+    <line class="run-boundary" x1="579.19" y1="50" x2="579.19" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="579.19" y="46" text-anchor="middle">run 61</text>
+    <line class="run-boundary" x1="612.4" y1="50" x2="612.4" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="612.4" y="46" text-anchor="middle">run 62</text>
+    <line class="run-boundary" x1="639.33" y1="50" x2="639.33" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="639.33" y="46" text-anchor="middle">run 63</text>
+    <line class="run-boundary" x1="658.06" y1="50" x2="658.06" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="658.06" y="46" text-anchor="middle">run 64</text>
+    <line class="run-boundary" x1="672.99" y1="50" x2="672.99" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="672.99" y="46" text-anchor="middle">run 65</text>
+    <line class="run-boundary" x1="688.45" y1="50" x2="688.45" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="688.45" y="46" text-anchor="middle">run 66</text>
+    <line class="run-boundary" x1="700.87" y1="50" x2="700.87" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="700.87" y="46" text-anchor="middle">run 67</text>
+    <line class="run-boundary" x1="702.11" y1="50" x2="702.11" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="702.11" y="46" text-anchor="middle">run 68</text>
+    <line class="run-boundary" x1="703.19" y1="50" x2="703.19" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="703.19" y="46" text-anchor="middle">run 69</text>
+    <line class="run-boundary" x1="704.34" y1="50" x2="704.34" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="704.34" y="46" text-anchor="middle">run 70</text>
+    <line class="run-boundary" x1="705.4" y1="50" x2="705.4" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="705.4" y="46" text-anchor="middle">run 71</text>
+    <line class="run-boundary" x1="706.44" y1="50" x2="706.44" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="706.44" y="46" text-anchor="middle">run 72</text>
+    <line class="run-boundary" x1="706.82" y1="50" x2="706.82" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="706.82" y="46" text-anchor="middle">run 73</text>
+    <line class="run-boundary" x1="708.36" y1="50" x2="708.36" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="708.36" y="46" text-anchor="middle">run 74</text>
+    <line class="run-boundary" x1="710.4" y1="50" x2="710.4" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="710.4" y="46" text-anchor="middle">run 75</text>
+    <line class="run-boundary" x1="711.83" y1="50" x2="711.83" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="711.83" y="46" text-anchor="middle">run 76</text>
+    <line class="run-boundary" x1="712.82" y1="50" x2="712.82" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="712.82" y="46" text-anchor="middle">run 77</text>
+    <line class="run-boundary" x1="713.17" y1="50" x2="713.17" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="713.17" y="46" text-anchor="middle">run 78</text>
+    <line class="run-boundary" x1="714.28" y1="50" x2="714.28" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="714.28" y="46" text-anchor="middle">run 79</text>
+    <line class="run-boundary" x1="715.11" y1="50" x2="715.11" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="715.11" y="46" text-anchor="middle">run 80</text>
+    <line class="run-boundary" x1="716.01" y1="50" x2="716.01" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="716.01" y="46" text-anchor="middle">run 81</text>
+    <line class="run-boundary" x1="716.96" y1="50" x2="716.96" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="716.96" y="46" text-anchor="middle">run 82</text>
+    <line class="run-boundary" x1="717.3" y1="50" x2="717.3" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="717.3" y="46" text-anchor="middle">run 83</text>
+    <line class="run-boundary" x1="718.78" y1="50" x2="718.78" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="718.78" y="46" text-anchor="middle">run 84</text>
+    <line class="run-boundary" x1="720.43" y1="50" x2="720.43" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="720.43" y="46" text-anchor="middle">run 85</text>
+    <line class="run-boundary" x1="721.48" y1="50" x2="721.48" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="721.48" y="46" text-anchor="middle">run 86</text>
+    <line class="run-boundary" x1="722.06" y1="50" x2="722.06" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="722.06" y="46" text-anchor="middle">run 87</text>
+    <line class="run-boundary" x1="722.39" y1="50" x2="722.39" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="722.39" y="46" text-anchor="middle">run 88</text>
+    <line class="run-boundary" x1="723.03" y1="50" x2="723.03" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="723.03" y="46" text-anchor="middle">run 89</text>
+    <line class="run-boundary" x1="723.93" y1="50" x2="723.93" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="723.93" y="46" text-anchor="middle">run 90</text>
+    <line class="run-boundary" x1="725.07" y1="50" x2="725.07" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="725.07" y="46" text-anchor="middle">run 91</text>
+    <line class="run-boundary" x1="726.01" y1="50" x2="726.01" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="726.01" y="46" text-anchor="middle">run 92</text>
+    <line class="run-boundary" x1="726.32" y1="50" x2="726.32" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="726.32" y="46" text-anchor="middle">run 93</text>
+    <line class="run-boundary" x1="727.5" y1="50" x2="727.5" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="727.5" y="46" text-anchor="middle">run 94</text>
+    <line class="run-boundary" x1="728.97" y1="50" x2="728.97" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="728.97" y="46" text-anchor="middle">run 95</text>
     <line class="run-boundary" x1="730" y1="50" x2="730" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="730" y="46" text-anchor="middle">run 68</text>
+    <text x="730" y="46" text-anchor="middle">run 96</text>
   </g>
   <g class="neurons-line">
     <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="70,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="312.32,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="398.78,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="454.07,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="464.79,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="486.95,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="515.65,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="536.56,50"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="536.98,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="557.52,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="560.33,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="570.93,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="601.65,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="636.33,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="664.44,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="684,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="699.59,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="715.74,119.44"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="728.7,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="302.08,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="384.89,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="437.84,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="448.11,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="469.33,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="496.82,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="516.85,50"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="517.25,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="536.92,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="539.61,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="549.77,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="579.19,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="612.4,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="639.33,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="658.06,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="672.99,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="688.45,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="700.87,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="702.11,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="703.19,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="704.34,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="705.4,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="706.44,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="706.82,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="708.36,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="710.4,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="711.83,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="712.82,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="713.17,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="714.28,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="715.11,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="716.01,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="716.96,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="717.3,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="718.78,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="720.43,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="721.48,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="722.06,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="722.39,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="723.03,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="723.93,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="725.07,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="726.01,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="726.32,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="727.5,119.44"/>
+    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="728.97,119.44"/>
     <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="730,119.44"/>
     <circle class="neurons-point" cx="70" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="312.32" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="398.78" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="454.07" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="464.79" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="486.95" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="515.65" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="536.56" cy="50" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="536.98" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="557.52" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="560.33" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="570.93" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="601.65" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="636.33" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="664.44" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="684" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="699.59" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="715.74" cy="119.44" r="2.4" fill="#2ca02c"/>
-    <circle class="neurons-point" cx="728.7" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="302.08" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="384.89" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="437.84" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="448.11" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="469.33" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="496.82" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="516.85" cy="50" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="517.25" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="536.92" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="539.61" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="549.77" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="579.19" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="612.4" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="639.33" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="658.06" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="672.99" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="688.45" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="700.87" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="702.11" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="703.19" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="704.34" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="705.4" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="706.44" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="706.82" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="708.36" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="710.4" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="711.83" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="712.82" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="713.17" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="714.28" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="715.11" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="716.01" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="716.96" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="717.3" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="718.78" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="720.43" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="721.48" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="722.06" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="722.39" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="723.03" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="723.93" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="725.07" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="726.01" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="726.32" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="727.5" cy="119.44" r="2.4" fill="#2ca02c"/>
+    <circle class="neurons-point" cx="728.97" cy="119.44" r="2.4" fill="#2ca02c"/>
     <circle class="neurons-point" cx="730" cy="119.44" r="2.4" fill="#2ca02c"/>
   </g>
   <g class="synapses-line">
     <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="312.32,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="398.78,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="454.07,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="464.79,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="486.95,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="515.65,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="536.56,50"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="536.98,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="557.52,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="560.33,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="570.93,328.47"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="601.65,328.46"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="636.33,328.46"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="664.44,328.46"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="684,328.45"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="699.59,328.45"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="715.74,328.45"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="728.7,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="302.08,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="384.89,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="437.84,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="448.11,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="469.33,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="496.82,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="516.85,50"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="517.25,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="536.92,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="539.61,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="549.77,328.47"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="579.19,328.46"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="612.4,328.46"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="639.33,328.46"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="658.06,328.45"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="672.99,328.45"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="688.45,328.45"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="700.87,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="702.11,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="703.19,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="704.34,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="705.4,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="706.44,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="706.82,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="708.36,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="710.4,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="711.83,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="712.82,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="713.17,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="714.28,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="715.11,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="716.01,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="716.96,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="717.3,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="718.78,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="720.43,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="721.48,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="722.06,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="722.39,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="723.03,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="723.93,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="725.07,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="726.01,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="726.32,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="727.5,328.44"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="728.97,328.44"/>
     <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="730,328.44"/>
     <circle class="synapses-point" cx="70" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="312.32" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="398.78" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="454.07" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="464.79" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="486.95" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="515.65" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="536.56" cy="50" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="536.98" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="557.52" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="560.33" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="570.93" cy="328.47" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="601.65" cy="328.46" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="636.33" cy="328.46" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="664.44" cy="328.46" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="684" cy="328.45" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="699.59" cy="328.45" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="715.74" cy="328.45" r="2.4" fill="#d62728"/>
-    <circle class="synapses-point" cx="728.7" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="302.08" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="384.89" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="437.84" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="448.11" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="469.33" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="496.82" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="516.85" cy="50" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="517.25" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="536.92" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="539.61" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="549.77" cy="328.47" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="579.19" cy="328.46" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="612.4" cy="328.46" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="639.33" cy="328.46" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="658.06" cy="328.45" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="672.99" cy="328.45" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="688.45" cy="328.45" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="700.87" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="702.11" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="703.19" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="704.34" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="705.4" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="706.44" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="706.82" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="708.36" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="710.4" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="711.83" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="712.82" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="713.17" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="714.28" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="715.11" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="716.01" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="716.96" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="717.3" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="718.78" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="720.43" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="721.48" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="722.06" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="722.39" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="723.03" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="723.93" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="725.07" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="726.01" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="726.32" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="727.5" cy="328.44" r="2.4" fill="#d62728"/>
+    <circle class="synapses-point" cx="728.97" cy="328.44" r="2.4" fill="#d62728"/>
     <circle class="synapses-point" cx="730" cy="328.44" r="2.4" fill="#d62728"/>
   </g>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#222222">
@@ -180,6 +348,6 @@
     <text x="106" y="82">synapses</text>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">
-    <text x="400" y="394" text-anchor="middle">final 794 neurons · 7856 synapses · 20 runs · 1441 cumulative generations</text>
+    <text x="400" y="394" text-anchor="middle">final 794 neurons · 7855 synapses · 48 runs · 1850 cumulative generations</text>
   </g>
 </svg>
