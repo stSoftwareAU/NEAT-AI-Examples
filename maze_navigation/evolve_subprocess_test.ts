@@ -6,7 +6,7 @@
  * of the result — evolution is stochastic and must not be pinned to
  * exact scores or bit-identical reruns.
  */
-import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
+import { assert, assertEquals, assertGreaterOrEqual } from "@std/assert";
 import { join } from "@std/path";
 import {
   DEFAULT_EVOLVE_OPTIONS,
