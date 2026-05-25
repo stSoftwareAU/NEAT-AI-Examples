@@ -9,6 +9,8 @@ import {
   parseInstanceFlag,
   parseTimeSecondsFlag,
   resolveTimeoutMinutes,
+  SCREENSHOT_PATH,
+  screenshotPathForInstance,
 } from "./tsp_two_opt.ts";
 import { parseMultiRunFlags } from "../common/multi_run_state.ts";
 
@@ -111,5 +113,41 @@ Deno.test(
     const flags = parseMultiRunFlags([]);
     const minutes = resolveTimeoutMinutes([], flags.timeoutMinutes);
     assertEquals(minutes, DEFAULT_MULTI_RUN_TIMEOUT_MINUTES);
+  },
+);
+
+Deno.test(
+  "screenshotPathForInstance — burma14 stays on the canonical path",
+  () => {
+    assertEquals(
+      screenshotPathForInstance("burma14"),
+      "docs/screenshots/tsp_two_opt.svg",
+    );
+    // The canonical exported constant is the burma14 path for backward
+    // compatibility with existing tooling.
+    assertEquals(SCREENSHOT_PATH, "docs/screenshots/tsp_two_opt.svg");
+  },
+);
+
+Deno.test(
+  "screenshotPathForInstance — ulysses22 stays on the canonical path",
+  () => {
+    assertEquals(
+      screenshotPathForInstance("ulysses22"),
+      "docs/screenshots/tsp_two_opt.svg",
+    );
+  },
+);
+
+Deno.test(
+  "screenshotPathForInstance — pcb442 writes to its own per-instance file",
+  () => {
+    // The pcb442 smoke must NEVER overwrite the canonical burma14 SVG;
+    // it gets its own file so quality.sh can run the smoke without
+    // touching docs/screenshots/tsp_two_opt.svg (issue #483).
+    assertEquals(
+      screenshotPathForInstance("pcb442"),
+      "docs/screenshots/tsp_two_opt_pcb442.svg",
+    );
   },
 );

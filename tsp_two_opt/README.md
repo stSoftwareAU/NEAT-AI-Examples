@@ -52,14 +52,24 @@ flowchart LR
     BUDGET -- yes --> SCORE --> SVG
 ```
 
+## Supported instances
+
+| Name        | Cities | Published optimum | Path through the runner                     |
+| ----------- | -----: | ----------------: | ------------------------------------------- |
+| `burma14`   |     14 |             3,323 | original single-`evolveEnv` path (default)  |
+| `ulysses22` |     22 |             7,013 | original single-`evolveEnv` path            |
+| `pcb442`    |    442 |            50,778 | hybrid orchestrator (memetic + CRISPR + MH) |
+
 ## Run instructions
 
 ```bash
-./tsp_two_opt/run.sh                            # burma14 (default)
-./tsp_two_opt/run.sh --instance=ulysses22       # the 22-city instance
-./tsp_two_opt/run.sh --instance=pcb442          # the 442-city PCB instance
-./tsp_two_opt/run.sh --time-seconds=60          # bounded "smoke" budget (CI)
-./tsp_two_opt/run.sh --fresh                    # wipe prior multi-run state
+./tsp_two_opt/run.sh                                              # burma14 (default)
+./tsp_two_opt/run.sh --instance=ulysses22                         # the 22-city instance
+./tsp_two_opt/run.sh --instance=pcb442                            # the 442-city PCB instance
+./tsp_two_opt/run.sh --time-seconds=60                            # bounded "smoke" budget (CI)
+./tsp_two_opt/run.sh --instance=pcb442 --time-seconds=60          # pcb442 60s smoke (wired into quality.sh)
+./tsp_two_opt/run.sh --instance=pcb442 --timeout=480               # pcb442 manual overnight (~8h)
+./tsp_two_opt/run.sh --fresh                                      # wipe prior multi-run state
 ```
 
 The `--time-seconds=<N>` flag converts to `timeoutMinutes = N / 60` and overrides
@@ -140,3 +150,29 @@ each on a smoke run:
 A 60-second smoke (`./tsp_two_opt/run.sh --instance=pcb442 --time-seconds=60`) exercises every code
 path without expecting SOTA tour lengths — the parent issue's "within 25% of 50,778" target is
 verified by the user's overnight run, not by this orchestrator.
+
+The three techniques are demonstrated in dedicated examples elsewhere in this repository — the
+pcb442 hybrid wires them together on top of the learned 2-opt local search:
+
+- [`crispr_injection/README.md`](../crispr_injection/README.md) — splicing a hand-crafted edit gene
+  into a stalled champion (the splicer reused here via `injectGene`).
+- [`memetic_evolution/README.md`](../memetic_evolution/README.md) — re-seeding the next chunk from
+  the previous chunk's archived champion.
+- [`mcmc_acceptance/README.md`](../mcmc_acceptance/README.md) — Metropolis-Hastings acceptance over
+  a synthetic fitness landscape (the analytical analogue of the per-swap MH rule on chunks 2+).
+
+### Smoke run output
+
+The committed `docs/screenshots/tsp_two_opt_pcb442.svg` is the side-by-side artefact produced by one
+real 60-second smoke run of the hybrid orchestrator (issue #483). It is proof the harness — the
+three hybrid techniques wired on top of the learned 2-opt local search, dispatched through the
+`pcb442` instance path — works end-to-end inside a CI-sized budget. The committed SVG should be read
+as a smoke-only artefact: the improvement ratio is ~2% over the nearest-neighbour seed, not the SOTA
+tour length that the user's overnight (~8h) run is expected to reach.
+
+The champion artefact bundle from the overnight run — the long-running `creature.json` under
+`docs/data/tsp_two_opt_pcb442/`, the milestones chart, and the SOTA side-by-side SVG — lands via
+follow-up issue [#484](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/484), **not** this
+PR. The pcb442 smoke wired into `quality.sh` inherits the `TSP_TWO_OPT_QUICK=1` discipline so its
+ephemeral artefacts go under a temp directory and the canonical
+`docs/screenshots/tsp_two_opt_pcb442.svg` committed here is never overwritten by CI.

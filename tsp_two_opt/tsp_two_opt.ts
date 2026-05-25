@@ -317,8 +317,30 @@ export async function evolveTwoOptController(
 /** Slug used by the multi-run persistence helpers and chart artefact paths. */
 export const EXAMPLE_SLUG = "tsp_two_opt";
 
-/** Path to the side-by-side SVG snapshot the runner emits for the README. */
+/**
+ * Path to the side-by-side SVG snapshot the runner emits for the README.
+ *
+ * This is the canonical burma14/ulysses22 path. The pcb442 hybrid smoke
+ * writes to a separate per-instance file via
+ * {@link screenshotPathForInstance} so the canonical SVG is never
+ * overwritten by a 60s smoke run (issue #483).
+ */
 export const SCREENSHOT_PATH = "docs/screenshots/tsp_two_opt.svg";
+
+/**
+ * Resolve the side-by-side SVG path for a given TSP instance.
+ *
+ * `burma14` and `ulysses22` share the canonical {@link SCREENSHOT_PATH}
+ * for backward compatibility with the original single-instance runner.
+ * `pcb442` writes to its own per-instance file so the 60s smoke run wired
+ * into `quality.sh` cannot clobber the canonical burma14 SVG.
+ */
+export function screenshotPathForInstance(instanceName: TspInstanceName): string {
+  if (instanceName === "pcb442") {
+    return "docs/screenshots/tsp_two_opt_pcb442.svg";
+  }
+  return SCREENSHOT_PATH;
+}
 
 /** Default `targetError` for a multi-run invocation. */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.05;
@@ -522,15 +544,19 @@ if (import.meta.main) {
     instanceName: instance.name,
     proposalBudget: evolveOptions.proposalBudget,
   });
+  const canonicalScreenshot = screenshotPathForInstance(instanceName);
   if (quick && quickBaseDir !== undefined) {
     const tmpScreenshots = join(quickBaseDir, "screenshots");
     ensureDirSync(tmpScreenshots);
-    await Deno.writeTextFile(join(tmpScreenshots, "tsp_two_opt.svg"), svg);
+    // Reuse the canonical basename inside the temp dir so an inspector
+    // can correlate the ephemeral output with the canonical file.
+    const tmpName = instanceName === "pcb442" ? "tsp_two_opt_pcb442.svg" : "tsp_two_opt.svg";
+    await Deno.writeTextFile(join(tmpScreenshots, tmpName), svg);
     console.log("⏭️  Quick mode: skipped overwriting canonical screenshot");
   } else {
     ensureDirSync("docs/screenshots");
-    await Deno.writeTextFile(SCREENSHOT_PATH, svg);
-    console.log(`🖼️  Wrote screenshot ${SCREENSHOT_PATH}`);
+    await Deno.writeTextFile(canonicalScreenshot, svg);
+    console.log(`🖼️  Wrote screenshot ${canonicalScreenshot}`);
   }
 
   if (quick && quickBaseDir !== undefined) {
