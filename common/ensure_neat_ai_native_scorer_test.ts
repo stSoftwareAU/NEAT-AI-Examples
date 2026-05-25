@@ -26,11 +26,11 @@ Deno.test("example runner preamble sets scoped --allow-run for rust_scorer under
   const bashScript = [
     'REPO_ROOT="$(pwd)"',
     'source "${REPO_ROOT}/common/example_runner_preamble.sh"',
-    'if ((${#ALLOW_RUN_ARGS[@]} != 1)); then',
+    "if ((${#ALLOW_RUN_ARGS[@]} != 1)); then",
     '  echo "ALLOW_RUN_ARGS length=${#ALLOW_RUN_ARGS[@]}"',
     "  exit 1",
     "fi",
-    'printf \'%s\\n\' "${ALLOW_RUN_ARGS[0]}"',
+    "printf '%s\\n' \"${ALLOW_RUN_ARGS[0]}\"",
   ].join("\n");
 
   const cmd = new Deno.Command("bash", {
