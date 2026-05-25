@@ -24,10 +24,7 @@ import {
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 
-import {
-  appendMultiRunRun,
-  loadMultiRunState,
-} from "../common/multi_run_state.ts";
+import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
 import {
   buildDigitSamples,
   CLASS_COUNT,
@@ -39,11 +36,12 @@ import {
 import {
   DEFAULT_MULTI_RUN_TARGET_ERROR,
   evolveMnistClassifier,
+  evolveResultToMultiRunSample,
   EXAMPLE_SLUG,
   runMultiRunMnist,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
-import { setMaxCachedWasmCreatureActivations, Creature } from "@stsoftware/neat-ai";
+import { Creature, setMaxCachedWasmCreatureActivations } from "@stsoftware/neat-ai";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 
 /** Trim WASM caches between serial integration cases in one Deno process. */
@@ -201,6 +199,31 @@ function assertValidEvolveResult(
   assertEquals(result.champion.output, CLASS_COUNT);
   assertGreaterOrEqual(result.champion.neurons.length, FEATURE_COUNT + CLASS_COUNT);
 }
+
+Deno.test(
+  "evolveResultToMultiRunSample carries error/score/topology onto the milestone shape",
+  { sanitizeOps: false, sanitizeResources: false },
+  async () => {
+    resetEvolveIntegrationWasmState();
+    const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
+    try {
+      const result = await evolveMnistClassifierWithRetry({
+        dataDir,
+        ...EVOLVE_DIR_FRESH_OPTIONS,
+      });
+      const sample = evolveResultToMultiRunSample(result);
+      assertEquals(sample.runGen, result.generations);
+      assertGreaterOrEqual(sample.error, 0);
+      assertGreaterOrEqual(1, sample.error);
+      assertEquals(sample.bestScore, result.bestScore);
+      assertEquals(sample.neurons, result.champion.neurons.length);
+      assertEquals(sample.synapses, result.champion.synapses.length);
+      assertEquals(sample.generationWallClockMs, result.wallClockMs);
+    } finally {
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+);
 
 Deno.test(
   "evolveMnistClassifier returns finite scores, generations, and a champion with MNIST I/O shape",

@@ -171,6 +171,7 @@ echo "and discoverySampleRate: -1 so evolveDir never schedules Discovery."
 echo "----------------------------------------"
 
 EVOLVE_INTEGRATION_FILTERS=(
+  "evolveResultToMultiRunSample carries"
   "evolveMnistClassifier returns finite"
   "resume flow"
   "--fresh wipes"

@@ -146,6 +146,7 @@ jobs:
           deno test --parallel "${DENO_TEST_FLAGS[@]}" \
             --ignore=mnist_classification/evolve_integration_test.ts
           EVOLVE_INTEGRATION_FILTERS=(
+            "evolveResultToMultiRunSample carries"
             "evolveMnistClassifier returns finite"
             "resume flow"
             "--fresh wipes"
