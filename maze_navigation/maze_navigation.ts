@@ -142,7 +142,7 @@ export interface EvolveOptions {
    * `evolveRL` reads and writes creatures under this path instead of the
    * shared default, isolating the run from prior experiments. Pass a
    * fresh temp directory in tests to prevent disk-cache pollution from
-   * parallel evolveRL runs from tainting the golden snapshot.
+   * parallel evolveRL runs.
    */
   experimentStore?: string;
 }
