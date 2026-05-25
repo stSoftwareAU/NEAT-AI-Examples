@@ -32,16 +32,25 @@ ensure_neat_ai_native_scorer_use_js_fallback() {
   local reason="${1:-unknown}"
   unset NEAT_AI_RUST_SCORER_ENABLED
   unset NEAT_AI_RUST_SCORER_BINARY_PATH
+  ALLOW_RUN_ARGS=()
+  # Consumed by sourced run.sh — reference here so ShellCheck sees a read (SC2034).
+  ((${#ALLOW_RUN_ARGS[@]} >= 0))
   printf '[native-scorer] unavailable (%s), using JS fallback\n' "${reason}" >&2
 }
 
 # Populate ALLOW_RUN_ARGS for a scoped --allow-run when rust_scorer is built.
 # Callers splice with: ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"}
+#
+# Do not `export` this array — macOS bash 3.2 treats `export ALLOW_RUN_ARGS=(…)`
+# as assignment + bare `export ALLOW_RUN_ARGS`, which trips `set -u` and leaves
+# the flag unset so Deno never receives --allow-run.
 rust_scorer_allow_run_args() {
-  export ALLOW_RUN_ARGS=()
+  ALLOW_RUN_ARGS=()
   if [[ -n "${NEAT_AI_RUST_SCORER_BINARY_PATH:-}" ]]; then
-    export ALLOW_RUN_ARGS=("--allow-run=${NEAT_AI_RUST_SCORER_BINARY_PATH}")
+    ALLOW_RUN_ARGS=("--allow-run=${NEAT_AI_RUST_SCORER_BINARY_PATH}")
   fi
+  # Consumed by sourced run.sh — reference here so ShellCheck sees a read (SC2034).
+  ((${#ALLOW_RUN_ARGS[@]} >= 0))
 }
 
 prepend_path_if_dir_exists() {

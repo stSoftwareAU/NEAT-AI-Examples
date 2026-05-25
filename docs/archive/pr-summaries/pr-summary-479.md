@@ -4,8 +4,8 @@ Generated and committed the missing `tsp_constructive_ulysses22` artefact bundle
 `tsp_constructive/README.md` references resolve, mirroring the existing `tsp_constructive_burma14`
 layout. Ran a fresh 5-minute evolution against the `ulysses22` TSPLIB instance via
 `./tsp_constructive/run.sh --fresh --instance=ulysses22`, captured the deterministic champion-tour
-SVG, milestones SVG, champion JSON, and merged milestone history, and filled in the previously
-`TBD` `ulysses22` row in the "Achieved Ratio" table with the run's actual numbers. Closes #479.
+SVG, milestones SVG, champion JSON, and merged milestone history, and filled in the previously `TBD`
+`ulysses22` row in the "Achieved Ratio" table with the run's actual numbers. Closes #479.
 
 ### Run results
 
@@ -20,12 +20,12 @@ This is a pure artefact-and-doc commit — no code changed.
 
 ### Artefacts committed
 
-| Path | Purpose |
-| --- | --- |
-| `docs/screenshots/tsp_constructive_ulysses22.svg` | Deterministic champion-tour SVG (closed 22-city tour) |
-| `docs/screenshots/tsp_constructive_ulysses22/milestones.svg` | Milestone-stats dual-axis chart |
-| `docs/data/tsp_constructive_ulysses22/creature.json` | Champion `CreatureExport` (next-run seed) |
-| `docs/data/tsp_constructive_ulysses22/milestones.json` | Merged milestone history (JSON array of 12 `MultiRunMilestone` records) |
+| Path                                                         | Purpose                                                                 |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `docs/screenshots/tsp_constructive_ulysses22.svg`            | Deterministic champion-tour SVG (closed 22-city tour)                   |
+| `docs/screenshots/tsp_constructive_ulysses22/milestones.svg` | Milestone-stats dual-axis chart                                         |
+| `docs/data/tsp_constructive_ulysses22/creature.json`         | Champion `CreatureExport` (next-run seed)                               |
+| `docs/data/tsp_constructive_ulysses22/milestones.json`       | Merged milestone history (JSON array of 12 `MultiRunMilestone` records) |
 
 ### Data flow
 
@@ -46,15 +46,15 @@ flowchart LR
 
 ### Quality check
 
-`./quality.sh` was run end-to-end. The TSP Constructive Example section ran in quick mode and
-wrote its artefacts under a `/var/folders/…/tsp_constructive_quick_*` temp directory — the
-canonical `docs/screenshots/tsp_constructive_ulysses22.svg`, `milestones.svg`, `creature.json`,
-and `milestones.json` files were not overwritten, confirming there is no canonical-artefact churn
-from the quality run.
+`./quality.sh` was run end-to-end. The TSP Constructive Example section ran in quick mode and wrote
+its artefacts under a `/var/folders/…/tsp_constructive_quick_*` temp directory — the canonical
+`docs/screenshots/tsp_constructive_ulysses22.svg`, `milestones.svg`, `creature.json`, and
+`milestones.json` files were not overwritten, confirming there is no canonical-artefact churn from
+the quality run.
 
-The only failing section was the MNIST Handwritten-Digit Classification Example, which failed with
-a pre-existing `TMPDIR` env-permission error unrelated to this issue and unrelated to any file
-changed here.
+The only failing section was the MNIST Handwritten-Digit Classification Example, which failed with a
+pre-existing `TMPDIR` env-permission error unrelated to this issue and unrelated to any file changed
+here.
 
 ## Test Plan
 
@@ -68,7 +68,7 @@ changed here.
       (keys: `semanticVersion`, `forwardOnly`, `neurons`, `synapses`, `input`, `output`, `tags`).
 - [x] Verified `docs/data/tsp_constructive_ulysses22/milestones.json` parses as a non-empty JSON
       array of 12 `MultiRunMilestone` records.
-- [x] Updated `tsp_constructive/README.md` "Achieved Ratio" table: `ulysses22` row now shows
-      `7,416` tour length and `0.946` score; `burma14` row left untouched.
+- [x] Updated `tsp_constructive/README.md` "Achieved Ratio" table: `ulysses22` row now shows `7,416`
+      tour length and `0.946` score; `burma14` row left untouched.
 - [x] Ran `./quality.sh` and confirmed the canonical artefacts were preserved (no churn under
       `docs/screenshots/tsp_constructive_ulysses22/` or `docs/data/tsp_constructive_ulysses22/`).

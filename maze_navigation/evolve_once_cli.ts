@@ -1,5 +1,5 @@
 /**
- * One-shot maze evolution CLI for the reproducibility test.
+ * One-shot maze evolution CLI for subprocess isolation tests.
  *
  * Invoked in a fresh Deno process so NEAT-AI global WASM/cache state
  * from other parallel tests cannot leak into the run. The filename

@@ -1,9 +1,9 @@
 {
   "exampleSlug": "mnist_classification",
   "campaignStartedAt": "2026-05-24T03:28:43.289Z",
-  "lastUpdatedAt": "2026-05-24T04:20:01.080Z",
-  "totalWallClockMs": 3572664,
-  "phaseCount": 10,
-  "bestHoldoutScore": 0.3056,
-  "bestValidationScore": 0.2946
+  "lastUpdatedAt": "2026-05-25T02:42:19.741Z",
+  "totalWallClockMs": 20151604,
+  "phaseCount": 51,
+  "bestHoldoutScore": 0.5154,
+  "bestValidationScore": 0.5203
 }
