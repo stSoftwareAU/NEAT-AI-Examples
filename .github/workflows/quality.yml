@@ -69,6 +69,23 @@ jobs:
           ref: Develop
           path: NEAT-AI-scorer
 
+      # rust_scorer depends on neat-core via `../../NEAT-AI-core/neat-core`
+      # (sibling of NEAT-AI-scorer). actions/checkout cannot write outside
+      # $GITHUB_WORKSPACE, so clone in-workspace and symlink the sibling path
+      # NEAT-AI-scorer's own CI uses (NEAT-AI-scorer Issue #18).
+      - name: Check out NEAT-AI-core (path dependency for neat-core)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: stSoftwareAU/NEAT-AI-core
+          ref: Develop
+          path: NEAT-AI-core
+
+      - name: Link NEAT-AI-core sibling path expected by Cargo
+        run: |
+          if [ ! -e "$GITHUB_WORKSPACE/../NEAT-AI-core" ]; then
+            ln -s "$GITHUB_WORKSPACE/NEAT-AI-core" "$GITHUB_WORKSPACE/../NEAT-AI-core"
+          fi
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
