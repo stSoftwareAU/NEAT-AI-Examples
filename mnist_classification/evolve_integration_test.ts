@@ -98,7 +98,10 @@ const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
 const EVOLVE_DIR_TEST_OPTIONS = {
   testCaps: EVOLVE_DIR_TEST_CAPS,
   timeoutMinutes: 0,
-  hiddenReluSeed: true,
+  // Use the simple linear seed (784→10, ~7 850 params) rather than the
+  // hidden-ReLU seed (784→128→64→10, ~109 k params) to avoid WASM memory
+  // pressure in CI that causes all creatures to receive score 0 (#502).
+  hiddenReluSeed: false,
 } as const;
 
 Deno.test(
@@ -160,8 +163,8 @@ Deno.test({
     try {
       const slug = EXAMPLE_SLUG;
 
-      // Bootstrap a champion with a truthy CATEGORICAL_ERROR score — a fresh
-      // hidden ReLU seed can score 0 on the tiny synthetic set and stall evolveDir.
+      // Bootstrap a champion so the resume test starts from a saved creature
+      // rather than a cold start.
       const bootstrap = await evolveMnistClassifier({
         dataDir,
         ...EVOLVE_DIR_TEST_OPTIONS,
