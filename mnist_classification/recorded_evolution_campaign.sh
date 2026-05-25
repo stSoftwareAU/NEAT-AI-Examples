@@ -27,6 +27,17 @@ cd "${REPO_ROOT}"
 # shellcheck source=common/example_runner_preamble.sh
 source "${REPO_ROOT}/common/example_runner_preamble.sh"
 
+# MNIST evolves with cost=CATEGORICAL_ERROR (see mnist_classification.ts);
+# batch scoring through rust_scorer only works end-to-end when the built
+# binary advertises that cost. Probe once here so operators see a single
+# actionable warning at startup rather than per-generation fallback noise
+# after each phase. Setting MNIST_REQUIRE_NATIVE_SCORER=1 promotes the
+# warning to a hard failure (issue #502).
+if [[ "${MNIST_REQUIRE_NATIVE_SCORER:-0}" == "1" ]]; then
+  export NEAT_AI_REQUIRE_NATIVE_SCORER=1
+fi
+ensure_rust_scorer_supports_cost CATEGORICAL_ERROR
+
 export NEAT_EXAMPLES_MAX_HEAP_MB="${NEAT_EXAMPLES_MAX_HEAP_MB:-12288}"
 TARGET="${MNIST_TARGET_ACCURACY:-0.90}"
 MAX_HOURS="${MNIST_CAMPAIGN_MAX_HOURS:-48}"

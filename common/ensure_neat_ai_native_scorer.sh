@@ -82,6 +82,9 @@ ensure_neat_ai_native_scorer() {
   repo_root="$(cd -P "${common_dir}/.." && pwd -P)"
   parent_dir="$(cd -P "${repo_root}/.." && pwd -P)"
   scorer_repo="${parent_dir}/NEAT-AI-scorer"
+  if [[ ! -d "${scorer_repo}" ]]; then
+    scorer_repo="${repo_root}/NEAT-AI-scorer"
+  fi
 
   maybe_load_rust_environment
 
@@ -126,6 +129,70 @@ ensure_neat_ai_native_scorer() {
 
   export NEAT_AI_RUST_SCORER_ENABLED="true"
   export NEAT_AI_RUST_SCORER_BINARY_PATH="${binary_path}"
+}
+
+# Verify the built rust_scorer advertises support for a NEAT-AI cost name
+# (e.g. CATEGORICAL_ERROR). The probe runs `rust_scorer --help` once at
+# preamble time and greps the help text for the cost token — it never
+# touches a champion creature or training fixture, so it cannot violate
+# the warm-start policy.
+#
+# Behaviour matrix:
+#   * native scorer not built          → silent (already on JS fallback)
+#   * probe binary missing or unreadable → silent (consistent with above)
+#   * --help advertises the cost       → return 0
+#   * --help does NOT advertise it     → warn on stderr and fall back to
+#                                         the JS scorer; when
+#                                         NEAT_AI_REQUIRE_NATIVE_SCORER=1
+#                                         exit non-zero instead so an
+#                                         operator notices on the first
+#                                         generation rather than after a
+#                                         night of batch fallback.
+#
+# Tracks issue #502 — MNIST native scorer requires rust_scorer
+# CATEGORICAL_ERROR support; the same probe is reusable by any example
+# that hard-depends on a specific cost.
+ensure_rust_scorer_supports_cost() {
+  local cost_name="${1:?cost name required}"
+  local binary="${NEAT_AI_RUST_SCORER_BINARY_PATH:-}"
+  if [[ -z "${binary}" ]]; then
+    return 0
+  fi
+  if [[ ! -x "${binary}" ]]; then
+    return 0
+  fi
+
+  local help_output help_status
+  set +e
+  help_output="$("${binary}" --help 2>&1)"
+  help_status=$?
+  set -e
+
+  # An older rust_scorer may not implement --help at all. Treat a non-zero
+  # exit or empty output as "unknown" — surface a softer warning so the
+  # operator can investigate, but do not block the run.
+  if [[ "${help_status}" -ne 0 || -z "${help_output}" ]]; then
+    printf '[native-scorer] could not probe %s --help (exit %d); cost %s support unverified\n' \
+      "${binary}" "${help_status}" "${cost_name}" >&2
+    return 0
+  fi
+
+  if grep -qE "(^|[^A-Z_])${cost_name}([^A-Z_]|$)" <<<"${help_output}"; then
+    return 0
+  fi
+
+  printf '[native-scorer] built rust_scorer at %s does NOT advertise cost %s\n' \
+    "${binary}" "${cost_name}" >&2
+  printf '[native-scorer] batch scoring will fall back to per-creature JS scoring on every generation.\n' >&2
+  printf '[native-scorer] Update the sibling NEAT-AI-scorer checkout (see NEAT-AI-scorer#134) and rebuild.\n' >&2
+
+  if [[ "${NEAT_AI_REQUIRE_NATIVE_SCORER:-0}" == "1" ]]; then
+    printf '[native-scorer] NEAT_AI_REQUIRE_NATIVE_SCORER=1 set — failing fast.\n' >&2
+    return 1
+  fi
+
+  ensure_neat_ai_native_scorer_use_js_fallback "cost ${cost_name} not advertised by rust_scorer"
+  return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

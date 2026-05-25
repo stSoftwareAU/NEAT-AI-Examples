@@ -62,6 +62,37 @@ jobs:
       - name: Install dependencies with frozen lockfile
         run: deno install --frozen
 
+      - name: Check out NEAT-AI-scorer for MNIST CATEGORICAL_ERROR tests
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: stSoftwareAU/NEAT-AI-scorer
+          ref: Develop
+          path: NEAT-AI-scorer
+
+      # rust_scorer depends on neat-core via `../../NEAT-AI-core/neat-core`
+      # (sibling of NEAT-AI-scorer). actions/checkout cannot write outside
+      # $GITHUB_WORKSPACE, so clone in-workspace and symlink the sibling path
+      # NEAT-AI-scorer's own CI uses (NEAT-AI-scorer Issue #18).
+      - name: Check out NEAT-AI-core (path dependency for neat-core)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: stSoftwareAU/NEAT-AI-core
+          ref: Develop
+          path: NEAT-AI-core
+
+      - name: Link NEAT-AI-core sibling path expected by Cargo
+        run: |
+          if [ ! -e "$GITHUB_WORKSPACE/../NEAT-AI-core" ]; then
+            ln -s "$GITHUB_WORKSPACE/NEAT-AI-core" "$GITHUB_WORKSPACE/../NEAT-AI-core"
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build rust_scorer
+        run: RUSTFLAGS="-D warnings" cargo build --release -p rust_scorer
+        working-directory: NEAT-AI-scorer
+
       - name: Run deno lint
         run: deno lint
 
@@ -80,10 +111,54 @@ jobs:
       #
       # --coverage produces a profile that is converted to lcov and
       # uploaded to Codecov below. Issue #51.
+      # GitHub-hosted runners are CPU-only (no GPU). MNIST evolveDir tests
+      # pass timeoutMinutes: 0 and discoverySampleRate: -1 so Discovery is
+      # never scheduled; only the CPU rust_scorer batch path is exercised.
       - name: Run unit tests with coverage
+        env:
+          NEAT_AI_RUST_SCORER_ENABLED: "true"
+          NEAT_AI_RUST_SCORER_BINARY_PATH: ${{ github.workspace }}/NEAT-AI-scorer/target/release/rust_scorer
+          NEAT_AI_RUST_SCORER_BATCH: "true"
         run: |
           set -euo pipefail
-          deno test --parallel --frozen --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df,git,deno --coverage=.coverage
+          # Probe the built rust_scorer for CATEGORICAL_ERROR support (#502).
+          # If unsupported, the helper unsets NEAT_AI_RUST_SCORER_BINARY_PATH and
+          # NEAT_AI_RUST_SCORER_ENABLED so the MNIST evolve tests fall back to JS.
+          # shellcheck source=common/ensure_neat_ai_native_scorer.sh
+          source "common/ensure_neat_ai_native_scorer.sh"
+          ensure_rust_scorer_supports_cost CATEGORICAL_ERROR || true
+          DENO_TEST_ALLOW_RUN="df,bash,git,deno"
+          if [[ -n "${NEAT_AI_RUST_SCORER_BINARY_PATH:-}" ]]; then
+            DENO_TEST_ALLOW_RUN="${DENO_TEST_ALLOW_RUN},${NEAT_AI_RUST_SCORER_BINARY_PATH}"
+          fi
+          DENO_TEST_FLAGS=(
+            --frozen
+            --v8-flags=--max-old-space-size=8192
+            --no-check
+            --allow-read
+            --allow-write
+            --allow-env
+            --allow-net
+            --allow-ffi
+            --allow-run="${DENO_TEST_ALLOW_RUN}"
+            --coverage=.coverage
+          )
+          deno test --parallel "${DENO_TEST_FLAGS[@]}" \
+            --ignore=mnist_classification/evolve_integration_test.ts
+          EVOLVE_INTEGRATION_FILTERS=(
+            "evolveResultToMultiRunSample carries"
+            "evolveMnistClassifier returns finite"
+            "resume flow"
+            "--fresh wipes"
+            "rejects --target-error"
+            "DEFAULT_MULTI_RUN_TARGET_ERROR"
+            "--timeout override"
+          )
+          for filter in "${EVOLVE_INTEGRATION_FILTERS[@]}"; do
+            deno test "${DENO_TEST_FLAGS[@]}" \
+              mnist_classification/evolve_integration_test.ts \
+              --filter "${filter}"
+          done
 
       - name: Generate lcov coverage report
         run: deno coverage .coverage --lcov --output=.coverage/coverage.lcov

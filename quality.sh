@@ -125,13 +125,77 @@ echo "----------------------------------------"
 echo "Running: Unit Tests"
 echo "----------------------------------------"
 
-if deno test --parallel --frozen --v8-flags=--max-old-space-size=8192 --no-check --allow-read --allow-write --allow-env --allow-net --allow-ffi --allow-run=df,bash,git,deno; then
+# shellcheck source=common/ensure_neat_ai_native_scorer.sh
+source "${SCRIPT_DIR}/common/ensure_neat_ai_native_scorer.sh"
+ensure_neat_ai_native_scorer
+ensure_rust_scorer_supports_cost CATEGORICAL_ERROR || true
+rust_scorer_allow_run_args
+# Preserve fallback state — do NOT default to "true" here; the probe above may
+# have unset the variable intentionally when CATEGORICAL_ERROR is unsupported.
+export NEAT_AI_RUST_SCORER_ENABLED="${NEAT_AI_RUST_SCORER_ENABLED:-false}"
+export NEAT_AI_RUST_SCORER_BINARY_PATH="${NEAT_AI_RUST_SCORER_BINARY_PATH:-}"
+
+DENO_TEST_ALLOW_RUN="df,bash,git,deno"
+if [[ -n "${NEAT_AI_RUST_SCORER_BINARY_PATH:-}" ]]; then
+  DENO_TEST_ALLOW_RUN="${DENO_TEST_ALLOW_RUN},${NEAT_AI_RUST_SCORER_BINARY_PATH}"
+fi
+
+DENO_TEST_FLAGS=(
+  --frozen
+  --v8-flags=--max-old-space-size=8192
+  --no-check
+  --allow-read
+  --allow-write
+  --allow-env
+  --allow-net
+  --allow-ffi
+  --allow-run="${DENO_TEST_ALLOW_RUN}"
+)
+
+if deno test --parallel "${DENO_TEST_FLAGS[@]}" \
+  --ignore=mnist_classification/evolve_integration_test.ts; then
   echo ""
-  echo "SUCCESS: Unit Tests"
+  echo "SUCCESS: Unit Tests (parallel)"
   echo ""
 else
   echo ""
-  echo "FAILED: Unit Tests"
+  echo "FAILED: Unit Tests (parallel)"
+  echo ""
+  FAILED=1
+fi
+
+echo "----------------------------------------"
+echo "Running: MNIST evolveDir integration tests (isolated processes)"
+echo "GitHub Actions runners are CPU-only; tests use timeoutMinutes: 0"
+echo "and discoverySampleRate: -1 so evolveDir never schedules Discovery."
+echo "----------------------------------------"
+
+EVOLVE_INTEGRATION_FILTERS=(
+  "evolveResultToMultiRunSample carries"
+  "evolveMnistClassifier returns finite"
+  "resume flow"
+  "--fresh wipes"
+  "rejects --target-error"
+  "DEFAULT_MULTI_RUN_TARGET_ERROR"
+  "--timeout override"
+)
+
+EVOLVE_INTEGRATION_FAILED=0
+for filter in "${EVOLVE_INTEGRATION_FILTERS[@]}"; do
+  if ! deno test "${DENO_TEST_FLAGS[@]}" \
+    mnist_classification/evolve_integration_test.ts \
+    --filter "${filter}"; then
+    EVOLVE_INTEGRATION_FAILED=1
+  fi
+done
+
+if [[ "${EVOLVE_INTEGRATION_FAILED}" -eq 0 ]]; then
+  echo ""
+  echo "SUCCESS: MNIST evolveDir integration tests"
+  echo ""
+else
+  echo ""
+  echo "FAILED: MNIST evolveDir integration tests"
   echo ""
   FAILED=1
 fi

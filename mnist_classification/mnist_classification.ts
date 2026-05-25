@@ -22,12 +22,13 @@
 
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import { dirname, join } from "@std/path";
+import { dirname, fromFileUrl, join } from "@std/path";
 import {
   Creature,
   type CreatureExport,
   type NeatOptions,
   safeWriteJson,
+  setMaxCachedWasmCreatureActivations,
   type TrainingEvent,
 } from "@stsoftware/neat-ai";
 
@@ -81,6 +82,8 @@ export function resolveMnistHiddenLayerSizes(
 
 /** Working-directory root for this example. */
 export const MNIST_ROOT = ".synthetic-mnist";
+
+const MNIST_MODULE_DIR = fromFileUrl(new URL(".", import.meta.url));
 
 /** Per-generation TSV log (`onTrainingEvent` / `generation_complete`). */
 export const MNIST_GENERATION_LOG_PATH = join(MNIST_ROOT, "overnight", "generations.tsv");
@@ -516,10 +519,11 @@ export interface MnistEvolveOptions {
    * `Creature.evolveDir`. */
   dataDir: string;
   /**
-   * `evolveDir` `timeoutMinutes` option. Pass `0` from tests to skip the
-   * wall-clock backstop (NEAT-AI activates a dynamic library on the
-   * backstop code path that Deno's `--allow-ffi` sanitizer flags as a
-   * leak).
+   * `evolveDir` `timeoutMinutes` option. Pass `0` from tests and CI quick
+   * mode to skip the wall-clock backstop and Discovery scheduling (GitHub
+   * Actions runners have no GPU). NEAT-AI also loads FFI cleanup machinery
+   * on the backstop path that Deno's `--allow-ffi` sanitiser flags as a
+   * leak in unit tests.
    */
   timeoutMinutes: number;
   /**
@@ -544,6 +548,8 @@ export interface MnistEvolveOptions {
     populationSize?: number;
     /** When true, skip per-generation logging (unit tests). */
     disableGenerationLog?: boolean;
+    /** NEAT-AI PRNG seed for reproducible test runs (default 424242). */
+    seed?: number;
   };
   /** 1-based multi-run index for generation log rows (default 1). */
   runIndex?: number;
@@ -573,6 +579,16 @@ export interface MnistEvolveOptions {
   mutationRate?: number;
   /** Mutation operators per mutated creature (library default when omitted). */
   mutationAmount?: number;
+  /**
+   * Additional creature exports seeded into the initial population (NEAT-AI
+   * `creatures`). Used by the exploration campaign to inject fittest
+   * champions from earlier training-sample levels before a full-data pass.
+   */
+  populationSeedExports?: readonly CreatureExport[];
+  /** NEAT-AI `verbose` logging (defaults to true outside unit-test caps). */
+  verbose?: boolean;
+  /** NEAT-AI elitism override (derived from archive count when omitted). */
+  elitism?: number;
 }
 
 /** Result of {@link evolveMnistClassifier}. */
@@ -594,11 +610,16 @@ export interface MnistEvolveResult {
 }
 
 /** Cross-process lock so parallel `deno test` workers do not share NEAT-AI global state. */
-const EVOLVE_DIR_LOCK_PATH = join(MNIST_ROOT, "evolve-dir.lock");
+const EVOLVE_DIR_LOCK_PATH = join(MNIST_MODULE_DIR, MNIST_ROOT, "evolve-dir.lock");
+/** Serialises all unit-test `evolveDir` calls (shared NEAT/WASM globals between cases). */
+const TEST_EVOLVE_DIR_LOCK_PATH = join(MNIST_MODULE_DIR, MNIST_ROOT, "evolve-dir-test.lock");
 
-async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
-  ensureDirSync(dirname(EVOLVE_DIR_LOCK_PATH));
-  await using lockFile = await Deno.open(EVOLVE_DIR_LOCK_PATH, {
+async function withEvolveDirLock<T>(
+  lockPath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  ensureDirSync(dirname(lockPath));
+  await using lockFile = await Deno.open(lockPath, {
     create: true,
     read: true,
     write: true,
@@ -619,27 +640,50 @@ async function withEvolveDirLock<T>(fn: () => Promise<T>): Promise<T> {
  * `{ error, score, time, generation }` fields plus the seed and final
  * topology counts feed the multi-run milestone history (issue #327).
  */
+/** True when evolveDir must not schedule Discovery (tests / CPU-only CI). */
+function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
+  return options.testCaps !== undefined ||
+    options.timeoutMinutes <= 0 ||
+    Deno.env.get("CI") === "true";
+}
+
 export async function evolveMnistClassifier(
   options: MnistEvolveOptions,
 ): Promise<MnistEvolveResult> {
-  return await withEvolveDirLock(async () => {
+  const lockPath = options.testCaps ? TEST_EVOLVE_DIR_LOCK_PATH : EVOLVE_DIR_LOCK_PATH;
+  return await withEvolveDirLock(lockPath, async () => {
+    if (options.testCaps) {
+      // Trim WASM caches so a long test file does not leave prior cases in a
+      // critical heap state that makes the next evolveDir elitist score falsy.
+      setMaxCachedWasmCreatureActivations(1);
+    }
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
       : options.hiddenReluSeed
-      ? buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes())
+      ? buildMnistHiddenReluSeed(
+        options.testCaps ? [8] : resolveMnistHiddenLayerSizes(),
+      )
       : new Creature(FEATURE_COUNT, CLASS_COUNT);
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;
+
+    const populationSeedExports = options.populationSeedExports ?? [];
+    const elitism = options.elitism ??
+      (populationSeedExports.length > 0
+        ? Math.min(10, Math.max(2, populationSeedExports.length + 1))
+        : 1);
 
     const neatOptions: NeatOptions = {
       costName: MNIST_EVOLVE_COST_NAME,
       targetError: DEFAULT_MULTI_RUN_TARGET_ERROR,
       trainingSampleRate: options.trainingSampleRate ?? 1,
       costOfGrowth: options.costOfGrowth ?? 0,
-      verbose: false,
-      log: 0,
+      verbose: options.verbose ?? options.testCaps === undefined,
+      log: options.testCaps ? 0 : 1,
       threads: 1,
-      ...(options.testCaps ? { seed: 424242 } : {}),
+      elitism,
+      ...(populationSeedExports.length > 0 ? { creatures: [...populationSeedExports] } : {}),
+      ...(options.testCaps ? { seed: options.testCaps.seed ?? 424242 } : {}),
       ...(options.populationSize !== undefined ? { populationSize: options.populationSize } : {}),
       ...(options.mutationRate !== undefined ? { mutationRate: options.mutationRate } : {}),
       ...(options.mutationAmount !== undefined ? { mutationAmount: options.mutationAmount } : {}),
@@ -660,6 +704,7 @@ export async function evolveMnistClassifier(
           logPath: options.generationLogPath,
         }),
       }),
+      ...(shouldDisableDiscovery(options) ? { discoverySampleRate: -1 } : {}),
     };
 
     const start = Date.now();
@@ -710,7 +755,7 @@ export interface RunMultiRunMnistOptions {
    * chart artefacts (used by tests). Defaults to `docs`. */
   baseDir?: string;
   /** Optional overrides applied in unit tests only (never by the runner). */
-  evolveOverrides?: Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "hiddenReluSeed">;
+  evolveOverrides?: Partial<Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "hiddenReluSeed">>;
   /** When true, first run seeds the two-layer ReLU MLP instead of minimal noise. */
   hiddenReluSeed?: boolean;
 }
@@ -952,7 +997,7 @@ if (import.meta.main) {
     evolveOverrides: quick
       ? {
         testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
-        timeoutMinutes: 1,
+        timeoutMinutes: 0,
       }
       : undefined,
   });

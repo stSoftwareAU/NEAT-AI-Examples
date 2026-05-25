@@ -168,6 +168,31 @@ minutes while still giving intelligent-design a well-trained champion.
 
 Scratch logs (gitignored): `.synthetic-mnist/exploration/` (`phases.jsonl`, `overnight.log`).
 
+### Minimum native scorer capability
+
+MNIST evolves with `costName: "CATEGORICAL_ERROR"` (see
+[`mnist_classification.ts`](./mnist_classification.ts)). Batch scoring through the sibling
+[`NEAT-AI-scorer`](https://github.com/stSoftwareAU/NEAT-AI-scorer) binary only works end-to-end when
+that cost is advertised by the built `rust_scorer`. The scorer must support **all seven** built-in
+NEAT-AI cost functions (`MSE`, `MAE`, `BINARY_CROSS_ENTROPY`, `CROSS_ENTROPY`, `HINGE`, `MAPE`,
+`CATEGORICAL_ERROR`); MNIST in particular requires `CATEGORICAL_ERROR` —
+[`NEAT-AI-scorer#134`](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/134) tracks the
+upstream implementation.
+
+The recorded-evolution wrapper probes `rust_scorer --help` once at start-up via
+`ensure_rust_scorer_supports_cost CATEGORICAL_ERROR` (see
+[`common/ensure_neat_ai_native_scorer.sh`](../common/ensure_neat_ai_native_scorer.sh)). The probe
+runs against a throwaway help invocation, never the champion creature, so it cannot violate the
+warm-start policy. Behaviour when `CATEGORICAL_ERROR` is missing:
+
+- Default — emit an actionable stderr warning and silently fall back to the JS scorer for the rest
+  of the run.
+- `MNIST_REQUIRE_NATIVE_SCORER=1` — promote the warning to a hard failure so the operator notices on
+  the first generation rather than after a night of per-creature fallback. The wrapper translates
+  this into the generic `NEAT_AI_REQUIRE_NATIVE_SCORER=1` consumed by the shared helper.
+
+Tracked under [#502](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/502).
+
 When a better training recipe is found, reset and re-record with `--fresh` — the statistics and
 charts reset together.
 
