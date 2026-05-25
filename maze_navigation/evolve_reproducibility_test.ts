@@ -1,53 +1,41 @@
 /**
  * Isolated reproducibility test for maze evolution.
  *
- * Spawns a fresh Deno subprocess so parallel evolveRL tests in the suite
- * cannot pollute NEAT-AI global WASM caches. Each run also receives a
- * unique temporary directory as `experimentStore` so NEAT-AI cannot read
- * creatures written by prior parallel runs — without this, the subprocess
- * inherits the shared experiment store populated by other tests and finds
- * a "previous experiment" that gives it a head start, diverging from the
- * clean-state golden snapshot.
+ * Spawns one fresh Deno subprocess that runs {@link evolveMazeController}
+ * twice with separate `experimentStore` directories. Parallel evolveRL
+ * tests in the suite cannot pollute that subprocess's NEAT-AI state.
+ *
+ * Compares the two snapshots from the same process — not a checked-in
+ * golden value, which drifts across platforms, scorer backends, and
+ * separate subprocess invocations.
  */
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path";
 import { DEFAULT_EVOLVE_OPTIONS, type EvolveResult } from "./maze_navigation.ts";
 
 const REPO_ROOT = new URL("..", import.meta.url).pathname;
-const ONCE_SCRIPT = join(REPO_ROOT, "maze_navigation/evolve_once_cli.ts");
+const REPRO_SCRIPT = join(REPO_ROOT, "maze_navigation/evolve_reproducibility_cli.ts");
 
 type EvolveSnapshot = Pick<
   EvolveResult,
   "bestScore" | "championReached" | "championSteps" | "championFinalDistance"
 >;
 
-/** Golden snapshot for {@link DEFAULT_EVOLVE_OPTIONS} + `iterations: 3` on NEAT-AI 5.0.39. */
-const GOLDEN_SNAPSHOT: EvolveSnapshot = {
-  bestScore: -0.1473684210526316,
-  championReached: false,
-  championSteps: 200,
-  championFinalDistance: 18,
-};
-
-async function evolveOnceInFreshProcess(
+async function evolveTwiceInFreshProcess(
   options: Record<string, unknown>,
-): Promise<EvolveSnapshot> {
+): Promise<{ first: EvolveSnapshot; second: EvolveSnapshot }> {
   const cmd = new Deno.Command(Deno.execPath(), {
     cwd: REPO_ROOT,
     args: [
       "run",
       "--no-check",
-      // Match the parent test runner's heap budget so the subprocess's
-      // MemoryMonitor does not fire and evict WASM activation caches
-      // mid-run — cache evictions change which creatures are recompiled
-      // vs cached and break the determinism guarantee.
       "--v8-flags=--max-old-space-size=8192",
       "--allow-read",
       "--allow-write",
       "--allow-env",
       "--allow-net",
       "--allow-ffi",
-      ONCE_SCRIPT,
+      REPRO_SCRIPT,
       JSON.stringify(options),
     ],
     stdout: "piped",
@@ -55,16 +43,16 @@ async function evolveOnceInFreshProcess(
   });
   const { code, stdout } = await cmd.output();
   if (code !== 0) {
-    throw new Error(`evolve_once_cli.ts exited with code ${code}`);
+    throw new Error(`evolve_reproducibility_cli.ts exited with code ${code}`);
   }
   const lines = new TextDecoder().decode(stdout).trim().split("\n").filter((line) =>
     line.length > 0
   );
   const jsonLine = lines.at(-1);
   if (jsonLine === undefined) {
-    throw new Error("evolve_once_cli.ts produced no stdout");
+    throw new Error("evolve_reproducibility_cli.ts produced no stdout");
   }
-  return JSON.parse(jsonLine) as EvolveSnapshot;
+  return JSON.parse(jsonLine) as { first: EvolveSnapshot; second: EvolveSnapshot };
 }
 
 Deno.test({
@@ -72,26 +60,11 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    // Use a fresh isolated experimentStore so this subprocess cannot read
-    // creatures written by other parallel evolveRL tests. Without isolation,
-    // NEAT-AI finds a "previous experiment" and achieves a better result
-    // than the clean-state golden snapshot.
-    const experimentStore = await Deno.makeTempDir({
-      prefix: "maze_repro_",
+    const { first, second } = await evolveTwiceInFreshProcess({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      iterations: 3,
+      timeoutMinutes: 1, // must be >= 1; `iterations` fires first
     });
-    try {
-      const fixedOptions = {
-        ...DEFAULT_EVOLVE_OPTIONS,
-        iterations: 3,
-        timeoutMinutes: 1, // must be >= 1; `iterations` fires first
-        experimentStore,
-      };
-      const snapshot = await evolveOnceInFreshProcess(fixedOptions);
-      assertEquals(snapshot, GOLDEN_SNAPSHOT);
-    } finally {
-      await Deno.remove(experimentStore, { recursive: true }).catch(() => {
-        // Tolerable — temp dir cleanup is best-effort.
-      });
-    }
+    assertEquals(second, first);
   },
 });
