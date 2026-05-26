@@ -1,0 +1,61 @@
+# actionlint workflow for NEAT-AI-Examples (Issue #508)
+#
+# Lints every GitHub Actions workflow under `.github/workflows/` on each
+# pull request and on pushes to the default branch. Catches typos,
+# expression mistakes, shellcheck issues inside `run:` blocks, and
+# unsafe patterns (e.g. unpinned actions, missing permissions) before
+# they reach Develop and break a downstream CI run.
+#
+# The actionlint binary is downloaded directly from the rhysd/actionlint
+# release tarball — same pattern used by `gitleaks.yml` — so the only
+# third-party GitHub Action this workflow depends on is the official
+# `actions/checkout`, which is pinned to a 40-character commit SHA in
+# line with the project's supply-chain hardening rules.
+
+name: Actionlint
+
+# `branches: ["**"]` (not `["*"]`) so PRs against base branches that
+# contain a `/` (e.g. `milestone/refresh-2026-05`) still trigger this
+# workflow. The single-`*` glob does NOT match `/` — Issue #435.
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: [Develop]
+  workflow_dispatch:
+    inputs:
+      pr_head_ref:
+        description: PR head branch to check out after an auto-bump push
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Lint GitHub Actions workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.pr_head_ref || github.ref }}
+
+      # Pin actionlint to an exact release. The deno-outdated bot does
+      # not bump non-Deno CI tools, so bumps here are manual — when
+      # raising the pin, allow the project quarantine window
+      # (`VIBE_BUMP_QUARANTINE_HOURS`, default 24h) to elapse after the
+      # new release before merging.
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+          ACTIONLINT_VERSION="1.7.12"
+          curl -sSfL --retry 3 --retry-delay 5 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            -o actionlint.tar.gz
+          tar -xzf actionlint.tar.gz actionlint
+          chmod +x actionlint
+
+      - name: Run actionlint
+        run: ./actionlint -color

@@ -23,6 +23,7 @@ const WORKFLOW_DIR = new URL("./workflows/", import.meta.url);
 // `quality.yml` and `deno-outdated.yml` deliberately restrict to
 // `Develop` and are excluded.
 const ALL_BRANCH_WORKFLOWS = [
+  "actionlint.yml",
   "dependency-review.yml",
   "gitleaks.yml",
   "markdown-lint.yml",

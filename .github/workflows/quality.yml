@@ -102,7 +102,11 @@ jobs:
         run: deno fmt
 
       - name: Run deno check (type checking)
-        run: deno check **/*.ts
+        # `-- **/*.ts` so a filename starting with `-` (none today, but a
+        # future addition would silently be parsed as a flag) cannot be
+        # mistaken for an option. Flagged by actionlint/shellcheck SC2035
+        # — the new actionlint CI gate (#508) enforces this going forward.
+        run: deno check -- **/*.ts
 
       # Tests need --allow-net so the @stsoftware/neat-ai WASM
       # activation module can fetch its remote payload from jsr.io,
