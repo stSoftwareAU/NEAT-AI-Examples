@@ -62,10 +62,19 @@ import {
 } from "./recorded_evolution.ts";
 import {
   elitismForArchivedChampions,
-  loadPriorStructureChampions,
-  priorStructurePhaseNames,
+  maybeUpdateSampleRateChampion,
   savePhaseChampion,
+  shouldAdvanceLineageChampion,
 } from "./phase_champions.ts";
+import {
+  intelligentDesignOutputDir,
+  loadPopulationPoolSeeds,
+  loopIndexFromPhaseName,
+  priorLoopPhaseNames,
+  saveSamplerLoopChampion,
+  wipePopulationPool,
+} from "./population_pool.ts";
+import { DEFAULT_SQUASH_CANDIDATES, randomWeightedSquash } from "./squash_random.ts";
 
 /** Hidden working directory for exploration state (never checked in). */
 export const EXPLORATION_ROOT = join(MNIST_ROOT, "exploration");
@@ -127,37 +136,48 @@ export const CALIBRATION_PROBE_GENERATIONS = 2;
 /** Wall-clock budget for the calibration probe (minutes). */
 export const CALIBRATION_PROBE_MINUTES = 2;
 
-/** Relative structure subsample ladder (structure-4 uses the calibrated cap). */
-const STRUCTURE_SAMPLE_LADDER = [0.05, 0.10, 0.15, 0.15] as const;
+/** Relative structure subsample ladder — GRQ sampler loops 1–4 (loop 5 is 100%). */
+const STRUCTURE_SAMPLE_LADDER = [0.01, 0.05, 0.15, 0.15] as const;
 
-/** One pass of the GRQ-style cadence (structure subsampling → full-data polish). */
+/** GRQ sampler loop count per repeat (loops 1–4 structure, loop 5 polish). */
+export const GRQ_SAMPLER_LOOP_COUNT = 5;
+
+/**
+ * GRQ loops 3–4 randomise the training subsample between 10% and 50%
+ * (`sampler.sh` randomises the binary slice rate in the same band).
+ */
+export function grqRandomStructureSampleRate(random = Math.random): number {
+  return Math.round((0.10 + random() * 0.40) * 100) / 100;
+}
+
+/** One pass of the GRQ sampler cadence (loops 1–4 subsample → loop 5 polish). */
 const EXPLORATION_PHASE_TEMPLATE = [
   {
-    name: "structure-1",
+    name: "loop-1",
     ladderIndex: 0,
     costOfGrowth: 5e-10,
     populationSize: 50,
   },
   {
-    name: "structure-2",
+    name: "loop-2",
     ladderIndex: 1,
     costOfGrowth: 1e-9,
     populationSize: 40,
   },
   {
-    name: "structure-3",
+    name: "loop-3",
     ladderIndex: 2,
     costOfGrowth: 1e-8,
     populationSize: 40,
   },
   {
-    name: "structure-4",
+    name: "loop-4",
     ladderIndex: 3,
-    costOfGrowth: 1e-7,
+    costOfGrowth: 1e-8,
     populationSize: 40,
   },
   {
-    name: "polish",
+    name: "loop-5",
     ladderIndex: -1,
     costOfGrowth: 0,
     populationSize: 20,
@@ -286,9 +306,9 @@ export function buildExplorationLoopPhases(options?: {
   for (let repeat = 0; repeat < repeats; repeat++) {
     for (const template of EXPLORATION_PHASE_TEMPLATE) {
       const suffix = repeats > 1 ? `-r${repeat + 1}` : "";
-      if (template.name === "polish") {
+      if (template.ladderIndex === -1) {
         phases.push({
-          name: `polish${suffix}`,
+          name: `${template.name}${suffix}`,
           trainingSampleRate: 1,
           costOfGrowth: template.costOfGrowth,
           populationSize: template.populationSize,
@@ -297,9 +317,13 @@ export function buildExplorationLoopPhases(options?: {
         });
       } else {
         const idx = template.ladderIndex;
+        const templateRate = structureRates[idx];
+        const trainingSampleRate = (idx === 2 || idx === 3)
+          ? grqRandomStructureSampleRate()
+          : templateRate;
         phases.push({
           name: `${template.name}${suffix}`,
-          trainingSampleRate: structureRates[idx],
+          trainingSampleRate,
           costOfGrowth: template.costOfGrowth,
           populationSize: template.populationSize,
           timeoutMinutes: structureTimeoutMinutes,
@@ -311,14 +335,46 @@ export function buildExplorationLoopPhases(options?: {
 }
 
 /**
+ * Build a single structure phase at one training sample rate — useful for a
+ * long low-rate run (e.g. 1% for an hour) while injecting archived winners
+ * from other sample levels into the population.
+ */
+export function buildSingleSampleRatePhases(options: {
+  trainingSampleRate: number;
+  loopMinutes: number;
+  populationSize?: number;
+  costOfGrowth?: number;
+}): ExplorationPhase[] {
+  const { trainingSampleRate, loopMinutes } = options;
+  if (!Number.isFinite(trainingSampleRate) || trainingSampleRate <= 0 || trainingSampleRate > 1) {
+    throw new Error("trainingSampleRate must be in (0, 1].");
+  }
+  if (loopMinutes < 1) {
+    throw new Error("loopMinutes must be at least 1.");
+  }
+  const pctLabel = trainingSampleRate >= 1
+    ? "100pct"
+    : `${(trainingSampleRate * 100).toFixed(trainingSampleRate < 0.01 ? 2 : 0)}pct`;
+  return [{
+    name: `structure-${pctLabel}`,
+    trainingSampleRate,
+    costOfGrowth: options.costOfGrowth ??
+      (trainingSampleRate >= 1 ? 0 : 5e-10),
+    populationSize: options.populationSize ?? 50,
+    timeoutMinutes: loopMinutes,
+    ...(trainingSampleRate >= 1 ? { maxGenerations: POLISH_MAX_GENERATIONS } : {}),
+  }];
+}
+
+/**
  * Default schedule: two repeats of the five-phase cadence targeting ~60 minutes.
  * Training fitness uses subsamples during structure phases;
  * {@link evaluateOnHoldout} always scores the full validation + test sets.
  */
 export const DEFAULT_EXPLORATION_PHASES: readonly ExplorationPhase[] = buildExplorationLoopPhases();
 
-/** Squash candidates for the intelligent-design pass (one scan each). */
-export const DEFAULT_SQUASH_CANDIDATES = ["GELU", "Swish", "LeakyReLU", "Mish"] as const;
+/** Squash candidates for a full `--squash-scan` pass (one scan each). */
+export { DEFAULT_SQUASH_CANDIDATES } from "./squash_random.ts";
 
 /** One line in {@link EXPLORATION_PHASE_LOG_PATH}. */
 export interface ExplorationPhaseRecord {
@@ -348,6 +404,11 @@ export interface RunExplorationCampaignOptions {
   loopMinutes?: number;
   /** Repeat count for the default schedule (structure-1…4 + polish). */
   loopRepeats?: number;
+  /**
+   * When set, run one long phase at this training sample rate for
+   * {@link loopMinutes} instead of the default five-phase cadence.
+   */
+  singleSampleRate?: number;
   /** Starting champion export (tests only). */
   seedCreatureExport?: CreatureExport;
   /**
@@ -357,7 +418,9 @@ export interface RunExplorationCampaignOptions {
   fresh?: boolean;
   /** With `--fresh`, seed via layered ReLU MLP instead of resuming. */
   hiddenSeed?: boolean;
-  /** Run intelligent-design squash scans after the polish phase. */
+  /** Run a weighted-random Intelligent Design squash pass after the sampler loop. */
+  randomizedIntelligentDesign?: boolean;
+  /** Run every squash in {@link DEFAULT_SQUASH_CANDIDATES} (overrides single ID pass). */
   squashScan?: boolean;
   /** Squash names to try when `squashScan` is true. */
   squashCandidates?: readonly string[];
@@ -502,6 +565,7 @@ export async function wipeExplorationState(): Promise<void> {
   } catch {
     // Directory may not exist yet.
   }
+  await wipePopulationPool();
 }
 
 /**
@@ -542,7 +606,16 @@ export async function runExplorationCampaign(
   }
 
   let phases = options.phases;
-  if (phases === undefined) {
+  if (phases === undefined && options.singleSampleRate !== undefined) {
+    phases = buildSingleSampleRatePhases({
+      trainingSampleRate: options.singleSampleRate,
+      loopMinutes: options.loopMinutes ?? DEFAULT_EXPLORATION_LOOP_MINUTES,
+    });
+    console.log(
+      `\n📋 Single-sample schedule: ${(options.singleSampleRate * 100).toFixed(2)}% ` +
+        `for ${options.loopMinutes ?? DEFAULT_EXPLORATION_LOOP_MINUTES} minute(s).`,
+    );
+  } else if (phases === undefined) {
     let structureSampleRates: readonly [number, number, number, number] = STRUCTURE_SAMPLE_LADDER;
     if (!options.skipCalibrate) {
       if (options.fresh) {
@@ -580,7 +653,7 @@ export async function runExplorationCampaign(
             `(≈${(calibration.msPerGeneration / 1000).toFixed(2)} s/gen at 100% sample).`,
         );
         if (calibration.scale >= 1) {
-          console.log("   Full data meets the target — using the 5%→15% structure ladder.");
+          console.log("   Full data meets the target — using the 1%→15% GRQ sampler ladder.");
         } else {
           console.log(
             `   Scaled structure ladder by ${(calibration.scale * 100).toFixed(1)}% → ` +
@@ -607,26 +680,42 @@ export async function runExplorationCampaign(
     });
   }
 
-  const repeatCount = phases.filter((p) => p.name.startsWith("polish")).length;
-  const structureTimeout = phases.find((p) => p.name.startsWith("structure"))?.timeoutMinutes;
-  console.log(
-    `\n📋 Loop schedule: ${repeatCount} repeat(s) × 5 phases (${phases.length} total). ` +
-      `Structure timeout ≈${structureTimeout}m each; polish capped at ` +
-      `${POLISH_MAX_GENERATIONS} generation(s).`,
-  );
+  if (options.singleSampleRate === undefined) {
+    const repeatCount = phases.filter((p) => p.trainingSampleRate >= 1).length;
+    const structureTimeout = phases.find((p) => p.trainingSampleRate < 1)?.timeoutMinutes;
+    console.log(
+      `\n📋 GRQ sampler schedule: ${repeatCount} repeat(s) × ${GRQ_SAMPLER_LOOP_COUNT} loops ` +
+        `(${phases.length} total). Structure timeout ≈${structureTimeout}m each; loop 5 ` +
+        `(100% data) capped at ${POLISH_MAX_GENERATIONS} generation(s).`,
+    );
+    console.log(
+      `   Hidden pool: .synthetic-mnist/exploration/{.creatures,.sampler,experiments}/`,
+    );
+  }
 
   const phaseRecords: ExplorationPhaseRecord[] = [];
   let creature = Creature.fromJSON(championExport);
   const campaignFresh = options.fresh === true;
 
   for (const phase of phases) {
-    const populationSeedExports = await loadPriorStructureChampions(phase.name);
+    const lineageExport = creature.exportJSON();
+    const populationSeedExports = await loadPopulationPoolSeeds({
+      phaseName: phase.name,
+      currentTrainingSampleRate: phase.trainingSampleRate,
+      lineageExport,
+    });
+
     if (populationSeedExports.length > 0) {
+      const priorLoops = priorLoopPhaseNames(phase.name);
       console.log(
-        `   📦 Seeding population with ${populationSeedExports.length} archived champion(s) ` +
-          `from prior sample levels (${priorStructurePhaseNames(phase.name).join(", ")}).`,
+        `   📦 Seeding population with ${populationSeedExports.length} creature(s) ` +
+          `from .creatures + sample-rate archives` +
+          (priorLoops.length > 0 ? ` (prior loops: ${priorLoops.join(", ")})` : "") +
+          `.`,
       );
     }
+
+    const holdoutBefore = evaluateOnHoldout(creature, options.split);
 
     console.log(
       `\n🧬 Phase "${phase.name}": trainingSampleRate=${phase.trainingSampleRate}, ` +
@@ -638,7 +727,7 @@ export async function runExplorationCampaign(
     const evolveResult = await evolveMnistClassifier({
       dataDir: options.dataDir,
       timeoutMinutes: phase.timeoutMinutes,
-      seedCreatureExport: creature.exportJSON(),
+      seedCreatureExport: lineageExport,
       trainingSampleRate: phase.trainingSampleRate,
       costOfGrowth: phase.costOfGrowth,
       populationSize: phase.populationSize,
@@ -650,11 +739,44 @@ export async function runExplorationCampaign(
       verbose: true,
     });
 
-    creature = evolveResult.champion;
+    const phaseChampion = evolveResult.champion;
+    const holdoutCandidate = evaluateOnHoldout(phaseChampion, options.split);
+
+    const archiveUpdated = await maybeUpdateSampleRateChampion({
+      trainingSampleRate: phase.trainingSampleRate,
+      phaseName: phase.name,
+      creatureExport: phaseChampion.exportJSON(),
+      evolveScore: evolveResult.bestScore,
+      testAccuracy: holdoutCandidate.testAccuracy,
+      validationAccuracy: holdoutCandidate.validationAccuracy,
+    });
+    if (archiveUpdated) {
+      console.log(
+        `   💾 Updated ${(phase.trainingSampleRate * 100).toFixed(2)}% sample-rate archive ` +
+          `(score ${evolveResult.bestScore.toFixed(4)}).`,
+      );
+    }
+
+    if (shouldAdvanceLineageChampion(holdoutBefore, holdoutCandidate)) {
+      creature = phaseChampion;
+    } else {
+      console.log(
+        `   ↩️  Hold-out test regressed ` +
+          `${(holdoutBefore.testAccuracy * 100).toFixed(2)}% → ` +
+          `${(holdoutCandidate.testAccuracy * 100).toFixed(2)}% — ` +
+          `keeping prior lineage champion; ${(phase.trainingSampleRate * 100).toFixed(2)}% ` +
+          `winner stays in the rate archive only.`,
+      );
+    }
+
     await saveExplorationChampion(creature);
 
-    if (phase.name.startsWith("structure") || phase.name.startsWith("polish")) {
-      await savePhaseChampion(phase.name, creature.exportJSON());
+    const loopIndex = loopIndexFromPhaseName(phase.name);
+    if (loopIndex !== undefined) {
+      await saveSamplerLoopChampion(loopIndex, phaseChampion.exportJSON());
+    }
+    if (phase.name.startsWith("loop-")) {
+      await savePhaseChampion(phase.name, phaseChampion.exportJSON());
     }
 
     const holdout = evaluateOnHoldout(creature, options.split);
@@ -702,7 +824,7 @@ export async function runExplorationCampaign(
   let squashImproved = false;
   if (options.squashScan) {
     const candidates = options.squashCandidates ?? DEFAULT_SQUASH_CANDIDATES;
-    const idOutputDir = join(EXPLORATION_ROOT, "intelligent-design");
+    const idOutputDir = join(EXPLORATION_ROOT, "experiments", "intelligent-design");
     let exportJson = creature.exportJSON();
     const baselineScore = Number.parseFloat(getTag(exportJson, "score") ?? "0") ||
       (phaseRecords.at(-1)?.evolveDirScore ?? 0);
@@ -730,6 +852,32 @@ export async function runExplorationCampaign(
         );
       }
     }
+  } else if (options.randomizedIntelligentDesign !== false) {
+    const squash = randomWeightedSquash();
+    console.log(
+      `\n🧠 Intelligent design (GRQ randomized.sh) — weighted-random squash: ${squash}…`,
+    );
+    let exportJson = creature.exportJSON();
+    const baselineScore = Number.parseFloat(getTag(exportJson, "score") ?? "0") ||
+      (phaseRecords.at(-1)?.evolveDirScore ?? 0);
+    const pass = await runSquashImprovementPass(
+      exportJson,
+      options.dataDir,
+      squash,
+      baselineScore,
+      intelligentDesignOutputDir(squash),
+    );
+    console.log(`   ${pass.message}`);
+    if (pass.improved) {
+      squashImproved = true;
+      creature = Creature.fromJSON(pass.creatureExport);
+      await saveExplorationChampion(creature);
+      const holdout = evaluateOnHoldout(creature, options.split);
+      console.log(
+        `   ♻️  After ${squash}: test=${(holdout.testAccuracy * 100).toFixed(2)}% ` +
+          `val=${(holdout.validationAccuracy * 100).toFixed(2)}%`,
+      );
+    }
   }
 
   const finalHoldout = evaluateOnHoldout(creature, options.split);
@@ -754,8 +902,8 @@ export async function runExplorationCampaign(
 
 if (import.meta.main) {
   const args = parseArgs(Deno.args, {
-    boolean: ["fresh", "squash-scan", "hidden-seed", "skip-calibrate"],
-    string: ["squash", "loop-minutes", "repeats"],
+    boolean: ["fresh", "squash-scan", "hidden-seed", "skip-calibrate", "skip-id"],
+    string: ["squash", "loop-minutes", "repeats", "sample-rate"],
   });
 
   const loopMinutes = args["loop-minutes"] !== undefined
@@ -764,17 +912,33 @@ if (import.meta.main) {
   const loopRepeats = args.repeats !== undefined
     ? Number.parseInt(args.repeats, 10)
     : DEFAULT_EXPLORATION_LOOP_REPEATS;
+  const singleSampleRate = args["sample-rate"] !== undefined
+    ? Number.parseFloat(args["sample-rate"])
+    : undefined;
   if (!Number.isFinite(loopMinutes) || loopMinutes < 1) {
     throw new Error("--loop-minutes must be a positive integer.");
   }
   if (!Number.isFinite(loopRepeats) || loopRepeats < 1) {
     throw new Error("--repeats must be a positive integer.");
   }
+  if (
+    singleSampleRate !== undefined &&
+    (!Number.isFinite(singleSampleRate) || singleSampleRate <= 0 || singleSampleRate > 1)
+  ) {
+    throw new Error("--sample-rate must be a number in (0, 1].");
+  }
 
   console.log("🔬 MNIST recorded-evolution campaign");
-  console.log(
-    `   Loop target: ~${loopMinutes} min, ${loopRepeats} repeat(s) of structure-1…4 + polish.`,
-  );
+  if (singleSampleRate !== undefined) {
+    console.log(
+      `   Single-sample run: ${(singleSampleRate * 100).toFixed(2)}% training data for ` +
+        `${loopMinutes} minute(s).`,
+    );
+  } else {
+    console.log(
+      `   Loop target: ~${loopMinutes} min, ${loopRepeats} repeat(s) of structure-1…4 + polish.`,
+    );
+  }
   console.log("   Persists to docs/data/mnist_classification/ after every phase.");
   console.log("   Scratch log: .synthetic-mnist/exploration/ (gitignored)");
   console.log("");
@@ -802,9 +966,11 @@ if (import.meta.main) {
     hiddenSeed: args["hidden-seed"] === true,
     squashScan: args["squash-scan"] === true,
     squashCandidates,
+    randomizedIntelligentDesign: args["skip-id"] !== true,
     loopMinutes,
     loopRepeats,
-    skipCalibrate: args["skip-calibrate"] === true,
+    singleSampleRate,
+    skipCalibrate: args["skip-calibrate"] === true || singleSampleRate !== undefined,
   });
 
   console.log("\n== Campaign complete ==");

@@ -12,6 +12,8 @@ set -euo pipefail
 # Usage:
 #   ./mnist_classification/recorded_evolution_campaign.sh --fresh --hidden-seed
 #   ./mnist_classification/recorded_evolution_campaign.sh
+#   nohup ./mnist_classification/recorded_evolution_campaign.sh &
+#     (writes to .synthetic-mnist/exploration/overnight.log — do not add >> overnight.log)
 #
 # Env:
 #   MNIST_TARGET_ACCURACY     Stop when test accuracy reaches this (default 0.90)
@@ -23,6 +25,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
+
+export NEAT_EXAMPLES_MAX_HEAP_MB="${NEAT_EXAMPLES_MAX_HEAP_MB:-12288}"
 
 # shellcheck source=common/example_runner_preamble.sh
 source "${REPO_ROOT}/common/example_runner_preamble.sh"
@@ -37,8 +41,6 @@ if [[ "${MNIST_REQUIRE_NATIVE_SCORER:-0}" == "1" ]]; then
   export NEAT_AI_REQUIRE_NATIVE_SCORER=1
 fi
 ensure_rust_scorer_supports_cost CATEGORICAL_ERROR
-
-export NEAT_EXAMPLES_MAX_HEAP_MB="${NEAT_EXAMPLES_MAX_HEAP_MB:-12288}"
 TARGET="${MNIST_TARGET_ACCURACY:-0.90}"
 MAX_HOURS="${MNIST_CAMPAIGN_MAX_HOURS:-48}"
 LOOP_MINUTES="${MNIST_LOOP_MINUTES:-60}"
@@ -63,8 +65,23 @@ START_EPOCH=$(date +%s)
 DEADLINE=$((START_EPOCH + MAX_HOURS * 3600))
 CYCLE=0
 
+# When stdout is redirected (e.g. `nohup … >> overnight.log`), avoid `tee -a`
+# the same path — that duplicates every line. Interactive runs still mirror
+# to the terminal.
 log() {
-  echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*" | tee -a "${LOG}"
+  local msg="[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*"
+  echo "${msg}" >> "${LOG}"
+  if [[ -t 1 ]]; then
+    echo "${msg}"
+  fi
+}
+
+run_exploration_cycle() {
+  if [[ -t 1 ]]; then
+    ./mnist_classification/exploration_campaign.sh "$@" 2>&1 | tee -a "${LOG}"
+  else
+    ./mnist_classification/exploration_campaign.sh "$@" >> "${LOG}" 2>&1
+  fi
 }
 
 accuracy() {
@@ -100,9 +117,9 @@ PY
   fi
 
   if [[ ${CYCLE} -eq 1 && ${#FRESH_ARGS[@]} -gt 0 ]]; then
-    ./mnist_classification/exploration_campaign.sh "${FRESH_ARGS[@]}" "${LOOP_ARGS[@]}" "$@" 2>&1 | tee -a "${LOG}"
+    run_exploration_cycle "${FRESH_ARGS[@]}" "${LOOP_ARGS[@]}" "$@"
   else
-    ./mnist_classification/exploration_campaign.sh "${LOOP_ARGS[@]}" "$@" 2>&1 | tee -a "${LOG}"
+    run_exploration_cycle "${LOOP_ARGS[@]}" "$@"
   fi
 
   ACC="$(accuracy)"
