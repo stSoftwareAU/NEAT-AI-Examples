@@ -642,9 +642,15 @@ async function withEvolveDirLock<T>(
  */
 /** True when evolveDir must not schedule Discovery (tests / CPU-only CI). */
 function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
+  let ci = false;
+  try {
+    ci = Deno.env.get("CI") === "true";
+  } catch {
+    // Production runners may not grant blanket env access; treat as non-CI.
+  }
   return options.testCaps !== undefined ||
     options.timeoutMinutes <= 0 ||
-    Deno.env.get("CI") === "true";
+    ci;
 }
 
 export async function evolveMnistClassifier(

@@ -16,29 +16,36 @@ import { Creature } from "@stsoftware/neat-ai";
 import { CLASS_COUNT, type DigitSample, FEATURE_COUNT } from "./data.ts";
 import {
   buildExplorationLoopPhases,
+  buildSingleSampleRatePhases,
   DEFAULT_EXPLORATION_LOOP_MINUTES,
   DEFAULT_EXPLORATION_LOOP_REPEATS,
   DEFAULT_EXPLORATION_PHASES,
   evaluateOnHoldout,
   EXPLORATION_ROOT,
   type ExplorationPhaseRecord,
+  grqRandomStructureSampleRate,
   POLISH_MAX_GENERATIONS,
   POLISH_TIMEOUT_MINUTES,
   structureSampleRatesForCalibration,
   TARGET_MS_PER_GENERATION,
 } from "./exploration_campaign.ts";
 
-Deno.test("structureSampleRatesForCalibration keeps ladder when full data is fast enough", () => {
+Deno.test("structureSampleRatesForCalibration keeps GRQ ladder when full data is fast enough", () => {
   const { rates, scale } = structureSampleRatesForCalibration(800, TARGET_MS_PER_GENERATION);
   assertEquals(scale, 1);
-  assertEquals(rates, [0.05, 0.10, 0.15, 0.15]);
+  assertEquals(rates, [0.01, 0.05, 0.15, 0.15]);
 });
 
 Deno.test("structureSampleRatesForCalibration scales ladder when full data is slow", () => {
   const { rates, scale } = structureSampleRatesForCalibration(30_000, TARGET_MS_PER_GENERATION);
   assertAlmostEquals(scale, 0.05, 1e-9);
-  assertAlmostEquals(rates[0], 0.05 * 0.05 / 0.15, 1e-9);
+  assertAlmostEquals(rates[0], 0.05 * 0.01 / 0.15, 1e-9);
   assertAlmostEquals(rates[3], 0.05, 1e-9);
+});
+
+Deno.test("grqRandomStructureSampleRate stays within the GRQ 10–50% band", () => {
+  assertAlmostEquals(grqRandomStructureSampleRate(() => 0), 0.10, 1e-9);
+  assertAlmostEquals(grqRandomStructureSampleRate(() => 0.999), 0.50, 1e-9);
 });
 
 function syntheticSample(label: number, index: number): DigitSample {
@@ -50,32 +57,43 @@ function syntheticSample(label: number, index: number): DigitSample {
   return { index, label, features, pixels };
 }
 
-Deno.test("buildExplorationLoopPhases repeats the five-phase cadence", () => {
-  const phases = buildExplorationLoopPhases({ loopMinutes: 60, repeats: 2 });
-  assertEquals(phases.length, 10);
-  assertEquals(phases.filter((p) => p.name.startsWith("polish")).length, 2);
-  assertEquals(phases.at(-1)?.name, "polish-r2");
+Deno.test("buildSingleSampleRatePhases builds one long structure phase", () => {
+  const phases = buildSingleSampleRatePhases({
+    trainingSampleRate: 0.01,
+    loopMinutes: 60,
+  });
+  assertEquals(phases.length, 1);
+  assertEquals(phases[0]?.trainingSampleRate, 0.01);
+  assertEquals(phases[0]?.timeoutMinutes, 60);
+  assertEquals(phases[0]?.maxGenerations, undefined);
 });
 
-Deno.test("buildExplorationLoopPhases targets ~60 min with 6m structure and 5m polish slots", () => {
+Deno.test("buildExplorationLoopPhases repeats the five-loop GRQ cadence", () => {
+  const phases = buildExplorationLoopPhases({ loopMinutes: 60, repeats: 2 });
+  assertEquals(phases.length, 10);
+  assertEquals(phases.filter((p) => p.name.startsWith("loop-5")).length, 2);
+  assertEquals(phases.at(-1)?.name, "loop-5-r2");
+});
+
+Deno.test("buildExplorationLoopPhases targets ~60 min with structure and loop-5 slots", () => {
   const phases = buildExplorationLoopPhases({
     loopMinutes: DEFAULT_EXPLORATION_LOOP_MINUTES,
     repeats: DEFAULT_EXPLORATION_LOOP_REPEATS,
   });
   const structureMinutes = phases
-    .filter((p) => p.name.startsWith("structure"))
+    .filter((p) => p.trainingSampleRate < 1)
     .reduce((sum, p) => sum + p.timeoutMinutes, 0);
   const polishMinutes = phases
-    .filter((p) => p.name.startsWith("polish"))
+    .filter((p) => p.trainingSampleRate >= 1)
     .reduce((sum, p) => sum + p.timeoutMinutes, 0);
   assertEquals(structureMinutes, 48);
   assertEquals(polishMinutes, DEFAULT_EXPLORATION_LOOP_REPEATS * POLISH_TIMEOUT_MINUTES);
   assertEquals(structureMinutes + polishMinutes, 58);
 });
 
-Deno.test("polish phases cap generations; structure phases do not", () => {
+Deno.test("loop 5 caps generations; earlier loops do not", () => {
   for (const phase of DEFAULT_EXPLORATION_PHASES) {
-    if (phase.name.startsWith("polish")) {
+    if (phase.name.startsWith("loop-5")) {
       assertEquals(phase.maxGenerations, POLISH_MAX_GENERATIONS);
       assertEquals(phase.trainingSampleRate, 1);
       assertEquals(phase.costOfGrowth, 0);
@@ -110,8 +128,8 @@ Deno.test("EXPLORATION_ROOT is under the hidden MNIST working directory", () => 
 
 Deno.test("ExplorationPhaseRecord shape is JSON-serialisable", () => {
   const record: ExplorationPhaseRecord = {
-    phase: "structure-1-r1",
-    trainingSampleRate: 0.05,
+    phase: "loop-1-r1",
+    trainingSampleRate: 0.01,
     costOfGrowth: 5e-10,
     generations: 3,
     evolveDirError: 0.8,
@@ -124,6 +142,6 @@ Deno.test("ExplorationPhaseRecord shape is JSON-serialisable", () => {
     timestamp: "2026-05-24T00:00:00.000Z",
   };
   const roundTrip = JSON.parse(JSON.stringify(record)) as ExplorationPhaseRecord;
-  assertEquals(roundTrip.phase, "structure-1-r1");
+  assertEquals(roundTrip.phase, "loop-1-r1");
   assertAlmostEquals(roundTrip.testAccuracy, 0.2, 1e-9);
 });
