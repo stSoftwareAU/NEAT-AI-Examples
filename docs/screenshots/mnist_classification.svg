@@ -1319,7 +1319,7 @@
     <rect x="260.00" y="91.00" width="3" height="3" fill="#ffff33"/>
     <rect x="263.00" y="91.00" width="3" height="3" fill="#ffff35"/>
     <rect x="266.00" y="91.00" width="3" height="3" fill="#85c5ba"/>
-    <text x="266.00" y="130.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:8 P:6 ✗</text>
+    <text x="266.00" y="130.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:8 P:4 ✗</text>
   </g>
 </g>
 <g class="cell">
@@ -2807,7 +2807,7 @@
     <rect x="153.00" y="230.00" width="3" height="3" fill="#76b5ca"/>
     <rect x="156.00" y="230.00" width="3" height="3" fill="#ffff00"/>
     <rect x="159.00" y="230.00" width="3" height="3" fill="#6fadd2"/>
-    <text x="168.00" y="254.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:9 P:6 ✗</text>
+    <text x="168.00" y="254.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:9 P:4 ✗</text>
   </g>
   <g class="frame frame-2" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;0;1" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -3773,7 +3773,7 @@
     <rect x="468.00" y="230.00" width="3" height="3" fill="#e0ff5a"/>
     <rect x="462.00" y="233.00" width="3" height="3" fill="#1a52ff"/>
     <rect x="465.00" y="233.00" width="3" height="3" fill="#ffff00"/>
-    <text x="462.00" y="254.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:7 P:3 ✗</text>
+    <text x="462.00" y="254.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:7 P:0 ✗</text>
   </g>
   <g class="frame frame-1" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -3935,7 +3935,7 @@
     <rect x="453.00" y="221.00" width="3" height="3" fill="#ffff1b"/>
     <rect x="456.00" y="221.00" width="3" height="3" fill="#68a5da"/>
     <rect x="459.00" y="221.00" width="3" height="3" fill="#245dff"/>
-    <text x="462.00" y="254.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:8 P:4 ✗</text>
+    <text x="462.00" y="254.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:8 P:3 ✗</text>
   </g>
   <g class="frame frame-2" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;0;1" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -4603,7 +4603,7 @@
     <rect x="159.00" y="345.00" width="3" height="3" fill="#ffff00"/>
     <rect x="162.00" y="345.00" width="3" height="3" fill="#ffff15"/>
     <rect x="165.00" y="345.00" width="3" height="3" fill="#063dff"/>
-    <text x="168.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:3 P:6 ✗</text>
+    <text x="168.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#2ecc71">T:3 P:3 ✓</text>
   </g>
   <g class="frame frame-1" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -4693,7 +4693,7 @@
     <rect x="180.00" y="345.00" width="3" height="3" fill="#ffff20"/>
     <rect x="177.00" y="348.00" width="3" height="3" fill="#6eabd3"/>
     <rect x="180.00" y="348.00" width="3" height="3" fill="#c6ff75"/>
-    <text x="168.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:4 P:3 ✗</text>
+    <text x="168.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#2ecc71">T:4 P:4 ✓</text>
   </g>
   <g class="frame frame-2" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;0;1" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -5074,7 +5074,7 @@
     <rect x="251.00" y="351.00" width="3" height="3" fill="#ffff23"/>
     <rect x="254.00" y="351.00" width="3" height="3" fill="#ffff23"/>
     <rect x="257.00" y="351.00" width="3" height="3" fill="#447eff"/>
-    <text x="266.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:7 P:3 ✗</text>
+    <text x="266.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:7 P:4 ✗</text>
   </g>
   <g class="frame frame-2" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;0;1" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -5407,7 +5407,7 @@
     <rect x="364.00" y="351.00" width="3" height="3" fill="#ffff00"/>
     <rect x="367.00" y="351.00" width="3" height="3" fill="#ffff00"/>
     <rect x="370.00" y="351.00" width="3" height="3" fill="#adee90"/>
-    <text x="364.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:9 P:3 ✗</text>
+    <text x="364.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:9 P:6 ✗</text>
   </g>
   <g class="frame frame-1" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -5760,7 +5760,7 @@
     <rect x="480.00" y="339.00" width="3" height="3" fill="#ffff30"/>
     <rect x="483.00" y="339.00" width="3" height="3" fill="#ffff00"/>
     <rect x="486.00" y="339.00" width="3" height="3" fill="#1e56ff"/>
-    <text x="462.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:2 P:1 ✗</text>
+    <text x="462.00" y="378.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:2 P:6 ✗</text>
   </g>
   <g class="frame frame-1" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -7583,7 +7583,7 @@
     <rect x="370.00" y="469.00" width="3" height="3" fill="#d5ff65"/>
     <rect x="373.00" y="469.00" width="3" height="3" fill="#70aed0"/>
     <rect x="376.00" y="469.00" width="3" height="3" fill="#0940ff"/>
-    <text x="364.00" y="502.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:5 P:3 ✗</text>
+    <text x="364.00" y="502.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:5 P:0 ✗</text>
   </g>
   <g class="frame frame-2" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;0;1" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -7826,7 +7826,7 @@
     <rect x="453.00" y="475.00" width="3" height="3" fill="#ffff12"/>
     <rect x="456.00" y="475.00" width="3" height="3" fill="#87c6b8"/>
     <rect x="453.00" y="478.00" width="3" height="3" fill="#c9ff72"/>
-    <text x="462.00" y="502.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:7 P:6 ✗</text>
+    <text x="462.00" y="502.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:7 P:4 ✗</text>
   </g>
   <g class="frame frame-1" opacity="0">
     <animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0.0000;0.3333;0.6667" dur="9s" repeatCount="indefinite"/>
@@ -8145,6 +8145,6 @@
     <text x="462.00" y="502.00" text-anchor="middle" font-family="monospace" font-size="14" fill="#e74c3c">T:9 P:6 ✗</text>
   </g>
 </g>
-  <text x="266" y="560" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#f5e9ff">Validation accuracy: 39.76%  ·  Test accuracy: 40.43%  ·  Green ✓ = correct prediction, red ✗ = wrong</text>
+  <text x="266" y="560" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#f5e9ff">Validation accuracy: 43.09%  ·  Test accuracy: 43.18%  ·  Green ✓ = correct prediction, red ✗ = wrong</text>
   <text x="266" y="580" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#a89cd6">Animated cells cycle every 9s — each cell shows several held-out test digits classified by the champion network.</text>
 </svg>
