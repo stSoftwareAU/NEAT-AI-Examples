@@ -57,6 +57,7 @@ import {
   type MnistRunSummary,
   pickGridSamples,
   predict,
+  shouldDisableDiscovery,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -586,6 +587,27 @@ Deno.test("writeMnistTrainingBin rejects feature vectors of the wrong length", (
   } finally {
     Deno.removeSync(tmp, { recursive: true });
   }
+});
+
+Deno.test("shouldDisableDiscovery keeps Discovery ON for a normal run regardless of timeout", () => {
+  // Regression for #516: a real run with no wall-clock backstop
+  // (timeoutMinutes: 0) must NOT disable structural Discovery.
+  assertEquals(shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 0 }), false);
+  // A real run with a positive timeout also keeps Discovery on.
+  assertEquals(shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 5 }), false);
+});
+
+Deno.test("shouldDisableDiscovery disables Discovery only on the unit-test path", () => {
+  // testCaps marks the FFI-sanitiser-constrained unit-test path: the only
+  // place Discovery is legitimately switched off.
+  assertEquals(
+    shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 0, testCaps: {} }),
+    true,
+  );
+  assertEquals(
+    shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 5, testCaps: { populationSize: 4 } }),
+    true,
+  );
 });
 
 Deno.test("inferStopCondition reports timeoutMinutes when wall-clock fills the budget", () => {

@@ -519,11 +519,16 @@ export interface MnistEvolveOptions {
    * `Creature.evolveDir`. */
   dataDir: string;
   /**
-   * `evolveDir` `timeoutMinutes` option. Pass `0` from tests and CI quick
-   * mode to skip the wall-clock backstop and Discovery scheduling (GitHub
-   * Actions runners have no GPU). NEAT-AI also loads FFI cleanup machinery
-   * on the backstop path that Deno's `--allow-ffi` sanitiser flags as a
-   * leak in unit tests.
+   * `evolveDir` `timeoutMinutes` option (the wall-clock backstop). Pass
+   * `0` from tests and CI quick mode to skip the backstop: NEAT-AI loads
+   * FFI cleanup machinery on the backstop path that Deno's `--allow-ffi`
+   * sanitiser flags as a leak in unit tests.
+   *
+   * This concerns only the wall-clock budget. It does **not** control
+   * structural Discovery — disabling Discovery is gated solely on
+   * {@link MnistEvolveOptions.testCaps} (see {@link shouldDisableDiscovery},
+   * issue #516), so a normal run with `timeoutMinutes: 0` still discovers
+   * structure.
    */
   timeoutMinutes: number;
   /**
@@ -640,17 +645,23 @@ async function withEvolveDirLock<T>(
  * `{ error, score, time, generation }` fields plus the seed and final
  * topology counts feed the multi-run milestone history (issue #327).
  */
-/** True when evolveDir must not schedule Discovery (tests / CPU-only CI). */
-function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
-  let ci = false;
-  try {
-    ci = Deno.env.get("CI") === "true";
-  } catch {
-    // Production runners may not grant blanket env access; treat as non-CI.
-  }
-  return options.testCaps !== undefined ||
-    options.timeoutMinutes <= 0 ||
-    ci;
+/**
+ * True when evolveDir must not schedule structural Discovery.
+ *
+ * Discovery is **on by default in NEAT-AI** (`discoverySampleRate = 0.2`;
+ * only a value `<= 0` disables it) and is the engine that grows network
+ * structure, so real MNIST runs must keep it enabled (issue #516).
+ *
+ * The *only* genuine reason to disable it here is the unit-test path:
+ * NEAT-AI's Discovery library loads FFI cleanup machinery that Deno's
+ * `--allow-ffi` sanitiser flags as a leak inside `deno test`. Unit tests
+ * therefore set `testCaps`, which forces Discovery off. This is a
+ * test-only concern — it is deliberately decoupled from `timeoutMinutes`
+ * (the wall-clock backstop) so that a normal run with no timeout still
+ * lets Discovery find the structure.
+ */
+export function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
+  return options.testCaps !== undefined;
 }
 
 export async function evolveMnistClassifier(

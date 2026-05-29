@@ -45,21 +45,21 @@ flowchart LR
 
 ## 📈 Latest measured run
 
-Numbers below come from the recorded-evolution exploration campaign (overnight loops × ~60
-minutes, minimal `new Creature(784, 10)` seed, no `--hidden-seed`). The runner writes them to
+Numbers below come from the recorded-evolution exploration campaign (overnight loops × ~60 minutes,
+minimal `new Creature(784, 10)` seed, no `--hidden-seed`). The runner writes them to
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
 so reviewers can verify every value. The milestone history (one record per completed phase) lives at
 [`docs/data/mnist_classification/milestones.json`](../docs/data/mnist_classification/milestones.json)
 and the saved champion at
 [`docs/data/mnist_classification/creature.json`](../docs/data/mnist_classification/creature.json).
 
-| Metric | Value |
-| ------ | ----: |
-| Test accuracy | 43.19% |
-| Validation accuracy | 43.10% |
-| Campaign wall-clock | ~21.8 h (115 phases) |
-| Topology | 794 neurons / 7,696 synapses (forward-only 784→10) |
-| Cumulative generations | 5,650 |
+| Metric                 |                                              Value |
+| ---------------------- | -------------------------------------------------: |
+| Test accuracy          |                                             43.19% |
+| Validation accuracy    |                                             43.10% |
+| Campaign wall-clock    |                               ~21.8 h (115 phases) |
+| Topology               | 794 neurons / 7,696 synapses (forward-only 784→10) |
+| Cumulative generations |                                              5,650 |
 
 Regenerate charts and the prediction-grid SVG without evolving:
 
@@ -94,6 +94,12 @@ from the CLI.
 
 `run.sh` grants `--allow-ffi` so NEAT-AI can load the Rust Discovery library (structural growth) and
 run the full supervised training pipeline inside `evolveDir`.
+
+Structural Discovery is left at the NEAT-AI default (`discoverySampleRate = 0.2`) for every real
+run, including `--timeout=0` (no wall-clock backstop) — the topology grows beyond the bare
+`new Creature(784, 10)` seed as evolution proceeds. Discovery is switched off **only** on the
+unit-test path, where its FFI cleanup machinery trips Deno's `--allow-ffi` leak sanitiser (see issue
+#516).
 
 Artefacts:
 

@@ -5,9 +5,12 @@
  * and mutate NEAT-AI global WASM state. `quality.sh` and CI run this file
  * in isolated processes after the parallel unit-test pass.
  *
- * GitHub Actions runners are CPU-only (no GPU). Tests pass
- * `timeoutMinutes: 0` and `discoverySampleRate: -1` (via testCaps) so
- * evolveDir never schedules Discovery.
+ * Tests set `testCaps`, which forces `discoverySampleRate: -1` so evolveDir
+ * never schedules structural Discovery — Discovery's FFI cleanup machinery
+ * trips Deno's `--allow-ffi` leak sanitiser inside `deno test` (issue #516).
+ * They separately pass `timeoutMinutes: 0` to skip the wall-clock backstop
+ * (also an FFI-sanitiser concern); the two are independent — only `testCaps`
+ * disables Discovery, so real runs keep it on.
  *
  * "What" tests only — each case calls the public API and asserts on returned
  * values, persisted state, and written artefacts. Evolution is stochastic, so
@@ -185,7 +188,14 @@ async function evolveMnistClassifierWithRetry(
 async function runMultiRunMnistWithRetry(
   options: Parameters<typeof runMultiRunMnist>[0],
   prepareState?: () => Promise<void>,
-  capsForAttempt: (attempt: number) => { maxGenerations?: number; populationSize?: number; disableGenerationLog?: boolean; seed?: number } = testCapsForAttempt,
+  capsForAttempt: (
+    attempt: number,
+  ) => {
+    maxGenerations?: number;
+    populationSize?: number;
+    disableGenerationLog?: boolean;
+    seed?: number;
+  } = testCapsForAttempt,
   maxAttempts = EVOLVE_DIR_MAX_ATTEMPTS,
 ) {
   let lastError: unknown;
@@ -302,19 +312,24 @@ Deno.test({
         await seedResumeState(resumeAttempt);
       };
 
-      const outcome = await runMultiRunMnistWithRetry({
-        dataDir,
-        argv: [],
-        baseDir: tmp,
-        evolveOverrides: {
-          ...EVOLVE_DIR_TEST_OVERRIDES,
-          elitism: 2,
-          testCaps: { ...EVOLVE_DIR_RESUME_CAPS, seed: EVOLVE_DIR_BASE_SEED },
+      const outcome = await runMultiRunMnistWithRetry(
+        {
+          dataDir,
+          argv: [],
+          baseDir: tmp,
+          evolveOverrides: {
+            ...EVOLVE_DIR_TEST_OVERRIDES,
+            elitism: 2,
+            testCaps: { ...EVOLVE_DIR_RESUME_CAPS, seed: EVOLVE_DIR_BASE_SEED },
+          },
         },
-      }, async () => {
-        await prepareResumeState();
-        resumeAttempt++;
-      }, resumeTestCapsForAttempt, EVOLVE_DIR_RESUME_MAX_ATTEMPTS);
+        async () => {
+          await prepareResumeState();
+          resumeAttempt++;
+        },
+        resumeTestCapsForAttempt,
+        EVOLVE_DIR_RESUME_MAX_ATTEMPTS,
+      );
 
       assertEquals(outcome.resumed, true);
       assertEquals(outcome.runIndex, 2);
