@@ -10,15 +10,21 @@
  * library — exercising back-propagation, structural mutation, and the
  * library's full evolution pipeline.
  *
- * 🌱 **Generation 1 starts from random noise.** A fresh run (no prior
- * persisted champion, or `--fresh` on the command line) builds the seed
- * via {@link buildRandomSeedCreature} — the NEAT-AI library's
- * uniform-random `new Creature(WINDOW_SIZE, 1)` constructor — direct
- * input → output connections, random weights, and a random output bias
- * drawn from the seeded global PRNG. **No topology, weights, or biases
- * are hand-specified by this example.** Hidden neurons are not
- * pre-built — they emerge purely from NEAT-AI's own structural mutation
- * operators while `evolveDir` runs.
+ * 🌱 **Generation 1 starts from a data-derived factory seed (issue
+ * #519).** A fresh run (no prior persisted champion, or `--fresh` on the
+ * command line) builds the seed via {@link buildSeedCreature} — the
+ * NEAT-AI `Creature.forDataset(records, { cost })` factory — instead of a
+ * bare `new Creature(WINDOW_SIZE, 1)`. The factory scans the training
+ * data and seeds problem-intrinsic defaults: a **linear (IDENTITY)
+ * regression output**, an **output bias warm-started to the target
+ * mean**, a **conservative hidden-capacity budget**, and
+ * **constant-feature pruning**. **No dataset-specific architecture is
+ * hand-coded** — every default is derived from the observation count,
+ * output count, cost, and a scan of the training file, so the same
+ * approach transfers to private/unknown problems. Only the seed changes;
+ * the `evolveDir` configuration (population, mutation, stop conditions)
+ * is identical to the historical run, and structural growth still comes
+ * from NEAT-AI's own mutation operators.
  *
  * Under #301 the per-generation `onTrainingEvent` hook and multi-panel
  * checkpoint strip were removed in favour of NEAT-AI's supported
@@ -55,6 +61,7 @@ import {
   createSeededRng,
   Creature,
   type CreatureExport,
+  type DatasetFactoryOptions,
   type NeatOptions,
   safeWriteJson,
   setRandomNumberGenerator,
@@ -73,7 +80,10 @@ import { renderMultiRunErrorChartSVG } from "../common/multi_run_error_chart.ts"
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import {
   buildSamples,
+  computeNormalizationStats,
   type DataSplit,
+  type NormalizationStats,
+  normalizeSamples,
   parsePriceCSV,
   type PricePoint,
   type Sample,
@@ -87,8 +97,19 @@ export const WINDOW_SIZE = 10;
 /** Number of network inputs. */
 export const INPUT_COUNT = WINDOW_SIZE;
 
-/** Number of network outputs (a single direction probability). */
+/** Number of network outputs (a single regression score for next-period return). */
 export const OUTPUT_COUNT = 1;
+
+/** Filename of the binary training stream consumed by `evolveDir`. */
+export const TRAIN_BIN_FILENAME = "stock_market.bin";
+
+/**
+ * Cost / task name handed to the NEAT-AI factory ({@link Creature.forDataset})
+ * and `evolveDir`. A regression cost makes the factory pick a **linear
+ * (IDENTITY) output** and warm-start the output bias to the target mean
+ * — the data-derived seed this example demonstrates (issue #519).
+ */
+export const REGRESSION_COST = "MSE";
 
 /** Working-directory root for this example. */
 export const STOCK_ROOT = ".synthetic-stock";
@@ -242,10 +263,14 @@ export const DEFAULT_EVOLVE_OPTIONS: Omit<EvolveOptions, "dataDir"> = {
 };
 
 /**
- * Build a uniform-random NEAT seed creature. Seeds the library's global
- * PRNG with {@link createSeededRng} and then defers to
- * `new Creature(windowSize, OUTPUT_COUNT)` — the library's
- * uniform-random constructor. **No topology, weight, or bias is
+ * Build a uniform-random NEAT seed creature via the library's bare
+ * `new Creature(windowSize, OUTPUT_COUNT)` constructor.
+ *
+ * Retained as the historical baseline and for synthetic test/resume
+ * fixtures — the production fresh-run seed now comes from the
+ * data-derived factory ({@link buildSeedCreature}, issue #519). Seeds the
+ * library's global PRNG with {@link createSeededRng} so output is
+ * deterministic for a given seed. **No topology, weight, or bias is
  * hand-specified by this example.**
  *
  * The single output neuron's activation is pinned to LOGISTIC because
@@ -263,6 +288,73 @@ export function buildRandomSeedCreature(
     if (neuron.type === "output") neuron.squash = "LOGISTIC";
   }
   return json;
+}
+
+/** A single factory training record: a feature window plus its target. */
+type FactoryRecords = Parameters<typeof Creature.forDataset>[0];
+
+/**
+ * Build the **data-derived seed creature** via the NEAT-AI factory
+ * ({@link Creature.forDataset}) instead of a bare `new Creature(...)`
+ * (issue #519). The factory scans `records` and:
+ *
+ * - picks a **linear (IDENTITY) output** activation from the regression
+ *   cost ({@link REGRESSION_COST});
+ * - **warm-starts the output bias to the target mean**, so the seed can
+ *   predict the unconditional mean return before any training;
+ * - sizes a **conservative hidden-capacity budget** from the problem
+ *   shape (markets offer limited, non-stationary samples, so overfitting
+ *   is the main risk);
+ * - **prunes truly-constant features** — synapses originating from a
+ *   feature with no variance are zeroed so their noise is not propagated.
+ *
+ * The library's global PRNG is reseeded via {@link createSeededRng} so a
+ * given `seed` produces a deterministic seed creature. Inputs are
+ * expected to be **already robustly standardised** (see
+ * {@link computeNormalizationStats}); the frozen stats travel with the
+ * model into inference, so the factory trusts the incoming scale.
+ */
+export function buildSeedCreature(
+  records: FactoryRecords,
+  seed: number,
+  _windowSize: number = WINDOW_SIZE,
+): CreatureExport {
+  if (records.length === 0) {
+    throw new Error("buildSeedCreature: records must not be empty");
+  }
+  setRandomNumberGenerator(createSeededRng(seed));
+  const options: DatasetFactoryOptions = { cost: REGRESSION_COST };
+  return Creature.forDataset(records, options).exportJSON();
+}
+
+/**
+ * Read a written `.bin` training stream back into factory records
+ * (`{ input, output }` pairs). Each record is `windowSize + OUTPUT_COUNT`
+ * Float32 values: the feature window followed by the regression target.
+ * Used by {@link evolveStockController} to feed the factory the exact
+ * data `evolveDir` will train on.
+ */
+export function readTrainingRecords(
+  dataDir: string,
+  windowSize: number = WINDOW_SIZE,
+): FactoryRecords {
+  const path = join(dataDir, TRAIN_BIN_FILENAME);
+  const bytes = Deno.readFileSync(path);
+  const stride = windowSize + OUTPUT_COUNT;
+  const floats = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+  const count = Math.floor(floats.length / stride);
+  if (count === 0) {
+    throw new Error(`readTrainingRecords: no records found in ${path}`);
+  }
+  const records: { input: Float32Array; output: Float32Array }[] = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const base = i * stride;
+    records[i] = {
+      input: floats.slice(base, base + windowSize),
+      output: floats.slice(base + windowSize, base + stride),
+    };
+  }
+  return records;
 }
 
 /**
@@ -297,7 +389,7 @@ export function writeStockTrainingDataset(
     }
     buffer[i * stride + windowSize] = sample.label;
   }
-  const path = join(dataDir, "stock_market.bin");
+  const path = join(dataDir, TRAIN_BIN_FILENAME);
   Deno.writeFileSync(path, new Uint8Array(buffer.buffer));
   return path;
 }
@@ -305,10 +397,13 @@ export function writeStockTrainingDataset(
 /**
  * Run NEAT structural evolution to learn next-period direction.
  *
- * The runner builds the **uniform-random seed creature** via
- * {@link buildRandomSeedCreature} (no hidden neurons, random weights and
- * output bias from the seeded PRNG) and delegates structural mutation
- * to the library via `creature.evolveDir(dataDir, ...)`. One call
+ * The runner builds the **data-derived factory seed** via
+ * {@link buildSeedCreature} (linear output, target-mean bias warm-start,
+ * conservative hidden-capacity budget, constant-feature pruning) and
+ * delegates structural mutation to the library via
+ * `creature.evolveDir(dataDir, ...)`. Only the seed differs from the
+ * historical `new Creature(...)` path — the `evolveDir` configuration is
+ * unchanged. One call
  * covers the whole budget; the return value's
  * `{ error, score, time, generation }` fields plus the seed and final
  * topology counts feed an {@link EvolveDirSummary} for the milestone
@@ -325,10 +420,17 @@ export async function evolveStockController(options: EvolveOptions): Promise<Evo
   }
 
   // Resume from the prior champion when supplied, otherwise build the
-  // uniform-random minimal seed via the seeded global PRNG.
+  // data-derived factory seed by scanning the training `.bin` the
+  // factory will (via evolveDir) actually train on (issue #519).
   const creature = options.seedCreatureExport !== undefined
     ? Creature.fromJSON(options.seedCreatureExport)
-    : Creature.fromJSON(buildRandomSeedCreature(options.seed, options.windowSize));
+    : Creature.fromJSON(
+      buildSeedCreature(
+        readTrainingRecords(options.dataDir, options.windowSize),
+        options.seed,
+        options.windowSize,
+      ),
+    );
   const seedNeurons = creature.neurons.length;
   const seedSynapses = creature.synapses.length;
 
@@ -685,9 +787,24 @@ if (import.meta.main) {
     `   Train=${split.train.length}  Val=${split.validation.length}  Test=${split.test.length}`,
   );
 
-  // Pre-generate the binary `.bin` training set for `evolveDir`.
-  const trainBin = writeStockTrainingDataset(split.train, dataDir);
-  console.log(`📦 Wrote training set to ${trainBin}`);
+  // Robustly standardise inputs with frozen (median / IQR) stats derived
+  // from the TRAIN window only. The same frozen stats are reused for
+  // validation, test, and live inference so the normalisation "travels
+  // with the model" and never re-estimates the scale on a later regime
+  // (issue #519). Non-feature fields (date, close, return) are preserved.
+  const normStats: NormalizationStats = computeNormalizationStats(split.train);
+  const normTrain = normalizeSamples(split.train, normStats);
+  const normValidation = normalizeSamples(split.validation, normStats);
+  const normTest = normalizeSamples(split.test, normStats);
+  const normalizationPath = join(creaturesDir, "normalization.json");
+  await safeWriteJson(normalizationPath, normStats);
+  console.log(`🧮 Froze robust input-normalisation stats → ${normalizationPath}`);
+
+  // Pre-generate the binary `.bin` training set for `evolveDir` from the
+  // normalised features. `evolveStockController` scans this same file to
+  // build the data-derived factory seed.
+  const trainBin = writeStockTrainingDataset(normTrain, dataDir);
+  console.log(`📦 Wrote normalised training set to ${trainBin}`);
 
   // Multi-run flag parsing (logged here for the operator; the runner
   // also re-parses inside `runMultiRunStock`).
@@ -715,7 +832,9 @@ if (import.meta.main) {
   if (multi.resumed) {
     console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
   } else {
-    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+    console.log(
+      `🌱 Fresh start — run ${multi.runIndex} begins from the data-derived factory seed.`,
+    );
   }
 
   console.log(
@@ -733,20 +852,23 @@ if (import.meta.main) {
   await safeWriteJson(championPath, championExport);
   console.log(`💾 Saved champion to ${championPath}`);
 
-  // Replay champion on validation + test windows.
-  const valAccuracy = directionalAccuracy(result.champion, split.validation);
-  const valBalanced = balancedDirectionalAccuracy(result.champion, split.validation);
-  const records = replayController(result.champion, split.test);
+  // Replay champion on validation + test windows. Inference uses the
+  // SAME frozen normalisation stats as training, so the standardisation
+  // travels with the model (issue #519).
+  const valAccuracy = directionalAccuracy(result.champion, normValidation);
+  const valBalanced = balancedDirectionalAccuracy(result.champion, normValidation);
+  const records = replayController(result.champion, normTest);
   const testAccuracy = records.length === 0
     ? 0
     : records.filter((r) => r.correct).length / records.length;
-  const testBalanced = balancedDirectionalAccuracy(result.champion, split.test);
+  const testBalanced = balancedDirectionalAccuracy(result.champion, normTest);
   const cumulativeReturn = cumulativeStrategyReturn(records);
 
   // Save per-day signals.
   const signalsPath = join(outputDir, "signals.json");
   await safeWriteJson(signalsPath, {
     windowSize: WINDOW_SIZE,
+    normalization: normStats,
     validationAccuracy: valAccuracy,
     validationBalancedAccuracy: valBalanced,
     testAccuracy,

@@ -62,7 +62,11 @@ These examples exist to demonstrate evolution from noise → competent and must 
 - `cart_pole`
 - `snake_game`
 - `mnist_classification`
-- `stock_market`
+- `stock_market` — **exception (issue #519, factory-adoption tracker #517):** the fresh-run seed is
+  built via the data-derived `Creature.forDataset(...)` factory (linear output, target-mean bias,
+  data-derived hidden capacity) rather than uniform-random noise. Adopting the factory _is_ the
+  demonstration; structural growth beyond the seed still comes purely from `evolveDir`'s mutation
+  operators. The `evolveDir` configuration is unchanged.
 - `lunar_lander`
 - `mountain_car`
 - `maze_navigation`
