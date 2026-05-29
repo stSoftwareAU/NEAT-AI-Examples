@@ -11,17 +11,19 @@ left off. Issues [#318](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/
 [#327](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/327) wired the multi-run chart
 pipeline shared with the other in-scope examples.
 
-> 🌱 **First run only:** when no saved champion exists, NEAT-AI seeds `new Creature(784, 10)` — 784
-> input neurons, 10 output neurons — and random-initialises every weight, bias, and activation
-> function. **Every subsequent run reloads the saved champion and continues evolution.** Do not pass
-> `--fresh` unless you explicitly want to discard all prior progress.
+> 🌱 **First run only:** when no saved champion exists, NEAT-AI builds the seed via
+> `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })` (issue #518) — a data-derived
+> factory seed with **SOFTMAX outputs** (cost-coupled), a **factory-sized hidden layer** (≈ 89
+> neurons from the geometric-mean rule), and **dead-pixel pruning**. **Every subsequent run reloads
+> the saved champion and continues evolution.** Do not pass `--fresh` unless you explicitly want to
+> discard all prior progress.
 
 ```mermaid
 flowchart LR
     DL["📥 fetchDataset()<br/>MNIST IDX (pinned SHA-256)"]
     BIN["📦 writeMnistTrainingBin()<br/>full 60 000 records<br/>784 features + 10 one-hot targets"]
     LOAD["💾 loadMultiRunState<br/>prior champion if any"]
-    SEED["🌱 new Creature(784, 10)<br/>(only when no prior state)"]
+    SEED["🌱 Creature.forDataset(records, cost)<br/>(only when no prior state)"]
     EVOLVE["🧪 creature.evolveDir(<br/>Discovery + fine-tuning)"]
     APPEND["📝 appendMultiRunRun<br/>persist champion + milestone"]
     CHARTS["📈 milestones.svg + complexity.svg"]
@@ -46,7 +48,8 @@ flowchart LR
 ## 📈 Latest measured run
 
 Numbers below come from the recorded-evolution exploration campaign (overnight loops × ~60 minutes,
-minimal `new Creature(784, 10)` seed, no `--hidden-seed`). The runner writes them to
+data-derived factory seed via `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })`). The
+runner writes them to
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
 so reviewers can verify every value. The milestone history (one record per completed phase) lives at
 [`docs/data/mnist_classification/milestones.json`](../docs/data/mnist_classification/milestones.json)
@@ -83,11 +86,11 @@ Regenerate charts and the prediction-grid SVG without evolving:
 The runner forwards flags to the underlying Deno program, which parses them via `parseMultiRunFlags`
 from [`common/multi_run_state.ts`](../common/multi_run_state.ts):
 
-| Flag                  | Default | Meaning                                                                     |
-| --------------------- | ------- | --------------------------------------------------------------------------- |
-| _(none)_              | —       | Resume from the saved champion when present; otherwise start from noise.    |
-| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.                 |
-| `--fresh`             | absent  | **Discard** prior creature, milestones, and both chart SVGs before running. |
+| Flag                  | Default | Meaning                                                                                                                            |
+| --------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| _(none)_              | —       | Resume from the saved champion when present; otherwise build the fresh seed via the NEAT-AI factory (`Creature.forDataset`, #518). |
+| `--timeout=<minutes>` | 5       | Wall-clock budget for this invocation, integer minutes ≥ 1.                                                                        |
+| `--fresh`             | absent  | **Discard** prior creature, milestones, and both chart SVGs before running.                                                        |
 
 The early-stop `targetError` passed to `evolveDir` is **fixed at `0.0001`** — it is not overridable
 from the CLI.
@@ -96,10 +99,31 @@ from the CLI.
 run the full supervised training pipeline inside `evolveDir`.
 
 Structural Discovery is left at the NEAT-AI default (`discoverySampleRate = 0.2`) for every real
-run, including `--timeout=0` (no wall-clock backstop) — the topology grows beyond the bare
-`new Creature(784, 10)` seed as evolution proceeds. Discovery is switched off **only** on the
-unit-test path, where its FFI cleanup machinery trips Deno's `--allow-ffi` leak sanitiser (see issue
-#516).
+run, including `--timeout=0` (no wall-clock backstop) — the topology grows beyond the factory seed
+as evolution proceeds. Discovery is switched off **only** on the unit-test path, where its FFI
+cleanup machinery trips Deno's `--allow-ffi` leak sanitiser (see issue #516).
+
+### Generation 1 — data-derived factory seed (issue #518)
+
+A fresh run (no prior persisted champion, or `--fresh` on the command line) builds the seed via the
+NEAT-AI factory:
+
+```ts
+const records = readMnistTrainingRecords(binDir);
+const seed = Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" });
+```
+
+instead of a bare `new Creature(784, 10)` or a hardcoded `[128, 64]` hidden seed. The factory:
+
+- couples the output activation to the cost (**SOFTMAX** for `CATEGORICAL_ERROR`);
+- sizes a conservative hidden-capacity budget from the `(784, 10)` problem shape (the geometric-mean
+  rule picks ≈ `√(784·10) ≈ 89` hidden neurons — well below the legacy `[128, 64]` lookup);
+- **prunes dead inputs** — the constant border pixels of MNIST have near-zero variance, so synapses
+  leaving them are zeroed at the start of evolution.
+
+No dataset-specific architecture is hand-coded — every default is derived from the observation
+count, output count, cost, and a scan of the training file, so the same approach transfers to
+private/unknown problems.
 
 Artefacts:
 
@@ -146,11 +170,9 @@ later.
 # One ~60 min loop (two repeats of structure-1…4 + polish). Resumes by default.
 ./mnist_classification/exploration_campaign.sh
 
-# Wipe creature, milestones, charts, and campaign_record.json — re-record from scratch.
+# Wipe creature, milestones, charts, and campaign_record.json — re-record from
+# scratch using the data-derived factory seed (issue #518).
 ./mnist_classification/exploration_campaign.sh --fresh
-
-# Fresh start with a layered ReLU seed (784 → 128 → 64 → 10) instead of minimal noise.
-./mnist_classification/exploration_campaign.sh --fresh --hidden-seed
 
 # Optional intelligent-design squash scan after the evolution loop.
 ./mnist_classification/exploration_campaign.sh --squash-scan
@@ -160,7 +182,7 @@ later.
 
 # Overnight loop until test accuracy reaches 90% (or MNIST_CAMPAIGN_MAX_HOURS elapses).
 ./mnist_classification/recorded_evolution_campaign.sh
-./mnist_classification/recorded_evolution_campaign.sh --fresh --hidden-seed
+./mnist_classification/recorded_evolution_campaign.sh --fresh
 ```
 
 Each loop runs **two repeats** of the five-phase cadence (10 phases total):
@@ -174,17 +196,16 @@ Structure phases subsample training fitness but always score hold-out on the ful
 sets. Polish uses the full 60 000-record set for only a few generations so the loop stays near 60
 minutes while still giving intelligent-design a well-trained champion.
 
-| Flag / env                 | Meaning                                                                                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--fresh`                  | Wipe `creature.json`, `milestones.json`, all three chart SVGs, `campaign_record.json`, and `run_summary.json`, then begin a new campaign clock. |
-| `--hidden-seed`            | With `--fresh`, seed a layered ReLU MLP instead of `new Creature(784, 10)`.                                                                     |
-| `--squash-scan`            | Run an intelligent-design activation scan (GELU, Swish, LeakyReLU, Mish) after the loop.                                                        |
-| `--loop-minutes=<n>`       | Target wall-clock per invocation (default `60`).                                                                                                |
-| `--repeats=<n>`            | How many times to repeat structure-1…4 + polish (default `2`).                                                                                  |
-| `MNIST_TARGET_ACCURACY`    | Stop the overnight loop at this test accuracy (default `0.90`).                                                                                 |
-| `MNIST_CAMPAIGN_MAX_HOURS` | Wall-clock budget for the overnight loop (default `48`).                                                                                        |
-| `MNIST_LOOP_MINUTES`       | Same as `--loop-minutes` for the overnight shell wrapper.                                                                                       |
-| `MNIST_LOOP_REPEATS`       | Same as `--repeats` for the overnight shell wrapper.                                                                                            |
+| Flag / env                 | Meaning                                                                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--fresh`                  | Wipe `creature.json`, `milestones.json`, all three chart SVGs, `campaign_record.json`, and `run_summary.json`, then begin a new campaign clock from the factory seed. |
+| `--squash-scan`            | Run an intelligent-design activation scan (GELU, Swish, LeakyReLU, Mish) after the loop.                                                                              |
+| `--loop-minutes=<n>`       | Target wall-clock per invocation (default `60`).                                                                                                                      |
+| `--repeats=<n>`            | How many times to repeat structure-1…4 + polish (default `2`).                                                                                                        |
+| `MNIST_TARGET_ACCURACY`    | Stop the overnight loop at this test accuracy (default `0.90`).                                                                                                       |
+| `MNIST_CAMPAIGN_MAX_HOURS` | Wall-clock budget for the overnight loop (default `48`).                                                                                                              |
+| `MNIST_LOOP_MINUTES`       | Same as `--loop-minutes` for the overnight shell wrapper.                                                                                                             |
+| `MNIST_LOOP_REPEATS`       | Same as `--repeats` for the overnight shell wrapper.                                                                                                                  |
 
 Scratch logs (gitignored): `.synthetic-mnist/exploration/` (`phases.jsonl`, `overnight.log`).
 
@@ -217,10 +238,15 @@ When a better training recipe is found, reset and re-record with `--fresh` — t
 charts reset together.
 
 > [!NOTE]
-> The first generation of an in-scope example must still start from uniform-random noise unless you
-> explicitly pass `--hidden-seed` with `--fresh`. The hidden-seed topology is a hand-crafted layer
-> layout (weights remain random) — use it only when exploring that seed strategy, not as the default
-> demo narrative.
+> Per the factory-adoption tracker
+> ([#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517)) and issue
+> [#518](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/518), the fresh-run seed for MNIST
+> is now data-derived via `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })` instead of
+> uniform-random noise or a hardcoded `[128, 64]` hidden lookup. This is a deliberate,
+> milestone-sanctioned departure from the project-wide no-warm-start policy — only the _seed_ is
+> data-derived (cost-coupled SOFTMAX output, factory-sized hidden layer, dead-pixel pruning); the
+> `evolveDir` configuration is unchanged so structural growth still comes from NEAT-AI's mutation
+> operators.
 
 The runner downloads the IDX gzip files into `.synthetic-mnist/data/` (cached on disk after the
 first run), encodes the full 60 000-record training file into `.synthetic-mnist/bin/mnist_train.bin`
@@ -253,7 +279,7 @@ sequenceDiagram
     alt prior champion exists
         State-->>MNIST: Creature.fromJSON(creatureExport)
     else first run
-        State-->>MNIST: new Creature(784, 10) — random noise
+        State-->>MNIST: Creature.forDataset(records, cost) — factory seed
     end
     MNIST->>MNIST: Creature.evolveDir(binDir, opts)
     MNIST->>State: appendMultiRunRun({champion, milestone})

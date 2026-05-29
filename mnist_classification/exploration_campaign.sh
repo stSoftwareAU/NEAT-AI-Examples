@@ -40,7 +40,7 @@ echo ""
 
 deno run \
   "${NEAT_EXAMPLE_DENO_FLAGS[@]}" \
-  --allow-env="${NEAT_AI_ENV_VARS},NEAT_EXAMPLES_MAX_HEAP_MB,MNIST_HIDDEN_LAYER_SIZES,NEAT_MULTI_RUN_BASE_DIR" \
+  --allow-env="${NEAT_AI_ENV_VARS},NEAT_EXAMPLES_MAX_HEAP_MB,NEAT_MULTI_RUN_BASE_DIR" \
   --allow-net=storage.googleapis.com,jsr.io \
   ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"} \
   mnist_classification/exploration_campaign.ts \

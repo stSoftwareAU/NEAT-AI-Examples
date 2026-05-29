@@ -5,11 +5,13 @@ set -euo pipefail
 #
 # Writes the FULL 60 000-record MNIST training set to a binary `.bin`
 # file and runs `Creature.evolveDir(dataDir, { targetError, timeoutMinutes })`
-# over that directory. On the first run (no saved champion) NEAT-AI seeds
-# `new Creature(784, 10)` from random noise; every subsequent invocation
-# reloads the persisted champion and continues evolution. Persists the
-# champion and a per-run milestone via the multi-run helper (issue #327).
-# Renders the prediction-grid SVG plus both multi-run charts.
+# over that directory. On the first run (no saved champion) NEAT-AI builds
+# the seed via the data-derived factory `Creature.forDataset(records,
+# { cost: "CATEGORICAL_ERROR" })` (issue #518) — SOFTMAX outputs,
+# factory-sized hidden layer, dead-pixel pruning. Every subsequent
+# invocation reloads the persisted champion and continues evolution.
+# Persists the champion and a per-run milestone via the multi-run helper
+# (issue #327). Renders the prediction-grid SVG plus both multi-run charts.
 #
 # `--allow-ffi` is required so NEAT-AI can load the Rust Discovery library
 # (structural growth) and the full evolveDir training pipeline.
@@ -17,7 +19,6 @@ set -euo pipefail
 # Recognised flags (forwarded verbatim to the Deno program):
 #   --timeout=<minutes>  Override the wall-clock budget (default 5).
 #   --fresh              Discard saved champion + history (use sparingly).
-#   --hidden-seed        With --fresh, seed via Creature layers (784→128→64→10 ReLU).
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
@@ -38,7 +39,7 @@ echo ""
 
 deno run \
   "${NEAT_EXAMPLE_DENO_FLAGS[@]}" \
-  --allow-env="${NEAT_AI_ENV_VARS},MNIST_QUICK,NEAT_MULTI_RUN_BASE_DIR,MNIST_HIDDEN_LAYER_SIZES" \
+  --allow-env="${NEAT_AI_ENV_VARS},MNIST_QUICK,NEAT_MULTI_RUN_BASE_DIR" \
   --allow-net=storage.googleapis.com,jsr.io \
   ${ALLOW_RUN_ARGS[@]+"${ALLOW_RUN_ARGS[@]}"} \
   mnist_classification/mnist_classification.ts \

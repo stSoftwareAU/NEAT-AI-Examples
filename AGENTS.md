@@ -61,7 +61,12 @@ These examples exist to demonstrate evolution from noise → competent and must 
 - `xor_classification`
 - `cart_pole`
 - `snake_game`
-- `mnist_classification`
+- `mnist_classification` — **exception (issue #518, factory-adoption tracker #517):** the fresh-run
+  seed is built via the data-derived `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })`
+  factory (SOFTMAX outputs, factory-sized hidden layer, dead-pixel pruning) rather than uniform-
+  random noise or the legacy `[128, 64]` hidden lookup. Adopting the factory _is_ the demonstration;
+  structural growth beyond the seed still comes purely from `evolveDir`'s mutation operators. The
+  `evolveDir` configuration is unchanged.
 - `stock_market` — **exception (issue #519, factory-adoption tracker #517):** the fresh-run seed is
   built via the data-derived `Creature.forDataset(...)` factory (linear output, target-mean bias,
   data-derived hidden capacity) rather than uniform-random noise. Adopting the factory _is_ the
