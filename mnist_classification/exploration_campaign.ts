@@ -857,7 +857,7 @@ export async function runExplorationCampaign(
     console.log(
       `\n🧠 Intelligent design (GRQ randomized.sh) — weighted-random squash: ${squash}…`,
     );
-    let exportJson = creature.exportJSON();
+    const exportJson = creature.exportJSON();
     const baselineScore = Number.parseFloat(getTag(exportJson, "score") ?? "0") ||
       (phaseRecords.at(-1)?.evolveDirScore ?? 0);
     const pass = await runSquashImprovementPass(
