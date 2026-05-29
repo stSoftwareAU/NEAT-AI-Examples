@@ -119,6 +119,20 @@ the [Testing Philosophy](#-testing-philosophy) above.
 If you are adding or modifying an in-scope example, confirm in the PR description that the first
 generation is initialised from uniform-random noise.
 
+### Milestone-sanctioned exception — NEAT-AI factory adoption (#517)
+
+The factory-adoption tracker ([#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517))
+deliberately departs from the no-warm-start policy: examples migrated to
+`Creature.forDataset(records, { cost })` (or the Tier-0
+`Creature.forProblem({ inputs, outputs, cost })` sibling) have a factory-derived topology and
+weight-init scaling before evolution begins, instead of a bare `new Creature(input, output)`.
+
+Seed weights and biases remain random — only topology and scaling are factory-derived — and all
+structural growth beyond the seed still comes from the unchanged mutation operators. Every
+factory-adoption PR must call out the deliberate departure in its summary. See
+[`docs/factory_adoption.md`](docs/factory_adoption.md) for the per-example adoption status and the
+group-by-group decisions for supervised (A), RL/control (B), and mechanic-demo (C) examples.
+
 ## ⚡ Unit Tests vs Benchmarks
 
 | Aspect                 | Unit test                      | Benchmark                       |
