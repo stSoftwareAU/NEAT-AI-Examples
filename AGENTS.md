@@ -62,11 +62,14 @@ These examples exist to demonstrate evolution from noise → competent and must 
 - `cart_pole`
 - `snake_game`
 - `mnist_classification` — **exception (issue #518, factory-adoption tracker #517):** the fresh-run
-  seed is built via the data-derived `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })`
+  seed is built via the data-derived `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })`
   factory (SOFTMAX outputs, factory-sized hidden layer, dead-pixel pruning) rather than uniform-
   random noise or the legacy `[128, 64]` hidden lookup. Adopting the factory _is_ the demonstration;
   structural growth beyond the seed still comes purely from `evolveDir`'s mutation operators. The
-  `evolveDir` configuration is unchanged.
+  `evolveDir` configuration is unchanged. The training/selection cost was switched from
+  `CATEGORICAL_ERROR` (non-differentiable `1 − argmax accuracy`, removed upstream in NEAT-AI #2798)
+  to `CROSS_ENTROPY` (softmax + cross-entropy) under issue #523; top-1 argmax accuracy is still
+  reported but no longer drives evolution.
 - `stock_market` — **exception (issue #519, factory-adoption tracker #517):** the fresh-run seed is
   built via the data-derived `Creature.forDataset(...)` factory (linear output, target-mean bias,
   data-derived hidden capacity) rather than uniform-random noise. Adopting the factory _is_ the

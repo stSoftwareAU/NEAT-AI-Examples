@@ -12,11 +12,19 @@ left off. Issues [#318](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/
 pipeline shared with the other in-scope examples.
 
 > 🌱 **First run only:** when no saved champion exists, NEAT-AI builds the seed via
-> `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })` (issue #518) — a data-derived
+> `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })` (issues #518, #523) — a data-derived
 > factory seed with **SOFTMAX outputs** (cost-coupled), a **factory-sized hidden layer** (≈ 89
 > neurons from the geometric-mean rule), and **dead-pixel pruning**. **Every subsequent run reloads
 > the saved champion and continues evolution.** Do not pass `--fresh` unless you explicitly want to
 > discard all prior progress.
+>
+> Training/selection uses **softmax + cross-entropy** (`costName: "CROSS_ENTROPY"`) — the standard
+> differentiable training cost for multi-class classification. The legacy `CATEGORICAL_ERROR`
+> (`1 − argmax accuracy`) is a non-differentiable step function that is being removed upstream
+> ([NEAT-AI#2798](https://github.com/stSoftwareAU/NEAT-AI/issues/2798)); top-1 / argmax accuracy is
+> still reported alongside the cross-entropy loss (see the test/validation accuracy figures below)
+> but no longer drives evolution (issue
+> [#523](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/523)).
 
 ```mermaid
 flowchart LR
@@ -48,8 +56,8 @@ flowchart LR
 ## 📈 Latest measured run
 
 Numbers below come from the recorded-evolution exploration campaign (overnight loops × ~60 minutes,
-data-derived factory seed via `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })`). The
-runner writes them to
+data-derived factory seed via `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })`). The runner
+writes them to
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
 so reviewers can verify every value. The milestone history (one record per completed phase) lives at
 [`docs/data/mnist_classification/milestones.json`](../docs/data/mnist_classification/milestones.json)
@@ -110,12 +118,13 @@ NEAT-AI factory:
 
 ```ts
 const records = readMnistTrainingRecords(binDir);
-const seed = Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" });
+const seed = Creature.forDataset(records, { cost: "CROSS_ENTROPY" });
 ```
 
 instead of a bare `new Creature(784, 10)` or a hardcoded `[128, 64]` hidden seed. The factory:
 
-- couples the output activation to the cost (**SOFTMAX** for `CATEGORICAL_ERROR`);
+- couples the output activation to the cost (**SOFTMAX** — the canonical pairing for `CROSS_ENTROPY`
+  on a multi-class problem);
 - sizes a conservative hidden-capacity budget from the `(784, 10)` problem shape (the geometric-mean
   rule picks ≈ `√(784·10) ≈ 89` hidden neurons — well below the legacy `[128, 64]` lookup);
 - **prunes dead inputs** — the constant border pixels of MNIST have near-zero variance, so synapses
@@ -211,20 +220,21 @@ Scratch logs (gitignored): `.synthetic-mnist/exploration/` (`phases.jsonl`, `ove
 
 ### Minimum native scorer capability
 
-MNIST evolves with `costName: "CATEGORICAL_ERROR"` (see
-[`mnist_classification.ts`](./mnist_classification.ts)). Batch scoring through the sibling
-[`NEAT-AI-scorer`](https://github.com/stSoftwareAU/NEAT-AI-scorer) binary only works end-to-end when
-that cost is advertised by the built `rust_scorer`. The scorer must support **all seven** built-in
-NEAT-AI cost functions (`MSE`, `MAE`, `BINARY_CROSS_ENTROPY`, `CROSS_ENTROPY`, `HINGE`, `MAPE`,
-`CATEGORICAL_ERROR`); MNIST in particular requires `CATEGORICAL_ERROR` —
+MNIST evolves with `costName: "CROSS_ENTROPY"` (see
+[`mnist_classification.ts`](./mnist_classification.ts), issue
+[#523](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/523)). Batch scoring through the
+sibling [`NEAT-AI-scorer`](https://github.com/stSoftwareAU/NEAT-AI-scorer) binary only works
+end-to-end when that cost is advertised by the built `rust_scorer`. The scorer must support **all
+seven** built-in NEAT-AI cost functions (`MSE`, `MAE`, `BINARY_CROSS_ENTROPY`, `CROSS_ENTROPY`,
+`HINGE`, `MAPE`, `CATEGORICAL_ERROR`); MNIST in particular requires `CROSS_ENTROPY` —
 [`NEAT-AI-scorer#134`](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/134) tracks the
 upstream implementation.
 
 The recorded-evolution wrapper probes `rust_scorer --help` once at start-up via
-`ensure_rust_scorer_supports_cost CATEGORICAL_ERROR` (see
+`ensure_rust_scorer_supports_cost CROSS_ENTROPY` (see
 [`common/ensure_neat_ai_native_scorer.sh`](../common/ensure_neat_ai_native_scorer.sh)). The probe
 runs against a throwaway help invocation, never the champion creature, so it cannot violate the
-warm-start policy. Behaviour when `CATEGORICAL_ERROR` is missing:
+warm-start policy. Behaviour when `CROSS_ENTROPY` is missing:
 
 - Default — emit an actionable stderr warning and silently fall back to the JS scorer for the rest
   of the run.
@@ -241,7 +251,8 @@ charts reset together.
 > Per the factory-adoption tracker
 > ([#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517)) and issue
 > [#518](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/518), the fresh-run seed for MNIST
-> is now data-derived via `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })` instead of
+> is now data-derived via `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })` (cost updated
+> under issue [#523](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/523)) instead of
 > uniform-random noise or a hardcoded `[128, 64]` hidden lookup. This is a deliberate,
 > milestone-sanctioned departure from the project-wide no-warm-start policy — only the _seed_ is
 > data-derived (cost-coupled SOFTMAX output, factory-sized hidden layer, dead-pixel pruning); the

@@ -122,12 +122,26 @@ Deno.test("formatGenerationLogLine writes one TSV row per generation", () => {
 });
 
 Deno.test("MNIST_EVOLVE_COST_NAME is registered in NEAT-AI", () => {
-  assertEquals(MNIST_EVOLVE_COST_NAME, "CATEGORICAL_ERROR");
+  // Issue #523: switched from CATEGORICAL_ERROR (non-differentiable
+  // 1 − argmax accuracy) to CROSS_ENTROPY (softmax + cross-entropy), the
+  // standard training cost for multi-class classification. Argmax
+  // accuracy is still reported separately via classificationAccuracy /
+  // confusionMatrix — it just no longer drives selection.
+  assertEquals(MNIST_EVOLVE_COST_NAME, "CROSS_ENTROPY");
   assertEquals(Costs.getAvailableCosts().includes(MNIST_EVOLVE_COST_NAME), true);
+  // Cross-entropy must discriminate: a near-correct softmax distribution
+  // must score lower (better) than a uniform one for the same target.
   const target = new Float32Array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
-  const zeros = new Float32Array(10);
+  const uniform = new Float32Array(10).fill(0.1);
+  const closeToTarget = Float32Array.from(
+    [0.01, 0.01, 0.91, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+  );
   const cost = Costs.find(MNIST_EVOLVE_COST_NAME);
-  assertEquals(cost.calculate(target, zeros), 1);
+  const uniformLoss = cost.calculate(target, uniform);
+  const closeLoss = cost.calculate(target, closeToTarget);
+  assert(Number.isFinite(uniformLoss) && uniformLoss > 0);
+  assert(Number.isFinite(closeLoss) && closeLoss >= 0);
+  assert(closeLoss < uniformLoss, `expected close (${closeLoss}) < uniform (${uniformLoss})`);
 });
 
 Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
@@ -137,8 +151,9 @@ Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
 
 Deno.test("MNIST_FACTORY_COST matches the evolveDir cost name", () => {
   // Factory must scan with the same cost evolveDir later scores against
-  // so the cost-derived output activation (SOFTMAX for CATEGORICAL_ERROR)
-  // is the one the run actually uses (issue #518).
+  // so the cost-derived output activation (SOFTMAX for CROSS_ENTROPY in
+  // multi-class classification) is the one the run actually uses
+  // (issues #518, #523).
   assertEquals(MNIST_FACTORY_COST, MNIST_EVOLVE_COST_NAME);
 });
 
@@ -146,7 +161,7 @@ Deno.test("buildMnistFactorySeed produces a MNIST-shaped creature with SOFTMAX o
   // Issue #518: drop the hardcoded [128, 64] hidden seed and build the
   // initial creature via Creature.forDataset. The factory:
   //   - couples the output activation to the cost (SOFTMAX from
-  //     CATEGORICAL_ERROR);
+  //     CROSS_ENTROPY for multi-class classification — issue #523);
   //   - sizes a hidden layer from the (784, 10) shape — far smaller than
   //     the legacy [128, 64];
   //   - prunes synapses leaving constant-variance input pixels.
@@ -182,7 +197,8 @@ Deno.test("buildMnistFactorySeed produces a MNIST-shaped creature with SOFTMAX o
         FEATURE_COUNT + 192 + CLASS_COUNT
       }), got ${seed.neurons.length}`,
     );
-    // CATEGORICAL_ERROR + ≥2 outputs ⇒ SOFTMAX output activation.
+    // Multi-class classification cost (CROSS_ENTROPY, ≥ 2 outputs) ⇒
+    // SOFTMAX output activation (issue #523).
     const outputs = seed.neurons.filter((n) => n.type === "output");
     assertEquals(outputs.length, CLASS_COUNT);
     for (const o of outputs) {
@@ -238,7 +254,14 @@ Deno.test(
   },
 );
 
-Deno.test("evolveResultToMultiRunSample clamps error into [0, 1]", () => {
+Deno.test("evolveResultToMultiRunSample floors error at 0 but preserves cross-entropy values > 1", () => {
+  // Issue #523: under CROSS_ENTROPY the error is the mean cross-entropy
+  // in nats — non-negative but unbounded above (a uniform-prediction
+  // 10-class baseline is ≈ ln(10) ≈ 2.30). The legacy [0, 1] cap suited
+  // CATEGORICAL_ERROR (a misclassification rate); under cross-entropy
+  // it would silently flatten the early-evolution part of the curve, so
+  // we keep the lower floor at 0 (to swallow scorer noise) and let
+  // larger values through.
   const champion = new Creature(FEATURE_COUNT, CLASS_COUNT);
   const base = {
     champion,
@@ -249,7 +272,7 @@ Deno.test("evolveResultToMultiRunSample clamps error into [0, 1]", () => {
     seedSynapses: champion.synapses.length,
   };
   assertEquals(evolveResultToMultiRunSample({ ...base, bestError: -0.2 }).error, 0);
-  assertEquals(evolveResultToMultiRunSample({ ...base, bestError: 1.5 }).error, 1);
+  assertEquals(evolveResultToMultiRunSample({ ...base, bestError: 2.3 }).error, 2.3);
 });
 
 Deno.test("parseIdxImages parses synthetic header and body", () => {

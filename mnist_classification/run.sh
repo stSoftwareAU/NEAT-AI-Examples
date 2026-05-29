@@ -7,11 +7,14 @@ set -euo pipefail
 # file and runs `Creature.evolveDir(dataDir, { targetError, timeoutMinutes })`
 # over that directory. On the first run (no saved champion) NEAT-AI builds
 # the seed via the data-derived factory `Creature.forDataset(records,
-# { cost: "CATEGORICAL_ERROR" })` (issue #518) — SOFTMAX outputs,
-# factory-sized hidden layer, dead-pixel pruning. Every subsequent
-# invocation reloads the persisted champion and continues evolution.
-# Persists the champion and a per-run milestone via the multi-run helper
-# (issue #327). Renders the prediction-grid SVG plus both multi-run charts.
+# { cost: "CROSS_ENTROPY" })` (issues #518 + #523) — SOFTMAX outputs,
+# factory-sized hidden layer, dead-pixel pruning. Training/selection uses
+# softmax + cross-entropy (the standard differentiable multi-class cost);
+# top-1 argmax accuracy is still reported but no longer drives evolution.
+# Every subsequent invocation reloads the persisted champion and continues
+# evolution. Persists the champion and a per-run milestone via the
+# multi-run helper (issue #327). Renders the prediction-grid SVG plus both
+# multi-run charts.
 #
 # `--allow-ffi` is required so NEAT-AI can load the Rust Discovery library
 # (structural growth) and the full evolveDir training pipeline.

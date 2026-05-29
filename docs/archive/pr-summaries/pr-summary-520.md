@@ -21,9 +21,8 @@ Closes #520.
   - a **conservative hidden-capacity budget** from the problem shape (Heaton's rule → a small RELU
     hidden layer), where the bare constructor produced zero hidden neurons;
   - **per-activation weight init scaling** (He/Xavier), so the forward pass neither saturates nor
-    vanishes.
-  Every weight and bias is still drawn from the seeded PRNG — the factory chooses the topology and
-  scaling, never hand-crafted parameters.
+    vanishes. Every weight and bias is still drawn from the seeded PRNG — the factory chooses the
+    topology and scaling, never hand-crafted parameters.
 - **`xorFactoryRecords`** converts the fixed XOR truth table into the `{ input, output }` record
   shape the factory scans, so the seed is derived from the same four samples `evolveDir` trains on.
 - **`CLASSIFICATION_COST` constant** documents the cost → activation coupling.
@@ -74,7 +73,8 @@ Added to `xor_classification/xor_classification_test.ts`:
 - `buildSeedCreature builds a factory seed with the right arity` — 2 inputs, 1 output.
 - `buildSeedCreature picks a LOGISTIC output from the classification cost` — cost → activation
   coupling (the core smoke-test).
-- `buildSeedCreature sizes a data-derived hidden capacity budget` — factory pre-sizes a hidden layer.
+- `buildSeedCreature sizes a data-derived hidden capacity budget` — factory pre-sizes a hidden
+  layer.
 - `buildSeedCreature is deterministic (weights/biases) for a given seed` — same seed ⇒ identical
   learnable parameters; different seed ⇒ different seed.
 - `buildSeedCreature produces a valid creature with finite outputs` — validates and activates.
@@ -85,7 +85,8 @@ Modified (business-logic-driven, documented):
 - `evolveXorController is deterministic for a fixed seed` — now compares a learnable-parameter
   fingerprint (topology shape, squashes, biases, weights) instead of raw JSON, because the factory
   mints fresh random hidden-neuron UUIDs each call. The determinism invariant is preserved.
-- `evolveXorController solves XOR and grows hidden neurons (happy path)` — comment updated to reflect
-  that the seed now carries factory hidden capacity; the `hidden > 0` assertion is unchanged.
+- `evolveXorController solves XOR and grows hidden neurons (happy path)` — comment updated to
+  reflect that the seed now carries factory hidden capacity; the `hidden > 0` assertion is
+  unchanged.
 
 No existing tests were removed or disabled.
