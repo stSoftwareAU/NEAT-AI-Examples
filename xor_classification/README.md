@@ -1,22 +1,26 @@
 # 🧠 XOR Classification — Hello World of NEAT
 
-> 🌱 **Generation 1 starts from random noise** — NEAT must invent the topology to solve XOR.
+> 🌱 **Generation 1 is built by the NEAT-AI factory (issue #520).** Instead of a bare
+> `new Creature(2, 1)`, the fresh-run seed is minted by the `Creature.forDataset(records, { cost })`
+> factory, which derives the output activation from the cost and pre-sizes a small hidden layer.
 
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies (the Stanley & Miikkulainen 2002
 algorithm that grows topology and weights together). _XOR_ = exclusive OR (the two-input boolean
 that returns true when exactly one input is true). _PRNG_ = pseudorandom number generator.
 
 `xor_classification.ts` evolves a tiny NEAT-AI network that learns the XOR truth table — the
-canonical "Hello World" of neuroevolution. The initial creature is built by the NEAT-AI library's
-uniform-random `new Creature(2, 1)` constructor — direct input → output synapses with random weights
-and a random output bias drawn from the seeded global PRNG. **No topology, weights, or biases are
-hand-specified by this example.** The single output neuron's activation is pinned to `LOGISTIC` so
-the `>= 0.5` classification threshold and the squared-error contribution against `{0, 1}` targets
-are well-defined; everything else (hidden topology, weights, biases) is invented by NEAT. Structural
-mutation — add-neuron, add-synapse and weight tuning — is delegated to `creature.evolveDir(...)`.
-XOR is not linearly separable, so the random direct-only gen-1 seed cannot solve the task; NEAT must
-invent at least one hidden neuron during evolution (issues #131, #148, audited under #205, telemetry
-rewired under #301, multi-run wiring under #326).
+canonical "Hello World" of neuroevolution. The fresh-run creature is built by the NEAT-AI
+**factory** — `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` — instead of a bare
+`new Creature(2, 1)` (issue #520). Because XOR is tiny, fast, and deterministic, it is the ideal
+**smoke-test** that the factory produces a valid, well-initialised seed: the binary-classification
+cost couples the output to a **LOGISTIC** activation (NEAT-AI #2793) — the activation the `>= 0.5`
+threshold and the squared-error contribution against `{0, 1}` targets both assume — and the factory
+pre-sizes a small RELU hidden layer with He/Xavier-scaled random weights. **No weights or biases are
+hand-specified by this example;** the factory chooses the topology and scaling, every parameter is
+still drawn from the seeded PRNG. Structural mutation — add-neuron, add-synapse and weight tuning —
+is delegated to `creature.evolveDir(...)`, whose configuration is **unchanged** (default MSE
+scoring), so evolution behaves exactly as before (issues #131, #148, audited under #205, telemetry
+rewired under #301, multi-run wiring under #326, factory seed under #520).
 
 Stop conditions: `targetError` plus a `timeoutMinutes: 5` safety backstop (the tiny XOR problem
 typically converges in well under a minute, but the backstop is mandatory so the runner cannot
@@ -30,7 +34,7 @@ wedge).
 flowchart LR
     DATA["📊 XOR Samples<br/>4 truth-table rows<br/>(written as Float32 binary)"]
     LOAD["💾 loadMultiRunState<br/>prior champion if any"]
-    SEED["🎲 Uniform-Random NEAT<br/>new Creature(2, 1)<br/>(only when no prior state)"]
+    SEED["🏭 Factory Seed<br/>Creature.forDataset(records,<br/>{ cost: BINARY_CROSS_ENTROPY })<br/>(only when no prior state)"]
     EVOLVE["🧬 creature.evolveDir<br/>NEAT structural mutation:<br/>ADD_NODE, ADD_CONN, MOD_WEIGHT, …"]
     RETURN["🏁 evolveDir return value<br/>{ error, score, time, generation }"]
     APPEND["📝 appendMultiRunRun<br/>persist champion + milestone"]
@@ -153,7 +157,7 @@ sequenceDiagram
     alt prior champion exists
         State-->>Xor: Creature.fromJSON(creatureExport)
     else first run
-        State-->>Xor: new Creature(2, 1) — random noise
+        State-->>Xor: Creature.forDataset(records, { cost }) — factory seed
     end
     Xor->>Xor: Creature.evolveDir(dataDir, opts)
     Xor->>State: appendMultiRunRun({champion, milestone})
@@ -172,13 +176,19 @@ Re-run `./xor_classification/run.sh` (without `--fresh`) to extend both charts w
 
 A few things that are not obvious from the code alone:
 
-- **The seed has no hidden neurons — NEAT must invent them.** `new Creature(2, 1)` produces a
-  uniform-random network with two inputs wired directly to one output and zero hidden neurons. XOR
-  is not linearly separable, so this seed _cannot_ solve the task — any solved champion is therefore
-  proof that structural mutation (`ADD_NODE`, `ADD_CONN`) actually fired during the run. The random
-  direct-only gen-1 seed plateaus near MSE ≈ 0.25; NEAT must invent at least one hidden neuron to
-  break out of that plateau.
-- **Multi-run resume.** With no prior state the run starts from random noise and writes a new
+- **Factory seed (issue #520).** The fresh-run seed is built via
+  `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`. The factory derives the output
+  activation from the cost (binary classification ⇒ **LOGISTIC**), pre-sizes a small RELU hidden
+  layer from the problem shape (Heaton's rule), and scales the random weights to the per-activation
+  init stddev (He/Xavier) — all from problem-intrinsic facts, never a hand-crafted architecture. The
+  cost shapes only the seed; `evolveDir` keeps its default MSE scoring, so evolution is untouched.
+  This is a **milestone-sanctioned departure** from the project-wide
+  [no-warm-starts](../AGENTS.md#-no-warm-starts--evolution-must-start-from-random-noise) policy,
+  made under the factory-adoption tracker (issue #517). The bare `new Creature(2, 1)` baseline
+  (`buildRandomSeedCreature`, zero hidden neurons) is retained for fixtures. XOR is not linearly
+  separable, so a solved champion still proves that genetic operators tuned a working topology;
+  structural growth beyond the seed continues to come purely from `evolveDir`'s mutation operators.
+- **Multi-run resume.** With no prior state the run starts from the factory seed and writes a new
   champion. Re-run without `--fresh` and the saved champion is reloaded as the seed creature, so
   evolution continues from where it left off and the multi-run charts gain another run-boundary
   marker.
@@ -189,8 +199,11 @@ A few things that are not obvious from the code alone:
 - **Mutation rate matters.** The library defaults (`mutationRate = 0.3`, `mutationAmount = 1`) are
   too conservative for a problem this small; the runner sets them to `0.6` and `3` so structural
   mutations fire often enough to bootstrap a hidden neuron in the early generations.
-- **Reproducibility.** The seed flows through `NeatOptions.seed`, so two runs with the same seed
-  (and the same prior state) produce the same champion JSON.
+- **Reproducibility.** The seed flows through `NeatOptions.seed` and reseeds the global PRNG before
+  the factory mints the seed creature, so two runs with the same seed (and the same prior state)
+  produce the same champion — identical topology shape, squashes, biases, and weights. Only the
+  factory's randomly-minted hidden-neuron UUIDs differ between runs, so the determinism test
+  compares the learnable parameters rather than the raw JSON.
 - **Decision boundary, not just labels.** The SVG shades the entire input square `[0, 1]²` by the
   network's continuous output, so you can see the boundary curve. Cleanly-separated XOR shows up as
   four diagonal "quadrants" of alternating colour.
@@ -224,6 +237,10 @@ target. The capability surfaced here is plain NEAT-AI evolutionary topology sear
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):
 
+- **Cost-coupled factory seed** — `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`
+  derives the output activation (LOGISTIC) from the classification cost, pre-sizes a hidden-capacity
+  budget, and scales the initial weights per activation (issue #520); no hand-coded hidden-layer
+  sizes or pre-built `network.json` seed.
 - **[Evolutionary Topology Search](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md#what-weve-implemented)**
   — structural mutation (add-neuron / add-synapse) is mandatory because XOR is not linearly
   separable from the direct-only random seed.
