@@ -45,7 +45,7 @@ flowchart LR
 
 ## 📈 Latest measured run
 
-Numbers below come from the recorded-evolution exploration campaign (15 overnight cycles × ~60
+Numbers below come from the recorded-evolution exploration campaign (overnight loops × ~60
 minutes, minimal `new Creature(784, 10)` seed, no `--hidden-seed`). The runner writes them to
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
 so reviewers can verify every value. The milestone history (one record per completed phase) lives at
@@ -55,11 +55,11 @@ and the saved champion at
 
 | Metric | Value |
 | ------ | ----: |
-| Test accuracy | 40.43% |
-| Validation accuracy | 39.76% |
-| Campaign wall-clock | ~14.5 h (75 phases) |
-| Topology | 794 neurons / 7,776 synapses (forward-only 784→10) |
-| Cumulative generations | 3,000 |
+| Test accuracy | 43.19% |
+| Validation accuracy | 43.10% |
+| Campaign wall-clock | ~21.8 h (115 phases) |
+| Topology | 794 neurons / 7,696 synapses (forward-only 784→10) |
+| Cumulative generations | 5,650 |
 
 Regenerate charts and the prediction-grid SVG without evolving:
 

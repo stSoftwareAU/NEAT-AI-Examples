@@ -12,20 +12,17 @@
     "jsr:@std/csv@1.0.6": "1.0.6",
     "jsr:@std/fmt@1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
-    "jsr:@std/fs@1.0.23": "1.0.23",
     "jsr:@std/fs@1.0.24": "1.0.24",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
-    "jsr:@std/path@1.1.4": "1.1.4",
     "jsr:@std/path@1.1.5": "1.1.5",
-    "jsr:@std/path@^1.1.4": "1.1.5",
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/streams@1.1.1": "1.1.1",
     "jsr:@std/streams@^1.0.9": "1.1.1",
     "jsr:@std/testing@1.0.19": "1.0.19",
     "jsr:@std/uuid@1.1.1": "1.1.1",
     "jsr:@std/yaml@1.1.1": "1.1.1",
-    "jsr:@stsoftware/neat-ai@5.0.41": "5.0.41",
+    "jsr:@stsoftware/neat-ai@5.0.45": "5.0.45",
     "jsr:@stsoftware/tags@1.0.13": "1.0.13"
   },
   "jsr": {
@@ -60,13 +57,6 @@
     "@std/fmt@1.0.10": {
       "integrity": "90dfba288802ac6de82fb31d0917eb9e4450b9925b954d5e51fc29ac07419db5"
     },
-    "@std/fs@1.0.23": {
-      "integrity": "3ecbae4ce4fee03b180fa710caff36bb5adb66631c46a6460aaad49515565a37",
-      "dependencies": [
-        "jsr:@std/internal@^1.0.12",
-        "jsr:@std/path@^1.1.4"
-      ]
-    },
     "@std/fs@1.0.24": {
       "integrity": "f3061b45b81673a2bece689da041df32d174be064c89eb6397fb5718d3fb7877",
       "dependencies": [
@@ -76,12 +66,6 @@
     },
     "@std/internal@1.0.14": {
       "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
-    },
-    "@std/path@1.1.4": {
-      "integrity": "1d2d43f39efb1b42f0b1882a25486647cb851481862dc7313390b2bb044314b5",
-      "dependencies": [
-        "jsr:@std/internal@^1.0.12"
-      ]
     },
     "@std/path@1.1.5": {
       "integrity": "ccea00982ea28c36becaf6e62f855406c76a8c32d462f66f415bbb7d83a271bc",
@@ -111,15 +95,15 @@
     "@std/yaml@1.1.1": {
       "integrity": "a57665ecf3d17b926380593a56625d8a10cc7281802f1e993b5ebc94a48e71f8"
     },
-    "@stsoftware/neat-ai@5.0.41": {
-      "integrity": "d066be87ee52ca0137014b45a96ffbf40f69eabbe696fa99f1db4803273762b4",
+    "@stsoftware/neat-ai@5.0.45": {
+      "integrity": "4ed56fcf29384308d0b563dd7490d9678f083b6a7bb7a2dc8db45ed6b752073a",
       "dependencies": [
         "jsr:@std/assert@1.0.19",
         "jsr:@std/bytes@1.0.6",
         "jsr:@std/crypto@1.1.0",
         "jsr:@std/fmt@1.0.10",
-        "jsr:@std/fs@1.0.23",
-        "jsr:@std/path@1.1.4",
+        "jsr:@std/fs",
+        "jsr:@std/path@1.1.5",
         "jsr:@stsoftware/tags"
       ]
     },
@@ -144,7 +128,7 @@
       "jsr:@std/testing@1.0.19",
       "jsr:@std/uuid@1.1.1",
       "jsr:@std/yaml@1.1.1",
-      "jsr:@stsoftware/neat-ai@5.0.41",
+      "jsr:@stsoftware/neat-ai@5.0.45",
       "jsr:@stsoftware/tags@1.0.13"
     ]
   }

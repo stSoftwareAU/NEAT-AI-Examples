@@ -69,7 +69,8 @@ CYCLE=0
 # the same path — that duplicates every line. Interactive runs still mirror
 # to the terminal.
 log() {
-  local msg="[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*"
+  local msg
+  msg="[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*"
   echo "${msg}" >> "${LOG}"
   if [[ -t 1 ]]; then
     echo "${msg}"
