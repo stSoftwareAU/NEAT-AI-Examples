@@ -9,13 +9,21 @@
  * strips, and the deprecated CSV / fitness / topology SVG renderers
  * remain absent.
  */
-import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreater,
+  assertGreaterOrEqual,
+  assertThrows,
+} from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, safeWriteJson } from "@stsoftware/neat-ai";
 
 import {
   buildRandomSeedCreature,
+  buildSeedCreature,
+  CLASSIFICATION_COST,
   correctCount,
   DECISION_BOUNDARY_GRID,
   DEFAULT_EVOLVE_OPTIONS,
@@ -28,6 +36,7 @@ import {
   predict,
   runMultiRunXor,
   writeXorDataset,
+  xorFactoryRecords,
   xorSamples,
 } from "./xor_classification.ts";
 import { renderDecisionBoundarySVG, shadeColour } from "./svg.ts";
@@ -73,6 +82,88 @@ Deno.test("buildRandomSeedCreature is deterministic for a given seed", () => {
   assert(
     JSON.stringify(a) !== JSON.stringify(c),
     "different seeds must produce different random creatures",
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/*  Factory seed (issue #520)                                          */
+/* ------------------------------------------------------------------ */
+
+Deno.test("xorFactoryRecords returns four records matching the truth table", () => {
+  const records = xorFactoryRecords();
+  assertEquals(records.length, 4);
+  const samples = xorSamples();
+  for (let i = 0; i < 4; i++) {
+    assertEquals(records[i].input.length, INPUT_COUNT);
+    assertEquals(records[i].output.length, OUTPUT_COUNT);
+    assertEquals(records[i].input[0], samples[i].inputs[0]);
+    assertEquals(records[i].input[1], samples[i].inputs[1]);
+    assertEquals(records[i].output[0], samples[i].target);
+  }
+});
+
+Deno.test("buildSeedCreature builds a factory seed with the right arity", () => {
+  const json = buildSeedCreature(xorFactoryRecords(), 12345);
+  assertEquals(json.input, INPUT_COUNT);
+  assertEquals(json.output, OUTPUT_COUNT);
+});
+
+Deno.test("buildSeedCreature picks a LOGISTIC output from the classification cost", () => {
+  // BINARY_CROSS_ENTROPY couples the output activation to a sigmoid —
+  // the activation the `>= 0.5` threshold interface assumes.
+  assertEquals(CLASSIFICATION_COST, "BINARY_CROSS_ENTROPY");
+  const json = buildSeedCreature(xorFactoryRecords(), 5);
+  const outputs = json.neurons.filter((n) => n.type === "output");
+  assertEquals(outputs.length, OUTPUT_COUNT);
+  for (const out of outputs) {
+    assertEquals(out.squash, "LOGISTIC", "classification cost ⇒ LOGISTIC output");
+  }
+});
+
+Deno.test("buildSeedCreature sizes a data-derived hidden capacity budget", () => {
+  // Unlike the bare `new Creature(...)` seed (zero hidden), the factory
+  // derives a conservative hidden-layer budget from the problem shape.
+  const json = buildSeedCreature(xorFactoryRecords(), 7);
+  const hidden = json.neurons.filter((n) => n.type === "hidden");
+  assertGreater(hidden.length, 0, "factory seed must pre-size a hidden layer");
+});
+
+Deno.test("buildSeedCreature is deterministic (weights/biases) for a given seed", () => {
+  // The factory mints fresh UUIDs for hidden neurons, so full JSON
+  // equality is too strict. The learnable parameters must match.
+  const records = xorFactoryRecords();
+  const fingerprint = (json: ReturnType<typeof buildSeedCreature>) => ({
+    neurons: json.neurons.map((n) => `${n.type}:${n.squash}:${n.bias}`),
+    weights: json.synapses.map((s) => s.weight),
+  });
+  const a = fingerprint(buildSeedCreature(records, 4242));
+  const b = fingerprint(buildSeedCreature(records, 4242));
+  const c = fingerprint(buildSeedCreature(records, 9999));
+  assertEquals(a, b);
+  assert(
+    JSON.stringify(a) !== JSON.stringify(c),
+    "different seeds must produce different factory seeds",
+  );
+});
+
+Deno.test("buildSeedCreature produces a valid creature with finite outputs", () => {
+  const creature = Creature.fromJSON(buildSeedCreature(xorFactoryRecords(), 12345));
+  creature.validate();
+  assertEquals(creature.input, INPUT_COUNT);
+  assertEquals(creature.output, OUTPUT_COUNT);
+  for (const { inputs } of xorSamples()) {
+    const out = predict(creature, inputs);
+    assert(Number.isFinite(out), `output must be finite, got ${out}`);
+    assertGreaterOrEqual(out, 0);
+    assertGreaterOrEqual(1, out);
+  }
+});
+
+Deno.test("buildSeedCreature rejects an empty record set", () => {
+  assertThrows(
+    () => buildSeedCreature([], 1),
+    Error,
+    "records must not be empty",
   );
 });
 
@@ -141,14 +232,15 @@ Deno.test(
     assertGreater(DEFAULT_EVOLVE_OPTIONS.errorThreshold, result.bestError - 1e-9);
 
     // The champion must have at least one hidden neuron — XOR is not
-    // linearly separable, so a winning solution requires NEAT to have
-    // grown the topology beyond the random direct-only seed.
+    // linearly separable, so a winning solution needs hidden capacity.
+    // The factory seed pre-sizes that capacity (issue #520) and NEAT may
+    // grow it further; either way the champion retains hidden neurons.
     const championExport = result.champion.exportJSON();
     const hiddenNeurons = championExport.neurons.filter((n) => n.type === "hidden");
     assertGreater(
       hiddenNeurons.length,
       0,
-      "champion must contain at least one hidden neuron invented by NEAT",
+      "champion must contain at least one hidden neuron",
     );
 
     // Champion must serialise cleanly for downstream consumption.
@@ -176,9 +268,23 @@ Deno.test(
     };
     const a = await evolveXorController(opts);
     const b = await evolveXorController(opts);
+    // The factory seed mints fresh random UUIDs for its hidden neurons
+    // (issue #520), so full JSON equality — which includes those UUIDs —
+    // is too strict. The meaningful determinism invariant is that the
+    // learnable parameters (topology shape, squashes, biases, weights)
+    // are identical for a fixed seed.
+    const fingerprint = (creature: typeof a.champion) => {
+      const json = creature.exportJSON();
+      return JSON.stringify({
+        input: json.input,
+        output: json.output,
+        neurons: json.neurons.map((n) => `${n.type}:${n.squash}:${n.bias}`),
+        synapses: json.synapses.map((s) => s.weight),
+      });
+    };
     assertEquals(
-      JSON.stringify(a.champion.exportJSON()),
-      JSON.stringify(b.champion.exportJSON()),
+      fingerprint(a.champion),
+      fingerprint(b.champion),
       "two runs with the same seed must produce identical champions",
     );
     assertEquals(a.bestError, b.bestError);
