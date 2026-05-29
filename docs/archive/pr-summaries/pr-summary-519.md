@@ -48,10 +48,10 @@ quick-mode run (`STOCK_QUICK=1 ... --fresh`).
 
 ### Baseline comparison (seed topology)
 
-| Seed (fresh run)        | Output activation | Output bias        | Hidden neurons | Neurons / synapses\* |
-| ----------------------- | ----------------- | ------------------ | -------------- | -------------------- |
-| Prior `new Creature`    | LOGISTIC          | random             | 0              | 11 / 10              |
-| **Factory (this PR)**   | IDENTITY (linear) | target mean (≈0.63)| 8              | **19 / 88**          |
+| Seed (fresh run)      | Output activation | Output bias         | Hidden neurons | Neurons / synapses\* |
+| --------------------- | ----------------- | ------------------- | -------------- | -------------------- |
+| Prior `new Creature`  | LOGISTIC          | random              | 0              | 11 / 10              |
+| **Factory (this PR)** | IDENTITY (linear) | target mean (≈0.63) | 8              | **19 / 88**          |
 
 \* Neurons counted on the live `Creature` (10 inputs + hidden + 1 output). End-to-end quick run
 reported `seed=19/88` for `WINDOW_SIZE=10`, confirming the data-derived hidden layer.
@@ -81,8 +81,8 @@ New "what" tests (all call real functions and assert on observable outputs):
   - `computeNormalizationStats` returns per-feature median and IQR; throws on empty input.
   - `applyNormalization` robustly standardises, is robust to a large outlier, guards a constant
     (zero-IQR) feature, and rejects a width mismatch.
-  - `normalizeSamples` freezes train stats and reuses them on unseen samples, and does not mutate the
-    input.
+  - `normalizeSamples` freezes train stats and reuses them on unseen samples, and does not mutate
+    the input.
 - `stock_market/stock_market_test.ts`
   - `buildSeedCreature` builds the right arity, sizes a data-derived hidden layer, picks a linear
     (IDENTITY) output, warm-starts the output bias to the target mean, is deterministic
