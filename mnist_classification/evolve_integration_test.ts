@@ -34,7 +34,6 @@ import {
   parseIdxLabels,
 } from "./data.ts";
 import {
-  buildMnistHiddenReluSeed,
   DEFAULT_MULTI_RUN_TARGET_ERROR,
   evolveMnistClassifier,
   evolveResultToMultiRunSample,
@@ -119,17 +118,20 @@ const EVOLVE_DIR_TEST_CAPS = {
 } as const;
 
 /**
- * Smaller population cap for the resume-flow test.
+ * Caps for the resume-flow test.
  *
- * The resume test runs as the third filter in a serial CI loop. By that point
- * the OS has less free RAM from prior processes, so the MemoryMonitor hits
- * Critical immediately. Halving the population reduces per-generation WASM
- * compilation cycles enough to keep scoring reliable under that pressure.
+ * Resume passes `previousFittest` into NEAT-AI. Seed run-1 via a real
+ * `evolveMnistClassifier` pass so the persisted champion has finite
+ * CATEGORICAL_ERROR scores after JSON round-trip (a hand-built export alone
+ * can yield falsy elitist scores on tiny synthetic data — #509).
  */
 const EVOLVE_DIR_RESUME_CAPS = {
   ...EVOLVE_DIR_TEST_CAPS,
-  populationSize: 4,
+  populationSize: 6,
+  maxGenerations: 2,
 } as const;
+
+const EVOLVE_DIR_RESUME_MAX_ATTEMPTS = 5;
 
 const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
 const EVOLVE_DIR_MAX_ATTEMPTS = 5;
@@ -184,9 +186,10 @@ async function runMultiRunMnistWithRetry(
   options: Parameters<typeof runMultiRunMnist>[0],
   prepareState?: () => Promise<void>,
   capsForAttempt: (attempt: number) => { maxGenerations?: number; populationSize?: number; disableGenerationLog?: boolean; seed?: number } = testCapsForAttempt,
+  maxAttempts = EVOLVE_DIR_MAX_ATTEMPTS,
 ) {
   let lastError: unknown;
-  for (let attempt = 0; attempt < EVOLVE_DIR_MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       if (prepareState !== undefined) {
         await prepareState();
@@ -277,26 +280,27 @@ Deno.test({
     const dataDir = buildSyntheticBinDir(EVOLVE_DIR_TEST_SAMPLES_PER_CLASS);
     try {
       const slug = EXAMPLE_SLUG;
-      // Use a tiny hidden-layer seed (784→4ReLU→10) so the prior creature has
-      // concrete random weights that survive the JSON round-trip and produce
-      // diverse CATEGORICAL_ERROR scores across the mutated population.
-      // A plain `new Creature(784, 10)` with no synapses causes all population
-      // members to score identically after round-trip, preventing the NEAT
-      // library from identifying a fittest creature (#509).
-      const prior = buildMnistHiddenReluSeed([4]);
 
-      const seedResumeState = async () => {
+      const seedResumeState = async (attempt: number) => {
         await Deno.remove(tmp, { recursive: true });
         await Deno.mkdir(tmp, { recursive: true });
+        const firstRun = await evolveMnistClassifier({
+          dataDir,
+          ...EVOLVE_DIR_FRESH_OPTIONS,
+          testCaps: testCapsForAttempt(attempt),
+        });
         await appendMultiRunRun(slug, {
-          creatureExport: prior.exportJSON(),
-          newSamples: [placeholderMilestone(prior)],
+          creatureExport: firstRun.champion.exportJSON(),
+          newSamples: [evolveResultToMultiRunSample(firstRun)],
           runIndex: 1,
           baseCumulativeGen: 0,
         }, tmp);
       };
 
-      await seedResumeState();
+      let resumeAttempt = 0;
+      const prepareResumeState = async () => {
+        await seedResumeState(resumeAttempt);
+      };
 
       const outcome = await runMultiRunMnistWithRetry({
         dataDir,
@@ -304,13 +308,13 @@ Deno.test({
         baseDir: tmp,
         evolveOverrides: {
           ...EVOLVE_DIR_TEST_OVERRIDES,
-          // Use smaller population for this test: it runs third in the serial
-          // CI filter loop and the OS has less free RAM by that point.
-          // Halving the population reduces per-generation WASM compilation
-          // cycles and keeps scoring reliable under memory pressure (#509).
+          elitism: 2,
           testCaps: { ...EVOLVE_DIR_RESUME_CAPS, seed: EVOLVE_DIR_BASE_SEED },
         },
-      }, seedResumeState, resumeTestCapsForAttempt);
+      }, async () => {
+        await prepareResumeState();
+        resumeAttempt++;
+      }, resumeTestCapsForAttempt, EVOLVE_DIR_RESUME_MAX_ATTEMPTS);
 
       assertEquals(outcome.resumed, true);
       assertEquals(outcome.runIndex, 2);
