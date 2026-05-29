@@ -1,19 +1,27 @@
 # 📈 Stock Market — Direction Prediction
 
-> 🌱 **Generation 1 starts from random noise** — the seed is built by NEAT-AI's uniform-random
-> `new Creature(WINDOW_SIZE, 1)` constructor with **no hand-crafted topology, no `hiddenLayers`
-> hint, no pre-built `network.json`, and no domain-tuned narrow weight init**. Hidden neurons are
-> not hand-crafted — they emerge purely from NEAT-AI's own structural mutation operators while
-> `Creature.evolveDir(...)` runs.
+> 🌱 **Generation 1 starts from a data-derived factory seed (issue #519).** Instead of a bare
+> `new Creature(WINDOW_SIZE, 1)`, the seed is built by NEAT-AI's
+> `Creature.forDataset(records, { cost: "MSE" })` factory, which scans the training data and seeds
+> **problem-intrinsic** defaults: a **linear (IDENTITY) regression output**, an **output bias
+> warm-started to the target mean**, a **conservative hidden-capacity budget**, and
+> **constant-feature pruning**. **No dataset-specific architecture is hand-coded** — every default
+> is derived from the observation count, output count, cost, and a scan of the training file, so the
+> same approach transfers to private/unknown problems (this is the closest example to the private
+> GRQ market-prediction use case). **Only the seed changes; the `evolveDir` configuration is
+> untouched** and structural growth still comes from NEAT-AI's own mutation operators.
 
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _MSE_ = Mean Squared Error. _SVG_ =
 Scalable Vector Graphics. _S&P 500_ = Standard & Poor's 500-stock market index.
 
-`stock_market.ts` evolves a NEAT-AI network from a minimal seed to predict next-period direction (up
-vs. down) on the public S&P 500 monthly-close dataset. The dataset is downloaded once into
-`.synthetic-stock/data/prices.csv` (with a SHA-256 digest pinned to a specific upstream commit so
-runs are deterministic), the labelled training samples are written as a binary `.bin` file, and the
-evolutionary loop is delegated to `Creature.evolveDir(...)`.
+`stock_market.ts` evolves a NEAT-AI network from a **data-derived factory seed** to predict
+next-period direction (up vs. down) on the public S&P 500 monthly-close dataset. The dataset is
+downloaded once into `.synthetic-stock/data/prices.csv` (with a SHA-256 digest pinned to a specific
+upstream commit so runs are deterministic). Feature windows are **robustly standardised** (median /
+IQR statistics frozen on the training window — see
+[Frozen input normalisation](#-frozen-input-normalisation)), the samples are written as a binary
+`.bin` file, the seed is built via `Creature.forDataset(...)`, and the evolutionary loop is
+delegated to `Creature.evolveDir(...)`.
 
 > ⚠️ **Teaching example only — not investment advice.**
 >
@@ -29,8 +37,9 @@ flowchart LR
     DL["📥 fetchDataset()<br/>S&P 500 CSV (pinned)"]
     SLIDE["🪟 Sliding window<br/>last N returns"]
     SPLIT["✂️ Train / val / test<br/>chronological split"]
+    NORM["🧮 Robust standardise<br/>median/IQR frozen on train"]
     BIN["📦 Binary .bin training set<br/>(window, target) records"]
-    SEED["🌱 new Creature(10, 1)<br/>minimal seed — no hidden hint"]
+    SEED["🌱 Creature.forDataset(records, &#123;cost&#125;)<br/>linear output, target-mean bias,<br/>data-derived capacity"]
     EVOLVE["🧪 Creature.evolveDir(dataDir, ...)<br/>forward-only, targetError=0.01,<br/>timeoutMinutes=5"]
     SUMMARY["📈 Multi-run milestone<br/>(error + complexity charts)"]
     CHAMP["💾 champion.json"]
@@ -38,8 +47,8 @@ flowchart LR
     SIG["📝 signals.json"]
     CHART["🖼️ Animated chart<br/>sweep + ▲ ▼ markers"]
 
-    DL --> SLIDE --> SPLIT --> BIN --> EVOLVE
-    SEED --> EVOLVE
+    DL --> SLIDE --> SPLIT --> NORM --> BIN --> EVOLVE
+    BIN --> SEED --> EVOLVE
     EVOLVE --> SUMMARY
     EVOLVE --> CHAMP
     CHAMP --> REPLAY --> SIG
@@ -87,14 +96,47 @@ sliding-window logic is identical.
 
 ## 🎯 Inputs and Outputs
 
-| Channel    | Type      | Meaning                                                   |
-| ---------- | --------- | --------------------------------------------------------- |
-| Input 0..N | feature   | The last `WINDOW_SIZE` (default 10) simple period returns |
-| Output 0   | direction | LOGISTIC, `>= 0.5` predicts up, otherwise predicts down   |
+| Channel    | Type      | Meaning                                                                                              |
+| ---------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| Input 0..N | feature   | The last `WINDOW_SIZE` (default 10) returns, **robustly standardised** (median/IQR, frozen on train) |
+| Output 0   | direction | Linear (IDENTITY) regression score; `>= 0.5` predicts up, otherwise predicts down                    |
 
-The fitness used by `evolveDir` is `1 - MSE` against the binary `{0, 1}` direction labels — a
-constant `0.5` predictor scores `1 - 0.25 = 0.75`, so anything above `0.75` reflects the network
-correlating its output with realised direction.
+The factory picks a **linear (IDENTITY)** output from the regression cost (`MSE`) and warm-starts
+the output bias to the mean of the `{0, 1}` direction labels (≈ 0.63 on the up-skewed S&P 500), so
+the seed predicts the base rate before any training. The network then regresses toward the `{0, 1}`
+targets, and the `>= 0.5` threshold maps the score back to an up/down call. The fitness used by
+`evolveDir` is `1 - MSE` against the direction labels.
+
+## 🧮 Frozen input normalisation
+
+Return windows carry heterogeneous, fat-tailed scales, and markets are **non-stationary** — the
+distribution drifts from regime to regime. To stop the seed (and the model) being dominated by a few
+outlier months, inputs are **robustly standardised** before they reach the network:
+
+1. **Compute on train only.** `computeNormalizationStats(split.train)` records a per-feature
+   **median** and **inter-quartile range (IQR = Q3 − Q1)** over the training window.
+2. **Freeze.** Those statistics are never recomputed. Validation, test, and any live inference reuse
+   the frozen training stats via `normalizeSamples(...)`, so no future information leaks backwards
+   and the model always sees the exact transform it was trained against.
+3. **Apply.** Each feature is mapped `(x − median) / max(IQR, ε)`. Median/IQR (rather than
+   mean/standard-deviation) keep the scale resistant to the fat-tailed outliers typical of financial
+   returns; the `ε` floor maps a constant feature to `0` rather than `NaN`.
+
+The frozen stats are written to `.synthetic-stock/creatures/normalization.json` and embedded in
+`signals.json`, so the normalisation **travels with the model into inference** — the same JSON that
+documents a run is enough to reproduce its input transform.
+
+```mermaid
+flowchart LR
+    TRAIN["📚 Train window"] -->|median / IQR| STATS["🧊 Frozen stats<br/>normalization.json"]
+    STATS --> NT["Train (normalised)"]
+    STATS --> NV["Validation (normalised)"]
+    STATS --> NE["Test / live (normalised)"]
+    NT --> FACT["🌱 Creature.forDataset()"]
+    NT --> EV["🧪 evolveDir"]
+    NV --> INF["🔮 Inference"]
+    NE --> INF
+```
 
 ## 🛑 Stop conditions
 
@@ -280,7 +322,7 @@ sequenceDiagram
     alt prior champion exists
         State-->>Stock: Creature.fromJSON(creatureExport)
     else first run
-        State-->>Stock: buildRandomSeedCreature() — uniform-random noise
+        State-->>Stock: buildSeedCreature() — Creature.forDataset() factory seed
     end
     Stock->>Stock: Creature.evolveDir(dataDir)
     Stock->>State: appendMultiRunRun({champion, milestones})
@@ -320,10 +362,16 @@ The dashed purple play-head sweeps left-to-right, letting viewers walk the test 
 
 A few things that are not obvious from the code alone:
 
-- **Minimal seed only.** `stock_market.ts` passes only `input` and `output` integers to NEAT-AI's
-  `new Creature(input, output)` constructor. There are no `hiddenLayers`, no `nodes`, and no
-  pre-built `network.json` seed — the library random-initialises the rest, with hidden structure
-  emerging purely from `evolveDir`'s mutation operators.
+- **Data-derived factory seed.** `stock_market.ts` builds its fresh-run seed via
+  `Creature.forDataset(records, { cost: "MSE" })` (issue #519). The factory scans the training file
+  and derives the output activation (linear/IDENTITY for a regression cost), the output bias
+  (warm-started to the target mean), a conservative hidden-capacity budget, and constant-feature
+  pruning — all from problem-intrinsic facts, never a dataset-specific architecture lookup. **This
+  is a deliberate, milestone-sanctioned departure** from the project-wide
+  [no-warm-starts](../AGENTS.md#-no-warm-starts--evolution-must-start-from-random-noise) policy,
+  made under the factory-adoption tracker (issue #517): the data-derived seed _is_ the
+  demonstration. Structural growth beyond the seed still comes purely from `evolveDir`'s mutation
+  operators, and the `evolveDir` configuration is unchanged.
 - **Balanced accuracy, not raw accuracy.** The S&P 500 has a strong upward bias (~63% of months
   close above the previous month). Raw directional accuracy would credit a network that always
   predicts "up" with the base rate (~63%) even though it has learnt nothing. Balanced accuracy (mean
@@ -349,8 +397,14 @@ A few things that are not obvious from the code alone:
 
 `stock_market_test.ts` verifies:
 
-- The minimal seed has zero hidden neurons and a LOGISTIC output, and is deterministic for a given
-  seed.
+- The factory seed (`buildSeedCreature`) picks a linear (IDENTITY) output, warm-starts the output
+  bias to the target mean, sizes a data-derived hidden layer, and is deterministic (weights/biases)
+  for a given seed; `readTrainingRecords` round-trips a written `.bin` back into factory records.
+- The robust normalisation helpers (`computeNormalizationStats`, `applyNormalization`,
+  `normalizeSamples`) freeze median/IQR stats on the training window and reuse them unchanged on
+  unseen samples, guarding constant features and resisting outliers.
+- The bare `new Creature(...)` baseline seed (`buildRandomSeedCreature`, retained for fixtures) has
+  zero hidden neurons and a LOGISTIC output, and is deterministic for a given seed.
 - `writeStockTrainingDataset` emits the expected number of records with one float per feature plus
   one float per label, and rejects malformed input.
 - `evolveStockController` returns finite numeric fields built from `Creature.evolveDir`'s return
@@ -366,11 +420,13 @@ A few things that are not obvious from the code alone:
 
 ## 🧰 NEAT-AI Features Used
 
-Stock Market is a supervised noise → competent demo, so the demonstrated capability is NEAT-AI's
-evolutionary topology search against a price-prediction fitness signal driven by `evolveDir`.
+Stock Market is a supervised seed → competent demo: the data-derived factory seed (issue #519)
+replaces the historical random-noise seed, and the demonstrated capability is NEAT-AI's evolutionary
+topology search against a price-prediction fitness signal driven by `evolveDir`.
 
-- **Minimal NEAT seed** — `new Creature(input, output)` with no hidden hint, no pre-built
-  `network.json` seed; NEAT-AI random-initialises the rest.
+- **Dataset-aware factory seed** — `Creature.forDataset(records, { cost })` derives the output
+  activation, output bias, hidden-capacity budget, and constant-feature pruning from a scan of the
+  training data (issue #519); no hand-coded hidden-layer sizes or pre-built `network.json` seed.
 - **`Creature.evolveDir`** over the binary `.bin` training stream (per
   [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)) — orders of magnitude
   faster than per-call `activate()`.

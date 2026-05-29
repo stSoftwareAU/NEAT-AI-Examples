@@ -5,7 +5,21 @@
  */
 import { assert, assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 
-import { buildSamples, computeReturns, parsePriceCSV, splitChronologically } from "./data.ts";
+import {
+  applyNormalization,
+  buildSamples,
+  computeNormalizationStats,
+  computeReturns,
+  normalizeSamples,
+  parsePriceCSV,
+  type Sample,
+  splitChronologically,
+} from "./data.ts";
+
+/** Build a minimal {@link Sample} with the given feature vector. */
+function sampleWith(features: number[], label: 0 | 1 = 0): Sample {
+  return { index: 0, date: "d", features, label, return: 0, close: 1 };
+}
 
 Deno.test("parsePriceCSV reads dated SP500 rows", () => {
   const csv = [
@@ -160,4 +174,82 @@ Deno.test("splitChronologically rejects fractions that leave no test slice", () 
     Error,
     "leave a test slice",
   );
+});
+
+/* ------------------------------------------------------------------ */
+/*  Robust input normalisation (issue #519)                            */
+/* ------------------------------------------------------------------ */
+
+Deno.test("computeNormalizationStats returns per-feature median and IQR", () => {
+  // Two features. Column 0 = 1..7 (median 4, Q1 2.5, Q3 5.5 → IQR 3).
+  // Column 1 = constant 10 (median 10, IQR 0).
+  const samples = [1, 2, 3, 4, 5, 6, 7].map((v) => sampleWith([v, 10]));
+  const stats = computeNormalizationStats(samples);
+  assertEquals(stats.medians.length, 2);
+  assertEquals(stats.iqrs.length, 2);
+  assertAlmostEquals(stats.medians[0], 4, 1e-9);
+  assertAlmostEquals(stats.iqrs[0], 3, 1e-9);
+  assertAlmostEquals(stats.medians[1], 10, 1e-9);
+  assertAlmostEquals(stats.iqrs[1], 0, 1e-9);
+});
+
+Deno.test("computeNormalizationStats throws on empty sample list", () => {
+  assertThrows(() => computeNormalizationStats([]), Error, "must not be empty");
+});
+
+Deno.test("applyNormalization robustly standardises a feature vector", () => {
+  const stats = { medians: [4], iqrs: [2] };
+  // (x - median) / IQR.
+  assertAlmostEquals(applyNormalization([4], stats)[0], 0, 1e-9);
+  assertAlmostEquals(applyNormalization([6], stats)[0], 1, 1e-9);
+  assertAlmostEquals(applyNormalization([2], stats)[0], -1, 1e-9);
+});
+
+Deno.test("applyNormalization is robust to outliers via median/IQR", () => {
+  // A single huge outlier must not blow up the frozen median/IQR scale.
+  const samples = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1_000_000].map((v) => sampleWith([v]));
+  const stats = computeNormalizationStats(samples);
+  // Median is 0 and IQR is 0 (most values identical) → constant column,
+  // so a normal in-range value maps to a finite, small number.
+  const normal = applyNormalization([0], stats)[0];
+  assert(Number.isFinite(normal));
+  assertAlmostEquals(normal, 0, 1e-6);
+});
+
+Deno.test("applyNormalization guards a constant (zero-IQR) feature", () => {
+  const stats = { medians: [10], iqrs: [0] };
+  const out = applyNormalization([10], stats);
+  assert(Number.isFinite(out[0]));
+  assertAlmostEquals(out[0], 0, 1e-6);
+});
+
+Deno.test("applyNormalization rejects a width mismatch", () => {
+  assertThrows(
+    () => applyNormalization([1, 2], { medians: [0], iqrs: [1] }),
+    Error,
+    "feature width",
+  );
+});
+
+Deno.test("normalizeSamples freezes train stats and reuses them on unseen samples", () => {
+  const train = [1, 2, 3, 4, 5, 6, 7].map((v) => sampleWith([v], 1));
+  const stats = computeNormalizationStats(train);
+  // A later-regime ("non-stationary") sample is normalised with the
+  // FROZEN training stats, not its own — this is the inference path.
+  const future = [sampleWith([100], 0)];
+  const out = normalizeSamples(future, stats);
+  // (100 - 4) / 3 == 32.
+  assertAlmostEquals(out[0].features[0], 32, 1e-9);
+  // Non-feature fields are preserved untouched.
+  assertEquals(out[0].label, 0);
+  assertEquals(out[0].close, 1);
+});
+
+Deno.test("normalizeSamples does not mutate the input samples", () => {
+  const samples = [sampleWith([2, 4])];
+  const stats = { medians: [0, 0], iqrs: [1, 1] };
+  const out = normalizeSamples(samples, stats);
+  assertEquals(samples[0].features, [2, 4], "source features must be untouched");
+  assertEquals(out[0].features, [2, 4]);
+  assert(out[0] !== samples[0], "a fresh sample object is returned");
 });
