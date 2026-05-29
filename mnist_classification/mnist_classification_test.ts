@@ -47,17 +47,20 @@ import {
 import {
   assertNoTargetErrorCliOverride,
   buildGridCells,
-  buildMnistHiddenReluSeed,
+  buildMnistFactorySeed,
   classificationAccuracy,
   confusionMatrix,
   evolveResultToMultiRunSample,
   formatGenerationLogLine,
   inferStopCondition,
   MNIST_EVOLVE_COST_NAME,
+  MNIST_FACTORY_COST,
   type MnistRunSummary,
   pickGridSamples,
   predict,
+  readMnistTrainingRecords,
   shouldDisableDiscovery,
+  TRAIN_BIN_FILENAME,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -132,22 +135,90 @@ Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
   assertEquals(FEATURE_COUNT, IMAGE_SIZE * IMAGE_SIZE);
 });
 
-Deno.test("buildMnistHiddenReluSeed returns a layered creature with MNIST I/O and ReLU hiddens", () => {
-  const creature = buildMnistHiddenReluSeed();
-  assertEquals(creature.input, FEATURE_COUNT);
-  assertEquals(creature.output, CLASS_COUNT);
-  assertEquals(creature.neurons.length, FEATURE_COUNT + 128 + 64 + CLASS_COUNT);
-  const hidden = creature.neurons.slice(FEATURE_COUNT, -CLASS_COUNT);
-  assertGreater(hidden.length, 0);
-  for (const neuron of hidden) {
-    assertEquals(neuron.squash, "ReLU");
+Deno.test("MNIST_FACTORY_COST matches the evolveDir cost name", () => {
+  // Factory must scan with the same cost evolveDir later scores against
+  // so the cost-derived output activation (SOFTMAX for CATEGORICAL_ERROR)
+  // is the one the run actually uses (issue #518).
+  assertEquals(MNIST_FACTORY_COST, MNIST_EVOLVE_COST_NAME);
+});
+
+Deno.test("buildMnistFactorySeed produces a MNIST-shaped creature with SOFTMAX outputs", () => {
+  // Issue #518: drop the hardcoded [128, 64] hidden seed and build the
+  // initial creature via Creature.forDataset. The factory:
+  //   - couples the output activation to the cost (SOFTMAX from
+  //     CATEGORICAL_ERROR);
+  //   - sizes a hidden layer from the (784, 10) shape — far smaller than
+  //     the legacy [128, 64];
+  //   - prunes synapses leaving constant-variance input pixels.
+  // Build a tiny synthetic dataset (per-class distinct patterns) so the
+  // scan can see real variance; the factory only needs `input.length` =
+  // FEATURE_COUNT and `output.length` = CLASS_COUNT.
+  const samples: DigitSample[] = [];
+  for (let c = 0; c < CLASS_COUNT; c++) {
+    const features = new Array<number>(FEATURE_COUNT).fill(0).map((_, j) =>
+      ((j + c * 7) % 13) / 13
+    );
+    samples.push({ index: c, label: c, features, pixels: [] });
+  }
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-factory-" });
+  try {
+    const path = join(tmp, TRAIN_BIN_FILENAME);
+    writeMnistTrainingBin(samples, path);
+    const records = readMnistTrainingRecords(tmp);
+    assertEquals(records.length, samples.length);
+    assertEquals(records[0].input.length, FEATURE_COUNT);
+    assertEquals(records[0].output.length, CLASS_COUNT);
+
+    const seed = buildMnistFactorySeed(records);
+    assertEquals(seed.input, FEATURE_COUNT);
+    assertEquals(seed.output, CLASS_COUNT);
+    // The factory must size hiddens from (784, 10), not the legacy
+    // [128, 64] lookup. The geometric-mean rule picks ≈ √(784·10) ≈ 89,
+    // so the hidden count is well under the legacy 128+64=192 floor.
+    assertGreater(seed.neurons.length, FEATURE_COUNT + CLASS_COUNT);
+    assert(
+      seed.neurons.length < FEATURE_COUNT + 192 + CLASS_COUNT,
+      `factory seed should be smaller than the legacy [128,64] (≤${
+        FEATURE_COUNT + 192 + CLASS_COUNT
+      }), got ${seed.neurons.length}`,
+    );
+    // CATEGORICAL_ERROR + ≥2 outputs ⇒ SOFTMAX output activation.
+    const outputs = seed.neurons.filter((n) => n.type === "output");
+    assertEquals(outputs.length, CLASS_COUNT);
+    for (const o of outputs) {
+      assertEquals(o.squash, "SOFTMAX");
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("buildMnistFactorySeed rejects an empty record list", () => {
+  assertThrows(
+    () => buildMnistFactorySeed([]),
+    Error,
+    "must not be empty",
+  );
+});
+
+Deno.test("readMnistTrainingRecords rejects an empty file", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-empty-" });
+  try {
+    Deno.writeFileSync(join(tmp, TRAIN_BIN_FILENAME), new Uint8Array(0));
+    assertThrows(
+      () => readMnistTrainingRecords(tmp),
+      Error,
+      "no records found",
+    );
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
   }
 });
 
 Deno.test(
   "evolveResultToMultiRunSample maps evolve result fields onto the milestone shape",
   () => {
-    const champion = buildMnistHiddenReluSeed([8]);
+    const champion = new Creature(FEATURE_COUNT, CLASS_COUNT);
     const result = {
       champion,
       bestError: 0.75,
@@ -168,7 +239,7 @@ Deno.test(
 );
 
 Deno.test("evolveResultToMultiRunSample clamps error into [0, 1]", () => {
-  const champion = buildMnistHiddenReluSeed([8]);
+  const champion = new Creature(FEATURE_COUNT, CLASS_COUNT);
   const base = {
     champion,
     bestScore: 0.25,

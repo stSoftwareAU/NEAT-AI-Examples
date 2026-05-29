@@ -10,7 +10,7 @@ set -euo pipefail
 # scratch.
 #
 # Usage:
-#   ./mnist_classification/recorded_evolution_campaign.sh --fresh --hidden-seed
+#   ./mnist_classification/recorded_evolution_campaign.sh --fresh
 #   ./mnist_classification/recorded_evolution_campaign.sh
 #   nohup ./mnist_classification/recorded_evolution_campaign.sh &
 #     (writes to .synthetic-mnist/exploration/overnight.log — do not add >> overnight.log)
@@ -55,10 +55,6 @@ FRESH_ARGS=()
 if [[ "${1:-}" == "--fresh" ]]; then
   FRESH_ARGS=(--fresh)
   shift
-  if [[ "${1:-}" == "--hidden-seed" ]]; then
-    FRESH_ARGS+=(--hidden-seed)
-    shift
-  fi
 fi
 
 START_EPOCH=$(date +%s)

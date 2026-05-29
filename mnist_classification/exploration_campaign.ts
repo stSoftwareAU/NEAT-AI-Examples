@@ -22,13 +22,13 @@ import { getTag } from "@stsoftware/tags/mod";
 
 import {
   BIN_TRAIN_DIR,
-  buildMnistHiddenReluSeed,
+  buildMnistFactorySeed,
   classificationAccuracy,
   confusionMatrix,
   evolveMnistClassifier,
   MNIST_EVOLVE_COST_NAME,
   MNIST_ROOT,
-  resolveMnistHiddenLayerSizes,
+  readMnistTrainingRecords,
   TEST_IMAGES_PATH,
   TEST_IMAGES_SHA256,
   TEST_IMAGES_URL,
@@ -416,8 +416,6 @@ export interface RunExplorationCampaignOptions {
    * `campaign_record.json`) and restart the campaign clock.
    */
   fresh?: boolean;
-  /** With `--fresh`, seed via layered ReLU MLP instead of resuming. */
-  hiddenSeed?: boolean;
   /** Run a weighted-random Intelligent Design squash pass after the sampler loop. */
   randomizedIntelligentDesign?: boolean;
   /** Run every squash in {@link DEFAULT_SQUASH_CANDIDATES} (overrides single ID pass). */
@@ -589,18 +587,21 @@ export async function runExplorationCampaign(
 
   let championExport = options.seedCreatureExport ?? multiState.creatureExport;
   if (championExport === undefined) {
-    if (options.fresh && options.hiddenSeed) {
-      championExport = buildMnistHiddenReluSeed(resolveMnistHiddenLayerSizes()).exportJSON();
-      console.log("🌱 Fresh hidden-seed campaign — layered ReLU MLP seed.");
-    } else if (options.fresh) {
-      championExport = new Creature(FEATURE_COUNT, CLASS_COUNT).exportJSON();
+    if (options.fresh) {
+      // Issue #518: drop the legacy --hidden-seed lookup. Always build
+      // the fresh seed via the NEAT-AI factory so the campaign starts
+      // from problem-intrinsic defaults rather than a hardcoded MNIST
+      // architecture.
+      const records = readMnistTrainingRecords(options.dataDir);
+      championExport = buildMnistFactorySeed(records).exportJSON();
       console.log(
-        `🌱 Fresh minimal seed — new Creature(${FEATURE_COUNT}, ${CLASS_COUNT}) ` +
-          `(inputs + outputs only, uniform-random weights).`,
+        "🌱 Fresh factory seed — Creature.forDataset(records, " +
+          `{ cost: "${MNIST_EVOLVE_COST_NAME}" }) (SOFTMAX outputs, ` +
+          "factory-sized hidden layer, dead-pixel pruning).",
       );
     } else {
       throw new Error(
-        "No saved champion — pass --fresh (optionally with --hidden-seed) to begin recording.",
+        "No saved champion — pass --fresh to begin recording from the factory seed.",
       );
     }
   }
@@ -902,7 +903,7 @@ export async function runExplorationCampaign(
 
 if (import.meta.main) {
   const args = parseArgs(Deno.args, {
-    boolean: ["fresh", "squash-scan", "hidden-seed", "skip-calibrate", "skip-id"],
+    boolean: ["fresh", "squash-scan", "skip-calibrate", "skip-id"],
     string: ["squash", "loop-minutes", "repeats", "sample-rate"],
   });
 
@@ -963,7 +964,6 @@ if (import.meta.main) {
     split,
     trainingRecords: trainSamples.length,
     fresh: args.fresh === true,
-    hiddenSeed: args["hidden-seed"] === true,
     squashScan: args["squash-scan"] === true,
     squashCandidates,
     randomizedIntelligentDesign: args["skip-id"] !== true,

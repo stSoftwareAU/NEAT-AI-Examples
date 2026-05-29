@@ -140,12 +140,20 @@ const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
 const EVOLVE_DIR_MAX_ATTEMPTS = 5;
 const EVOLVE_DIR_BASE_SEED = 424242;
 
+/**
+ * Unit-test fresh seed (issue #518). Tests substitute a minimal
+ * `new Creature(784, 10)` for the factory's data-scan seed so the
+ * synthetic IDX fixture does not need to satisfy the factory's hidden-
+ * capacity heuristics, and so memory stays low on CPU-only GitHub
+ * Actions runners (#502). The factory itself is covered by the unit
+ * tests in `mnist_classification_test.ts`.
+ */
+const TEST_FRESH_SEED_EXPORT = new Creature(FEATURE_COUNT, CLASS_COUNT).exportJSON();
+
 const EVOLVE_DIR_TEST_OVERRIDES = {
   testCaps: { ...EVOLVE_DIR_TEST_CAPS, seed: EVOLVE_DIR_BASE_SEED },
   timeoutMinutes: 0,
-  // Use the simple linear seed (784→10) rather than the hidden-ReLU seed
-  // to avoid WASM memory pressure on CPU-only GitHub Actions runners (#502).
-  hiddenReluSeed: false,
+  freshSeedExport: TEST_FRESH_SEED_EXPORT,
 } as const;
 
 const EVOLVE_DIR_FRESH_OPTIONS = {
