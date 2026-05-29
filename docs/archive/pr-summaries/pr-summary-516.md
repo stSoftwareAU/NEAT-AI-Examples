@@ -4,8 +4,8 @@
 
 The MNIST example disabled the engine meant to discover network structure. Structural Discovery is
 on by default in NEAT-AI (`discoverySampleRate = 0.2`; only `<= 0` disables it), but
-`shouldDisableDiscovery()` forced it off whenever `timeoutMinutes <= 0` (and whenever `CI=true`).
-A real run with no wall-clock backstop (`timeoutMinutes: 0`) therefore ran with structure discovery
+`shouldDisableDiscovery()` forced it off whenever `timeoutMinutes <= 0` (and whenever `CI=true`). A
+real run with no wall-clock backstop (`timeoutMinutes: 0`) therefore ran with structure discovery
 switched off, so it could only weight-mutate a fixed linear topology — explaining the flat ~43 %
 after a full day with the champion still equal to the bare `new Creature(784, 10)` seed.
 
@@ -51,9 +51,10 @@ Previously `timeoutMinutes <= 0` or `CI=true` also routed to the OFF branch.
 
 Backend/CLI change — no web interface to screenshot. Verified via Deno tests.
 
-- New regression test `shouldDisableDiscovery keeps Discovery ON for a normal run regardless of
-  timeout` reproduces the bug: it asserts `false` for `{ timeoutMinutes: 0 }`, which returned `true`
-  before the fix.
+- New regression test
+  `shouldDisableDiscovery keeps Discovery ON for a normal run regardless of
+  timeout` reproduces
+  the bug: it asserts `false` for `{ timeoutMinutes: 0 }`, which returned `true` before the fix.
 - `shouldDisableDiscovery disables Discovery only on the unit-test path` confirms `testCaps` still
   switches it off (preserving the FFI-sanitiser workaround).
 - Full `mnist_classification_test.ts` suite: 38 passed.
@@ -63,9 +64,9 @@ Backend/CLI change — no web interface to screenshot. Verified via Deno tests.
 Acceptance criteria:
 
 - [x] A normal MNIST run keeps `discoverySampleRate` at the library default (Discovery on) — the
-  predicate returns `false` for real runs, so the option is omitted from `NeatOptions`.
+      predicate returns `false` for real runs, so the option is omitted from `NeatOptions`.
 - [x] Champion topology can grow beyond the bare seed within a normal run — Discovery is the
-  mechanism and is now enabled.
+      mechanism and is now enabled.
 - [x] Any remaining discovery-disable is test-only (`testCaps`) and commented.
 
 ## Test Plan
