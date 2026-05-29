@@ -14,7 +14,7 @@
  * 🌱 **Generation 1 starts from a data-derived factory seed (issue #518).**
  * A fresh run (no prior persisted champion, or `--fresh` on the command
  * line) builds the seed via {@link buildMnistFactorySeed} — the NEAT-AI
- * `Creature.forDataset(records, { cost: "CATEGORICAL_ERROR" })` factory —
+ * `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })` factory —
  * instead of a bare `new Creature(784, 10)` or a hardcoded `[128, 64]`
  * hidden seed. The factory scans the training file and seeds
  * problem-intrinsic defaults: a **SOFTMAX output** (cost-coupled), a
@@ -28,8 +28,15 @@
  * pass `--fresh` when you explicitly want to discard prior progress.
  * `--timeout=<minutes>` overrides the wall-clock backstop per invocation.
  * The early-stop `targetError` is fixed — not exposed on the CLI.
- * Scoring uses NEAT-AI `CATEGORICAL_ERROR` (argmax misclassification rate;
- * `error = 1 − training accuracy`), not MSE on one-hot outputs.
+ *
+ * Training/selection uses NEAT-AI `CROSS_ENTROPY` (softmax + cross-entropy
+ * — the standard differentiable training cost for multi-class
+ * classification, issue #523). The legacy `CATEGORICAL_ERROR`
+ * (`1 − argmax accuracy`) is a non-differentiable step function and is
+ * being removed upstream (NEAT-AI #2798); top-1 argmax accuracy is still
+ * computed and reported via {@link classificationAccuracy} and
+ * {@link confusionMatrix}, but only as a human-readable metric — it does
+ * not drive evolution.
  */
 
 import { format } from "@std/fmt/duration";
@@ -92,8 +99,8 @@ export interface MnistGenerationCompleteEvent {
 
 /**
  * Format one `generation_complete` row for {@link MNIST_GENERATION_LOG_PATH}.
- * With {@link MNIST_EVOLVE_COST_NAME}, `best_fitness` tracks NEAT-AI's best
- * population fitness for the generation (higher is better).
+ * `best_fitness` tracks NEAT-AI's best population fitness for the
+ * generation (higher is better) under {@link MNIST_EVOLVE_COST_NAME}.
  */
 export function formatGenerationLogLine(
   runIndex: number,
@@ -224,8 +231,16 @@ export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/mnist_classification/m
  */
 export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/mnist_classification/complexity.svg";
 
-/** `costName` passed to every `evolveDir` invocation (NEAT-AI 5.0.30+). */
-export const MNIST_EVOLVE_COST_NAME = "CATEGORICAL_ERROR" as const;
+/**
+ * `costName` passed to every `evolveDir` invocation. Softmax + cross-entropy
+ * is the standard differentiable training cost for multi-class
+ * classification (MNIST). Switched from the legacy `CATEGORICAL_ERROR`
+ * (`1 − argmax accuracy`, a non-differentiable step function) under issue
+ * #523 ahead of the upstream removal in NEAT-AI #2798. Top-1 / argmax
+ * accuracy is still reported via {@link classificationAccuracy} and
+ * {@link confusionMatrix} for human consumption.
+ */
+export const MNIST_EVOLVE_COST_NAME = "CROSS_ENTROPY" as const;
 
 /**
  * Cost / task name handed to the NEAT-AI factory ({@link Creature.forDataset})
@@ -307,8 +322,9 @@ export function buildMnistFactorySeed(records: MnistFactoryRecords): Creature {
 
 /**
  * Fixed `targetError` passed to every `evolveDir` invocation — with
- * {@link MNIST_EVOLVE_COST_NAME} this is the training-set misclassification
- * rate (`1 − argmax accuracy`). Not overridable from the CLI.
+ * {@link MNIST_EVOLVE_COST_NAME} (softmax + cross-entropy) this is the
+ * training-set mean cross-entropy in nats (lower is better; a perfectly
+ * confident classifier approaches 0). Not overridable from the CLI.
  */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.0001;
 
@@ -814,7 +830,12 @@ export async function evolveMnistClassifier(
  * contributes exactly one milestone to the merged history.
  */
 export function evolveResultToMultiRunSample(result: MnistEvolveResult): NewMultiRunSample {
-  const error = Math.max(0, Math.min(1, result.bestError));
+  // CROSS_ENTROPY is non-negative but unbounded above (a random 10-class
+  // baseline is ≈ ln(10) ≈ 2.30 nats), so we floor at 0 — to swallow
+  // numerical noise from the WASM scorer — but do not cap from above.
+  // The legacy CATEGORICAL_ERROR cost lived in [0, 1]; relaxing the cap
+  // under issue #523 keeps the milestone chart honest under cross-entropy.
+  const error = Math.max(0, result.bestError);
   return {
     runGen: result.generations,
     bestScore: result.bestScore,

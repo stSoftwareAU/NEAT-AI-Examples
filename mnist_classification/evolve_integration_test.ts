@@ -125,7 +125,7 @@ const EVOLVE_DIR_TEST_CAPS = {
  *
  * Resume passes `previousFittest` into NEAT-AI. Seed run-1 via a real
  * `evolveMnistClassifier` pass so the persisted champion has finite
- * CATEGORICAL_ERROR scores after JSON round-trip (a hand-built export alone
+ * CROSS_ENTROPY scores after JSON round-trip (a hand-built export alone
  * can yield falsy elitist scores on tiny synthetic data — #509).
  */
 const EVOLVE_DIR_RESUME_CAPS = {
@@ -231,8 +231,11 @@ function assertValidEvolveResult(
 ): void {
   assert(Number.isFinite(result.bestError));
   assert(Number.isFinite(result.bestScore));
+  // CROSS_ENTROPY (issue #523) is non-negative but unbounded above —
+  // a random 10-class prediction is ≈ ln(10) ≈ 2.30 nats — so we only
+  // assert the non-negativity floor here, not the legacy [0, 1] cap
+  // that suited CATEGORICAL_ERROR's misclassification rate.
   assertGreaterOrEqual(result.bestError, 0);
-  assertGreaterOrEqual(1, result.bestError);
   assert(Number.isFinite(result.wallClockMs));
   assertGreaterOrEqual(result.wallClockMs, 0);
   assertGreater(result.seedNeurons, 0);
@@ -257,8 +260,9 @@ Deno.test(
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
+      // CROSS_ENTROPY is non-negative but unbounded above (issue #523);
+      // only the lower floor is asserted here.
       assertGreaterOrEqual(sample.error, 0);
-      assertGreaterOrEqual(1, sample.error);
       assertEquals(sample.bestScore, result.bestScore);
       assertEquals(sample.neurons, result.champion.neurons.length);
       assertEquals(sample.synapses, result.champion.synapses.length);
