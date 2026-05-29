@@ -264,6 +264,8 @@ common/
   multi_run_error_chart_test.ts    — Unit tests for the multi-run error chart renderer
   multi_run_complexity_chart.ts    — SVG renderer: neurons + synapses vs cumulative generations across runs
   multi_run_complexity_chart_test.ts — Unit tests for the multi-run complexity chart renderer
+  multi_run_boundary_thinning.ts   — Shared run-boundary label/tick thinning policy for both renderers
+  multi_run_boundary_thinning_test.ts — Unit tests for the boundary thinning policy
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)

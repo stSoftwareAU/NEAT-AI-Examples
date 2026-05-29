@@ -17,6 +17,7 @@
  */
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
+import { selectBoundaryIndices } from "./multi_run_boundary_thinning.ts";
 
 /** Options controlling {@link renderMultiRunComplexityChartSVG}. */
 export interface RenderMultiRunComplexityChartOptions {
@@ -124,7 +125,7 @@ export function renderMultiRunComplexityChartSVG(
 
   // Run-boundary markers — render under the polylines so the data stays
   // visually on top. Detect each runIndex transition in cumulative order.
-  lines.push(renderRunBoundaries(ordered, xScale, plotY, plotH));
+  lines.push(renderRunBoundaries(ordered, xScale, plotY, plotH, plotW));
 
   // Series — neurons on left axis, synapses on right axis.
   lines.push(
@@ -317,16 +318,37 @@ function renderRunBoundaries(
   xScale: (v: number) => number,
   plotTop: number,
   plotH: number,
+  plotW: number,
 ): string {
-  const out: string[] = [];
-  out.push(
-    `  <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">`,
-  );
+  // Detect every runIndex transition in cumulative order before
+  // applying the thinning policy — boundaries are de-duplicated to
+  // (runIndex, cumulativeGen) pairs at this stage.
+  const boundaries: Array<{ runIndex: number; cumulativeGen: number }> = [];
   for (let i = 1; i < samples.length; i++) {
     const prev = samples[i - 1];
     const curr = samples[i];
     if (curr.runIndex === prev.runIndex) continue;
-    const x = xScale(curr.cumulativeGen);
+    boundaries.push({
+      runIndex: curr.runIndex,
+      cumulativeGen: curr.cumulativeGen,
+    });
+  }
+
+  const longestLabel = boundaries.length === 0 ? 0 : Math.max(
+    ...boundaries.map((b) => `run ${b.runIndex}`.length),
+  );
+  const selected = new Set(
+    selectBoundaryIndices(boundaries.length, plotW, longestLabel),
+  );
+
+  const out: string[] = [];
+  out.push(
+    `  <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">`,
+  );
+  for (let i = 0; i < boundaries.length; i++) {
+    if (!selected.has(i)) continue;
+    const b = boundaries[i];
+    const x = xScale(b.cumulativeGen);
     out.push(
       `    <line class="run-boundary" x1="${fmt(x)}" y1="${fmt(plotTop)}" ` +
         `x2="${fmt(x)}" y2="${fmt(plotTop + plotH)}" ` +
@@ -334,7 +356,7 @@ function renderRunBoundaries(
     );
     out.push(
       `    <text x="${fmt(x)}" y="${fmt(plotTop - 4)}" text-anchor="middle">` +
-        `run ${curr.runIndex}</text>`,
+        `run ${b.runIndex}</text>`,
     );
   }
   out.push(`  </g>`);
