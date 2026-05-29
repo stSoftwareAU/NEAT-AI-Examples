@@ -253,3 +253,125 @@ Deno.test("renderMultiRunComplexityChartSVG: default title mentions creature com
   const svg = renderMultiRunComplexityChartSVG(samples);
   assertStringIncludes(svg, "complexity");
 });
+
+// ---------------------------------------------------------------------------
+// Boundary thinning (issue #521)
+// ---------------------------------------------------------------------------
+
+/** Synthesise an N-run milestone series with one sample per run. */
+function makeNRunSeries(runCount: number): MultiRunMilestone[] {
+  const samples: MultiRunMilestone[] = [];
+  for (let r = 1; r <= runCount; r++) {
+    samples.push({
+      runIndex: r,
+      runGen: 10,
+      cumulativeGen: r * 10,
+      error: 0.5,
+      bestScore: 0.5,
+      neurons: 4 + r,
+      synapses: 6 + r * 2,
+      generationWallClockMs: 100,
+    });
+  }
+  return samples;
+}
+
+function countBoundaryLabels(svg: string): number {
+  const block = svg.match(
+    /<g class="run-boundaries"[\s\S]*?<\/g>/,
+  );
+  if (!block) return 0;
+  return (block[0].match(/<text[^>]*>run \d+<\/text>/g) ?? []).length;
+}
+
+function countBoundaryTicks(svg: string): number {
+  return (svg.match(/<line class="run-boundary"/g) ?? []).length;
+}
+
+Deno.test(
+  "renderMultiRunComplexityChartSVG: ≤10 runs renders every boundary (issue #521)",
+  () => {
+    for (const runCount of [1, 2, 5, 10]) {
+      const svg = renderMultiRunComplexityChartSVG(makeNRunSeries(runCount));
+      const expectedBoundaries = runCount - 1;
+      assertEquals(
+        countBoundaryLabels(svg),
+        expectedBoundaries,
+        `runCount=${runCount}: expected ${expectedBoundaries} labels`,
+      );
+      assertEquals(
+        countBoundaryTicks(svg),
+        expectedBoundaries,
+        `runCount=${runCount}: tick count must match label count`,
+      );
+    }
+  },
+);
+
+Deno.test(
+  "renderMultiRunComplexityChartSVG: 50 runs caps boundary labels at 10 (issue #521)",
+  () => {
+    const svg = renderMultiRunComplexityChartSVG(makeNRunSeries(50));
+    const labels = countBoundaryLabels(svg);
+    assert(labels <= 10, `expected ≤10 labels, got ${labels}`);
+    assertEquals(countBoundaryTicks(svg), labels);
+    assertStringIncludes(svg, ">run 2<");
+    assertStringIncludes(svg, ">run 50<");
+  },
+);
+
+Deno.test(
+  "renderMultiRunComplexityChartSVG: 115 runs caps labels at 10 and includes first + last (issue #521 / #514)",
+  () => {
+    const svg = renderMultiRunComplexityChartSVG(makeNRunSeries(115));
+    const labels = countBoundaryLabels(svg);
+    assert(labels <= 10, `expected ≤10 labels, got ${labels}`);
+    assertEquals(countBoundaryTicks(svg), labels);
+    assertStringIncludes(svg, ">run 2<");
+    assertStringIncludes(svg, ">run 115<");
+  },
+);
+
+Deno.test(
+  "renderMultiRunComplexityChartSVG: boundary selection is deterministic across runs (issue #521)",
+  () => {
+    const samples = makeNRunSeries(60);
+    const a = renderMultiRunComplexityChartSVG(samples);
+    const b = renderMultiRunComplexityChartSVG(samples);
+    assertEquals(a, b);
+  },
+);
+
+/** Build the snapshot's 10-run fixture deterministically. */
+function makeBaselineSnapshotSeries(): MultiRunMilestone[] {
+  const samples: MultiRunMilestone[] = [];
+  for (let r = 1; r <= 10; r++) {
+    for (let i = 0; i < 3; i++) {
+      const g = (r - 1) * 100 + Math.pow(10, i);
+      samples.push({
+        runIndex: r,
+        runGen: Math.pow(10, i),
+        cumulativeGen: g,
+        error: 0.9 / r - 0.01 * i,
+        bestScore: 0.1 * r,
+        neurons: 4 + r,
+        synapses: 6 + r * 2,
+        generationWallClockMs: 100,
+      });
+    }
+  }
+  return samples;
+}
+
+Deno.test(
+  "renderMultiRunComplexityChartSVG: 10-run snapshot is byte-identical to pre-#521 baseline",
+  async () => {
+    const expected = await Deno.readTextFile(
+      new URL("./testdata/baseline_cx_10runs.svg", import.meta.url),
+    );
+    const actual = renderMultiRunComplexityChartSVG(
+      makeBaselineSnapshotSeries(),
+    );
+    assertEquals(actual, expected);
+  },
+);
