@@ -6,8 +6,8 @@ import {
   loadSamplerLoopChampion,
   priorLoopPhaseNames,
   SAMPLER_DIR,
-  saveSamplerLoopChampion,
   samplerLoopPath,
+  saveSamplerLoopChampion,
 } from "./population_pool.ts";
 
 const exportA = { input: 784, output: 10, neurons: [], synapses: [] };
