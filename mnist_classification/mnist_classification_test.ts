@@ -702,6 +702,28 @@ Deno.test("README embeds the multi-run charts and drops the legacy evolution_sum
   );
 });
 
+Deno.test("top-level README MNIST entries match the real 784 / 28×28 code (Issue #515)", () => {
+  const readme = Deno.readTextFileSync("README.md");
+  // Stale wording from when MNIST used a 14×14 down-sample must be gone.
+  assert(
+    !readme.includes("196 → 10"),
+    "top-level README must not describe MNIST as a 196 → 10 classifier",
+  );
+  assert(
+    !readme.includes("14×14 down-sample"),
+    "top-level README must not describe MNIST as a 14×14 down-sample",
+  );
+  // The corrected wording must reflect the real 784 / 28×28 full-resolution input.
+  assert(
+    readme.includes("784"),
+    "top-level README MNIST entry must reference the real 784 input features",
+  );
+  assert(
+    readme.includes("28×28"),
+    "top-level README MNIST entry must reference the native 28×28 input",
+  );
+});
+
 Deno.test("readGzippedFile rejects a missing file", async () => {
   await assertRejects(() => readGzippedFile("/no/such/path/data.gz"), Error);
 });
