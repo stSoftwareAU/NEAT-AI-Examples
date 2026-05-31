@@ -5,7 +5,7 @@
  * synthetic simulator (a 1-D walker) and assert on the returned trace,
  * final state, and step count. No real game required.
  */
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { createSeededRng, Creature, setRandomNumberGenerator } from "@stsoftware/neat-ai";
 
 import { type EpisodeAdapter, runEpisode } from "./episode_runner.ts";
@@ -87,35 +87,86 @@ Deno.test("runEpisode — maxSteps=0 returns initial state untouched", () => {
   assertEquals(result.trace, [7]);
 });
 
-Deno.test("runEpisode — clearState is called per tick by default", () => {
-  const creature = tinyCreature();
-  let clears = 0;
-  const original = creature.clearState.bind(creature);
-  creature.clearState = () => {
-    clears++;
-    original();
+/**
+ * Build a minimal stub Creature with a single recurrent accumulator.
+ * `clearState()` resets the accumulator to zero; each `activate()` call
+ * increments it and returns the running total as the activation output.
+ *
+ * This lets the `clearStatePerTick` tests assert on an *observable*
+ * outcome — the episode trace — instead of counting internal
+ * `clearState` calls. When state is cleared every tick the accumulator
+ * never grows, so the output is a constant `1`; when state carries over,
+ * the output climbs `1, 2, 3, …` and the trace visibly diverges.
+ */
+function recurrentStub(): Creature {
+  let acc = 0;
+  const stub = {
+    clearState: () => {
+      acc = 0;
+    },
+    activate: (_input: Float32Array): Float32Array => {
+      acc += 1;
+      return new Float32Array([acc]);
+    },
   };
-  const adapter = makeWalker(0, (s) => s >= 4);
+  return stub as unknown as Creature;
+}
 
-  const result = runEpisode(creature, adapter, { maxSteps: 10 });
+/**
+ * Walker whose per-tick step delta IS the creature's output, so any
+ * carry-over in recurrent state shows up directly in the trace.
+ */
+const accumulatingWalker: EpisodeAdapter<number, number> = {
+  initialState: 0,
+  encode: (s) => new Float32Array([s]),
+  decode: (out) => out[0],
+  step: (s, a) => s + a,
+  isTerminal: () => false,
+};
 
-  assertEquals(result.steps, 4);
-  assertEquals(clears, 4, "clearState called once per executed tick");
+Deno.test("runEpisode — clears recurrent state per tick by default (observable via trace)", () => {
+  // Default behaviour: state reset before every activation, so the
+  // accumulator output is a constant 1 and each tick advances by +1.
+  const defaultTrace = runEpisode(recurrentStub(), accumulatingWalker, { maxSteps: 4 }).trace;
+  const explicitTrace = runEpisode(recurrentStub(), accumulatingWalker, {
+    maxSteps: 4,
+    clearStatePerTick: true,
+  }).trace;
+
+  assertEquals(defaultTrace, [0, 1, 2, 3, 4]);
+  assertEquals(
+    defaultTrace,
+    explicitTrace,
+    "omitting the flag matches clearStatePerTick: true",
+  );
 });
 
-Deno.test("runEpisode — clearState is skipped when clearStatePerTick=false", () => {
-  const creature = tinyCreature();
-  let clears = 0;
-  const original = creature.clearState.bind(creature);
-  creature.clearState = () => {
-    clears++;
-    original();
-  };
-  const adapter = makeWalker(0, (s) => s >= 4);
+Deno.test("runEpisode — clearStatePerTick=false retains recurrent state across ticks", () => {
+  // State carries over, so the accumulator output climbs 1, 2, 3, 4 and
+  // the walker accelerates: 0 → 1 → 3 → 6 → 10.
+  const result = runEpisode(recurrentStub(), accumulatingWalker, {
+    maxSteps: 4,
+    clearStatePerTick: false,
+  });
 
-  runEpisode(creature, adapter, { maxSteps: 10, clearStatePerTick: false });
+  assertEquals(result.steps, 4);
+  assertEquals(result.trace, [0, 1, 3, 6, 10]);
+  assertEquals(result.finalState, 10);
+});
 
-  assertEquals(clears, 0, "clearState must not be called when opt-out is set");
+Deno.test("runEpisode — clearStatePerTick toggles the observable episode trace", () => {
+  const onTrace = runEpisode(recurrentStub(), accumulatingWalker, {
+    maxSteps: 4,
+    clearStatePerTick: true,
+  }).trace;
+  const offTrace = runEpisode(recurrentStub(), accumulatingWalker, {
+    maxSteps: 4,
+    clearStatePerTick: false,
+  }).trace;
+
+  // The flag has a real, caller-visible effect — not just an internal
+  // call-count difference.
+  assertNotEquals(onTrace, offTrace);
 });
 
 Deno.test("runEpisode — adapter.encode receives the current state", () => {
