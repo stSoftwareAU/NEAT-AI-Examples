@@ -253,10 +253,19 @@ export interface EvolveResult {
  * {@link evolveCartPoleController} this is converted to the absolute
  * error scale `MAX_STEPS - SOLVED_THRESHOLD = 20` consumed by
  * `EvolveRLOptions.targetError`.
+ *
+ * `populationSize = 100`: NEAT-AI 5.3.3 changed its evolutionary
+ * dynamics, and a 60-creature population produced champions that solved
+ * the training trials but generalised marginally to unseen perturbed
+ * starts — on CI (different float behaviour, a chaotic physics sim) the
+ * generalisation score dropped below the `0.8 × SOLVED_THRESHOLD = 384`
+ * floor. A 100-creature population finds a comfortably robust champion
+ * that balances for the full episode across the held-out trials, leaving
+ * ample margin for cross-platform float divergence.
  */
 export const DEFAULT_EVOLVE_OPTIONS: EvolveOptions = {
   seed: 12345,
-  populationSize: 60,
+  populationSize: 100,
   targetError: 1 - SOLVED_THRESHOLD / MAX_STEPS,
   timeoutMinutes: 5,
   mutationStrength: 0.6,

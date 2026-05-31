@@ -126,7 +126,12 @@ Deno.test(
   async () => {
     const result = await evolveXorController({
       ...DEFAULT_EVOLVE_OPTIONS,
-      populationSize: 30,
+      // NEAT-AI 5.3.3 changed its structural-mutation dynamics, so a
+      // 30-creature population no longer reliably grows the hidden neuron
+      // XOR needs within the generation budget (it stalls on the 0.25 MSE
+      // plateau). The default 50-creature population converges in ~76
+      // generations with a wide error margin, so use it here.
+      populationSize: 50,
       maxGenerations: 400,
       // Tests skip the wall-clock backstop — see DEFAULT_EVOLVE_OPTIONS.
       timeoutMinutes: 0,
