@@ -25,7 +25,7 @@ set -euo pipefail
 #
 # Network access is required on the first run to download the gzipped
 # IDX files into .synthetic-mnist/data/; subsequent runs use the cached
-# copies.
+# copies
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
