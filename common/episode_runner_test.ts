@@ -3,7 +3,7 @@
  *
  * These are "what" tests — they drive `runEpisode` against a tiny
  * synthetic simulator (a 1-D walker) and assert on the returned trace,
- * final state, and step count. No real game required
+ * final state, and step count. No real game required.
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { createSeededRng, Creature, setRandomNumberGenerator } from "@stsoftware/neat-ai";
