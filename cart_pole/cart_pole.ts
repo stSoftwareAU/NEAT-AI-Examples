@@ -574,6 +574,9 @@ export async function evolveCartPoleController(
     iterations: options.iterations,
     episodesPerCreature: options.trials ?? 10,
     statistics: true,
+    // Keep cart-pole aligned with the other examples: run deterministic
+    // inline rollouts instead of relying on evolveRL's worker fallback.
+    threads: 1,
   };
 
   const result = await seedCreature.evolveRL(adapter, evolveOptions);
