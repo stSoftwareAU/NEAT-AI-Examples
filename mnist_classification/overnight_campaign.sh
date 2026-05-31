@@ -1,10 +1,10 @@
 #!/bin/bash
-# MNIST evolution campaign — 15-minute chunks, optional fresh ReLU MLP seed.
+# MNIST evolution campaign — 15-minute chunks, factory-derived fresh seed.
 #
 # Usage (from repo root):
 #   ./mnist_classification/overnight_campaign.sh
 #
-# First run uses `--fresh --hidden-seed` unless MNIST_CAMPAIGN_SKIP_FRESH=1.
+# First run uses `--fresh` (factory seed) unless MNIST_CAMPAIGN_SKIP_FRESH=1.
 # Override duration: MNIST_CAMPAIGN_MAX_HOURS=4 MNIST_CAMPAIGN_RUN_MINUTES=15
 #
 # Logs: .synthetic-mnist/overnight/campaign.log
@@ -158,7 +158,7 @@ while [[ $(date +%s) -lt ${DEADLINE} && ${run} -lt ${MAX_RUNS} ]]; do
 
   RUN_ARGS=(--timeout="${RUN_MINUTES}")
   if [[ ${run} -eq 1 && ${SKIP_FRESH} -eq 0 ]]; then
-    RUN_ARGS=(--fresh --hidden-seed --timeout="${RUN_MINUTES}")
+    RUN_ARGS=(--fresh --timeout="${RUN_MINUTES}")
   fi
 
   set +e

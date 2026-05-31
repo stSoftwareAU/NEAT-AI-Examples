@@ -140,6 +140,112 @@ export function buildSamples(
   return samples;
 }
 
+/**
+ * Frozen, per-feature robust-standardisation statistics.
+ *
+ * Computed **once** on the training window and then reused unchanged for
+ * validation, test, and live inference (see {@link normalizeSamples}).
+ * Freezing the stats is the non-stationarity safeguard: markets drift
+ * regime to regime, so re-estimating the scale on each window would let
+ * future information leak backwards and would move the goalposts the
+ * model was trained against. Median / IQR (rather than mean / standard
+ * deviation) keep the scale resistant to the fat-tailed outliers typical
+ * of financial returns.
+ */
+export interface NormalizationStats {
+  /** Per-feature median over the training window. */
+  medians: number[];
+  /** Per-feature inter-quartile range (Q3 − Q1) over the training window. */
+  iqrs: number[];
+}
+
+/**
+ * Floor applied to a feature's IQR before dividing, so a constant
+ * (zero-IQR) feature normalises to `0` rather than producing `NaN`/`±∞`.
+ */
+export const NORMALIZATION_EPS = 1e-8;
+
+/**
+ * Linear-interpolated quantile of an already-sorted ascending array.
+ * `q` is in `[0, 1]`. Matches the common "type 7" definition used by
+ * NumPy's default `percentile`.
+ */
+function quantileSorted(sorted: readonly number[], q: number): number {
+  if (sorted.length === 1) return sorted[0];
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] * (hi - pos) + sorted[hi] * (pos - lo);
+}
+
+/**
+ * Compute frozen robust-standardisation stats (per-feature median and
+ * IQR) over a set of samples. Intended to be called on the **training**
+ * window only; the returned {@link NormalizationStats} then travels with
+ * the model into inference via {@link normalizeSamples}.
+ */
+export function computeNormalizationStats(samples: readonly Sample[]): NormalizationStats {
+  if (samples.length === 0) {
+    throw new Error("computeNormalizationStats: samples must not be empty");
+  }
+  const width = samples[0].features.length;
+  const medians = new Array<number>(width);
+  const iqrs = new Array<number>(width);
+  for (let j = 0; j < width; j++) {
+    const column = new Array<number>(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      const f = samples[i].features;
+      if (f.length !== width) {
+        throw new Error(
+          `computeNormalizationStats: sample ${i} has ${f.length} features, expected ${width}`,
+        );
+      }
+      column[i] = f[j];
+    }
+    column.sort((a, b) => a - b);
+    medians[j] = quantileSorted(column, 0.5);
+    iqrs[j] = quantileSorted(column, 0.75) - quantileSorted(column, 0.25);
+  }
+  return { medians, iqrs };
+}
+
+/**
+ * Robustly standardise a single feature vector with frozen stats:
+ * `(x − median) / max(IQR, eps)`. A constant feature (IQR ≈ 0) maps to
+ * `0` via the {@link NORMALIZATION_EPS} floor.
+ */
+export function applyNormalization(
+  features: readonly number[],
+  stats: NormalizationStats,
+): number[] {
+  if (features.length !== stats.medians.length) {
+    throw new Error(
+      `applyNormalization: feature width ${features.length} does not match ` +
+        `stats width ${stats.medians.length}`,
+    );
+  }
+  const out = new Array<number>(features.length);
+  for (let j = 0; j < features.length; j++) {
+    out[j] = (features[j] - stats.medians[j]) / Math.max(stats.iqrs[j], NORMALIZATION_EPS);
+  }
+  return out;
+}
+
+/**
+ * Apply frozen {@link NormalizationStats} to every sample, returning
+ * fresh {@link Sample} objects with normalised features. Non-feature
+ * fields (date, label, return, close, index) are preserved unchanged so
+ * downstream charts and metrics still see the real outcomes. The input
+ * samples are never mutated.
+ */
+export function normalizeSamples(
+  samples: readonly Sample[],
+  stats: NormalizationStats,
+): Sample[] {
+  return samples.map((s) => ({ ...s, features: applyNormalization(s.features, stats) }));
+}
+
 /** Configuration for {@link splitChronologically}. */
 export interface SplitOptions {
   /** Fraction of samples to allocate to training (0–1). */

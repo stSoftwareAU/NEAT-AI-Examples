@@ -11,13 +11,32 @@
  *  - Output topology: 10 outputs (one per digit class). The predicted
  *    digit is whichever output activation is highest.
  *
+ * 🌱 **Generation 1 starts from a data-derived factory seed (issue #518).**
+ * A fresh run (no prior persisted champion, or `--fresh` on the command
+ * line) builds the seed via {@link buildMnistFactorySeed} — the NEAT-AI
+ * `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })` factory —
+ * instead of a bare `new Creature(784, 10)` or a hardcoded `[128, 64]`
+ * hidden seed. The factory scans the training file and seeds
+ * problem-intrinsic defaults: a **SOFTMAX output** (cost-coupled), a
+ * **factory-sized hidden layer** derived from `(784, 10)`, and
+ * **dead-pixel pruning** for the constant-border inputs. Only the seed
+ * changes; the `evolveDir` configuration (population, mutation,
+ * Discovery, stop conditions) is identical to the historical run.
+ *
  * Multi-run persistence (issues #318–#320, #327): when a saved champion
  * exists the next invocation reloads it and continues evolution; only
  * pass `--fresh` when you explicitly want to discard prior progress.
  * `--timeout=<minutes>` overrides the wall-clock backstop per invocation.
  * The early-stop `targetError` is fixed — not exposed on the CLI.
- * Scoring uses NEAT-AI `CATEGORICAL_ERROR` (argmax misclassification rate;
- * `error = 1 − training accuracy`), not MSE on one-hot outputs.
+ *
+ * Training/selection uses NEAT-AI `CROSS_ENTROPY` (softmax + cross-entropy
+ * — the standard differentiable training cost for multi-class
+ * classification, issue #523). The legacy `CATEGORICAL_ERROR`
+ * (`1 − argmax accuracy`) is a non-differentiable step function and is
+ * being removed upstream (NEAT-AI #2798); top-1 argmax accuracy is still
+ * computed and reported via {@link classificationAccuracy} and
+ * {@link confusionMatrix}, but only as a human-readable metric — it does
+ * not drive evolution.
  */
 
 import { format } from "@std/fmt/duration";
@@ -26,6 +45,7 @@ import { dirname, fromFileUrl, join } from "@std/path";
 import {
   Creature,
   type CreatureExport,
+  type DatasetFactoryOptions,
   type NeatOptions,
   safeWriteJson,
   setMaxCachedWasmCreatureActivations,
@@ -57,29 +77,6 @@ import {
 } from "./data.ts";
 import { type CellFrame, type DigitCell, GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
 
-/** Default hidden layer widths for `--hidden-seed` (784 → 128 → 64 → 10). */
-export const DEFAULT_MNIST_HIDDEN_LAYER_SIZES = [128, 64] as const;
-
-/** NEAT-AI core initialisation: layered feed-forward seed with ReLU hiddens. */
-export function buildMnistHiddenReluSeed(
-  layerSizes: readonly number[] = DEFAULT_MNIST_HIDDEN_LAYER_SIZES,
-): Creature {
-  return new Creature(FEATURE_COUNT, CLASS_COUNT, {
-    layers: layerSizes.map((count) => ({ count, squash: "ReLU" })),
-  });
-}
-
-/** Optional `MNIST_HIDDEN_LAYER_SIZES=64,32` override for memory tuning. */
-export function resolveMnistHiddenLayerSizes(
-  envValue = Deno.env.get("MNIST_HIDDEN_LAYER_SIZES"),
-): readonly number[] {
-  if (!envValue) return DEFAULT_MNIST_HIDDEN_LAYER_SIZES;
-  const sizes = envValue.split(",").map((part) => Number(part.trim())).filter((n) =>
-    Number.isFinite(n) && n > 0
-  );
-  return sizes.length > 0 ? sizes : DEFAULT_MNIST_HIDDEN_LAYER_SIZES;
-}
-
 /** Working-directory root for this example. */
 export const MNIST_ROOT = ".synthetic-mnist";
 
@@ -102,8 +99,8 @@ export interface MnistGenerationCompleteEvent {
 
 /**
  * Format one `generation_complete` row for {@link MNIST_GENERATION_LOG_PATH}.
- * With {@link MNIST_EVOLVE_COST_NAME}, `best_fitness` tracks NEAT-AI's best
- * population fitness for the generation (higher is better).
+ * `best_fitness` tracks NEAT-AI's best population fitness for the
+ * generation (higher is better) under {@link MNIST_EVOLVE_COST_NAME}.
  */
 export function formatGenerationLogLine(
   runIndex: number,
@@ -214,6 +211,9 @@ export const RUN_SUMMARY_DOCS_PATH = "docs/data/mnist_classification/run_summary
 /** Sub-directory under `MNIST_ROOT` holding the binary `.bin` training set. */
 export const BIN_TRAIN_DIR = `${MNIST_ROOT}/bin`;
 
+/** Filename of the binary training stream consumed by `evolveDir`. */
+export const TRAIN_BIN_FILENAME = "mnist_train.bin";
+
 /** Slug used by the multi-run persistence helpers and chart artefact paths. */
 export const EXAMPLE_SLUG = "mnist_classification";
 
@@ -231,13 +231,100 @@ export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/mnist_classification/m
  */
 export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/mnist_classification/complexity.svg";
 
-/** `costName` passed to every `evolveDir` invocation (NEAT-AI 5.0.30+). */
-export const MNIST_EVOLVE_COST_NAME = "CATEGORICAL_ERROR" as const;
+/**
+ * `costName` passed to every `evolveDir` invocation. Softmax + cross-entropy
+ * is the standard differentiable training cost for multi-class
+ * classification (MNIST). Switched from the legacy `CATEGORICAL_ERROR`
+ * (`1 − argmax accuracy`, a non-differentiable step function) under issue
+ * #523 ahead of the upstream removal in NEAT-AI #2798. Top-1 / argmax
+ * accuracy is still reported via {@link classificationAccuracy} and
+ * {@link confusionMatrix} for human consumption.
+ */
+export const MNIST_EVOLVE_COST_NAME = "CROSS_ENTROPY" as const;
+
+/**
+ * Cost / task name handed to the NEAT-AI factory ({@link Creature.forDataset})
+ * when building the fresh-run seed (issue #518). Matches
+ * {@link MNIST_EVOLVE_COST_NAME} so the cost the factory selects an output
+ * activation for is the same cost `evolveDir` later scores against — a
+ * classification cost couples the output to a **SOFTMAX** activation
+ * (NEAT-AI #2793).
+ */
+export const MNIST_FACTORY_COST = MNIST_EVOLVE_COST_NAME;
+
+/** Factory record shape consumed by `Creature.forDataset`. */
+export type MnistFactoryRecords = Parameters<typeof Creature.forDataset>[0];
+
+/**
+ * Read the binary `.bin` training stream back into factory records
+ * (`{ input, output }` pairs). Each record is `FEATURE_COUNT` Float32
+ * input pixels followed by `CLASS_COUNT` Float32 one-hot target outputs,
+ * matching the layout {@link writeMnistTrainingBin} writes.
+ *
+ * Used by {@link evolveMnistClassifier} to feed the factory the exact
+ * data `evolveDir` will train on. Returned arrays are zero-copy
+ * `subarray` views into the loaded file buffer, so scanning 60 000
+ * records does not allocate per-record float arrays.
+ */
+export function readMnistTrainingRecords(
+  dataDir: string,
+  featureCount: number = FEATURE_COUNT,
+  classCount: number = CLASS_COUNT,
+): MnistFactoryRecords {
+  const path = join(dataDir, TRAIN_BIN_FILENAME);
+  const bytes = Deno.readFileSync(path);
+  const stride = featureCount + classCount;
+  const floats = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+  const count = Math.floor(floats.length / stride);
+  if (count === 0) {
+    throw new Error(`readMnistTrainingRecords: no records found in ${path}`);
+  }
+  const records: { input: Float32Array; output: Float32Array }[] = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const base = i * stride;
+    records[i] = {
+      input: floats.subarray(base, base + featureCount),
+      output: floats.subarray(base + featureCount, base + stride),
+    };
+  }
+  return records;
+}
+
+/**
+ * Build the **data-derived factory seed creature** via the NEAT-AI
+ * factory ({@link Creature.forDataset}) instead of a bare
+ * `new Creature(784, 10)` or a hardcoded `[128, 64]` hidden seed (issue
+ * #518). Scans `records` and seeds problem-intrinsic defaults:
+ *
+ * - picks a **SOFTMAX output** activation from the classification cost
+ *   ({@link MNIST_FACTORY_COST}) — the cost-coupled output paired with
+ *   cross-entropy / categorical-error scoring;
+ * - sizes a **conservative hidden-capacity budget** from the
+ *   `(784, 10)` shape (the factory's geometric-mean rule for
+ *   high-dimensional inputs picks ≈ `√(784·10) ≈ 89` neurons, far
+ *   smaller than the legacy `[128, 64]` lookup);
+ * - **prunes dead inputs** — the constant border pixels of MNIST have
+ *   near-zero variance, so synapses leaving them are zeroed to stop
+ *   them propagating noise.
+ *
+ * No dataset-specific architecture is hand-coded — every default is
+ * derived from the observation count, output count, cost, and a scan of
+ * the training file, so the same approach transfers to private/unknown
+ * problems.
+ */
+export function buildMnistFactorySeed(records: MnistFactoryRecords): Creature {
+  if (records.length === 0) {
+    throw new Error("buildMnistFactorySeed: records must not be empty");
+  }
+  const options: DatasetFactoryOptions = { cost: MNIST_FACTORY_COST };
+  return Creature.forDataset(records, options);
+}
 
 /**
  * Fixed `targetError` passed to every `evolveDir` invocation — with
- * {@link MNIST_EVOLVE_COST_NAME} this is the training-set misclassification
- * rate (`1 − argmax accuracy`). Not overridable from the CLI.
+ * {@link MNIST_EVOLVE_COST_NAME} (softmax + cross-entropy) this is the
+ * training-set mean cross-entropy in nats (lower is better; a perfectly
+ * confident classifier approaches 0). Not overridable from the CLI.
  */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.0001;
 
@@ -504,41 +591,39 @@ export function inferStopCondition(
   return evolveWallClockMs >= budgetMs * 0.95 ? "timeoutMinutes" : "targetError";
 }
 
-/** Recognised MNIST-specific CLI flags (in addition to multi-run flags). */
-export function parseMnistRunnerFlags(argv: readonly string[]): { hiddenSeed: boolean } {
-  let hiddenSeed = false;
-  for (const arg of argv) {
-    if (arg === "--hidden-seed") hiddenSeed = true;
-  }
-  return { hiddenSeed };
-}
-
 /** Options accepted by {@link evolveMnistClassifier}. */
 export interface MnistEvolveOptions {
   /** Directory containing the binary `.bin` training stream consumed by
    * `Creature.evolveDir`. */
   dataDir: string;
   /**
-   * `evolveDir` `timeoutMinutes` option. Pass `0` from tests and CI quick
-   * mode to skip the wall-clock backstop and Discovery scheduling (GitHub
-   * Actions runners have no GPU). NEAT-AI also loads FFI cleanup machinery
-   * on the backstop path that Deno's `--allow-ffi` sanitiser flags as a
-   * leak in unit tests.
+   * `evolveDir` `timeoutMinutes` option (the wall-clock backstop). Pass
+   * `0` from tests and CI quick mode to skip the backstop: NEAT-AI loads
+   * FFI cleanup machinery on the backstop path that Deno's `--allow-ffi`
+   * sanitiser flags as a leak in unit tests.
+   *
+   * This concerns only the wall-clock budget. It does **not** control
+   * structural Discovery — disabling Discovery is gated solely on
+   * {@link MnistEvolveOptions.testCaps} (see {@link shouldDisableDiscovery},
+   * issue #516), so a normal run with `timeoutMinutes: 0` still discovers
+   * structure.
    */
   timeoutMinutes: number;
   /**
    * Optional pre-seeded creature export, used by the multi-run resume
    * flow to continue evolution from a prior champion. When supplied, the
-   * evolveDir seed is built via {@link Creature.fromJSON} instead of a
-   * fresh `new Creature(784, 10)`.
+   * evolveDir seed is built via {@link Creature.fromJSON} instead of the
+   * factory ({@link buildMnistFactorySeed}).
    */
   seedCreatureExport?: CreatureExport;
   /**
-   * When true and no `seedCreatureExport` is supplied, seed via
-   * {@link buildMnistHiddenReluSeed} (`new Creature` with `layers: [...]`)
-   * instead of the minimal direct-only seed.
+   * Optional fresh-seed override (tests only). When supplied and no
+   * `seedCreatureExport` is given, this export is used verbatim instead
+   * of building the factory seed from {@link dataDir}. Lets unit tests
+   * substitute a minimal `new Creature(784, 10)` and skip the factory
+   * scan on synthetic data.
    */
-  hiddenReluSeed?: boolean;
+  freshSeedExport?: CreatureExport;
   /**
    * Unit-test-only caps — the runner never sets these; NEAT-AI defaults
    * apply in production runs.
@@ -631,26 +716,34 @@ async function withEvolveDirLock<T>(
 /**
  * Run NEAT structural evolution on an MNIST binary `.bin` data directory.
  *
- * When `seedCreatureExport` is supplied (multi-run resume), rebuilds
- * the prior champion via {@link Creature.fromJSON}; when
- * `hiddenReluSeed` is set, uses {@link buildMnistHiddenReluSeed}; otherwise
- * builds the uniform-random `new Creature(FEATURE_COUNT, CLASS_COUNT)` minimal seed.
+ * When `seedCreatureExport` is supplied (multi-run resume), rebuilds the
+ * prior champion via {@link Creature.fromJSON}; when `freshSeedExport` is
+ * supplied (unit tests only), uses that export verbatim; otherwise scans
+ * the binary training stream under `dataDir` and builds the **factory
+ * seed** via {@link buildMnistFactorySeed} — a SOFTMAX-output creature
+ * with a factory-sized hidden layer and dead-pixel pruning (issue #518).
  *
  * One `evolveDir` call covers the whole budget. The return value's
  * `{ error, score, time, generation }` fields plus the seed and final
  * topology counts feed the multi-run milestone history (issue #327).
  */
-/** True when evolveDir must not schedule Discovery (tests / CPU-only CI). */
-function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
-  let ci = false;
-  try {
-    ci = Deno.env.get("CI") === "true";
-  } catch {
-    // Production runners may not grant blanket env access; treat as non-CI.
-  }
-  return options.testCaps !== undefined ||
-    options.timeoutMinutes <= 0 ||
-    ci;
+/**
+ * True when evolveDir must not schedule structural Discovery.
+ *
+ * Discovery is **on by default in NEAT-AI** (`discoverySampleRate = 0.2`;
+ * only a value `<= 0` disables it) and is the engine that grows network
+ * structure, so real MNIST runs must keep it enabled (issue #516).
+ *
+ * The *only* genuine reason to disable it here is the unit-test path:
+ * NEAT-AI's Discovery library loads FFI cleanup machinery that Deno's
+ * `--allow-ffi` sanitiser flags as a leak inside `deno test`. Unit tests
+ * therefore set `testCaps`, which forces Discovery off. This is a
+ * test-only concern — it is deliberately decoupled from `timeoutMinutes`
+ * (the wall-clock backstop) so that a normal run with no timeout still
+ * lets Discovery find the structure.
+ */
+export function shouldDisableDiscovery(options: MnistEvolveOptions): boolean {
+  return options.testCaps !== undefined;
 }
 
 export async function evolveMnistClassifier(
@@ -665,11 +758,9 @@ export async function evolveMnistClassifier(
     }
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
-      : options.hiddenReluSeed
-      ? buildMnistHiddenReluSeed(
-        options.testCaps ? [8] : resolveMnistHiddenLayerSizes(),
-      )
-      : new Creature(FEATURE_COUNT, CLASS_COUNT);
+      : options.freshSeedExport !== undefined
+      ? Creature.fromJSON(options.freshSeedExport)
+      : buildMnistFactorySeed(readMnistTrainingRecords(options.dataDir));
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;
 
@@ -739,7 +830,12 @@ export async function evolveMnistClassifier(
  * contributes exactly one milestone to the merged history.
  */
 export function evolveResultToMultiRunSample(result: MnistEvolveResult): NewMultiRunSample {
-  const error = Math.max(0, Math.min(1, result.bestError));
+  // CROSS_ENTROPY is non-negative but unbounded above (a random 10-class
+  // baseline is ≈ ln(10) ≈ 2.30 nats), so we floor at 0 — to swallow
+  // numerical noise from the WASM scorer — but do not cap from above.
+  // The legacy CATEGORICAL_ERROR cost lived in [0, 1]; relaxing the cap
+  // under issue #523 keeps the milestone chart honest under cross-entropy.
+  const error = Math.max(0, result.bestError);
   return {
     runGen: result.generations,
     bestScore: result.bestScore,
@@ -762,10 +858,8 @@ export interface RunMultiRunMnistOptions {
   baseDir?: string;
   /** Optional overrides applied in unit tests only (never by the runner). */
   evolveOverrides?: Partial<
-    Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "hiddenReluSeed" | "elitism">
+    Pick<MnistEvolveOptions, "testCaps" | "timeoutMinutes" | "freshSeedExport" | "elitism">
   >;
-  /** When true, first run seeds the two-layer ReLU MLP instead of minimal noise. */
-  hiddenReluSeed?: boolean;
 }
 
 /** Outcome of a single multi-run invocation. */
@@ -798,7 +892,6 @@ export async function runMultiRunMnist(
   const argv = options.argv ?? Deno.args;
   assertNoTargetErrorCliOverride(argv);
   const flags = parseMultiRunFlags(argv);
-  const mnistFlags = parseMnistRunnerFlags(argv);
   const slug = EXAMPLE_SLUG;
 
   if (flags.fresh) {
@@ -821,8 +914,6 @@ export async function runMultiRunMnist(
     timeoutMinutes,
     runIndex: state.nextRunIndex,
     seedCreatureExport: state.creatureExport,
-    hiddenReluSeed: !resumed &&
-      (options.hiddenReluSeed === true || mnistFlags.hiddenSeed),
     ...options.evolveOverrides,
   };
 
@@ -968,7 +1059,7 @@ if (import.meta.main) {
   // `.bin` file consumed by `Creature.evolveDir`.
   const binDir = BIN_TRAIN_DIR;
   ensureDirSync(binDir);
-  const binPath = join(binDir, "mnist_train.bin");
+  const binPath = join(binDir, TRAIN_BIN_FILENAME);
   writeMnistTrainingBin(trainSamples, binPath);
   console.log(
     `📦 Wrote ${trainSamples.length}-record training set to ${binPath}` +
@@ -977,17 +1068,9 @@ if (import.meta.main) {
 
   // Stage 2 — multi-run flag parsing + evolve.
   const flags = parseMultiRunFlags(Deno.args);
-  const mnistFlags = parseMnistRunnerFlags(Deno.args);
   assertNoTargetErrorCliOverride(Deno.args);
   if (flags.fresh) {
     console.log("🧹 --fresh: wiping prior multi-run state.");
-  }
-  if (mnistFlags.hiddenSeed) {
-    const layerSizes = resolveMnistHiddenLayerSizes();
-    console.log(
-      `🧠 --hidden-seed: first run uses layered Creature seed ` +
-        `(${layerSizes.join(" → ")}) instead of minimal noise.`,
-    );
   }
   const targetError = DEFAULT_MULTI_RUN_TARGET_ERROR;
   const timeoutMinutes = flags.timeoutMinutes ?? DEFAULT_MULTI_RUN_TIMEOUT_MINUTES;
@@ -1001,11 +1084,15 @@ if (import.meta.main) {
   const multi = await runMultiRunMnist({
     dataDir: binDir,
     baseDir: quickBaseDir,
-    hiddenReluSeed: mnistFlags.hiddenSeed,
     evolveOverrides: quick
       ? {
         testCaps: { maxGenerations: 2, populationSize: 4, disableGenerationLog: true },
         timeoutMinutes: 0,
+        // CI quick mode substitutes a minimal direct-only seed so the
+        // factory-derived hidden layer (≈89 neurons, ~70 k synapses) does
+        // not blow the per-section wall-clock budget; the factory itself
+        // is covered by the unit tests in `mnist_classification_test.ts`.
+        freshSeedExport: new Creature(FEATURE_COUNT, CLASS_COUNT).exportJSON(),
       }
       : undefined,
   });
@@ -1013,9 +1100,16 @@ if (import.meta.main) {
 
   if (multi.resumed) {
     console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
+  } else if (quick) {
+    console.log(
+      `🌱 Fresh start — run ${multi.runIndex} begins from the minimal ` +
+        `new Creature(${FEATURE_COUNT}, ${CLASS_COUNT}) seed (quick-mode bypass).`,
+    );
   } else {
-    const seedKind = mnistFlags.hiddenSeed ? "layered Creature seed" : "random noise";
-    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from ${seedKind}.`);
+    console.log(
+      `🌱 Fresh start — run ${multi.runIndex} begins from the data-derived ` +
+        `NEAT-AI factory seed (Creature.forDataset, cost=${MNIST_FACTORY_COST}).`,
+    );
   }
 
   console.log(

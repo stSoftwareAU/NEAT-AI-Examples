@@ -19,10 +19,16 @@ import { Creature } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
-import { buildSamples, splitChronologically } from "./data.ts";
+import {
+  buildSamples,
+  computeNormalizationStats,
+  normalizeSamples,
+  splitChronologically,
+} from "./data.ts";
 import {
   balancedDirectionalAccuracy,
   buildRandomSeedCreature,
+  buildSeedCreature,
   classifyGlyph,
   cumulativeStrategyReturn,
   DEFAULT_EVOLVE_OPTIONS,
@@ -33,6 +39,7 @@ import {
   INPUT_COUNT,
   OUTPUT_COUNT,
   predictionFromOutput,
+  readTrainingRecords,
   replayController,
   runMultiRunStock,
   WINDOW_SIZE,
@@ -94,6 +101,148 @@ Deno.test("buildRandomSeedCreature produces a valid creature with finite outputs
   const out = creature.activate(Float32Array.from(new Array(WINDOW_SIZE).fill(0)));
   assertEquals(out.length, OUTPUT_COUNT);
   assert(Number.isFinite(out[0]));
+});
+
+/* ------------------------------------------------------------------ */
+/*  Factory seed (issue #519)                                          */
+/* ------------------------------------------------------------------ */
+
+/** Synthetic factory records: `windowSize` features + one regression target. */
+function syntheticRecords(
+  count: number,
+  windowSize: number,
+): { input: Float32Array; output: Float32Array }[] {
+  const recs: { input: Float32Array; output: Float32Array }[] = [];
+  for (let i = 0; i < count; i++) {
+    const input = new Float32Array(windowSize);
+    for (let j = 0; j < windowSize; j++) input[j] = Math.sin(i * 0.2 + j) * 0.02;
+    // Up-skewed target mean (~0.66) so the bias warm-start is observable.
+    recs.push({ input, output: Float32Array.from([i % 3 === 0 ? 0 : 1]) });
+  }
+  return recs;
+}
+
+Deno.test("buildSeedCreature builds a factory seed with the right arity", () => {
+  const json = buildSeedCreature(syntheticRecords(140, WINDOW_SIZE), 12345, WINDOW_SIZE);
+  assertEquals(json.input, INPUT_COUNT);
+  assertEquals(json.output, OUTPUT_COUNT);
+});
+
+Deno.test("buildSeedCreature sizes a data-derived hidden capacity budget", () => {
+  // Unlike the bare `new Creature(...)` seed (zero hidden), the factory
+  // derives a conservative hidden-layer budget from the problem shape.
+  const json = buildSeedCreature(syntheticRecords(140, WINDOW_SIZE), 7, WINDOW_SIZE);
+  const hidden = json.neurons.filter((n) => n.type === "hidden");
+  assertGreater(hidden.length, 0, "factory seed must pre-size a hidden layer");
+});
+
+Deno.test("buildSeedCreature picks a linear (regression) output activation", () => {
+  const json = buildSeedCreature(syntheticRecords(140, WINDOW_SIZE), 5, WINDOW_SIZE);
+  const outputs = json.neurons.filter((n) => n.type === "output");
+  assertEquals(outputs.length, OUTPUT_COUNT);
+  for (const out of outputs) {
+    assertEquals(out.squash, "IDENTITY", "regression cost ⇒ linear output");
+  }
+});
+
+Deno.test("buildSeedCreature warm-starts the output bias to the target mean", () => {
+  const records = syntheticRecords(150, WINDOW_SIZE);
+  let sum = 0;
+  for (const r of records) sum += r.output[0];
+  const mean = sum / records.length;
+  const json = buildSeedCreature(records, 3, WINDOW_SIZE);
+  const out = json.neurons.find((n) => n.type === "output");
+  assert(out !== undefined);
+  assertAlmostEquals(out!.bias ?? 0, mean, 1e-3, "output bias should equal the target mean");
+});
+
+Deno.test("buildSeedCreature is deterministic (weights/biases) for a given seed", () => {
+  // The factory mints fresh random UUIDs for hidden neurons, so full
+  // JSON equality is too strict. The meaningful invariant is that the
+  // learnable parameters (topology shape, biases, squashes, weights) are
+  // identical for a fixed seed.
+  const records = syntheticRecords(120, WINDOW_SIZE);
+  const fingerprint = (json: ReturnType<typeof buildSeedCreature>) => ({
+    neurons: json.neurons.map((n) => `${n.type}:${n.squash}:${n.bias}`),
+    weights: json.synapses.map((s) => s.weight),
+  });
+  const a = fingerprint(buildSeedCreature(records, 4242, WINDOW_SIZE));
+  const b = fingerprint(buildSeedCreature(records, 4242, WINDOW_SIZE));
+  assertEquals(a, b);
+});
+
+Deno.test("buildSeedCreature produces a valid creature with finite outputs", () => {
+  const creature = Creature.fromJSON(
+    buildSeedCreature(syntheticRecords(120, WINDOW_SIZE), 7, WINDOW_SIZE),
+  );
+  creature.validate();
+  creature.clearState();
+  const out = creature.activate(Float32Array.from(new Array(WINDOW_SIZE).fill(0)));
+  assertEquals(out.length, OUTPUT_COUNT);
+  assert(Number.isFinite(out[0]));
+});
+
+Deno.test("buildSeedCreature throws on an empty record set", () => {
+  let threw = false;
+  try {
+    buildSeedCreature([], 1, WINDOW_SIZE);
+  } catch (_err) {
+    threw = true;
+  }
+  assert(threw, "expected an error for empty records");
+});
+
+Deno.test("readTrainingRecords round-trips a written .bin into factory records", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "stock_records_" });
+  try {
+    const prices = syntheticPrices(80, 7);
+    const samples = buildSamples(prices, { windowSize: 5 });
+    const stats = computeNormalizationStats(samples);
+    const normalized = normalizeSamples(samples, stats);
+    writeStockTrainingDataset(normalized, tmp, 5);
+    const records = readTrainingRecords(tmp, 5);
+    assertEquals(records.length, normalized.length);
+    for (let i = 0; i < records.length; i++) {
+      assertEquals(records[i].input.length, 5);
+      assertEquals(records[i].output.length, OUTPUT_COUNT);
+      for (let j = 0; j < 5; j++) {
+        assertAlmostEquals(records[i].input[j], normalized[i].features[j], 1e-6);
+      }
+      assertAlmostEquals(records[i].output[0], normalized[i].label, 1e-6);
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("evolveStockController seeds via the factory when not resuming", async () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "stock_factory_seed_" });
+  try {
+    const prices = syntheticPrices(200, 5);
+    const samples = buildSamples(prices, { windowSize: 5 });
+    const split = splitChronologically(samples, {
+      trainFraction: 0.7,
+      validationFraction: 0.15,
+    });
+    const stats = computeNormalizationStats(split.train);
+    writeStockTrainingDataset(normalizeSamples(split.train, stats), tmp, 5);
+    const result = await evolveStockController({
+      ...DEFAULT_EVOLVE_OPTIONS,
+      windowSize: 5,
+      seed: 1,
+      populationSize: 4,
+      maxGenerations: 2,
+      errorThreshold: 0,
+      timeoutMinutes: 0,
+      dataDir: tmp,
+    });
+    // The factory seed carries a pre-sized hidden layer, so it has more
+    // than the single output neuron a bare `new Creature(5, 1)` would.
+    assertGreater(result.seedNeurons, OUTPUT_COUNT);
+    assertGreater(result.seedSynapses, 0);
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
 });
 
 Deno.test("writeStockTrainingDataset writes one record per sample", () => {

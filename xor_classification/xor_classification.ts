@@ -4,16 +4,18 @@
  * Evolves a NEAT-AI creature to learn the XOR truth table — the
  * canonical "Hello World" of neuroevolution.
  *
- * 🌱 **Generation 1 starts from random noise (when no prior champion
- * exists).** The initial creature is built by the NEAT-AI library's
- * uniform-random `new Creature(2, 1)` constructor — direct input → output
- * synapses with random weights and a random output bias drawn from the
- * seeded global PRNG. **No topology, weights, or biases are
- * hand-specified by this example.** Structural mutation (add-neuron,
+ * 🌱 **Generation 1 is built by the NEAT-AI factory (issue #520; when no
+ * prior champion exists).** The fresh-run creature is minted by
+ * `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` instead
+ * of a bare `new Creature(2, 1)`. XOR is the ideal smoke-test that the
+ * factory produces a valid seed: the classification cost couples the
+ * output to a LOGISTIC activation, and the factory pre-sizes a small RELU
+ * hidden layer with He/Xavier-scaled random weights. **No weights or
+ * biases are hand-specified by this example** — every parameter is drawn
+ * from the seeded global PRNG. Structural mutation (add-neuron,
  * add-synapse, weight tuning) is delegated to the NEAT-AI library via
- * `creature.evolveDir(...)`. XOR is not linearly separable, so the random
- * direct-only seed cannot solve the task — NEAT must invent at least one
- * hidden neuron to succeed.
+ * `creature.evolveDir(...)`, whose configuration is unchanged, so
+ * evolution behaves exactly as before.
  *
  * Under #326 the runner gained the multi-run idiom (issues #318, #319,
  * #320): with no prior state it behaves like a single random-noise run;
@@ -31,6 +33,7 @@ import {
   createSeededRng,
   Creature,
   type CreatureExport,
+  type DatasetFactoryOptions,
   type NeatOptions,
   safeWriteJson,
   setRandomNumberGenerator,
@@ -53,6 +56,19 @@ export const INPUT_COUNT = 2;
 
 /** Number of outputs. */
 export const OUTPUT_COUNT = 1;
+
+/**
+ * Cost / task name handed to the NEAT-AI factory ({@link Creature.forDataset})
+ * when building the seed creature (issue #520). XOR is a binary
+ * classification with `{0, 1}` targets, so `BINARY_CROSS_ENTROPY` couples
+ * the output activation to a **LOGISTIC** sigmoid (NEAT-AI #2793) — the
+ * exact activation this example's `>= 0.5` threshold interface assumes.
+ *
+ * The cost drives only the *seed*; `evolveDir` itself is left on its
+ * default MSE scoring (the runner never sets `NeatOptions.costName`), so
+ * evolution behaves exactly as it did before the factory was adopted.
+ */
+export const CLASSIFICATION_COST = "BINARY_CROSS_ENTROPY";
 
 /** A single XOR sample: two binary inputs and the expected output. */
 export interface XorSample {
@@ -116,9 +132,8 @@ export interface EvolveOptions {
    * Optional pre-seeded creature export, used by the multi-run resume
    * flow to continue evolution from a prior champion. When supplied, the
    * evolveDir seed is built via {@link Creature.fromJSON} instead of the
-   * uniform-random {@link buildRandomSeedCreature}. When absent the
-   * first generation starts from random noise (the default for a
-   * `--fresh` run).
+   * factory {@link buildSeedCreature}. When absent the first generation
+   * starts from the factory seed (the default for a `--fresh` run).
    */
   seedCreatureExport?: CreatureExport;
 }
@@ -193,8 +208,10 @@ export const DEFAULT_MULTI_RUN_TIMEOUT_MINUTES = 5;
 export const DECISION_BOUNDARY_GRID = 40;
 
 /**
- * Build a uniform-random NEAT seed creature. Seeds the library's global
- * PRNG with {@link createSeededRng} and then defers to
+ * Build a uniform-random NEAT seed creature — the bare `new Creature(...)`
+ * baseline, **retained for fixtures and tests** after the fresh-run seed
+ * moved to the factory ({@link buildSeedCreature}, issue #520). Seeds the
+ * library's global PRNG with {@link createSeededRng} and then defers to
  * `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, the library's uniform-random
  * constructor — every weight, bias, and synapse is drawn from the
  * seeded PRNG. No topology, weight, or bias is hand-specified by this
@@ -218,6 +235,56 @@ export function buildRandomSeedCreature(seed: number): CreatureExport {
     if (neuron.type === "output") neuron.squash = "LOGISTIC";
   }
   return json;
+}
+
+/** A single factory training record: an input vector plus its target. */
+export type FactoryRecords = Parameters<typeof Creature.forDataset>[0];
+
+/**
+ * Convert the fixed XOR truth table ({@link xorSamples}) into the
+ * `{ input, output }` record shape the NEAT-AI factory scans. This is the
+ * exact data `evolveDir` trains on, so the factory derives its seed from
+ * the same four samples the evolution loop sees.
+ */
+export function xorFactoryRecords(): FactoryRecords {
+  return xorSamples().map(({ inputs, target }) => ({
+    input: Float32Array.from([inputs[0], inputs[1]]),
+    output: Float32Array.from([target]),
+  }));
+}
+
+/**
+ * Build the **factory seed creature** via the NEAT-AI factory
+ * ({@link Creature.forDataset}) instead of a bare `new Creature(...)`
+ * (issue #520). XOR is a tiny, deterministic problem, so it is the ideal
+ * smoke-test that the factory produces a valid, well-initialised seed:
+ *
+ * - picks a **LOGISTIC output** activation from the classification cost
+ *   ({@link CLASSIFICATION_COST}) — the activation the `>= 0.5` threshold
+ *   interface and `{0, 1}` MSE both assume;
+ * - sizes a **conservative hidden-capacity budget** from the problem
+ *   shape (Heaton's rule → a small RELU hidden layer);
+ * - scales the random weights to the **per-activation init stddev**
+ *   (He/Xavier), so the forward pass neither saturates nor vanishes.
+ *
+ * The library's global PRNG is reseeded via {@link createSeededRng} so a
+ * given `seed` produces a deterministic seed creature. Every weight and
+ * bias is still drawn from that PRNG — the factory chooses the topology
+ * and scaling, never hand-crafted parameters. The cost shapes only the
+ * seed; the runner leaves `evolveDir` on its default MSE scoring so
+ * evolution is untouched.
+ *
+ * This is a milestone-sanctioned departure from the project-wide
+ * no-warm-starts policy, made under the factory-adoption tracker
+ * (issue #517).
+ */
+export function buildSeedCreature(records: FactoryRecords, seed: number): CreatureExport {
+  if (records.length === 0) {
+    throw new Error("buildSeedCreature: records must not be empty");
+  }
+  setRandomNumberGenerator(createSeededRng(seed));
+  const options: DatasetFactoryOptions = { cost: CLASSIFICATION_COST };
+  return Creature.forDataset(records, options).exportJSON();
 }
 
 /**
@@ -279,11 +346,11 @@ export function correctCount(creature: Creature): number {
 /**
  * Run NEAT structural evolution to learn XOR.
  *
- * The runner builds the **uniform-random seed creature** via
- * {@link buildRandomSeedCreature} (no hidden neurons, random weights and
- * output bias from the seeded PRNG) when no `seedCreatureExport` is
- * supplied, or rebuilds the prior champion from its export to resume.
- * Structural mutation is delegated to the library via
+ * The runner builds the fresh **factory seed creature** via
+ * {@link buildSeedCreature} (cost-derived LOGISTIC output, a small RELU
+ * hidden layer, He/Xavier-scaled random weights) when no
+ * `seedCreatureExport` is supplied, or rebuilds the prior champion from
+ * its export to resume. Structural mutation is delegated to the library via
  * `creature.evolveDir` — add-neuron, add-synapse and weight perturbation
  * are all driven by the NEAT primitives, not by the example.
  *
@@ -306,11 +373,12 @@ export async function evolveXorController(
     if (ownDataDir) writeXorDataset(dataDir);
 
     // When `seedCreatureExport` is supplied (multi-run resume), rebuild
-    // the prior champion. Otherwise fall back to the uniform-random
-    // minimal seed.
+    // the prior champion. Otherwise build the fresh seed via the NEAT-AI
+    // factory (issue #520) so the gen-1 creature carries a cost-derived
+    // LOGISTIC output and a sane hidden-capacity budget.
     const creature = options.seedCreatureExport !== undefined
       ? Creature.fromJSON(options.seedCreatureExport)
-      : Creature.fromJSON(buildRandomSeedCreature(options.seed));
+      : Creature.fromJSON(buildSeedCreature(xorFactoryRecords(), options.seed));
     const seedNeurons = creature.neurons.length;
     const seedSynapses = creature.synapses.length;
 
@@ -540,7 +608,7 @@ if (import.meta.main) {
   if (multi.resumed) {
     console.log(`🔁 Resumed from prior champion (run ${multi.runIndex}).`);
   } else {
-    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from random noise.`);
+    console.log(`🌱 Fresh start — run ${multi.runIndex} begins from the factory seed.`);
   }
 
   console.log(

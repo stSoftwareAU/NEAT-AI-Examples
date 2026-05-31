@@ -47,16 +47,20 @@ import {
 import {
   assertNoTargetErrorCliOverride,
   buildGridCells,
-  buildMnistHiddenReluSeed,
+  buildMnistFactorySeed,
   classificationAccuracy,
   confusionMatrix,
   evolveResultToMultiRunSample,
   formatGenerationLogLine,
   inferStopCondition,
   MNIST_EVOLVE_COST_NAME,
+  MNIST_FACTORY_COST,
   type MnistRunSummary,
   pickGridSamples,
   predict,
+  readMnistTrainingRecords,
+  shouldDisableDiscovery,
+  TRAIN_BIN_FILENAME,
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
@@ -118,12 +122,26 @@ Deno.test("formatGenerationLogLine writes one TSV row per generation", () => {
 });
 
 Deno.test("MNIST_EVOLVE_COST_NAME is registered in NEAT-AI", () => {
-  assertEquals(MNIST_EVOLVE_COST_NAME, "CATEGORICAL_ERROR");
+  // Issue #523: switched from CATEGORICAL_ERROR (non-differentiable
+  // 1 − argmax accuracy) to CROSS_ENTROPY (softmax + cross-entropy), the
+  // standard training cost for multi-class classification. Argmax
+  // accuracy is still reported separately via classificationAccuracy /
+  // confusionMatrix — it just no longer drives selection.
+  assertEquals(MNIST_EVOLVE_COST_NAME, "CROSS_ENTROPY");
   assertEquals(Costs.getAvailableCosts().includes(MNIST_EVOLVE_COST_NAME), true);
+  // Cross-entropy must discriminate: a near-correct softmax distribution
+  // must score lower (better) than a uniform one for the same target.
   const target = new Float32Array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
-  const zeros = new Float32Array(10);
+  const uniform = new Float32Array(10).fill(0.1);
+  const closeToTarget = Float32Array.from(
+    [0.01, 0.01, 0.91, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+  );
   const cost = Costs.find(MNIST_EVOLVE_COST_NAME);
-  assertEquals(cost.calculate(target, zeros), 1);
+  const uniformLoss = cost.calculate(target, uniform);
+  const closeLoss = cost.calculate(target, closeToTarget);
+  assert(Number.isFinite(uniformLoss) && uniformLoss > 0);
+  assert(Number.isFinite(closeLoss) && closeLoss >= 0);
+  assert(closeLoss < uniformLoss, `expected close (${closeLoss}) < uniform (${uniformLoss})`);
 });
 
 Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
@@ -131,22 +149,92 @@ Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
   assertEquals(FEATURE_COUNT, IMAGE_SIZE * IMAGE_SIZE);
 });
 
-Deno.test("buildMnistHiddenReluSeed returns a layered creature with MNIST I/O and ReLU hiddens", () => {
-  const creature = buildMnistHiddenReluSeed();
-  assertEquals(creature.input, FEATURE_COUNT);
-  assertEquals(creature.output, CLASS_COUNT);
-  assertEquals(creature.neurons.length, FEATURE_COUNT + 128 + 64 + CLASS_COUNT);
-  const hidden = creature.neurons.slice(FEATURE_COUNT, -CLASS_COUNT);
-  assertGreater(hidden.length, 0);
-  for (const neuron of hidden) {
-    assertEquals(neuron.squash, "ReLU");
+Deno.test("MNIST_FACTORY_COST matches the evolveDir cost name", () => {
+  // Factory must scan with the same cost evolveDir later scores against
+  // so the cost-derived output activation (SOFTMAX for CROSS_ENTROPY in
+  // multi-class classification) is the one the run actually uses
+  // (issues #518, #523).
+  assertEquals(MNIST_FACTORY_COST, MNIST_EVOLVE_COST_NAME);
+});
+
+Deno.test("buildMnistFactorySeed produces a MNIST-shaped creature with SOFTMAX outputs", () => {
+  // Issue #518: drop the hardcoded [128, 64] hidden seed and build the
+  // initial creature via Creature.forDataset. The factory:
+  //   - couples the output activation to the cost (SOFTMAX from
+  //     CROSS_ENTROPY for multi-class classification — issue #523);
+  //   - sizes a hidden layer from the (784, 10) shape — far smaller than
+  //     the legacy [128, 64];
+  //   - prunes synapses leaving constant-variance input pixels.
+  // Build a tiny synthetic dataset (per-class distinct patterns) so the
+  // scan can see real variance; the factory only needs `input.length` =
+  // FEATURE_COUNT and `output.length` = CLASS_COUNT.
+  const samples: DigitSample[] = [];
+  for (let c = 0; c < CLASS_COUNT; c++) {
+    const features = new Array<number>(FEATURE_COUNT).fill(0).map((_, j) =>
+      ((j + c * 7) % 13) / 13
+    );
+    samples.push({ index: c, label: c, features, pixels: [] });
+  }
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-factory-" });
+  try {
+    const path = join(tmp, TRAIN_BIN_FILENAME);
+    writeMnistTrainingBin(samples, path);
+    const records = readMnistTrainingRecords(tmp);
+    assertEquals(records.length, samples.length);
+    assertEquals(records[0].input.length, FEATURE_COUNT);
+    assertEquals(records[0].output.length, CLASS_COUNT);
+
+    const seed = buildMnistFactorySeed(records);
+    assertEquals(seed.input, FEATURE_COUNT);
+    assertEquals(seed.output, CLASS_COUNT);
+    // The factory must size hiddens from (784, 10), not the legacy
+    // [128, 64] lookup. The geometric-mean rule picks ≈ √(784·10) ≈ 89,
+    // so the hidden count is well under the legacy 128+64=192 floor.
+    assertGreater(seed.neurons.length, FEATURE_COUNT + CLASS_COUNT);
+    assert(
+      seed.neurons.length < FEATURE_COUNT + 192 + CLASS_COUNT,
+      `factory seed should be smaller than the legacy [128,64] (≤${
+        FEATURE_COUNT + 192 + CLASS_COUNT
+      }), got ${seed.neurons.length}`,
+    );
+    // Multi-class classification cost (CROSS_ENTROPY, ≥ 2 outputs) ⇒
+    // SOFTMAX output activation (issue #523).
+    const outputs = seed.neurons.filter((n) => n.type === "output");
+    assertEquals(outputs.length, CLASS_COUNT);
+    for (const o of outputs) {
+      assertEquals(o.squash, "SOFTMAX");
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("buildMnistFactorySeed rejects an empty record list", () => {
+  assertThrows(
+    () => buildMnistFactorySeed([]),
+    Error,
+    "must not be empty",
+  );
+});
+
+Deno.test("readMnistTrainingRecords rejects an empty file", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "mnist-empty-" });
+  try {
+    Deno.writeFileSync(join(tmp, TRAIN_BIN_FILENAME), new Uint8Array(0));
+    assertThrows(
+      () => readMnistTrainingRecords(tmp),
+      Error,
+      "no records found",
+    );
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
   }
 });
 
 Deno.test(
   "evolveResultToMultiRunSample maps evolve result fields onto the milestone shape",
   () => {
-    const champion = buildMnistHiddenReluSeed([8]);
+    const champion = new Creature(FEATURE_COUNT, CLASS_COUNT);
     const result = {
       champion,
       bestError: 0.75,
@@ -166,8 +254,15 @@ Deno.test(
   },
 );
 
-Deno.test("evolveResultToMultiRunSample clamps error into [0, 1]", () => {
-  const champion = buildMnistHiddenReluSeed([8]);
+Deno.test("evolveResultToMultiRunSample floors error at 0 but preserves cross-entropy values > 1", () => {
+  // Issue #523: under CROSS_ENTROPY the error is the mean cross-entropy
+  // in nats — non-negative but unbounded above (a uniform-prediction
+  // 10-class baseline is ≈ ln(10) ≈ 2.30). The legacy [0, 1] cap suited
+  // CATEGORICAL_ERROR (a misclassification rate); under cross-entropy
+  // it would silently flatten the early-evolution part of the curve, so
+  // we keep the lower floor at 0 (to swallow scorer noise) and let
+  // larger values through.
+  const champion = new Creature(FEATURE_COUNT, CLASS_COUNT);
   const base = {
     champion,
     bestScore: 0.25,
@@ -177,7 +272,7 @@ Deno.test("evolveResultToMultiRunSample clamps error into [0, 1]", () => {
     seedSynapses: champion.synapses.length,
   };
   assertEquals(evolveResultToMultiRunSample({ ...base, bestError: -0.2 }).error, 0);
-  assertEquals(evolveResultToMultiRunSample({ ...base, bestError: 1.5 }).error, 1);
+  assertEquals(evolveResultToMultiRunSample({ ...base, bestError: 2.3 }).error, 2.3);
 });
 
 Deno.test("parseIdxImages parses synthetic header and body", () => {
@@ -588,6 +683,27 @@ Deno.test("writeMnistTrainingBin rejects feature vectors of the wrong length", (
   }
 });
 
+Deno.test("shouldDisableDiscovery keeps Discovery ON for a normal run regardless of timeout", () => {
+  // Regression for #516: a real run with no wall-clock backstop
+  // (timeoutMinutes: 0) must NOT disable structural Discovery.
+  assertEquals(shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 0 }), false);
+  // A real run with a positive timeout also keeps Discovery on.
+  assertEquals(shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 5 }), false);
+});
+
+Deno.test("shouldDisableDiscovery disables Discovery only on the unit-test path", () => {
+  // testCaps marks the FFI-sanitiser-constrained unit-test path: the only
+  // place Discovery is legitimately switched off.
+  assertEquals(
+    shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 0, testCaps: {} }),
+    true,
+  );
+  assertEquals(
+    shouldDisableDiscovery({ dataDir: ".", timeoutMinutes: 5, testCaps: { populationSize: 4 } }),
+    true,
+  );
+});
+
 Deno.test("inferStopCondition reports timeoutMinutes when wall-clock fills the budget", () => {
   // 10-minute budget, used 9 m 35 s ≈ 95 % of the budget → timeoutMinutes.
   assertEquals(inferStopCondition(575_000, 10), "timeoutMinutes");
@@ -677,6 +793,28 @@ Deno.test("README embeds the multi-run charts and drops the legacy evolution_sum
   assert(
     !readme.includes("tracked in #273"),
     'README must no longer reference the "tracked in #273" deferred placeholder',
+  );
+});
+
+Deno.test("top-level README MNIST entries match the real 784 / 28×28 code (Issue #515)", () => {
+  const readme = Deno.readTextFileSync("README.md");
+  // Stale wording from when MNIST used a 14×14 down-sample must be gone.
+  assert(
+    !readme.includes("196 → 10"),
+    "top-level README must not describe MNIST as a 196 → 10 classifier",
+  );
+  assert(
+    !readme.includes("14×14 down-sample"),
+    "top-level README must not describe MNIST as a 14×14 down-sample",
+  );
+  // The corrected wording must reflect the real 784 / 28×28 full-resolution input.
+  assert(
+    readme.includes("784"),
+    "top-level README MNIST entry must reference the real 784 input features",
+  );
+  assert(
+    readme.includes("28×28"),
+    "top-level README MNIST entry must reference the native 28×28 input",
   );
 });
 

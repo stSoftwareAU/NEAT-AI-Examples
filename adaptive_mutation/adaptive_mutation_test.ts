@@ -61,8 +61,11 @@ const SMALL_CONFIG: AdaptiveMutationConfig = {
   // high enough that the returned generation count comfortably lands
   // inside [1, maxIterations] without slowing the test budget.
   maxIterations: 20,
-  mutationRate: 0.6,
-  mutationAmount: 3,
+  // Keep the tiny test run numerically stable under `deno test --parallel`:
+  // highly aggressive mutation settings can occasionally produce
+  // non-finite per-creature scores inside NEAT-AI fine-tuning.
+  mutationRate: 0.35,
+  mutationAmount: 1,
 };
 
 Deno.test("module exports the rewired classification task metadata", () => {

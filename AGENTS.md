@@ -61,8 +61,20 @@ These examples exist to demonstrate evolution from noise → competent and must 
 - `xor_classification`
 - `cart_pole`
 - `snake_game`
-- `mnist_classification`
-- `stock_market`
+- `mnist_classification` — **exception (issue #518, factory-adoption tracker #517):** the fresh-run
+  seed is built via the data-derived `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })`
+  factory (SOFTMAX outputs, factory-sized hidden layer, dead-pixel pruning) rather than uniform-
+  random noise or the legacy `[128, 64]` hidden lookup. Adopting the factory _is_ the demonstration;
+  structural growth beyond the seed still comes purely from `evolveDir`'s mutation operators. The
+  `evolveDir` configuration is unchanged. The training/selection cost was switched from
+  `CATEGORICAL_ERROR` (non-differentiable `1 − argmax accuracy`, removed upstream in NEAT-AI #2798)
+  to `CROSS_ENTROPY` (softmax + cross-entropy) under issue #523; top-1 argmax accuracy is still
+  reported but no longer drives evolution.
+- `stock_market` — **exception (issue #519, factory-adoption tracker #517):** the fresh-run seed is
+  built via the data-derived `Creature.forDataset(...)` factory (linear output, target-mean bias,
+  data-derived hidden capacity) rather than uniform-random noise. Adopting the factory _is_ the
+  demonstration; structural growth beyond the seed still comes purely from `evolveDir`'s mutation
+  operators. The `evolveDir` configuration is unchanged.
 - `lunar_lander`
 - `mountain_car`
 - `maze_navigation`
@@ -106,6 +118,20 @@ the [Testing Philosophy](#-testing-philosophy) above.
 
 If you are adding or modifying an in-scope example, confirm in the PR description that the first
 generation is initialised from uniform-random noise.
+
+### Milestone-sanctioned exception — NEAT-AI factory adoption (#517)
+
+The factory-adoption tracker ([#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517))
+deliberately departs from the no-warm-start policy: examples migrated to
+`Creature.forDataset(records, { cost })` (or the Tier-0
+`Creature.forProblem({ inputs, outputs, cost })` sibling) have a factory-derived topology and
+weight-init scaling before evolution begins, instead of a bare `new Creature(input, output)`.
+
+Seed weights and biases remain random — only topology and scaling are factory-derived — and all
+structural growth beyond the seed still comes from the unchanged mutation operators. Every
+factory-adoption PR must call out the deliberate departure in its summary. See
+[`docs/factory_adoption.md`](docs/factory_adoption.md) for the per-example adoption status and the
+group-by-group decisions for supervised (A), RL/control (B), and mechanic-demo (C) examples.
 
 ## ⚡ Unit Tests vs Benchmarks
 
@@ -260,6 +286,8 @@ common/
   multi_run_error_chart_test.ts    — Unit tests for the multi-run error chart renderer
   multi_run_complexity_chart.ts    — SVG renderer: neurons + synapses vs cumulative generations across runs
   multi_run_complexity_chart_test.ts — Unit tests for the multi-run complexity chart renderer
+  multi_run_boundary_thinning.ts   — Shared run-boundary label/tick thinning policy for both renderers
+  multi_run_boundary_thinning_test.ts — Unit tests for the boundary thinning policy
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)

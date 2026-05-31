@@ -5,9 +5,12 @@
  * and mutate NEAT-AI global WASM state. `quality.sh` and CI run this file
  * in isolated processes after the parallel unit-test pass.
  *
- * GitHub Actions runners are CPU-only (no GPU). Tests pass
- * `timeoutMinutes: 0` and `discoverySampleRate: -1` (via testCaps) so
- * evolveDir never schedules Discovery.
+ * Tests set `testCaps`, which forces `discoverySampleRate: -1` so evolveDir
+ * never schedules structural Discovery — Discovery's FFI cleanup machinery
+ * trips Deno's `--allow-ffi` leak sanitiser inside `deno test` (issue #516).
+ * They separately pass `timeoutMinutes: 0` to skip the wall-clock backstop
+ * (also an FFI-sanitiser concern); the two are independent — only `testCaps`
+ * disables Discovery, so real runs keep it on.
  *
  * "What" tests only — each case calls the public API and asserts on returned
  * values, persisted state, and written artefacts. Evolution is stochastic, so
@@ -122,7 +125,7 @@ const EVOLVE_DIR_TEST_CAPS = {
  *
  * Resume passes `previousFittest` into NEAT-AI. Seed run-1 via a real
  * `evolveMnistClassifier` pass so the persisted champion has finite
- * CATEGORICAL_ERROR scores after JSON round-trip (a hand-built export alone
+ * CROSS_ENTROPY scores after JSON round-trip (a hand-built export alone
  * can yield falsy elitist scores on tiny synthetic data — #509).
  */
 const EVOLVE_DIR_RESUME_CAPS = {
@@ -137,12 +140,20 @@ const EVOLVE_DIR_TEST_SAMPLES_PER_CLASS = 5;
 const EVOLVE_DIR_MAX_ATTEMPTS = 5;
 const EVOLVE_DIR_BASE_SEED = 424242;
 
+/**
+ * Unit-test fresh seed (issue #518). Tests substitute a minimal
+ * `new Creature(784, 10)` for the factory's data-scan seed so the
+ * synthetic IDX fixture does not need to satisfy the factory's hidden-
+ * capacity heuristics, and so memory stays low on CPU-only GitHub
+ * Actions runners (#502). The factory itself is covered by the unit
+ * tests in `mnist_classification_test.ts`.
+ */
+const TEST_FRESH_SEED_EXPORT = new Creature(FEATURE_COUNT, CLASS_COUNT).exportJSON();
+
 const EVOLVE_DIR_TEST_OVERRIDES = {
   testCaps: { ...EVOLVE_DIR_TEST_CAPS, seed: EVOLVE_DIR_BASE_SEED },
   timeoutMinutes: 0,
-  // Use the simple linear seed (784→10) rather than the hidden-ReLU seed
-  // to avoid WASM memory pressure on CPU-only GitHub Actions runners (#502).
-  hiddenReluSeed: false,
+  freshSeedExport: TEST_FRESH_SEED_EXPORT,
 } as const;
 
 const EVOLVE_DIR_FRESH_OPTIONS = {
@@ -185,7 +196,14 @@ async function evolveMnistClassifierWithRetry(
 async function runMultiRunMnistWithRetry(
   options: Parameters<typeof runMultiRunMnist>[0],
   prepareState?: () => Promise<void>,
-  capsForAttempt: (attempt: number) => { maxGenerations?: number; populationSize?: number; disableGenerationLog?: boolean; seed?: number } = testCapsForAttempt,
+  capsForAttempt: (
+    attempt: number,
+  ) => {
+    maxGenerations?: number;
+    populationSize?: number;
+    disableGenerationLog?: boolean;
+    seed?: number;
+  } = testCapsForAttempt,
   maxAttempts = EVOLVE_DIR_MAX_ATTEMPTS,
 ) {
   let lastError: unknown;
@@ -213,8 +231,11 @@ function assertValidEvolveResult(
 ): void {
   assert(Number.isFinite(result.bestError));
   assert(Number.isFinite(result.bestScore));
+  // CROSS_ENTROPY (issue #523) is non-negative but unbounded above —
+  // a random 10-class prediction is ≈ ln(10) ≈ 2.30 nats — so we only
+  // assert the non-negativity floor here, not the legacy [0, 1] cap
+  // that suited CATEGORICAL_ERROR's misclassification rate.
   assertGreaterOrEqual(result.bestError, 0);
-  assertGreaterOrEqual(1, result.bestError);
   assert(Number.isFinite(result.wallClockMs));
   assertGreaterOrEqual(result.wallClockMs, 0);
   assertGreater(result.seedNeurons, 0);
@@ -239,8 +260,9 @@ Deno.test(
       });
       const sample = evolveResultToMultiRunSample(result);
       assertEquals(sample.runGen, result.generations);
+      // CROSS_ENTROPY is non-negative but unbounded above (issue #523);
+      // only the lower floor is asserted here.
       assertGreaterOrEqual(sample.error, 0);
-      assertGreaterOrEqual(1, sample.error);
       assertEquals(sample.bestScore, result.bestScore);
       assertEquals(sample.neurons, result.champion.neurons.length);
       assertEquals(sample.synapses, result.champion.synapses.length);
@@ -302,19 +324,24 @@ Deno.test({
         await seedResumeState(resumeAttempt);
       };
 
-      const outcome = await runMultiRunMnistWithRetry({
-        dataDir,
-        argv: [],
-        baseDir: tmp,
-        evolveOverrides: {
-          ...EVOLVE_DIR_TEST_OVERRIDES,
-          elitism: 2,
-          testCaps: { ...EVOLVE_DIR_RESUME_CAPS, seed: EVOLVE_DIR_BASE_SEED },
+      const outcome = await runMultiRunMnistWithRetry(
+        {
+          dataDir,
+          argv: [],
+          baseDir: tmp,
+          evolveOverrides: {
+            ...EVOLVE_DIR_TEST_OVERRIDES,
+            elitism: 2,
+            testCaps: { ...EVOLVE_DIR_RESUME_CAPS, seed: EVOLVE_DIR_BASE_SEED },
+          },
         },
-      }, async () => {
-        await prepareResumeState();
-        resumeAttempt++;
-      }, resumeTestCapsForAttempt, EVOLVE_DIR_RESUME_MAX_ATTEMPTS);
+        async () => {
+          await prepareResumeState();
+          resumeAttempt++;
+        },
+        resumeTestCapsForAttempt,
+        EVOLVE_DIR_RESUME_MAX_ATTEMPTS,
+      );
 
       assertEquals(outcome.resumed, true);
       assertEquals(outcome.runIndex, 2);
