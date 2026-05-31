@@ -214,7 +214,8 @@ function assertValidEvolveResult(
   assert(Number.isFinite(result.bestError));
   assert(Number.isFinite(result.bestScore));
   assertGreaterOrEqual(result.bestError, 0);
-  assertGreaterOrEqual(1, result.bestError);
+  // CROSS_ENTROPY loss is non-negative but unbounded above (unlike the old
+  // misclassification-rate cost which sat in [0, 1]), so only assert the lower bound.
   assert(Number.isFinite(result.wallClockMs));
   assertGreaterOrEqual(result.wallClockMs, 0);
   assertGreater(result.seedNeurons, 0);

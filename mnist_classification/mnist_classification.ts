@@ -16,8 +16,8 @@
  * pass `--fresh` when you explicitly want to discard prior progress.
  * `--timeout=<minutes>` overrides the wall-clock backstop per invocation.
  * The early-stop `targetError` is fixed — not exposed on the CLI.
- * Scoring uses NEAT-AI `CATEGORICAL_ERROR` (argmax misclassification rate;
- * `error = 1 − training accuracy`), not MSE on one-hot outputs.
+ * Scoring uses NEAT-AI `CROSS_ENTROPY` (cross-entropy loss on one-hot
+ * outputs), not MSE.
  */
 
 import { format } from "@std/fmt/duration";
@@ -231,13 +231,13 @@ export const MULTI_RUN_ERROR_SVG_PATH = "docs/screenshots/mnist_classification/m
  */
 export const MULTI_RUN_COMPLEXITY_SVG_PATH = "docs/screenshots/mnist_classification/complexity.svg";
 
-/** `costName` passed to every `evolveDir` invocation (NEAT-AI 5.0.30+). */
-export const MNIST_EVOLVE_COST_NAME = "CATEGORICAL_ERROR" as const;
+/** `costName` passed to every `evolveDir` invocation (NEAT-AI 5.3.3+). */
+export const MNIST_EVOLVE_COST_NAME = "CROSS_ENTROPY" as const;
 
 /**
  * Fixed `targetError` passed to every `evolveDir` invocation — with
- * {@link MNIST_EVOLVE_COST_NAME} this is the training-set misclassification
- * rate (`1 − argmax accuracy`). Not overridable from the CLI.
+ * {@link MNIST_EVOLVE_COST_NAME} this is the training-set cross-entropy
+ * loss. Not overridable from the CLI.
  */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = 0.0001;
 

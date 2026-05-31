@@ -118,12 +118,15 @@ Deno.test("formatGenerationLogLine writes one TSV row per generation", () => {
 });
 
 Deno.test("MNIST_EVOLVE_COST_NAME is registered in NEAT-AI", () => {
-  assertEquals(MNIST_EVOLVE_COST_NAME, "CATEGORICAL_ERROR");
+  assertEquals(MNIST_EVOLVE_COST_NAME, "CROSS_ENTROPY");
   assertEquals(Costs.getAvailableCosts().includes(MNIST_EVOLVE_COST_NAME), true);
   const target = new Float32Array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
-  const zeros = new Float32Array(10);
   const cost = Costs.find(MNIST_EVOLVE_COST_NAME);
-  assertEquals(cost.calculate(target, zeros), 1);
+  // Cross-entropy penalises a confident wrong prediction far more than a
+  // confident correct one.
+  const correct = new Float32Array([0, 0, 0.99, 0, 0, 0, 0, 0, 0, 0]);
+  const wrong = new Float32Array([0.99, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assertEquals(cost.calculate(target, correct) < cost.calculate(target, wrong), true);
 });
 
 Deno.test("FEATURE_COUNT is 784 (full 28×28)", () => {
