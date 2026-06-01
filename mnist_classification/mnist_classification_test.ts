@@ -29,7 +29,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { Costs, Creature } from "@stsoftware/neat-ai";
-import { join } from "@std/path";
+import { dirname, join, normalize } from "@std/path";
 
 import { asCreatureExport } from "../common/legacy_types.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -762,38 +762,56 @@ Deno.test("assertNoTargetErrorCliOverride rejects --target-error flags", () => {
   assertNoTargetErrorCliOverride(["--timeout=15"]);
 });
 
-Deno.test("mnist run.sh grants --allow-ffi for Discovery and evolveDir training", async () => {
-  const script = await Deno.readTextFile("mnist_classification/run.sh");
-  assert(
-    script.includes("--allow-ffi"),
-    "mnist_classification/run.sh must pass --allow-ffi so NEAT-AI can load Discovery",
-  );
-});
+// The former source-text grep test "mnist run.sh grants --allow-ffi …"
+// was removed under issue #530. It was a "how" test (anti-pattern #2):
+// it asserted the literal `--allow-ffi` substring appears in run.sh, and
+// since the flag moved into the shared preamble (NEAT_EXAMPLE_DENO_FLAGS)
+// it only ever matched the *comment* that mentions the flag — passing on
+// doc text, not on any granted permission. The behaviour it stood proxy
+// for (every Discovery runner is granted FFI via the shared preamble) is
+// already covered behaviourally in `common/run_sh_permissions_test.ts`
+// ("example runner preamble grants required Deno flags" and "every run.sh
+// that loads Discovery uses shared Deno flags with --allow-ffi").
 
-Deno.test("README embeds the multi-run charts and drops the legacy evolution_summary path", () => {
-  const readme = Deno.readTextFileSync("mnist_classification/README.md");
-  assert(
-    readme.includes("../docs/screenshots/mnist_classification/milestones.svg"),
-    "README must embed the multi-run error-curve chart (milestones.svg)",
-  );
-  assert(
-    readme.includes("../docs/screenshots/mnist_classification/complexity.svg"),
-    "README must embed the multi-run complexity chart (complexity.svg)",
-  );
-  // The legacy single-run evolution_summary chart is retired under #327.
-  assert(
-    !readme.includes("evolution_summary.svg"),
-    "README must no longer reference the retired evolution_summary.svg",
-  );
-  // The historical #273 deferred placeholder must stay gone.
-  assert(
-    !readme.includes("Per-generation telemetry — deferred"),
-    "README must no longer contain the deferred placeholder line",
-  );
-  assert(
-    !readme.includes("tracked in #273"),
-    'README must no longer reference the "tracked in #273" deferred placeholder',
-  );
+Deno.test("every chart embedded in the mnist README resolves to a non-empty asset", async () => {
+  // WHAT-test (replaces the former source-text substring/absence greps,
+  // issue #530). The behaviour the old test stood proxy for is that the
+  // charts the README embeds actually exist and render. Parse the
+  // embedded image targets and assert each local asset is a non-empty
+  // file. This is robust to restructuring the docs tree (move the embed
+  // and the asset together) and catches the real regression — a broken
+  // chart link — instead of failing on a harmless path reformat.
+  const readmePath = "mnist_classification/README.md";
+  const readme = await Deno.readTextFile(readmePath);
+  const readmeDir = dirname(readmePath);
+
+  // Markdown image embeds: ![alt](target). Keep only local asset
+  // references (skip absolute URLs and in-page anchors).
+  const embeds = [...readme.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)]
+    .map((m) => m[1])
+    .filter((target) => !/^[a-z][a-z0-9+.-]*:\/\//i.test(target) && !target.startsWith("#"));
+  assert(embeds.length > 0, "mnist README must embed at least one chart asset");
+
+  for (const ref of embeds) {
+    const path = normalize(join(readmeDir, ref));
+    const stat = await Deno.stat(path).catch(() => null);
+    assert(
+      stat?.isFile && stat.size > 0,
+      `mnist README embeds ${ref} but ${path} is missing or empty`,
+    );
+  }
+
+  // The multi-run charts are the headline artefacts of this example, so
+  // both must remain embedded. Couple only to the chart pipeline's
+  // output filenames (a stable contract), not to the brittle relative
+  // doc path the old test asserted.
+  const basenames = embeds.map((ref) => ref.split("/").pop());
+  for (const chart of ["milestones.svg", "complexity.svg"]) {
+    assert(
+      basenames.includes(chart),
+      `mnist README must embed the multi-run ${chart} chart`,
+    );
+  }
 });
 
 Deno.test("top-level README MNIST entries match the real 784 / 28×28 code (Issue #515)", () => {
