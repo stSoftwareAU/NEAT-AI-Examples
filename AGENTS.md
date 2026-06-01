@@ -112,7 +112,16 @@ entire point of the demo, so the no-warm-start policy does not apply:
   the squash improvement scan operates on a hand-curated creature, even though the seed itself is
   `new Creature(input, output)`.
 - `crossover` — breeds two parent creatures into an offspring.
-- `memetic_evolution` — re-seeds the population from an archive of fittest creatures.
+- `memetic_evolution` — re-seeds the population from an archive of fittest creatures. The two
+  `evolveDir` seeds (memetic + control) are a **factory-adoption exception (issue #536,
+  factory-adoption tracker #517):** both are built via the data-derived
+  `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` factory (LOGISTIC output coupled
+  to the cost — matching the oracle's `[0, 1]` sigmoid targets — a conservative factory-sized hidden
+  layer, He/Xavier weight-init scaling) rather than the legacy bare `new Creature(2, 1)`. Migrating
+  both seeds keeps the memetic / control comparison fair. Seed weights and biases stay random and
+  structural growth beyond the seed still comes purely from `evolveDir`'s unchanged mutation
+  operators; the bare-constructor baseline is retained as `buildRandomSeedCreature` for test /
+  resume fixtures.
 - `mcmc_acceptance` — pairs an analytical Metropolis-Hastings sampler over a synthetic fitness
   landscape (the historical demo from #89) with a minimal-seed `evolveDir` over a binary `.bin`
   regression task (audited under #215); listed here because the analytical sampler runs outside any

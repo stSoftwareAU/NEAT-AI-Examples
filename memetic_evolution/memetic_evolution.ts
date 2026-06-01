@@ -15,9 +15,22 @@
  *   - The **control** run makes a single `evolveDir` call with the
  *     same total iteration budget.
  *
- * Both runs start from a minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`
- * seed — no hidden hint, no `network.json` warm start. The headline
- * SVG compares the two milestone outcomes side by side via
+ * Both runs build their seed via the NEAT-AI factory
+ * `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`
+ * ({@link buildSeedCreature}) instead of a bare
+ * `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (issue #536). The factory
+ * couples the LOGISTIC output to the cost — matching the oracle's `[0, 1]`
+ * sigmoid targets — sizes a conservative hidden layer (Heaton's rule), and
+ * scales the random weight init per activation (He / Xavier). Seed weights
+ * and biases stay random; only topology and scaling are factory-derived,
+ * and all structural growth beyond the seed still comes from `evolveDir`'s
+ * unchanged mutation operators. Migrating **both** seeds keeps the
+ * memetic / control comparison fair. The bare-constructor baseline is
+ * retained as {@link buildRandomSeedCreature} for test / resume fixtures.
+ * This is a milestone-sanctioned departure from the no-warm-start policy
+ * (factory-adoption tracker #517).
+ *
+ * The headline SVG compares the two milestone outcomes side by side via
  * {@link renderMemeticSVG}, sourced from two {@link EvolveDirSummary}
  * records. The previous green-dashed "memetic seed applied" marker is
  * replaced by an annotation strip on each summary panel naming the
@@ -30,10 +43,13 @@ import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import {
+  createSeededRng,
   Creature,
   type CreatureExport,
+  type DatasetFactoryOptions,
   type NeatOptions,
   safeWriteJson,
+  setRandomNumberGenerator,
 } from "@stsoftware/neat-ai";
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -58,6 +74,82 @@ export const INPUT_COUNT = 2;
 
 /** Number of output neurons fed to the NEAT-AI seed. */
 export const OUTPUT_COUNT = 1;
+
+/**
+ * Cost handed to the NEAT-AI factory ({@link Creature.forDataset}) when
+ * building the seed creature (issue #536). The label oracle emits a
+ * LOGISTIC probability in `[0, 1]` (see {@link forward}), so
+ * `BINARY_CROSS_ENTROPY` couples the seed's output activation to a
+ * **LOGISTIC** sigmoid (NEAT-AI #2793) — the bounded `(0, 1)` range the
+ * held-out −MSE scoring and `[0, 1]` regression targets both assume. Same
+ * cost / activation pairing as the XOR (#520) and adaptive_mutation (#533)
+ * adoptions.
+ *
+ * The cost shapes only the *seed*; `evolveDir` itself keeps its default
+ * scoring, so evolution behaves exactly as it did before the factory was
+ * adopted.
+ */
+export const SEED_COST = "BINARY_CROSS_ENTROPY";
+
+/** The record shape (`{ input, output }`) the NEAT-AI factory scans. */
+export type FactoryRecords = Parameters<typeof Creature.forDataset>[0];
+
+/**
+ * Convert the synthetic dataset ({@link DataPoint}[]) into the
+ * `{ input, output }` record shape the NEAT-AI factory scans. The factory
+ * derives its seed from the same records `evolveDir` trains on.
+ */
+export function datasetToFactoryRecords(dataset: readonly DataPoint[]): FactoryRecords {
+  return dataset.map(({ inputs, output }) => ({
+    input: Float32Array.from(inputs),
+    output: Float32Array.from([output]),
+  }));
+}
+
+/**
+ * Build the bare uniform-random NEAT seed — `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` with direct input → output synapses and zero hidden
+ * neurons. **Retained as the historical baseline** for test / resume
+ * fixtures after the fresh-run seed moved to the factory
+ * ({@link buildSeedCreature}, issue #536). The library's global PRNG is
+ * reseeded via {@link createSeededRng} so a given `seed` is deterministic;
+ * every weight and bias is drawn from that PRNG — nothing is hand-crafted.
+ */
+export function buildRandomSeedCreature(seed: number): CreatureExport {
+  setRandomNumberGenerator(createSeededRng(seed));
+  return new Creature(INPUT_COUNT, OUTPUT_COUNT).exportJSON();
+}
+
+/**
+ * Build the **factory seed creature** via the NEAT-AI factory
+ * ({@link Creature.forDataset}) instead of a bare `new Creature(...)`
+ * (issue #536). From problem-intrinsic facts only, the factory:
+ *
+ * - picks a **LOGISTIC output** activation from the cost
+ *   ({@link SEED_COST}) — the bounded `(0, 1)` activation the oracle's
+ *   `[0, 1]` targets and the held-out −MSE scoring both assume;
+ * - sizes a **conservative hidden-capacity budget** from the problem
+ *   shape (Heaton's rule → a small hidden layer);
+ * - scales the random weights to the **per-activation init stddev**
+ *   (He / Xavier), so the forward pass neither saturates nor vanishes.
+ *
+ * The global PRNG is reseeded via {@link createSeededRng} so a given
+ * `seed` produces a deterministic seed creature. Every weight and bias is
+ * still drawn from that PRNG — the factory chooses the topology and
+ * scaling, never hand-crafted parameters. The cost shapes only the seed;
+ * `evolveDir` keeps its default scoring so evolution is untouched.
+ *
+ * Milestone-sanctioned departure from the project-wide no-warm-start
+ * policy, made under the factory-adoption tracker (issue #517).
+ */
+export function buildSeedCreature(records: FactoryRecords, seed: number): CreatureExport {
+  if (records.length === 0) {
+    throw new Error("buildSeedCreature: records must not be empty");
+  }
+  setRandomNumberGenerator(createSeededRng(seed));
+  const options: DatasetFactoryOptions = { cost: SEED_COST };
+  return Creature.forDataset(records, options).exportJSON();
+}
 
 /** Target weight vector — the label oracle whose outputs the training set is built from. */
 export const TARGET_WEIGHTS: readonly number[] = Object.freeze([
@@ -215,7 +307,7 @@ export interface MemeticEvolutionConfig {
 /**
  * Defaults tuned so each run converges via `targetError` well inside the
  * wall-clock backstop on a developer machine while still showing visible
- * neuron / synapse growth from the minimal seed. Under issue #382 the
+ * neuron / synapse growth from the factory seed. Under issue #382 the
  * backstop was raised from 5 → 20 minutes and the iteration caps were
  * lifted in lock-step (control 250 → 1000, memetic phase 125 → 500) so
  * wall-clock remains the genuine limiter for the `Refresh-2026-05` run.
@@ -229,7 +321,7 @@ export const DEFAULT_MEMETIC_EVOLUTION_CONFIG: MemeticEvolutionConfig = {
   memeticSeed: 216216,
   controlSeed: 216217,
   // Push NEAT toward structural growth so the example genuinely adds
-  // hidden neurons / inter-layer synapses from the minimal seed.
+  // hidden neurons / inter-layer synapses beyond the factory seed.
   mutationRate: 0.6,
   mutationAmount: 3,
 };
@@ -328,25 +420,30 @@ async function runEvolveDirPhase(
 /**
  * Run the memetic-vs-control milestone comparison end-to-end:
  *
- *   1. Memetic phase 1 — evolve a minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`
- *      seed for {@link MemeticEvolutionConfig.memeticPhaseIterations} iterations.
+ *   1. Memetic phase 1 — evolve a factory seed
+ *      ({@link buildSeedCreature} from `records`, keyed by
+ *      `config.memeticSeed`) for
+ *      {@link MemeticEvolutionConfig.memeticPhaseIterations} iterations.
  *   2. Memetic phase 2 — continue evolving the same in-place creature
  *      (the analogue of re-seeding from the fittest archive entry) for
  *      another {@link MemeticEvolutionConfig.memeticPhaseIterations}
  *      iterations. The combined memetic summary aggregates both phases.
- *   3. Control — evolve a fresh minimal seed in a **single** `evolveDir`
- *      call for {@link MemeticEvolutionConfig.controlIterations}
- *      iterations.
+ *   3. Control — evolve a fresh factory seed (keyed by `config.controlSeed`)
+ *      in a **single** `evolveDir` call for
+ *      {@link MemeticEvolutionConfig.controlIterations} iterations.
  *
- * Returns both summaries so the headline SVG can compare the two
- * milestone outcomes side by side.
+ * Both seeds come from the data-derived factory ({@link buildSeedCreature})
+ * so the memetic / control comparison stays fair; `evolveDir` keeps its
+ * default scoring, so evolution is untouched. Returns both summaries so the
+ * headline SVG can compare the two milestone outcomes side by side.
  */
 export async function runMemeticAndControlEvolution(
   dataDir: string,
+  records: FactoryRecords,
   config: MemeticEvolutionConfig = DEFAULT_MEMETIC_EVOLUTION_CONFIG,
 ): Promise<MemeticVsControlResult> {
   // ---- Memetic run: two chained evolveDir phases ----------------------
-  const memeticSeed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const memeticSeed = Creature.fromJSON(buildSeedCreature(records, config.memeticSeed));
   const memeticSeedNeurons = memeticSeed.neurons.length;
   const memeticSeedSynapses = memeticSeed.synapses.length;
 
@@ -400,7 +497,7 @@ export async function runMemeticAndControlEvolution(
   }
 
   // ---- Control run: single evolveDir call -----------------------------
-  const controlSeed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+  const controlSeed = Creature.fromJSON(buildSeedCreature(records, config.controlSeed));
   const controlResult = await runEvolveDirPhase(
     controlSeed,
     dataDir,
@@ -436,7 +533,8 @@ if (import.meta.main) {
   console.log("");
   console.log("🌱 Running memetic-vs-control milestone comparison");
   console.log(
-    `   Seed: new Creature(${INPUT_COUNT}, ${OUTPUT_COUNT}) — no hidden hint, no warm start.`,
+    `   Seed: Creature.forDataset(records, { cost: "${SEED_COST}" }) ` +
+      `— LOGISTIC output, factory hidden layer, He/Xavier-scaled random weights (issue #536).`,
   );
   const config = DEFAULT_MEMETIC_EVOLUTION_CONFIG;
   console.log(
@@ -444,7 +542,8 @@ if (import.meta.main) {
       `timeoutMinutes=${config.timeoutMinutes} (issue #216 backstop)`,
   );
 
-  const result = await runMemeticAndControlEvolution(dataDir, config);
+  const records = datasetToFactoryRecords(trainingSet);
+  const result = await runMemeticAndControlEvolution(dataDir, records, config);
 
   console.log("");
   console.log(

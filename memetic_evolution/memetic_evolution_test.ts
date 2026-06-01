@@ -20,6 +20,7 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertLessOrEqual,
   assertRejects,
   assertStringIncludes,
   assertThrows,
@@ -27,7 +28,10 @@ import {
 import { Creature } from "@stsoftware/neat-ai";
 
 import {
+  buildRandomSeedCreature,
+  buildSeedCreature,
   creatureHeldOutScore,
+  datasetToFactoryRecords,
   DEFAULT_MEMETIC_EVOLUTION_CONFIG,
   fitnessOn,
   forward,
@@ -36,6 +40,7 @@ import {
   type MemeticEvolutionConfig,
   OUTPUT_COUNT,
   runMemeticAndControlEvolution,
+  SEED_COST,
   TARGET_WEIGHTS,
   WEIGHT_VECTOR_LENGTH,
   writeBinaryDataset,
@@ -164,6 +169,117 @@ Deno.test("creatureHeldOutScore empty dataset returns 0", () => {
   assertEquals(creatureHeldOutScore(creature, []), 0);
 });
 
+/* ------------------------------------------------------------------ */
+/*  Seed builders (issue #536)                                         */
+/* ------------------------------------------------------------------ */
+
+Deno.test("SEED_COST couples the output to a LOGISTIC sigmoid", () => {
+  // BINARY_CROSS_ENTROPY ⇒ LOGISTIC output — matches the oracle's [0, 1]
+  // sigmoid targets (same pairing as XOR #520 and adaptive_mutation #533).
+  assertEquals(SEED_COST, "BINARY_CROSS_ENTROPY");
+});
+
+Deno.test("datasetToFactoryRecords mirrors the dataset's inputs and output", () => {
+  const ds = generateDataset(86, 12);
+  const records = datasetToFactoryRecords(ds);
+  assertEquals(records.length, ds.length);
+  for (let i = 0; i < ds.length; i++) {
+    assertEquals(records[i].input.length, INPUT_COUNT);
+    assertEquals(records[i].output.length, OUTPUT_COUNT);
+    // Float32 narrowing loses a few ULPs from the float64 dataset values.
+    assertAlmostEquals(records[i].input[0], ds[i].inputs[0], 1e-6);
+    assertAlmostEquals(records[i].input[1], ds[i].inputs[1], 1e-6);
+    assertAlmostEquals(records[i].output[0], ds[i].output, 1e-6);
+  }
+});
+
+Deno.test("buildRandomSeedCreature is the bare baseline — zero hidden neurons", () => {
+  const json = buildRandomSeedCreature(216);
+  assertEquals(json.input, INPUT_COUNT);
+  assertEquals(json.output, OUTPUT_COUNT);
+  const hidden = json.neurons.filter((n) => n.type === "hidden");
+  assertEquals(
+    hidden.length,
+    0,
+    "bare baseline must have zero hidden neurons — NEAT must invent them",
+  );
+});
+
+Deno.test("buildRandomSeedCreature is deterministic for a given seed", () => {
+  const a = buildRandomSeedCreature(4242);
+  const b = buildRandomSeedCreature(4242);
+  const c = buildRandomSeedCreature(9999);
+  assertEquals(JSON.stringify(a), JSON.stringify(b));
+  assert(
+    JSON.stringify(a) !== JSON.stringify(c),
+    "different seeds must produce different baseline creatures",
+  );
+});
+
+Deno.test("buildSeedCreature builds a factory seed with the right arity", () => {
+  const records = datasetToFactoryRecords(generateDataset(86, 32));
+  const json = buildSeedCreature(records, 86);
+  assertEquals(json.input, INPUT_COUNT);
+  assertEquals(json.output, OUTPUT_COUNT);
+});
+
+Deno.test("buildSeedCreature picks a LOGISTIC output from the seed cost", () => {
+  const records = datasetToFactoryRecords(generateDataset(5, 32));
+  const json = buildSeedCreature(records, 5);
+  const outputs = json.neurons.filter((n) => n.type === "output");
+  assertEquals(outputs.length, OUTPUT_COUNT);
+  for (const out of outputs) {
+    assertEquals(out.squash, "LOGISTIC", "seed cost ⇒ LOGISTIC output");
+  }
+});
+
+Deno.test("buildSeedCreature sizes a data-derived hidden capacity budget", () => {
+  // Unlike the bare `new Creature(...)` baseline (zero hidden), the
+  // factory derives a conservative hidden layer from the problem shape.
+  const records = datasetToFactoryRecords(generateDataset(7, 32));
+  const json = buildSeedCreature(records, 7);
+  const hidden = json.neurons.filter((n) => n.type === "hidden");
+  assertGreater(hidden.length, 0, "factory seed must pre-size a hidden layer");
+});
+
+Deno.test("buildSeedCreature is deterministic (weights/biases) for a given seed", () => {
+  // The factory mints fresh UUIDs for hidden neurons, so full JSON
+  // equality is too strict — the learnable parameters must match.
+  const records = datasetToFactoryRecords(generateDataset(86, 32));
+  const fingerprint = (json: ReturnType<typeof buildSeedCreature>) => ({
+    neurons: json.neurons.map((n) => `${n.type}:${n.squash}:${n.bias}`),
+    weights: json.synapses.map((s) => s.weight),
+  });
+  const a = fingerprint(buildSeedCreature(records, 4242));
+  const b = fingerprint(buildSeedCreature(records, 4242));
+  const c = fingerprint(buildSeedCreature(records, 9999));
+  assertEquals(a, b);
+  assert(
+    JSON.stringify(a) !== JSON.stringify(c),
+    "different seeds must produce different factory seeds",
+  );
+});
+
+Deno.test("buildSeedCreature produces a valid creature with finite [0,1] outputs", () => {
+  const records = datasetToFactoryRecords(generateDataset(86, 32));
+  const creature = Creature.fromJSON(buildSeedCreature(records, 86));
+  creature.validate();
+  assertEquals(creature.input, INPUT_COUNT);
+  assertEquals(creature.output, OUTPUT_COUNT);
+  const out = creature.activate(Float32Array.from([0.5, -0.5]));
+  assert(Number.isFinite(out[0]), `output must be finite, got ${out[0]}`);
+  assertGreaterOrEqual(out[0], 0);
+  assertLessOrEqual(out[0], 1);
+});
+
+Deno.test("buildSeedCreature rejects an empty record set", () => {
+  assertThrows(
+    () => buildSeedCreature([], 1),
+    Error,
+    "records must not be empty",
+  );
+});
+
 /**
  * Small config used for the milestone-comparison tests — keeps each
  * test fast while still exercising the new code path.
@@ -181,14 +297,23 @@ const SMALL_CONFIG: MemeticEvolutionConfig = {
 };
 
 Deno.test(
-  "runMemeticAndControlEvolution returns two milestone summaries from minimal seeds",
+  // Renamed under issue #536: both seeds are now factory-derived, not the
+  // minimal `new Creature(in, out)`. The seed-count assertion was updated
+  // from "exactly input+output" to "at least input+output plus a factory
+  // hidden layer" to reflect the deliberate, milestone-sanctioned seed
+  // change (the bare baseline lives on as `buildRandomSeedCreature`).
+  "runMemeticAndControlEvolution returns two milestone summaries from factory seeds",
   async () => {
     const tmp = await Deno.makeTempDir({ prefix: "memetic_evolution_test_" });
     try {
       const ds = generateDataset(1, 16);
       writeBinaryDataset(ds, tmp);
 
-      const result = await runMemeticAndControlEvolution(tmp, SMALL_CONFIG);
+      const result = await runMemeticAndControlEvolution(
+        tmp,
+        datasetToFactoryRecords(ds),
+        SMALL_CONFIG,
+      );
 
       // Both phases were captured.
       assertEquals(result.memetic.champion.input, INPUT_COUNT);
@@ -196,10 +321,11 @@ Deno.test(
       assertEquals(result.control.champion.input, INPUT_COUNT);
       assertEquals(result.control.champion.output, OUTPUT_COUNT);
 
-      // Each summary's seed counts match a minimal `new Creature(in, out)`.
-      const seedNeurons = INPUT_COUNT + OUTPUT_COUNT;
-      assertEquals(result.memetic.summary.seedNeurons, seedNeurons);
-      assertEquals(result.control.summary.seedNeurons, seedNeurons);
+      // The factory pre-sizes a hidden layer, so each seed has strictly
+      // more than the minimal input+output neuron count.
+      const minimalSeedNeurons = INPUT_COUNT + OUTPUT_COUNT;
+      assertGreater(result.memetic.summary.seedNeurons, minimalSeedNeurons);
+      assertGreater(result.control.summary.seedNeurons, minimalSeedNeurons);
 
       // Numeric summary fields are finite.
       for (const phase of [result.memetic, result.control]) {
@@ -221,20 +347,21 @@ Deno.test("runMemeticAndControlEvolution rejects invalid configs", async () => {
   try {
     const ds = generateDataset(1, 8);
     writeBinaryDataset(ds, tmp);
+    const records = datasetToFactoryRecords(ds);
     await assertRejects(() =>
-      runMemeticAndControlEvolution(tmp, { ...SMALL_CONFIG, targetError: 0 })
+      runMemeticAndControlEvolution(tmp, records, { ...SMALL_CONFIG, targetError: 0 })
     );
     await assertRejects(() =>
-      runMemeticAndControlEvolution(tmp, { ...SMALL_CONFIG, populationSize: 0 })
+      runMemeticAndControlEvolution(tmp, records, { ...SMALL_CONFIG, populationSize: 0 })
     );
     await assertRejects(() =>
-      runMemeticAndControlEvolution(tmp, { ...SMALL_CONFIG, timeoutMinutes: 0 })
+      runMemeticAndControlEvolution(tmp, records, { ...SMALL_CONFIG, timeoutMinutes: 0 })
     );
     await assertRejects(() =>
-      runMemeticAndControlEvolution(tmp, { ...SMALL_CONFIG, controlIterations: 0 })
+      runMemeticAndControlEvolution(tmp, records, { ...SMALL_CONFIG, controlIterations: 0 })
     );
     await assertRejects(() =>
-      runMemeticAndControlEvolution(tmp, { ...SMALL_CONFIG, memeticPhaseIterations: 0 })
+      runMemeticAndControlEvolution(tmp, records, { ...SMALL_CONFIG, memeticPhaseIterations: 0 })
     );
   } finally {
     await Deno.remove(tmp, { recursive: true });
@@ -248,7 +375,11 @@ Deno.test(
     try {
       const ds = generateDataset(1, 16);
       writeBinaryDataset(ds, tmp);
-      const result = await runMemeticAndControlEvolution(tmp, SMALL_CONFIG);
+      const result = await runMemeticAndControlEvolution(
+        tmp,
+        datasetToFactoryRecords(ds),
+        SMALL_CONFIG,
+      );
 
       const svg = renderMemeticSVG({
         memetic: result.memetic.summary,
@@ -286,7 +417,11 @@ Deno.test(
     try {
       const ds = generateDataset(1, 16);
       writeBinaryDataset(ds, tmp);
-      const result = await runMemeticAndControlEvolution(tmp, SMALL_CONFIG);
+      const result = await runMemeticAndControlEvolution(
+        tmp,
+        datasetToFactoryRecords(ds),
+        SMALL_CONFIG,
+      );
 
       const svg = renderMemeticSVG({
         memetic: result.memetic.summary,

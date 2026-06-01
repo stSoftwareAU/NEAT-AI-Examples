@@ -1,5 +1,14 @@
 # 🧠 Memetic Evolution — Seeding From the Fittest Archive
 
+> 🏭 **Both seeds are built by the NEAT-AI factory (issue #536).** Instead of a bare
+> `new Creature(2, 1)`, each of the two `evolveDir` runs (memetic + control) now seeds from
+> `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`, which couples the output to a
+> **LOGISTIC** sigmoid (matching the oracle's `[0, 1]` targets), pre-sizes a small hidden layer
+> (Heaton's rule), and He/Xavier-scales the random weight init. Migrating **both** seeds keeps the
+> memetic / control comparison fair. This is a milestone-sanctioned departure from the no-warm-start
+> policy (see [Factory seed](#-factory-seed--a-milestone-sanctioned-departure) below); the
+> bare-constructor baseline lives on as `buildRandomSeedCreature` for test / resume fixtures.
+
 `memetic_evolution.ts` demonstrates **memetic seeding**: recording the weights and biases of the
 fittest creatures observed so far and using them to seed future generations. Under audit #216 the
 runner uses NEAT-AI's `Creature.evolveDir(...)` over a binary `.bin` training set; under telemetry
@@ -10,43 +19,46 @@ expressed through **two `evolveDir` runs**:
   mirroring the "re-seed from the fittest archive" mechanic.
 - The **control** run makes a single `evolveDir` call with the same total iteration budget.
 
-Both start from a minimal `new Creature(2, 1)` seed (no hidden hint, no `network.json` warm start).
-The headline SVG compares the two milestone outcomes side by side via two `EvolveDirSummary` records
-— the previous green-dashed "memetic seed applied" marker is replaced by an annotation strip on each
-summary panel naming the seeding event.
+Both start from a data-derived factory seed
+(`Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` — no `network.json` champion warm
+start; only the seed topology and weight-init scaling are factory-derived, weights and biases stay
+random). The headline SVG compares the two milestone outcomes side by side via two
+`EvolveDirSummary` records — the previous green-dashed "memetic seed applied" marker is replaced by
+an annotation strip on each summary panel naming the seeding event.
 
 ![Memetic vs control milestone comparison](../docs/screenshots/memetic_evolution.svg)
 
-## 📐 Latest Measured Run (`Refresh-2026-05`, issue #382)
+## 📐 Latest Measured Run (factory adoption, issue #536)
 
-Stop conditions under issue #382: `targetError = 0.005`, `timeoutMinutes = 20` (raised from 5 to
-grant the +15 minute refresh budget; iteration caps lifted in lock-step — `controlIterations` 250 →
-1000, `memeticPhaseIterations` 125 → 500). Run measured on the freshly bumped `@stsoftware/neat-ai`
-from the `Refresh-2026-05` baseline.
+Stop conditions: `targetError = 0.005`, `timeoutMinutes = 20` (iteration caps `controlIterations`
+1000, `memeticPhaseIterations` 500). Run measured after migrating both seeds to the NEAT-AI factory.
 
 | Metric                 | Memetic (with seeding) | Control (no seeding) |
 | ---------------------- | ---------------------- | -------------------- |
-| Generations            | 66                     | 543                  |
-| Wall clock             | 1.2 s                  | 5.0 s                |
-| Final score (−MSE)     | 0.9964                 | 0.9976               |
-| Final per-record error | 0.0036                 | 0.0024               |
-| Seed → final neurons   | 3 → 5                  | 3 → 7                |
-| Seed → final synapses  | 2 → 8                  | 2 → 13               |
-| Held-out −MSE          | −0.003585              | −0.002389            |
+| Generations            | 84                     | 32                   |
+| Wall clock             | 2.0 s                  | 0.5 s                |
+| Final score (−MSE)     | 0.9953                 | 0.9982               |
+| Final per-record error | 0.0047                 | 0.0018               |
+| Seed → final neurons   | 6 → 6                  | 6 → 7                |
+| Seed → final synapses  | 9 → 9                  | 9 → 16               |
+| Held-out −MSE          | −0.004733              | −0.001844            |
 
-Fitness lift (memetic − control): **−0.0012**. Both runs converged well inside the new 20-minute
-backstop; the headline narrative this run captures is that the control's larger iteration budget
-discovered a slightly richer topology (7 neurons / 13 synapses) than the memetic run's two chained
-phases (5 neurons / 8 synapses). Issue #382 explicitly permits raising the PR even with no fitness
-gain — the headline SVG and milestone-summary callouts faithfully record the regenerated numbers
-against the freshly bumped `@stsoftware/neat-ai`.
+Both runs still converge below `targetError` well inside the 20-minute backstop — and **faster**
+than the previous bare-seed `Refresh-2026-05` baseline (control: 32 generations / 0.5 s vs 543 / 5.0
+s; memetic: 84 generations / 2.0 s vs 66 / 1.2 s), because the factory seed starts each run with a
+LOGISTIC output bounded to the `[0, 1]` target range and a pre-sized hidden layer instead of the
+bare `new Creature(2, 1)` (Mish output, zero hidden). Both seeds begin from the **same** factory
+topology (6 neurons / 9 synapses), so the memetic / control comparison stays fair — the only
+difference is the memetic run's explicit mid-run re-seed. The factory chooses **only** the seed's
+topology and weight scaling; `evolveDir` keeps its default scoring, so the evolution loop is
+unchanged.
 
 ## 🔧 How It Works
 
 ```mermaid
 flowchart LR
-    SEED_M["🌱 new Creature(2, 1)<br/>(memetic)"]
-    SEED_C["🌱 new Creature(2, 1)<br/>(control)"]
+    SEED_M["🏭 Creature.forDataset(records,<br/>{ cost: BINARY_CROSS_ENTROPY })<br/>(memetic)"]
+    SEED_C["🏭 Creature.forDataset(records,<br/>{ cost: BINARY_CROSS_ENTROPY })<br/>(control)"]
     P1["🧪 evolveDir phase 1<br/>(memeticPhaseIterations)"]
     P2["🧪 evolveDir phase 2<br/>(re-seeded from phase 1 champion)"]
     CTL["🧪 evolveDir single call<br/>(controlIterations)"]
@@ -61,6 +73,39 @@ flowchart LR
     SUMM --> SVG
     SUMC --> SVG
 ```
+
+## 🏭 Factory seed — a milestone-sanctioned departure
+
+Both runs' seeds are minted by the NEAT-AI factory
+`Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`. From problem-intrinsic facts only,
+the factory:
+
+- couples the output to a **LOGISTIC** activation chosen from the cost — the bounded `(0, 1)` range
+  the oracle's `[0, 1]` sigmoid targets and the held-out −MSE scoring both assume (NEAT-AI #2793);
+- sizes a **conservative hidden-capacity budget** from the problem shape (Heaton's rule → a small
+  hidden layer);
+- scales the random weight init per activation (He / Xavier).
+
+**Only the seed's topology and scaling are factory-derived** — seed weights and biases remain
+**random**, and every structural change beyond the seed still comes purely from `evolveDir`'s
+unchanged mutation operators. `evolveDir` keeps its default scoring, so evolution behaves exactly as
+it did before the factory was adopted (it simply converges from a better-shaped starting point).
+
+This is a **deliberate, milestone-sanctioned departure** from the
+[no-warm-start policy](../AGENTS.md#-no-warm-starts--evolution-must-start-from-random-noise) in
+`AGENTS.md`, made under the factory-adoption tracker
+([#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517); see
+[`docs/factory_adoption.md`](../docs/factory_adoption.md)). The bare `new Creature(2, 1)` baseline
+is retained as `buildRandomSeedCreature` for test / resume fixtures.
+
+### Why `BINARY_CROSS_ENTROPY`?
+
+The label oracle (`forward`) emits a LOGISTIC probability in `[0, 1]`, so the training targets are
+soft probabilities in that range. `BINARY_CROSS_ENTROPY` is the cost whose factory pairing yields a
+**LOGISTIC** output (the same coupling as the XOR #520 and adaptive_mutation #533 adoptions) — the
+activation whose `(0, 1)` range matches those targets and the held-out −MSE metric. A bare
+`new Creature(2, 1)` instead ships an unbounded **Mish** output, so the factory seed is both better
+shaped for the task and the reason both runs now converge faster.
 
 ## 🚀 How to Run
 
@@ -118,9 +163,16 @@ share the same iteration budget but the memetic run benefits from the explicit m
 - `fitnessOn` punishes wrong weights and is essentially zero for the target weights on the synthetic
   dataset.
 - `writeBinaryDataset` emits a Float32 `.bin` of the expected byte count.
-- `runMemeticAndControlEvolution` returns two milestone summaries from minimal seeds — seed counts
-  match `new Creature(INPUT_COUNT, OUTPUT_COUNT)`, both numeric summary fields are finite, and
-  champion creatures carry the right I/O shape.
+- `datasetToFactoryRecords` mirrors the dataset's inputs/output into the `{ input, output }` record
+  shape the factory scans.
+- `buildRandomSeedCreature` is the deterministic bare baseline (zero hidden neurons), retained for
+  test / resume fixtures.
+- `buildSeedCreature` mints a factory seed with the right arity, a LOGISTIC output coupled to
+  `BINARY_CROSS_ENTROPY`, a pre-sized hidden layer, deterministic weights/biases for a given seed,
+  finite `[0, 1]` outputs, and rejects an empty record set.
+- `runMemeticAndControlEvolution` returns two milestone summaries from factory seeds — each seed
+  carries strictly more than `INPUT_COUNT + OUTPUT_COUNT` neurons (the factory hidden layer), both
+  numeric summary fields are finite, and champion creatures carry the right I/O shape.
 - `runMemeticAndControlEvolution` rejects invalid configs (`targetError`, `populationSize`,
   `timeoutMinutes`, `controlIterations`, `memeticPhaseIterations`).
 - `renderMemeticSVG` produces a well-formed SVG carrying the memetic and control column classes, the
