@@ -17,7 +17,7 @@ operators. This is a **deliberate, milestone-sanctioned departure** from the no-
 
 The bare-constructor seed is retained as `buildRandomSeedCreature` for test / resume fixtures.
 
-Closes #536.
+Closes #536
 
 ### Cost / activation coupling chosen for this example
 
