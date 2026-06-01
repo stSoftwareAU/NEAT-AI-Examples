@@ -9,10 +9,12 @@
 import { assert, assertEquals } from "@std/assert";
 
 import {
+  dropCollidingLabels,
   ESTIMATED_CHAR_WIDTH_PX,
   MAX_BOUNDARY_LABELS,
   PLOT_WIDTH_USABLE_FRACTION,
   selectBoundaryIndices,
+  selectVisibleBoundaryIndices,
 } from "./multi_run_boundary_thinning.ts";
 
 const DEFAULT_PLOT_W = 690; // matches 800 px chart minus 70 + 40 margins.
@@ -122,5 +124,126 @@ Deno.test(
       wide.length >= narrow.length,
       `shorter labels should fit at least as many: wide=${wide.length} narrow=${narrow.length}`,
     );
+  },
+);
+
+Deno.test("dropCollidingLabels: empty input returns empty", () => {
+  assertEquals(dropCollidingLabels([]), []);
+});
+
+Deno.test("dropCollidingLabels: single label is always kept", () => {
+  assertEquals(dropCollidingLabels([{ x: 100, width: 40 }]), [0]);
+});
+
+Deno.test("dropCollidingLabels: two labels keep both even when overlapping", () => {
+  // The two anchors (first + last) must always survive.
+  assertEquals(dropCollidingLabels([{ x: 100, width: 40 }, { x: 110, width: 40 }]), [0, 1]);
+});
+
+Deno.test("dropCollidingLabels: well-spaced labels are all kept", () => {
+  const labels = [
+    { x: 50, width: 40 },
+    { x: 150, width: 40 },
+    { x: 250, width: 40 },
+    { x: 350, width: 40 },
+  ];
+  assertEquals(dropCollidingLabels(labels), [0, 1, 2, 3]);
+});
+
+Deno.test("dropCollidingLabels: drops overlapping middle labels but keeps first + last", () => {
+  // Labels bunched on the right (mimics log-x run clustering): only the
+  // first, one survivor, and the last anchor should remain.
+  const labels = [
+    { x: 50, width: 40 }, // index 0 — first anchor
+    { x: 600, width: 40 },
+    { x: 615, width: 40 },
+    { x: 630, width: 40 },
+    { x: 645, width: 40 }, // index 4 — last anchor
+  ];
+  const kept = dropCollidingLabels(labels);
+  assertEquals(kept[0], 0, "first anchor kept");
+  assertEquals(kept[kept.length - 1], 4, "last anchor kept");
+  // No two kept labels overlap horizontally.
+  for (let i = 1; i < kept.length; i++) {
+    const prev = labels[kept[i - 1]];
+    const curr = labels[kept[i]];
+    assert(
+      (curr.x - curr.width / 2) >= (prev.x + prev.width / 2),
+      `kept labels overlap: ${JSON.stringify(prev)} / ${JSON.stringify(curr)}`,
+    );
+  }
+});
+
+Deno.test("dropCollidingLabels: output is strictly increasing index order", () => {
+  const labels = Array.from({ length: 10 }, (_, i) => ({ x: 40 + i * 12, width: 40 }));
+  const kept = dropCollidingLabels(labels);
+  for (let i = 1; i < kept.length; i++) {
+    assert(kept[i] > kept[i - 1], `indices must increase: ${kept.join(",")}`);
+  }
+  assertEquals(kept[0], 0);
+  assertEquals(kept[kept.length - 1], 9);
+});
+
+// Linear x-scale spanning the default 690 px plot area.
+const linearScale = (lo: number, hi: number) => (v: number) =>
+  70 + ((v - lo) / (hi - lo)) * DEFAULT_PLOT_W;
+
+Deno.test(
+  "selectVisibleBoundaryIndices: ≤10 boundaries keeps every index (byte-identical path)",
+  () => {
+    const boundaries = Array.from({ length: 5 }, (_, i) => ({
+      runIndex: i + 2,
+      cumulativeGen: (i + 1) * 100,
+    }));
+    const scale = linearScale(0, 600);
+    const visible = selectVisibleBoundaryIndices(
+      boundaries,
+      DEFAULT_PLOT_W,
+      "run 6".length,
+      scale,
+    );
+    assertEquals([...visible].sort((a, b) => a - b), [0, 1, 2, 3, 4]);
+  },
+);
+
+Deno.test(
+  "selectVisibleBoundaryIndices: clustered log-X boundaries render without overlapping labels",
+  () => {
+    // 115 runs → 114 boundaries; cumulative generations grow then bunch
+    // near the right, mimicking the MNIST log-X failure mode (#514).
+    const boundaries = Array.from({ length: 114 }, (_, i) => ({
+      runIndex: i + 2,
+      // Quadratic spacing pushes later boundaries close together on a
+      // linear scale, exaggerating the right-edge crowding.
+      cumulativeGen: 30 + i * i,
+    }));
+    const maxGen = boundaries[boundaries.length - 1].cumulativeGen;
+    const scale = linearScale(30, maxGen);
+    const longest = "run 115".length;
+    const visible = selectVisibleBoundaryIndices(
+      boundaries,
+      DEFAULT_PLOT_W,
+      longest,
+      scale,
+    );
+
+    const kept = [...visible].sort((a, b) => a - b);
+    assert(kept.length <= MAX_BOUNDARY_LABELS, `≤10 labels, got ${kept.length}`);
+    assertEquals(kept[0], 0, "first boundary anchored");
+    assertEquals(kept[kept.length - 1], 113, "last boundary anchored");
+
+    // No two rendered labels overlap horizontally.
+    for (let i = 1; i < kept.length; i++) {
+      const prev = boundaries[kept[i - 1]];
+      const curr = boundaries[kept[i]];
+      const prevRight = scale(prev.cumulativeGen) +
+        (`run ${prev.runIndex}`.length * ESTIMATED_CHAR_WIDTH_PX) / 2;
+      const currLeft = scale(curr.cumulativeGen) -
+        (`run ${curr.runIndex}`.length * ESTIMATED_CHAR_WIDTH_PX) / 2;
+      assert(
+        currLeft >= prevRight,
+        `labels for run ${prev.runIndex} and run ${curr.runIndex} overlap`,
+      );
+    }
   },
 );
