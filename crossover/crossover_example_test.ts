@@ -6,18 +6,30 @@
  * checking implementation details or timing.
  */
 
-import { assert, assertEquals, assertGreater, assertNotEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertGreater,
+  assertGreaterOrEqual,
+  assertLessOrEqual,
+  assertNotEquals,
+  assertThrows,
+} from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
 
 import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
+  buildFactorySeedCreature,
+  buildRandomSeedCreature,
   createParentA,
   createParentB,
   DEFAULT_CROSSOVER_EVOLUTION_CONFIG,
   generateSyntheticData,
   INPUT_COUNT,
+  loadDatasetRecords,
   OUTPUT_COUNT,
   performCrossover,
   runMinimalSeedEvolution,
@@ -347,6 +359,216 @@ Deno.test("performCrossover offspring can be scored against data", async () => {
       assertEquals(typeof score, "number", "offspring score should be a number");
       assertEquals(Number.isFinite(score), true, "offspring score should be finite");
     }
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Factory adoption (#537) — loadDatasetRecords / seed builders        */
+/* ------------------------------------------------------------------ */
+
+Deno.test("loadDatasetRecords reads the right number of records with correct arity", () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    const parentA = createParentA();
+    generateSyntheticData(parentA, dataDir, { totalRecords: 24, recordsPerFile: 24, seed: 42 });
+
+    const records = loadDatasetRecords(dataDir, INPUT_COUNT, OUTPUT_COUNT);
+    assertEquals(records.length, 24, "should read every generated record");
+    for (const r of records) {
+      assertEquals(r.input.length, INPUT_COUNT, "each record has INPUT_COUNT inputs");
+      assertEquals(r.output.length, OUTPUT_COUNT, "each record has OUTPUT_COUNT outputs");
+    }
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("loadDatasetRecords round-trips Parent A's labelled targets", () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    const parentA = createParentA();
+    generateSyntheticData(parentA, dataDir, { totalRecords: 8, recordsPerFile: 8, seed: 7 });
+
+    const records = loadDatasetRecords(dataDir, INPUT_COUNT, OUTPUT_COUNT);
+    // Re-activating Parent A on each loaded input must reproduce the
+    // stored target (the label oracle is deterministic).
+    for (const r of records) {
+      parentA.clearState();
+      const expected = parentA.activate(Float32Array.from(r.input));
+      assertAlmostEquals(r.output[0], expected[0], 1e-6, "stored target matches the oracle output");
+      // Parent A's LOGISTIC output keeps every label in (0, 1).
+      assertGreaterOrEqual(r.output[0], 0);
+      assertLessOrEqual(r.output[0], 1);
+    }
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("buildRandomSeedCreature is the bare baseline — zero hidden neurons", () => {
+  const seed = buildRandomSeedCreature(216);
+  assertEquals(seed.input, INPUT_COUNT);
+  assertEquals(seed.output, OUTPUT_COUNT);
+  const hidden = seed.exportJSON().neurons.filter((n) => n.type === "hidden");
+  assertEquals(
+    hidden.length,
+    0,
+    "bare baseline must have zero hidden neurons — NEAT must invent them",
+  );
+});
+
+Deno.test("buildRandomSeedCreature is deterministic for a given seed", () => {
+  const a = JSON.stringify(buildRandomSeedCreature(4242).exportJSON());
+  const b = JSON.stringify(buildRandomSeedCreature(4242).exportJSON());
+  const c = JSON.stringify(buildRandomSeedCreature(9999).exportJSON());
+  assertEquals(a, b, "same seed must produce the same baseline creature");
+  assert(a !== c, "different seeds must produce different baseline creatures");
+});
+
+Deno.test("buildFactorySeedCreature builds a factory seed with the right arity", () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    generateSyntheticData(createParentA(), dataDir, {
+      totalRecords: 32,
+      recordsPerFile: 32,
+      seed: 86,
+    });
+    const records = loadDatasetRecords(dataDir);
+    const seed = buildFactorySeedCreature(records, 86);
+    assertEquals(seed.input, INPUT_COUNT);
+    assertEquals(seed.output, OUTPUT_COUNT);
+    seed.validate();
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("buildFactorySeedCreature picks a LOGISTIC output and pre-sizes a hidden layer", () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    generateSyntheticData(createParentA(), dataDir, {
+      totalRecords: 32,
+      recordsPerFile: 32,
+      seed: 5,
+    });
+    const records = loadDatasetRecords(dataDir);
+    const json = buildFactorySeedCreature(records, 5).exportJSON();
+
+    const outputs = json.neurons.filter((n) => n.type === "output");
+    assertEquals(outputs.length, OUTPUT_COUNT);
+    for (const out of outputs) {
+      assertEquals(out.squash, "LOGISTIC", "seed cost ⇒ LOGISTIC output");
+    }
+
+    // Unlike the bare baseline (zero hidden), the factory pre-sizes a
+    // conservative hidden layer from the problem shape.
+    const hidden = json.neurons.filter((n) => n.type === "hidden");
+    assertGreater(hidden.length, 0, "factory seed must pre-size a hidden layer");
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("buildFactorySeedCreature is deterministic (weights/biases) for a given seed", () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    generateSyntheticData(createParentA(), dataDir, {
+      totalRecords: 32,
+      recordsPerFile: 32,
+      seed: 4242,
+    });
+    const records = loadDatasetRecords(dataDir);
+    // The factory mints fresh UUIDs, so full JSON equality is too strict —
+    // compare the learnable parameters instead.
+    const fingerprint = (c: Creature) => {
+      const json = c.exportJSON();
+      return JSON.stringify({
+        neurons: json.neurons.map((n) => `${n.type}:${n.squash}:${n.bias}`),
+        weights: json.synapses.map((s) => s.weight),
+      });
+    };
+    const a = fingerprint(buildFactorySeedCreature(records, 4242));
+    const b = fingerprint(buildFactorySeedCreature(records, 4242));
+    const c = fingerprint(buildFactorySeedCreature(records, 9999));
+    assertEquals(a, b, "same seed must produce the same factory seed");
+    assert(a !== c, "different seeds must produce different factory seeds");
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("buildFactorySeedCreature produces a valid creature with finite [0,1] output", () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    generateSyntheticData(createParentA(), dataDir, {
+      totalRecords: 32,
+      recordsPerFile: 32,
+      seed: 86,
+    });
+    const records = loadDatasetRecords(dataDir);
+    const seed = buildFactorySeedCreature(records, 86);
+    seed.validate();
+    seed.clearState();
+    const out = seed.activate(Float32Array.from([0.5, -0.5, 0.25]));
+    assert(Number.isFinite(out[0]), `output must be finite, got ${out[0]}`);
+    assertGreaterOrEqual(out[0], 0);
+    assertLessOrEqual(out[0], 1);
+  } finally {
+    Deno.removeSync(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("buildFactorySeedCreature rejects an empty record set", () => {
+  assertThrows(() => buildFactorySeedCreature([], 1), Error, "records must not be empty");
+});
+
+Deno.test("runMinimalSeedEvolution accepts a factory seed and reports a pre-sized topology", async () => {
+  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_xover_test_" });
+  const dataDir = join(tmpDir, "data");
+  ensureDirSync(dataDir);
+  try {
+    generateSyntheticData(createParentA(), dataDir, {
+      totalRecords: 64,
+      recordsPerFile: 64,
+      seed: 99,
+    });
+    const records = loadDatasetRecords(dataDir);
+    const seed = buildFactorySeedCreature(records, 213213);
+
+    // The factory pre-sizes a hidden layer, so the seed has strictly more
+    // than the minimal input+output neuron count.
+    assertGreater(seed.neurons.length, INPUT_COUNT + OUTPUT_COUNT);
+
+    const result = await runMinimalSeedEvolution(seed, dataDir, {
+      targetError: 0.0005,
+      timeoutMinutes: 1,
+      populationSize: 8,
+      maxIterations: 5,
+      seed: 1234,
+    });
+
+    assertGreater(result.generations, 0, "should evolve at least one generation");
+    assertGreater(
+      result.summary.seedNeurons,
+      INPUT_COUNT + OUTPUT_COUNT,
+      "factory seed neuron count exceeds the minimal baseline",
+    );
+    assert(Number.isFinite(result.summary.finalError));
+    assert(Number.isFinite(result.summary.finalScore));
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
   }

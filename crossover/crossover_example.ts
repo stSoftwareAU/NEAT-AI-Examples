@@ -18,12 +18,21 @@
  *   2. `performCrossover(parentA, parentB)` is unchanged: it still produces
  *      an offspring you can score and inspect, illustrating the
  *      mother-keep + father-50% breeding operator.
- *   3. The headline **evolution** stage seeds NEAT-AI with
- *      `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — no hidden hint, no
- *      pre-built `network.json`, no warm start — and runs
- *      `Creature.evolveDir(dataDir, options)` over the binary `.bin`
- *      training set in forward-only mode until either the per-example
- *      `targetError` is reached or the `timeoutMinutes: 5` backstop fires.
+ *   3. The headline **evolution** stage seeds NEAT-AI via the data-derived
+ *      NEAT-AI factory `Creature.forDataset(records, { cost: SEED_COST })`
+ *      ({@link buildFactorySeedCreature}, issue #537) instead of a bare
+ *      `new Creature(INPUT_COUNT, OUTPUT_COUNT)`. The factory couples the
+ *      LOGISTIC output to the cost — matching Parent A's `(0, 1)` sigmoid
+ *      labels — sizes a conservative hidden layer (Heaton's rule), and
+ *      scales the random weight init per activation (He / Xavier). Seed
+ *      weights and biases stay random; only topology and scaling are
+ *      factory-derived, and all structural growth beyond the seed still
+ *      comes from `evolveDir`'s unchanged mutation operators. The
+ *      `evolveDir` call itself — forward-only, same stop conditions
+ *      (`targetError` / `timeoutMinutes`) — is untouched. The bare
+ *      constructor baseline is retained as {@link buildRandomSeedCreature}
+ *      for test / resume fixtures. This is a milestone-sanctioned departure
+ *      from the no-warm-start policy (factory-adoption tracker #517).
  *   4. The run is summarised via a single milestone SVG sourced from the
  *      `evolveDir` return value plus the seed / final creature topology.
  */
@@ -31,7 +40,15 @@
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, CreatureUtil, type NeatOptions, safeWriteJson } from "@stsoftware/neat-ai";
+import {
+  createSeededRng,
+  Creature,
+  CreatureUtil,
+  type DatasetFactoryOptions,
+  type NeatOptions,
+  safeWriteJson,
+  setRandomNumberGenerator,
+} from "@stsoftware/neat-ai";
 import { addTag } from "@stsoftware/tags/mod";
 
 import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
@@ -63,6 +80,124 @@ export const INPUT_COUNT = 3;
 
 /** Number of output neurons fed to the NEAT-AI seed (matches both parents). */
 export const OUTPUT_COUNT = 1;
+
+/* ------------------------------------------------------------------ */
+/*  Factory adoption (#537) — seed via Creature.forDataset(...)        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Cost handed to the NEAT-AI factory ({@link Creature.forDataset}) when
+ * building the seed creature (issue #537). Parent A — the label oracle —
+ * emits a **LOGISTIC** probability in `(0, 1)` (its output neuron is a
+ * LOGISTIC sigmoid; see {@link createParentA}), so every `.bin` target
+ * lives in that range. `BINARY_CROSS_ENTROPY` couples the factory's output
+ * activation to a LOGISTIC sigmoid (NEAT-AI #2793) — the exact activation
+ * the labelled targets assume. Same cost / activation pairing as the XOR
+ * (#520), adaptive_mutation (#533), discovery_at_scale (#535), and
+ * memetic_evolution (#536) adoptions.
+ *
+ * The cost shapes only the *seed*; `evolveDir` keeps its default scoring,
+ * so evolution converges exactly as it did before the factory was adopted
+ * (or faster, from the better-scaled seed).
+ */
+export const SEED_COST = "BINARY_CROSS_ENTROPY";
+
+/**
+ * RNG seed used to reseed the library's global PRNG before constructing a
+ * seed creature, so a given build is deterministic across machines. The
+ * factory and the bare constructor both draw their random weights and
+ * biases from this PRNG — nothing is hand-crafted.
+ */
+export const SEED_RNG_SEED = 213213;
+
+/** The `{ input, output }` record stream the NEAT-AI factory scans. */
+export type FactoryRecords = Parameters<typeof Creature.forDataset>[0];
+
+/** A single `{ input, output }` record within {@link FactoryRecords}. */
+export type FactoryRecord = FactoryRecords[number];
+
+/**
+ * Read every `.bin` file in `dataDir` as Float32 records and return the
+ * full `{ input, output }` pairs — both the input floats and the
+ * Parent-A-labelled target floats. The NEAT-AI factory
+ * ({@link Creature.forDataset}) scans these same records `evolveDir`
+ * trains on, so it must see the complete record, targets included.
+ *
+ * `.bin` files are visited in sorted-name order so the scanned record
+ * order is deterministic across platforms ({@link Deno.readDirSync} does
+ * not guarantee ordering).
+ */
+export function loadDatasetRecords(
+  dataDir: string,
+  inputCount: number = INPUT_COUNT,
+  outputCount: number = OUTPUT_COUNT,
+): FactoryRecords {
+  const recordFloats = inputCount + outputCount;
+  const records: FactoryRecord[] = [];
+  const names: string[] = [];
+  for (const entry of Deno.readDirSync(dataDir)) {
+    if (entry.isFile && entry.name.endsWith(".bin")) names.push(entry.name);
+  }
+  names.sort();
+  for (const name of names) {
+    const bytes = Deno.readFileSync(join(dataDir, name));
+    const view = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    for (let i = 0; i + recordFloats <= view.length; i += recordFloats) {
+      records.push({
+        input: Float32Array.from(view.subarray(i, i + inputCount)),
+        output: Float32Array.from(view.subarray(i + inputCount, i + recordFloats)),
+      });
+    }
+  }
+  return records;
+}
+
+/**
+ * Build the **bare uniform-random NEAT seed** — `new Creature(INPUT_COUNT,
+ * OUTPUT_COUNT)` with direct input → output synapses and zero hidden
+ * neurons. **Retained as the historical baseline** for test / resume
+ * fixtures after the fresh-run seed moved to the factory
+ * ({@link buildFactorySeedCreature}, issue #537). The global PRNG is
+ * reseeded via {@link createSeededRng} so a given `seed` is deterministic;
+ * every weight and bias is drawn from that PRNG — nothing is hand-crafted.
+ */
+export function buildRandomSeedCreature(seed: number = SEED_RNG_SEED): Creature {
+  setRandomNumberGenerator(createSeededRng(seed));
+  return new Creature(INPUT_COUNT, OUTPUT_COUNT);
+}
+
+/**
+ * Build the **factory seed creature** via the NEAT-AI factory
+ * ({@link Creature.forDataset}) instead of a bare `new Creature(...)`
+ * (issue #537). From problem-intrinsic facts only, the factory:
+ *
+ * - picks a **LOGISTIC output** activation from {@link SEED_COST} — the
+ *   activation Parent A's `(0, 1)` labels assume;
+ * - sizes a **conservative hidden-capacity budget** from the problem
+ *   shape (Heaton's rule → a small hidden layer);
+ * - scales the random weights to the **per-activation init stddev**
+ *   (He / Xavier), so the forward pass neither saturates nor vanishes.
+ *
+ * The global PRNG is reseeded via {@link createSeededRng} so a given
+ * `seed` produces a deterministic seed creature. Every weight and bias is
+ * still drawn from that PRNG — the factory chooses the topology and
+ * scaling, never hand-crafted parameters. The cost shapes only the seed;
+ * `evolveDir` keeps its default scoring so evolution is untouched.
+ *
+ * Milestone-sanctioned departure from the project-wide no-warm-start
+ * policy, made under the factory-adoption tracker (issue #517).
+ */
+export function buildFactorySeedCreature(
+  records: FactoryRecords,
+  seed: number = SEED_RNG_SEED,
+): Creature {
+  if (records.length === 0) {
+    throw new Error("buildFactorySeedCreature: records must not be empty");
+  }
+  setRandomNumberGenerator(createSeededRng(seed));
+  const options: DatasetFactoryOptions = { cost: SEED_COST };
+  return Creature.forDataset(records, options);
+}
 
 /** Milestone summary SVG path — sourced from the `evolveDir` return value. */
 export const EVOLUTION_SUMMARY_SVG_PATH = "docs/screenshots/crossover/evolution_summary.svg";
@@ -464,9 +599,12 @@ export function performCrossover(
  * `dataDir`, returning a milestone summary captured from `evolveDir`'s
  * return value plus the seed and final creature's topology.
  *
- * The seed passed in must be `new Creature(INPUT_COUNT, OUTPUT_COUNT)` —
- * this function deliberately does not construct the seed itself so the
- * caller (and the tests) can prove no hidden-layer hint leaks in.
+ * The caller supplies the seed — either the factory seed from
+ * {@link buildFactorySeedCreature} (the fresh-run path under #537) or the
+ * bare {@link buildRandomSeedCreature} baseline used by test / resume
+ * fixtures. This function deliberately does not construct the seed itself
+ * so the seed strategy stays the caller's (and the tests') decision; the
+ * `evolveDir` call here is unchanged by the factory adoption.
  */
 export async function runMinimalSeedEvolution(
   seed: Creature,
@@ -536,7 +674,7 @@ export async function runMinimalSeedEvolution(
 if (import.meta.main) {
   const start = Date.now();
 
-  console.log("🧬 Crossover (Breeding) Example — minimal-seed evolution (#213, #302)");
+  console.log("🧬 Crossover (Breeding) Example — factory-seeded evolution (#213, #302, #537)");
   console.log("");
 
   // CI/quality quick mode (mirrors the cart_pole CART_POLE_QUICK=1 idiom).
@@ -628,12 +766,22 @@ if (import.meta.main) {
     console.log("   Crossover did not produce viable offspring (parents incompatible).");
   }
 
-  // Step 5: Minimal-seed evolution — the headline audit-mandated stage.
-  console.log("\n🌱 Step 5: Minimal-seed evolution (single evolveDir call)");
+  // Step 5: Factory-seeded evolution — the headline audit-mandated stage.
+  // Under issue #537 the seed is built via the data-derived NEAT-AI factory
+  // `Creature.forDataset(records, { cost })` instead of a bare
+  // `new Creature(...)`. The factory scans the same `.bin` records
+  // `evolveDir` trains on and derives — from problem-intrinsic facts only
+  // — a LOGISTIC output (coupled to SEED_COST), a conservative hidden
+  // layer, and He/Xavier weight-init scaling. Weights/biases stay random;
+  // evolution beyond the seed is unchanged. Deliberate, milestone-
+  // sanctioned departure from the no-warm-start policy (tracker #517).
+  console.log("\n🌱 Step 5: Factory-seeded evolution (single evolveDir call)");
+  const factoryRecords = loadDatasetRecords(dataDir, INPUT_COUNT, OUTPUT_COUNT);
+  const seed = buildFactorySeedCreature(factoryRecords);
   console.log(
-    `   Seed: new Creature(${INPUT_COUNT}, ${OUTPUT_COUNT}) — no hidden hint, no warm start.`,
+    `   Seed: Creature.forDataset(records, { cost: "${SEED_COST}" }) — ` +
+      `factory-derived topology + scaling, no warm-started weights.`,
   );
-  const seed = new Creature(INPUT_COUNT, OUTPUT_COUNT);
   console.log(
     `   Seed topology: ${seed.neurons.length} neurons, ${seed.synapses.length} synapses`,
   );
