@@ -112,3 +112,89 @@ function rangeIndices(n: number): number[] {
   for (let i = 0; i < n; i++) out[i] = i;
   return out;
 }
+
+/**
+ * Second-pass, position-aware collision filter for already-selected
+ * boundary labels.
+ *
+ * {@link selectBoundaryIndices} spaces labels evenly by boundary
+ * *index*, which assumes the boundaries are spread evenly across the
+ * plot. On a log-X cumulative-generation axis (issue #514) the later
+ * runs add only a handful of generations each, so their boundaries
+ * cluster against the right edge and the index-even labels still
+ * overlap. This pass takes the final pixel positions of the selected
+ * labels and greedily drops any that would collide horizontally, while
+ * guaranteeing the first and last labels (the anchors) always survive.
+ *
+ * @param labels Pixel positions of the candidate labels, sorted by `x`.
+ *   `width` is the rendered label width in user units.
+ * @returns Indices (into `labels`) to keep — strictly increasing, with
+ *   the first and last entries always present and no two kept labels
+ *   overlapping horizontally. The first/last anchors are kept even if
+ *   they overlap each other (there is nothing to drop between them).
+ */
+/**
+ * End-to-end boundary selection for the multi-run renderers: pick the
+ * evenly-spaced candidate labels via {@link selectBoundaryIndices}, then
+ * — only when the index-even policy actually thinned (more than
+ * {@link MAX_BOUNDARY_LABELS} boundaries) — run the position-aware
+ * {@link dropCollidingLabels} pass so labels that bunch up on a log-X
+ * axis do not overlap.
+ *
+ * The collision pass is intentionally skipped for ≤10-boundary
+ * campaigns so their SVGs stay byte-identical to the pre-#521 output
+ * (acceptance criterion of issue #522).
+ *
+ * @param boundaries Run-boundary transitions in cumulative order.
+ * @param plotWidth Plot-area width in user units.
+ * @param longestLabelChars Length of the longest `"run N"` label.
+ * @param xScale Maps a cumulative-generation value to its pixel X.
+ * @returns Set of boundary indices that should receive a tick + label.
+ */
+export function selectVisibleBoundaryIndices(
+  boundaries: ReadonlyArray<{ runIndex: number; cumulativeGen: number }>,
+  plotWidth: number,
+  longestLabelChars: number,
+  xScale: (cumulativeGen: number) => number,
+): Set<number> {
+  const selected = selectBoundaryIndices(
+    boundaries.length,
+    plotWidth,
+    longestLabelChars,
+  );
+  if (boundaries.length <= MAX_BOUNDARY_LABELS) return new Set(selected);
+
+  const labels = selected.map((i) => ({
+    x: xScale(boundaries[i].cumulativeGen),
+    width: `run ${boundaries[i].runIndex}`.length * ESTIMATED_CHAR_WIDTH_PX,
+  }));
+  const keepLocal = dropCollidingLabels(labels);
+  return new Set(keepLocal.map((k) => selected[k]));
+}
+
+export function dropCollidingLabels(
+  labels: ReadonlyArray<{ x: number; width: number }>,
+): number[] {
+  const n = labels.length;
+  if (n <= 2) return rangeIndices(n);
+
+  const half = (i: number) => labels[i].width / 2;
+  const left = (i: number) => labels[i].x - half(i);
+  const right = (i: number) => labels[i].x + half(i);
+
+  // Keep the first anchor, then greedily keep each middle label whose
+  // left edge clears the previously-kept label's right edge.
+  const keep = [0];
+  for (let i = 1; i < n - 1; i++) {
+    if (left(i) >= right(keep[keep.length - 1])) keep.push(i);
+  }
+
+  // Make room for the last anchor: drop trailing middle labels that
+  // would collide with it (never drop the first anchor).
+  const lastIdx = n - 1;
+  while (keep.length > 1 && left(lastIdx) < right(keep[keep.length - 1])) {
+    keep.pop();
+  }
+  keep.push(lastIdx);
+  return keep;
+}

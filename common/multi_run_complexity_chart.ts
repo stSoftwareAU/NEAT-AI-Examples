@@ -17,7 +17,7 @@
  */
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
-import { selectBoundaryIndices } from "./multi_run_boundary_thinning.ts";
+import { selectVisibleBoundaryIndices } from "./multi_run_boundary_thinning.ts";
 
 /** Options controlling {@link renderMultiRunComplexityChartSVG}. */
 export interface RenderMultiRunComplexityChartOptions {
@@ -337,8 +337,11 @@ function renderRunBoundaries(
   const longestLabel = boundaries.length === 0 ? 0 : Math.max(
     ...boundaries.map((b) => `run ${b.runIndex}`.length),
   );
-  const selected = new Set(
-    selectBoundaryIndices(boundaries.length, plotW, longestLabel),
+  const selected = selectVisibleBoundaryIndices(
+    boundaries,
+    plotW,
+    longestLabel,
+    xScale,
   );
 
   const out: string[] = [];
