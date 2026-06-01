@@ -19,11 +19,14 @@ import { Creature } from "@stsoftware/neat-ai";
 
 import {
   buildAtScaleEvolveDirSummary,
+  buildFactorySeedCreature,
+  buildRandomSeedCreature,
   creatureAsRaw,
   DEFAULT_AT_SCALE_EVOLUTION_CONFIG,
   type DiscoveryAtScaleConfig,
   injectDefects,
   INPUT_COUNT,
+  loadDatasetRecords,
   loadDatasetSamples,
   OUTPUT_COUNT,
   rawAsCreature,
@@ -32,6 +35,7 @@ import {
   REFERENCE_SEED,
   runDiscoveryAtScaleDemo,
   runMinimalSeedAtScaleEvolution,
+  SEED_COST,
   snapshotTopology,
 } from "./discovery_at_scale.ts";
 import { DEFECT_COLOURS, renderDiscoveryAtScaleSVG } from "./svg.ts";
@@ -60,6 +64,33 @@ const SMALL_CONFIG: DiscoveryAtScaleConfig = {
   totalRecords: 32,
   recordsPerFile: 32,
 };
+
+/**
+ * Build a small in-memory set of `{ input, output }` factory records by
+ * activating a deterministic reference creature — the same `(0, 1)`
+ * LOGISTIC-labelled shape `generateSyntheticData` writes to the `.bin`
+ * set, but without touching disk. Used to exercise the factory seed.
+ */
+function sampleFactoryRecords(seed: number): { input: Float32Array; output: Float32Array }[] {
+  const reference = buildLargeCreature({
+    inputs: INPUT_COUNT,
+    hidden: REFERENCE_HIDDEN,
+    outputs: OUTPUT_COUNT,
+    density: REFERENCE_DENSITY,
+    seed: REFERENCE_SEED,
+  });
+  const records: { input: Float32Array; output: Float32Array }[] = [];
+  for (let r = 0; r < 32; r++) {
+    const input = Float32Array.from(
+      { length: INPUT_COUNT },
+      (_, i) => (((r + 1) * (i + 1) * 0.137 + seed * 0.01) % 2) - 1,
+    );
+    reference.clearState();
+    const output = Float32Array.from(reference.activate(input));
+    records.push({ input, output });
+  }
+  return records;
+}
 
 Deno.test("injectDefects - returns the requested defect counts", () => {
   const creature = buildLargeCreature({
@@ -551,6 +582,136 @@ Deno.test("runMinimalSeedAtScaleEvolution leaves the passed-in creature as the c
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
   }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Factory adoption (#535) — seed via Creature.forDataset(...)         */
+/* ------------------------------------------------------------------ */
+
+Deno.test("SEED_COST couples the output to a LOGISTIC sigmoid", () => {
+  // The reference creature's outputs are LOGISTIC (range (0, 1)), so the
+  // BINARY_CROSS_ENTROPY cost — which the factory couples to a LOGISTIC
+  // output (NEAT-AI #2793) — matches the labelled targets exactly.
+  assertEquals(SEED_COST, "BINARY_CROSS_ENTROPY");
+});
+
+Deno.test("loadDatasetRecords - reads back inputs and outputs written by generateSyntheticData", () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "discovery_at_scale_test_" });
+  const dataDir = join(tmp, "data");
+  ensureDirSync(dataDir);
+  try {
+    const reference = buildLargeCreature({
+      inputs: INPUT_COUNT,
+      hidden: 8,
+      outputs: OUTPUT_COUNT,
+      density: 0.3,
+      seed: 5,
+    });
+    generateSyntheticData(reference, dataDir, {
+      totalRecords: 24,
+      recordsPerFile: 8,
+      seed: 5,
+    });
+    const records = loadDatasetRecords(dataDir, INPUT_COUNT, OUTPUT_COUNT);
+    assertEquals(records.length, 24, "should read every generated record");
+    for (const r of records) {
+      assertEquals(r.input.length, INPUT_COUNT);
+      assertEquals(r.output.length, OUTPUT_COUNT);
+      for (const v of r.input) assert(Number.isFinite(v), `input value finite: ${v}`);
+      for (const v of r.output) {
+        assert(Number.isFinite(v), `output value finite: ${v}`);
+        // Reference outputs are LOGISTIC ⇒ targets live in (0, 1).
+        assertGreaterOrEqual(v, 0);
+        assert(v <= 1, `LOGISTIC target must be <= 1: ${v}`);
+      }
+    }
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("buildRandomSeedCreature retains the bare baseline (zero hidden neurons)", () => {
+  const creature = buildRandomSeedCreature(208);
+  assertEquals(creature.input, INPUT_COUNT);
+  assertEquals(creature.output, OUTPUT_COUNT);
+  const json = creature.exportJSON();
+  const hidden = json.neurons.filter((n) => n.type === "hidden");
+  assertEquals(
+    hidden.length,
+    0,
+    "bare baseline must have zero hidden neurons — NEAT must invent them",
+  );
+  // Full bipartite direct wiring, exactly as `new Creature(in, out)` produces.
+  assertEquals(creature.neurons.length, INPUT_COUNT + OUTPUT_COUNT);
+  assertEquals(creature.synapses.length, INPUT_COUNT * OUTPUT_COUNT);
+});
+
+Deno.test("buildFactorySeedCreature - correct I/O arity and a valid creature", () => {
+  const records = sampleFactoryRecords(11);
+  const creature = buildFactorySeedCreature(records, 11);
+  creature.validate();
+  assertEquals(creature.input, INPUT_COUNT);
+  assertEquals(creature.output, OUTPUT_COUNT);
+});
+
+Deno.test("buildFactorySeedCreature picks a LOGISTIC output from the cost", () => {
+  const records = sampleFactoryRecords(7);
+  const json = buildFactorySeedCreature(records, 7).exportJSON();
+  const outs = json.neurons.filter((n) => n.type === "output");
+  assertEquals(outs.length, OUTPUT_COUNT);
+  for (const out of outs) {
+    assertEquals(out.squash, "LOGISTIC", "classification cost ⇒ LOGISTIC output");
+  }
+});
+
+Deno.test("buildFactorySeedCreature sizes a data-derived hidden capacity budget", () => {
+  // Unlike the bare baseline (zero hidden), the factory derives a
+  // conservative hidden layer from the problem shape (Heaton's rule).
+  const records = sampleFactoryRecords(3);
+  const json = buildFactorySeedCreature(records, 3).exportJSON();
+  const hidden = json.neurons.filter((n) => n.type === "hidden");
+  assertGreater(hidden.length, 0, "factory seed must pre-size a hidden layer");
+});
+
+Deno.test("buildFactorySeedCreature produces finite outputs in [0, 1]", () => {
+  const records = sampleFactoryRecords(208);
+  const creature = buildFactorySeedCreature(records, 208);
+  const input = Float32Array.from({ length: INPUT_COUNT }, (_, i) => (i * 0.17) % 1);
+  creature.clearState();
+  const output = creature.activate(input);
+  assertEquals(output.length, OUTPUT_COUNT);
+  for (const v of output) {
+    assert(Number.isFinite(v), `output must be finite: ${v}`);
+    assertGreaterOrEqual(v, 0);
+    assert(v <= 1, `LOGISTIC output must be <= 1: ${v}`);
+  }
+});
+
+Deno.test("buildFactorySeedCreature is deterministic (topology + weights) for a given seed", () => {
+  const records = sampleFactoryRecords(208);
+  const fingerprint = (creature: Creature) => {
+    const json = creature.exportJSON();
+    return JSON.stringify({
+      neurons: json.neurons.map((n) => ({ type: n.type, squash: n.squash, bias: n.bias })),
+      synapses: json.synapses.map((s) => s.weight),
+    });
+  };
+  const a = fingerprint(buildFactorySeedCreature(records, 4242));
+  const b = fingerprint(buildFactorySeedCreature(records, 4242));
+  const c = fingerprint(buildFactorySeedCreature(records, 9999));
+  assertEquals(a, b, "same seed ⇒ identical factory seed");
+  assert(a !== c, "different seed ⇒ different factory seed");
+});
+
+Deno.test("buildFactorySeedCreature rejects an empty record set", () => {
+  let threw = false;
+  try {
+    buildFactorySeedCreature([], 1);
+  } catch (err) {
+    threw = true;
+    assertEquals(err instanceof Error, true);
+  }
+  assertEquals(threw, true, "empty records must throw");
 });
 
 Deno.test("INPUT_COUNT and OUTPUT_COUNT are positive integers matching the runner seed", () => {

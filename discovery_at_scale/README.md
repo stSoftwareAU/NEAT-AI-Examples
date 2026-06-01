@@ -10,7 +10,7 @@ numbers from the latest run via a single milestone-summary SVG.
 flowchart LR
     REF["🧬 Hand-crafted reference creature<br/>(buildLargeCreature — only used to label the .bin set)"]
     DATA["📦 Binary .bin training set"]
-    SEED["🌱 new Creature(6, 3)<br/>minimal seed — no hidden hint"]
+    SEED["🌱 Creature.forDataset(records, { cost })<br/>factory seed — LOGISTIC output, factory hidden layer"]
     EVOLVE["🧪 Creature.evolveDir(...)<br/>forward-only, targetError=0.005,<br/>timeoutMinutes=20"]
     OUT["🏆 Evolved champion + milestone summary SVG"]
     REF --> DATA
@@ -32,15 +32,44 @@ _FFI_ = Foreign Function Interface.
 1. Build a moderately-large hand-crafted reference creature with `buildLargeCreature(...)` and use
    it to synthesise a deterministic binary `.bin` training set. The reference is only the _label
    oracle_ — NEAT-AI never sees it.
-2. Seed evolution with `new Creature(INPUT_COUNT, OUTPUT_COUNT)` — six inputs, three outputs, no
-   hidden neurons, no warm start.
+2. Seed evolution with the **data-derived NEAT-AI factory**
+   `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` (issue #535) — six inputs, three
+   outputs. The factory scans the same `.bin` records `evolveDir` trains on and derives, from
+   problem-intrinsic facts only, a **LOGISTIC** output (coupled to the cost), a conservative
+   factory-sized hidden layer (Heaton's rule), and He/Xavier weight-init scaling. Seed weights and
+   biases stay random — only the topology and scaling are factory-derived. See
+   [the deliberate-departure note](#-deliberate-departure-from-the-no-warm-start-policy-517) below.
 3. Call `Creature.evolveDir(dataDir, options)` over the `.bin` directory in forward-only mode until
    either the per-example `targetError` is reached or the `timeoutMinutes: 20` backstop fires (issue
    #208 stop-condition rule, with the longer wall-clock budget documented in #376).
 4. Capture the milestone-summary fields from `evolveDir`'s return value and render them via the
    shared `common/evolve_dir_summary.ts` helper (#284). The seed-vs-final topology bars in the
-   summary are this demo's headline visual — they show a single 9-neuron seed growing into a
-   competent classifier of a reference network roughly four times its size.
+   summary are this demo's headline visual — they show the factory seed growing into a competent
+   classifier of a reference network of comparable size.
+
+## 🏭 Deliberate departure from the no-warm-start policy (#517)
+
+`AGENTS.md` lists `discovery_at_scale` among the **exempt** examples: the hand-crafted reference
+creature that labels the `.bin` set is the demo's protected state, while the NEAT seed itself was a
+bare `new Creature(input, output)`. Under the factory-adoption tracker
+([#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517), this issue #535) that seed now
+comes from the data-derived factory
+`Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`.
+
+- **Cost / activation coupling.** The reference creature labels the `.bin` set through a
+  **LOGISTIC** output, so every target lives in `(0, 1)`. `BINARY_CROSS_ENTROPY` couples the
+  factory's output activation to a LOGISTIC sigmoid (NEAT-AI #2793) across all three outputs — the
+  exact activation the labelled targets assume. Same cost / activation pairing as the XOR (#520) and
+  `adaptive_mutation` (#533) adoptions.
+- **What the factory derives.** A LOGISTIC output (from the cost), a conservative factory-sized
+  hidden layer (Heaton's rule → a small RELU layer), and per-activation He/Xavier weight-init
+  scaling — from problem-intrinsic facts only.
+- **What stays random.** Seed weights and biases are still drawn from the seeded PRNG; only the
+  topology and scaling are factory-derived, and all structural growth beyond the seed still comes
+  from `evolveDir`'s unchanged mutation operators. `evolveDir` keeps its default scoring, so
+  evolution is untouched.
+- **Baseline retained.** The bare-constructor seed lives on as `buildRandomSeedCreature` for test /
+  resume fixtures.
 
 ## 📈 Latest measured run (`./discovery_at_scale/run.sh`)
 
@@ -52,36 +81,37 @@ _FFI_ = Foreign Function Interface.
 ![Discovery at Scale — milestone summary](../docs/screenshots/discovery_at_scale/evolution_summary.svg)
 
 Topology genuinely grew: the seed-vs-final bars in the summary above show NEAT-AI adding hidden
-neurons and synapses on top of the minimal `new Creature(6, 3)` seed. The numeric callouts cover the
-four milestone fields returned by `evolveDir` (`finalError`, `finalScore`, `generations`, wall-clock
-duration).
+neurons on top of the factory seed. The numeric callouts cover the four milestone fields returned by
+`evolveDir` (`finalError`, `finalScore`, `generations`, wall-clock duration).
 
-### Measured run (`Refresh-2026-05`, issue #376)
+### Measured run (factory seed, issue #535)
 
-| Metric                   | Value          |
-| ------------------------ | -------------- |
-| Generations              | 15&nbsp;185    |
-| Wall-clock               | 20 m 0 s       |
-| Final per-record error   | 0.075          |
-| Final score              | 0.925          |
-| Seed neurons / synapses  | 9 / 18         |
-| Final neurons / synapses | 37 / 193       |
-| `targetError` / timeout  | 0.005 / 20 min |
+| Metric                   | Value                                                            |
+| ------------------------ | ---------------------------------------------------------------- |
+| Seed                     | `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` |
+| Generations              | 83                                                               |
+| Wall-clock               | 5.1 s                                                            |
+| Final per-record error   | 0.0049                                                           |
+| Final score              | 0.9951                                                           |
+| Seed neurons / synapses  | 16 / 63 (7 factory-sized hidden)                                 |
+| Final neurons / synapses | 19 / 61                                                          |
+| `targetError` / timeout  | 0.005 / 20 min                                                   |
 
-The `+15` minutes of additional wall-clock budget granted by #376 lifted the run out of the previous
-`maxIterations: 600` cap (which fired in ~30 s on `@stsoftware/neat-ai 5.0.18`) and let NEAT-AI keep
-growing structure on top of the minimal seed for the full 20-minute backstop. The topology grew
-visibly (9 → 37 neurons, 18 → 193 synapses) even though the run did not reach `targetError`.
+The factory seed converges **far faster than before**: it reaches the `targetError` (0.005) bound in
+83 generations / ~5 s, where the previous bare `new Creature(6, 3)` seed never reached it inside the
+full 20-minute backstop (it stalled around error 0.075 — see git history for the `Refresh-2026-05`
+numbers). The better-scaled, hidden-bearing factory seed lets `evolveDir` reach the same tight
+target in seconds, and structural growth on top of the seed (16 → 19 neurons) still comes purely
+from the unchanged mutation operators.
 
 ## 🧪 What "reasonable solution" means here
 
 The run exits on whichever of the two stop conditions fires first. The `targetError` (0.005) bound
-is tight enough that the minimal seed must grow real hidden structure to satisfy it — on the
-`Refresh-2026-05` run NEAT-AI did not reach it inside the 20-minute backstop, but the champion still
-delivered a reasonable approximation of the labelled task: a 9-neuron seed has been grown into a
-37-neuron / 193-synapse champion that approximates the input → output behaviour of the 33-neuron /
-~165-synapse reference _without ever seeing its topology_. The topology bars in the summary above
-are the demo's headline — they show NEAT-AI _learning_ the network's shape, not just its weights.
+is tight enough that the seed must carry real hidden structure to satisfy it — the factory seed
+reaches it in 83 generations: a 16-neuron factory seed grown into a 19-neuron / 61-synapse champion
+that approximates the input → output behaviour of the reference creature _without ever seeing its
+topology_. The topology bars in the summary above are the demo's headline — they show NEAT-AI
+_learning_ the network's shape on top of a sensibly-seeded start, not just its weights.
 
 ## 🚀 Running the example
 
@@ -94,7 +124,7 @@ will find:
 
 - `data/synthetic_*.bin` — Binary training files derived from the reference creature.
 - `creatures/reference.json` — The hand-crafted reference creature (label oracle only).
-- `creatures/champion.json` — The evolved champion produced from the minimal seed.
+- `creatures/champion.json` — The evolved champion produced from the factory seed.
 
 In addition, the milestone summary SVG is committed under `docs/`:
 
@@ -105,8 +135,12 @@ Features Showcase" entry continues to render.
 
 ## 🧰 NEAT-AI features used
 
-- **Minimal NEAT seed** — `new Creature(input, output)` with no hidden hint, no pre-built
-  `network.json` seed; NEAT-AI random-initialises the rest.
+- **Data-derived factory seed** — `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`
+  (issue #535) derives a LOGISTIC output, a conservative hidden layer, and He/Xavier weight-init
+  scaling from the `.bin` records; weights and biases stay random. The bare
+  `new Creature(input,
+  output)` baseline is retained as `buildRandomSeedCreature` for test /
+  resume fixtures.
 - **`Creature.evolveDir`** over the binary `.bin` training stream (per
   [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)) — orders of magnitude
   faster than per-call `activate()`.
