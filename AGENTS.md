@@ -78,8 +78,15 @@ These examples exist to demonstrate evolution from noise → competent and must 
 - `lunar_lander`
 - `mountain_car`
 - `maze_navigation`
-- `adaptive_mutation` — evolves a 4-bit even-parity classifier from a minimal `new Creature(4, 1)`
-  seed; the noise → competent classification arc is the demo (rewired under #263 / #264).
+- `adaptive_mutation` — **exception (issue #533, factory-adoption tracker #517):** the fresh-run
+  seed is built via the data-derived
+  `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` factory (LOGISTIC output coupled
+  to the cost, a conservative factory-sized hidden layer, He/Xavier weight-init scaling) rather than
+  the legacy bare `new Creature(4, 1)`. Adopting the factory _is_ the demonstration; seed weights
+  and biases stay random and structural growth beyond the seed still comes purely from `evolveDir`'s
+  unchanged mutation operators. The bare constructor baseline is retained as
+  `buildRandomSeedCreature` for test / resume fixtures. The noise → competent classification arc is
+  still the demo (rewired under #263 / #264).
 
 ### Exempt examples (hand-crafted state IS the demo)
 
