@@ -16,6 +16,7 @@ any granted permission — the test passed on doc text, not behaviour, and would
 fail on a harmless comment reword. The behaviour it stood proxy for (every
 Discovery runner is granted FFI) is already covered behaviourally in
 `common/run_sh_permissions_test.ts`:
+
 - `example runner preamble grants required Deno flags`
 - `every run.sh that loads Discovery uses shared Deno flags with --allow-ffi`
 
