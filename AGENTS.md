@@ -137,7 +137,15 @@ entire point of the demo, so the no-warm-start policy does not apply:
   NEAT-AI evolution loop, even though the audited second stage seeds NEAT-AI from
   `new Creature(input, output)`.
 - `synthetic_synapse` — densify-train-prune on an evolved sparse creature.
-- `evolution_showcase` — long-form flagship run (still seeded minimally; see its README).
+- `evolution_showcase` — long-form flagship run. **Factory-adoption exception (issue #534,
+  factory-adoption tracker #517):** the fresh-run seed is built via the data-derived
+  `Creature.forDataset(records, { cost: "MSE" })` factory (linear `IDENTITY` output coupled to the
+  regression cost, an output bias warm-started to the target mean, a conservative factory-sized
+  hidden layer, He/Xavier weight-init scaling) rather than the legacy bare `new Creature(4, 1)`.
+  Adopting the factory _is_ the demonstration; seed weights and biases stay random and structural
+  growth beyond the seed still comes purely from `evolveDir`'s unchanged mutation operators. The
+  bare constructor baseline is retained as `buildRandomSeedCreature` for test / resume fixtures. See
+  its README.
 
 ### Enforcement
 
