@@ -13,7 +13,7 @@
  *   evolution / fitness / topology charts have been replaced by the
  *   milestone-statistics chart from #287. Tests covering the removed
  *   surfaces have been deleted; a new test asserts the milestone-chart
- *   SVG round-trip via `evolveRL` + `renderMilestoneChartSVG`.
+ *   SVG round-trip via `evolveRL` + `renderMilestoneChartSVG`
  */
 import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
