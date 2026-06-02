@@ -55,7 +55,7 @@ full data-scanning factory.
 | `evolution_showcase`   | 🟡 Planned  | [#534](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/534) | Long-form flagship run; needs a deliberate departure write-up given its "noise → competent" framing.                                                                                                                        |
 | `discovery_at_scale`   | ✅ Migrated | [#535](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/535) | `evolveDir` over a binary `.bin` set built from a `buildLargeCreature(...)` reference — `BINARY_CROSS_ENTROPY` → LOGISTIC outputs (match the reference's LOGISTIC labels) + factory hidden layer.                           |
 | `memetic_evolution`    | ✅ Migrated | [#536](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/536) | Two `evolveDir` runs (memetic + control) — both seeds built via `BINARY_CROSS_ENTROPY` → `LOGISTIC` output (matches the oracle's `[0, 1]` targets) + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`. |
-| `crossover`            | 🟡 Planned  | [#537](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/537) | NEAT seed for the second stage of the crossover demo is a minimal `new Creature(...)`.                                                                                                                                      |
+| `crossover`            | ✅ Migrated | [#537](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/537) | Second-stage `evolveDir` seed — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output (matches Parent A's `(0, 1)` labels) + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`. Hand-crafted parents stay exempt.  |
 
 ### Group B — RL / control (Tier-0 `forProblem` only, no data scan)
 
@@ -111,8 +111,8 @@ flowchart LR
     SHIP --> B["🅱️ Group B<br/>RL/control — forProblem (Tier-0)"]
     SHIP --> C["🅲 Group C<br/>Mechanic demos — forDataset (post-A)"]
 
-    A --> A_DONE["MNIST · Stock · XOR · adaptive_mutation · discovery_at_scale · memetic_evolution<br/>(merged into milestone/factory)"]
-    A --> A_TODO["evolution_showcase<br/>crossover"]
+    A --> A_DONE["MNIST · Stock · XOR · adaptive_mutation · discovery_at_scale · memetic_evolution · crossover<br/>(merged into milestone/factory)"]
+    A --> A_TODO["evolution_showcase"]
 
     B --> B_TIER0["6 × Tier-0 swap<br/>(cart_pole, lunar_lander,<br/>mountain_car, snake_game,<br/>maze_navigation, tsp_constructive)"]
     B --> B_DEFER["tsp_two_opt<br/>(hand-tuned 16/12 layers —<br/>revisit)"]

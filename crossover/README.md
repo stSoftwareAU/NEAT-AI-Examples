@@ -1,10 +1,40 @@
-# 🔀 Crossover — Breeding Two Creatures + Minimal-Seed Evolution
+# 🔀 Crossover — Breeding Two Creatures + Factory-Seeded Evolution
 
 **The audit (#213) reframes this example.** The breeding demo (parents A and B → offspring) is
 preserved because parents are exempt hand-crafted state per `AGENTS.md` — they are the demo's whole
-point. On top of that, the example runs a **minimal-seed** `evolveDir` against the same `.bin`
-training set so the published evolution genuinely _learns_ the network structure with no hidden hint
-and no warm start.
+point. On top of that, the example runs an `evolveDir` against the same `.bin` training set so the
+published evolution genuinely _learns_ the network structure.
+
+## 🏭 Factory-seeded evolution (issue #537)
+
+Under the
+[factory-adoption tracker (#517)](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517) the
+evolution seed is now built via the data-derived NEAT-AI factory
+`Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`
+([`buildFactorySeedCreature`](crossover_example.ts)) instead of a bare `new Creature(3, 1)`. From
+problem-intrinsic facts only, the factory:
+
+- couples a **LOGISTIC output** activation to the cost (NEAT-AI #2793) — matching Parent A's
+  `(0, 1)` sigmoid labels;
+- sizes a **conservative hidden-capacity budget** from the problem shape (Heaton's rule);
+- scales the random weight init **per activation** (He / Xavier).
+
+**Only the seed changes; evolution is untouched** — `evolveDir` keeps its default scoring and the
+example converges exactly as before (or faster, from the better-scaled seed). Seed weights and
+biases stay random; only topology and scaling are factory-derived, and all structural growth beyond
+the seed still comes from the unchanged mutation operators. This is a **deliberate, milestone-
+sanctioned departure** from the no-warm-start policy documented in `AGENTS.md` and
+[`docs/factory_adoption.md`](../docs/factory_adoption.md). The bare-constructor seed is retained as
+[`buildRandomSeedCreature`](crossover_example.ts) — the historical baseline for test / resume
+fixtures.
+
+### Cost / activation coupling for this example
+
+Parent A is the **label oracle**: its output neuron is a LOGISTIC sigmoid, so every `.bin` target
+lives in `(0, 1)`. `BINARY_CROSS_ENTROPY` is the cost whose factory output activation is a LOGISTIC
+sigmoid — the exact activation the labelled targets assume. This is the same cost / activation
+pairing used by the merged XOR (#520), adaptive_mutation (#533), discovery_at_scale (#535), and
+memetic_evolution (#536) adoptions.
 
 Under [#302](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/302) the per-generation
 telemetry hook was removed in favour of NEAT-AI's milestone-only telemetry surface (see
@@ -20,8 +50,8 @@ flowchart TD
     SCORE["📏 Score Both Parents"]
     CROSS["🔀 Crossover<br/>mother-keep + father-50%<br/>weights blended"]
     OFF["🐣 Offspring"]
-    SEED["🌱 new Creature(3, 1)<br/>minimal seed — no hidden hint"]
-    EVO["🧪 Creature.evolveDir(...)<br/>single call, forward-only,<br/>targetError=0.02, timeoutMinutes=5"]
+    SEED["🌱 Creature.forDataset(records,<br/>{ cost: BINARY_CROSS_ENTROPY })<br/>factory seed — LOGISTIC output,<br/>factory hidden layer, He/Xavier init"]
+    EVO["🧪 Creature.evolveDir(...)<br/>single call, forward-only,<br/>targetError=0.02, timeoutMinutes=15"]
     SUMMARY["📦 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
     OUT["📈 evolution_summary.svg"]
 
@@ -31,6 +61,7 @@ flowchart TD
     PB --> SCORE
     SCORE --> CROSS
     CROSS --> OFF
+    DATA --> SEED
     DATA --> EVO
     SEED --> EVO
     EVO --> SUMMARY
@@ -60,10 +91,12 @@ flowchart TD
 3. Score both parents against the `.bin` set.
 4. Run `performCrossover(parentA, parentB)` — mother's neurons are always kept, father's unique
    neurons are included with 50% probability, matching weights/biases are blended (averaged).
-5. Run **minimal-seed** evolution: seed `new Creature(INPUT_COUNT, OUTPUT_COUNT)` (no hidden hint,
-   no pre-built `network.json`, no warm start) and make a **single** `Creature.evolveDir(...)` call
-   in forward-only mode until either `targetError` is reached or the `timeoutMinutes: 5` backstop
-   fires.
+5. Run **factory-seeded** evolution: build the seed via
+   `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` (LOGISTIC output, factory-sized
+   hidden layer, He/Xavier weight-init scaling — no pre-built `network.json`, no warm-started
+   weights) and make a **single** `Creature.evolveDir(...)` call in forward-only mode until either
+   `targetError` is reached or the `timeoutMinutes: 15` backstop fires. The `evolveDir` call is
+   unchanged by the factory adoption.
 6. Render a milestone summary SVG from the `evolveDir` return value plus the seed and final creature
    topology via `renderEvolveDirSummarySvg`.
 
@@ -84,24 +117,24 @@ topology — no per-generation telemetry hook.
 
 ### Crossover comparison
 
-| Creature                          | Score    |
-| --------------------------------- | -------- |
-| Parent A (label oracle)           | 1.000000 |
-| Parent B (different lineage)      | varies\* |
-| Crossover offspring               | varies\* |
-| **Minimal-seed evolved champion** | varies\* |
+| Creature                            | Score    |
+| ----------------------------------- | -------- |
+| Parent A (label oracle)             | 1.000000 |
+| Parent B (different lineage)        | varies\* |
+| Crossover offspring                 | varies\* |
+| **Factory-seeded evolved champion** | varies\* |
 
 \*See the runner's "Comparison" section for the latest measurement.
 
 ## 🧪 What "reasonable solution" means here
 
-The minimal-seed evolved champion's score on the binary `.bin` training set should approach Parent
+The factory-seeded evolved champion's score on the binary `.bin` training set should approach Parent
 A's score (higher is better; theoretical maximum is 1.0). The final per-record error satisfies the
 `targetError = 0.02` stop condition when the run succeeds — the champion is producing labels within
 `2 × 10⁻²` of Parent A's outputs on average. That is a reasonable solution to the labelled task: a
-creature that started as 4 neurons and 3 synapses (no hidden layer at all) has evolved into a
-network that approximates Parent A's nonlinear sigmoid-of-sigmoids behaviour _without ever seeing
-Parent A's topology_.
+creature that started from a factory-derived seed (a LOGISTIC output coupled to the cost plus a
+conservative hidden layer, weights still random) has evolved into a network that approximates Parent
+A's nonlinear sigmoid-of-sigmoids behaviour _without ever seeing Parent A's topology_.
 
 ## 🚀 Running the Example
 
@@ -116,7 +149,7 @@ will find:
 - `creatures/parent_a.json` — The first parent creature (hand-crafted demo state).
 - `creatures/parent_b.json` — The second parent creature (hand-crafted demo state).
 - `creatures/offspring.json` — The crossover offspring.
-- `creatures/evolved.json` — The minimal-seed evolved champion (audit deliverable).
+- `creatures/evolved.json` — The factory-seeded evolved champion (audit deliverable).
 - `output/` — Additional offspring from repeated crossover for inspection.
 
 The milestone summary SVG is committed under `docs/`:
@@ -133,9 +166,11 @@ The audit rolls two things into one example:
 - **The breeding demo** — `performCrossover` shows NEAT-AI's mother-keep + father-50% blending — the
   simplest of NEAT-AI's breeding strategies (subgraph transplantation, cosine-similarity alignment,
   and diversity-driven cross-population pairing all live upstream).
-- **Minimal-seed evolution** — `new Creature(input, output)` with no hidden hint, fed to
-  `Creature.evolveDir(...)` over the binary `.bin` training stream (per
-  [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)).
+- **Factory-seeded evolution** — `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })`
+  builds the seed (LOGISTIC output coupled to the cost, factory-sized hidden layer, He/Xavier init),
+  fed to `Creature.evolveDir(...)` over the binary `.bin` training stream (per
+  [`docs/binary_training_stream.md`](../docs/binary_training_stream.md)). The bare
+  `new Creature(input, output)` baseline lives on as `buildRandomSeedCreature` for fixtures.
 
 Features exercised (links go to upstream
 [`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md)):

@@ -111,7 +111,16 @@ entire point of the demo, so the no-warm-start policy does not apply:
   optimises activation functions on the evolved champion (audited under #214); listed here because
   the squash improvement scan operates on a hand-curated creature, even though the seed itself is
   `new Creature(input, output)`.
-- `crossover` — breeds two parent creatures into an offspring.
+- `crossover` — breeds two parent creatures into an offspring. The two hand-crafted parents (and the
+  offspring bred from them) are the demo's hand-crafted state and live **outside** the NEAT seed, so
+  the no-warm-start exemption still holds. The `evolveDir` seed for the second stage is a
+  **factory-adoption exception (issue #537, factory-adoption tracker #517):** it is built via the
+  data-derived `Creature.forDataset(records, { cost: "BINARY_CROSS_ENTROPY" })` factory (LOGISTIC
+  output coupled to the cost — matching Parent A's `(0, 1)` sigmoid labels — a conservative
+  factory-sized hidden layer, He/Xavier weight-init scaling) rather than the legacy bare
+  `new Creature(3, 1)`. Seed weights and biases stay random and structural growth beyond the seed
+  still comes purely from `evolveDir`'s unchanged mutation operators; the bare-constructor baseline
+  is retained as `buildRandomSeedCreature` for test / resume fixtures.
 - `memetic_evolution` — re-seeds the population from an archive of fittest creatures. The two
   `evolveDir` seeds (memetic + control) are a **factory-adoption exception (issue #536,
   factory-adoption tracker #517):** both are built via the data-derived
