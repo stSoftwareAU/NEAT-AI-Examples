@@ -31,6 +31,7 @@ jobs:
   dependency-review:
     name: Review dependency changes
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Resolve PR comparison refs
         if: github.event_name == 'workflow_dispatch'

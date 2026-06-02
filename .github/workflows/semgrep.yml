@@ -33,6 +33,7 @@ jobs:
   semgrep:
     name: SAST scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container:
       image: semgrep/semgrep
     steps:
