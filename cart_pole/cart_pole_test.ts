@@ -2,7 +2,7 @@
  * Unit tests for the cart-pole NEAT controller. "What" tests only —
  * each test calls a real function, runs the simulator or evolver, and
  * asserts on the observable outputs (scores, file contents, SVG
- * structure).
+ * structure)
  *
  * Migration notes:
  * - Issue #236 — the controller now evolves through
