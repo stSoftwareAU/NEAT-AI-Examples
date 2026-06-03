@@ -1,4 +1,4 @@
-// Tests for .github/workflows/semgrep.yml (Issue #555).
+// Tests for .github/workflows/semgrep.yml (Issue #555)
 //
 // The Semgrep SAST workflow runs inside a job-level container. A
 // container image referenced by a mutable tag (e.g. `semgrep/semgrep`,
