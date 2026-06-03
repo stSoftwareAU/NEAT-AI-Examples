@@ -6,7 +6,7 @@ Every job across the repository's GitHub Actions workflows previously inherited
 GitHub's 6-hour default timeout, so a hung step (a stalled download, a deadlocked
 `deno test`, an unending build) could wedge a runner for hours and burn runner
 minutes. This change adds an explicit job-level `timeout-minutes` to all eight
-jobs, bounding the blast radius of any hang. Closes #553.
+jobs, bounding the blast radius of any hang. Closes #553
 
 Timeouts are sized to each job's workload:
 
