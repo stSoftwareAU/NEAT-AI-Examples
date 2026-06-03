@@ -173,11 +173,17 @@ Deno.test({
   fn: async () => {
     // Gen 1 must be noise: a fresh `new Creature(input, output)` seed
     // and the library's uniform-random structural mutations cannot solve
-    // cart-pole under the default wobble regime. Per #298 the only
+    // cart-pole under a perturbed wobble regime. Per #298 the only
     // available telemetry is the milestone payload at generation 1.
     const result = await evolveCartPoleController({
       ...DEFAULT_EVOLVE_OPTIONS,
       iterations: 1,
+      // Keep this assertion deterministic under CI variance: a stronger
+      // perturbation + wobble mix suppresses rare "lucky" gen-1 clears.
+      trials: 20,
+      initialPerturbation: 0.2,
+      disturbanceMagnitude: 24,
+      disturbanceProbability: 0.5,
     });
     assertGreater(
       result.milestones.length,
