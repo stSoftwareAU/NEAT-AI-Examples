@@ -14,7 +14,7 @@
 //   * every `uses:` action is pinned to a 40-character commit SHA,
 //   * the workflow runs on `ubuntu-latest` with read-only `contents`
 //     permission, and
-//   * it actually invokes the `semgrep` CLI so a regression fails CI.
+//   * it actually invokes the `semgrep` CLI so a regression fails CI
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { parse } from "@std/yaml";
