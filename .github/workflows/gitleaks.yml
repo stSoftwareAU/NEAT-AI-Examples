@@ -30,6 +30,7 @@ jobs:
   gitleaks:
     name: Scan for secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Resolve PR base ref
         if: github.event_name == 'workflow_dispatch'
