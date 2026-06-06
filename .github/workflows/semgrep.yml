@@ -35,7 +35,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: semgrep/semgrep
+      # semgrep/semgrep:latest — pinned to an immutable digest (Issue #555).
+      # Bump deliberately, the same way the action SHA pins are maintained:
+      #   docker buildx imagetools inspect semgrep/semgrep:latest
+      image: semgrep/semgrep@sha256:7cad2bc2d1e44f87f0bf4be6d1fa23aa90fb72015bebc89fb91385d813987a03
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
