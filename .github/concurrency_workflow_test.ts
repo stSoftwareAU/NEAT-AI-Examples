@@ -9,7 +9,7 @@
 //
 // `deno-outdated.yml` pushes commits back to the PR head branch, so it
 // uses `cancel-in-progress: false` to avoid interrupting an in-flight
-// auto-bump push mid-commit.
+// auto-bump push mid-commit
 
 import { assert, assertEquals } from "@std/assert";
 import { parse } from "@std/yaml";
