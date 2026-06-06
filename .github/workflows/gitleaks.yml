@@ -22,6 +22,12 @@ on:
         required: true
         type: string
 
+# Cancel a superseded run as soon as a newer commit arrives on the same
+# ref, so rapid pushes to a PR don't pile up duplicate runs (Issue #554).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: read
