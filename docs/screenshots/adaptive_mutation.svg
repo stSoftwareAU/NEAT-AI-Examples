@@ -28,8 +28,8 @@
   <polyline class="topology-rate" fill="none" stroke="#e67e22" stroke-width="2" stroke-dasharray="6 3" points="70.00,70.00 80.13,81.52 90.25,92.00 100.38,101.57 110.50,110.33 120.63,118.40 130.75,125.85 140.88,132.74 151.00,139.14 161.13,145.10 171.25,150.67 181.38,155.87 191.50,160.75 201.63,165.33 211.75,169.65 221.88,173.71 232.00,177.56 242.13,181.19 252.25,184.63 262.38,187.90 272.50,191.00 282.63,193.95 292.75,196.76 302.88,199.44 313.00,202.00 323.13,204.44 333.25,206.78 343.38,209.02 353.50,211.17 363.63,213.22 373.75,215.20 383.88,217.10 394.00,218.92 404.13,220.68 414.25,222.37 424.38,224.00 434.50,225.57 444.63,227.09 454.75,228.55 464.88,229.97 475.00,231.33 485.12,232.66 495.25,233.94 505.38,235.17 515.50,236.38 525.63,237.54 535.75,238.67 545.88,239.76 556.00,240.82 566.13,241.86 576.25,242.86 586.38,243.83 596.50,244.78 606.63,245.70 616.75,246.59 626.88,247.47 637.00,248.32 647.13,249.14 657.25,249.95 667.38,250.73 677.50,251.50 687.63,252.25 697.75,252.98 707.88,253.69 718.00,254.38 728.13,255.06 738.25,255.72 748.38,256.37 758.50,257.00 768.63,257.62 778.75,258.22 788.88,258.81 799.00,259.39 809.13,259.96 819.25,260.51 829.38,261.05 839.50,261.58 849.63,262.10 859.75,262.61 869.88,263.11 880.00,263.60"/>
   <circle class="seed-mark" cx="143.41" cy="134.39" r="5" fill="#9ecae1" stroke="#333" stroke-width="1"/>
   <text x="151.41" y="128.39" font-family="sans-serif" font-size="10" fill="#333">seed (size 29)</text>
-  <circle class="final-mark" cx="166.19" cy="147.93" r="5" fill="#1f77b4" stroke="#333" stroke-width="1"/>
-  <text x="174.19" y="161.93" font-family="sans-serif" font-size="10" fill="#333">final (size 38)</text>
+  <circle class="final-mark" cx="161.13" cy="145.10" r="5" fill="#1f77b4" stroke="#333" stroke-width="1"/>
+  <text x="169.13" y="159.10" font-family="sans-serif" font-size="10" fill="#333">final (size 36)</text>
   <text x="70.00" y="64.00" font-family="sans-serif" font-size="11" font-weight="bold" fill="#333">Analytic topology-mutation policy curve</text>
   <text x="70.00" y="356.00" font-family="sans-serif" font-size="11" font-weight="bold" fill="#333">Seed → final topology (neurons and synapses)</text>
   <g class="seed-vs-final">
@@ -40,19 +40,19 @@
     <text x="373.75" y="380.17" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#222">11</text>
     <text x="373.75" y="546.00" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#555">final</text>
     <text x="272.50" y="560.00" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#333">neurons</text>
-    <rect class="topo-bar topo-bar-seed-synapses" x="530.69" y="422.50" width="91.13" height="109.50" fill="#9ecae1"/>
-    <text x="576.25" y="418.50" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#222">20</text>
+    <rect class="topo-bar topo-bar-seed-synapses" x="530.69" y="413.74" width="91.13" height="118.26" fill="#9ecae1"/>
+    <text x="576.25" y="409.74" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#222">20</text>
     <text x="576.25" y="546.00" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#555">seed</text>
     <rect class="topo-bar topo-bar-final-synapses" x="733.19" y="384.17" width="91.13" height="147.83" fill="#1f77b4"/>
-    <text x="778.75" y="380.17" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#222">27</text>
+    <text x="778.75" y="380.17" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#222">25</text>
     <text x="778.75" y="546.00" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#555">final</text>
     <text x="677.50" y="560.00" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#333">synapses</text>
   </g>
   <rect x="82.00" y="82.00" width="220" height="74" fill="#ffffff" fill-opacity="0.92" stroke="#cccccc"/>
-  <text x="90.00" y="98.00" font-family="sans-serif" font-size="11" fill="#222">Generations: 955 (solved)</text>
-  <text x="90.00" y="112.00" font-family="sans-serif" font-size="11" fill="#222">Wall-clock: 28.8s</text>
-  <text x="90.00" y="126.00" font-family="sans-serif" font-size="11" fill="#222">Final error: 0.0000</text>
-  <text x="90.00" y="140.00" font-family="sans-serif" font-size="11" fill="#222">Held-out -MSE: 0.0000</text>
+  <text x="90.00" y="98.00" font-family="sans-serif" font-size="11" fill="#222">Generations: 89 (solved)</text>
+  <text x="90.00" y="112.00" font-family="sans-serif" font-size="11" fill="#222">Wall-clock: 8.5s</text>
+  <text x="90.00" y="126.00" font-family="sans-serif" font-size="11" fill="#222">Final error: 0.0448</text>
+  <text x="90.00" y="140.00" font-family="sans-serif" font-size="11" fill="#222">Held-out -MSE: -0.0385</text>
   <g class="legend" font-family="sans-serif" font-size="11" fill="#333">
     <line x1="260" y1="610" x2="282" y2="610" stroke="#e67e22" stroke-width="2" stroke-dasharray="6 3"/>
     <text x="288" y="614">analytic p(topology)</text>

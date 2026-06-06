@@ -29,6 +29,13 @@ on:
     branches:
       - Develop
 
+# Serialise runs on the same ref but never cancel in progress: this job
+# pushes auto-bump commits back to the PR head, and interrupting it
+# mid-commit could leave the branch in a half-written state (Issue #554).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   actions: write
