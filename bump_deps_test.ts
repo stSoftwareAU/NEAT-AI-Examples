@@ -14,12 +14,10 @@ import {
   compareVersions,
   decideBumps,
   DEFAULT_QUARANTINE_HOURS,
-  fetchJsrAvailableVersions,
   fetchVersions,
   formatDecision,
   isInternalPackage,
   isPlainSemver,
-  jsrMetaUrl,
   parseSpecifier,
   pickTargetVersion,
   registryUrl,
@@ -178,61 +176,21 @@ Deno.test("pickTargetVersion - never downgrades", () => {
  * metadata for the matching URL. Anything else throws so tests fail
  * loud rather than silently calling out to the real registry.
  */
-/**
- * Convert an `npm.jsr.io` mirror URL into the native `jsr.io` `meta.json`
- * URL for the same package, e.g.
- *   https://npm.jsr.io/@jsr/std__cli → https://jsr.io/@std/cli/meta.json
- * Returns null for non-JSR (registry.npmjs.org) URLs.
- */
-function jsrMetaUrlFromNpm(npmUrl: string): string | null {
-  const m = npmUrl.match(/^https:\/\/npm\.jsr\.io\/@jsr\/([^_]+)__(.+)$/);
-  if (!m) return null;
-  return `https://jsr.io/@${m[1]}/${m[2]}/meta.json`;
-}
-
-/**
- * Build an injected fetcher. `map` is keyed by registry (npm.jsr.io /
- * registry.npmjs.org) URL. For JSR packages the updater also fetches the
- * native `jsr.io` meta.json; by default that response is derived from the
- * same version list (all versions available, none yanked), so existing
- * tests need no extra wiring. Pass `jsrMeta` to model a propagation lag —
- * keyed by jsr.io meta URL, listing only the versions the native registry
- * has caught up on (with optional per-version `yanked`).
- */
 function makeFetcher(
   map: Record<string, { versions: Record<string, unknown>; time: Record<string, string> }>,
-  jsrMeta?: Record<string, { versions: Record<string, { yanked?: boolean }> }>,
 ) {
   return (input: string | URL): Promise<Response> => {
     const url = String(input);
-    const ok = (body: unknown) =>
-      Promise.resolve(
-        new Response(JSON.stringify(body), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      );
-
-    // Native jsr.io meta.json request.
-    if (url.startsWith("https://jsr.io/")) {
-      const override = jsrMeta?.[url];
-      if (override) return ok(override);
-      // Derive a default native-registry view from the npm mirror entry.
-      for (const [npmUrl, body] of Object.entries(map)) {
-        if (jsrMetaUrlFromNpm(npmUrl) === url) {
-          const versions: Record<string, Record<string, never>> = {};
-          for (const v of Object.keys(body.versions)) versions[v] = {};
-          return ok({ versions });
-        }
-      }
-      return Promise.resolve(new Response(`unexpected URL ${url}`, { status: 500 }));
-    }
-
     const body = map[url];
     if (!body) {
       return Promise.resolve(new Response(`unexpected URL ${url}`, { status: 500 }));
     }
-    return ok(body);
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
   };
 }
 
@@ -285,114 +243,6 @@ Deno.test("fetchVersions - HTTP error throws", async () => {
     threw = true;
   }
   assert(threw, "expected HTTP 404 to throw");
-});
-
-Deno.test("jsrMetaUrl - builds the native jsr.io meta URL for a JSR import", () => {
-  const url = jsrMetaUrl({
-    key: "@stsoftware/neat-ai",
-    raw: "jsr:@stsoftware/neat-ai@5.3.15",
-    protocol: "jsr",
-    packageName: "@stsoftware/neat-ai",
-    version: "5.3.15",
-    subpath: "",
-  });
-  assertEquals(url, "https://jsr.io/@stsoftware/neat-ai/meta.json");
-});
-
-Deno.test("fetchJsrAvailableVersions - parses native registry version set and yanked flags", async () => {
-  const fetcher = makeFetcher({}, {
-    "https://jsr.io/@stsoftware/neat-ai/meta.json": {
-      versions: { "5.3.18": {}, "5.3.19": { yanked: true } },
-    },
-  });
-  const available = await fetchJsrAvailableVersions(
-    {
-      key: "@stsoftware/neat-ai",
-      raw: "jsr:@stsoftware/neat-ai@5.3.15",
-      protocol: "jsr",
-      packageName: "@stsoftware/neat-ai",
-      version: "5.3.15",
-      subpath: "",
-    },
-    fetcher,
-  );
-  assertEquals(available.get("5.3.18")?.yanked, false);
-  assertEquals(available.get("5.3.19")?.yanked, true);
-  assertEquals(available.has("5.3.20"), false, "absent versions are not present");
-});
-
-Deno.test("fetchVersions - skips a JSR version the native registry has not caught up on", async () => {
-  // Regression for Issue #362: the npm.jsr.io mirror advertises 5.3.20 but
-  // jsr.io (what `deno install` resolves against) only lists up to 5.3.19.
-  // Bumping to 5.3.20 would make the lockfile refresh fail, so 5.3.20 must
-  // be treated as untargetable (yanked) until the native registry catches up.
-  const npmUrl = "https://npm.jsr.io/@jsr/stsoftware__neat-ai";
-  const fetcher = makeFetcher(
-    {
-      [npmUrl]: {
-        versions: { "5.3.19": {}, "5.3.20": {} },
-        time: {
-          "5.3.19": "2026-06-08T00:00:00Z",
-          "5.3.20": "2026-06-10T00:00:00Z",
-        },
-      },
-    },
-    {
-      "https://jsr.io/@stsoftware/neat-ai/meta.json": {
-        // Native registry lags — 5.3.20 not yet present.
-        versions: { "5.3.19": {} },
-      },
-    },
-  );
-  const out = await fetchVersions(
-    {
-      key: "@stsoftware/neat-ai",
-      raw: "jsr:@stsoftware/neat-ai@5.3.15",
-      protocol: "jsr",
-      packageName: "@stsoftware/neat-ai",
-      version: "5.3.15",
-      subpath: "",
-    },
-    fetcher,
-  );
-  assertEquals(out.find((v) => v.version === "5.3.19")?.yanked, false);
-  assertEquals(
-    out.find((v) => v.version === "5.3.20")?.yanked,
-    true,
-    "version absent from the native registry is treated as untargetable",
-  );
-});
-
-Deno.test("decideBumps - internal JSR dep does not bump to a version missing from the native registry", async () => {
-  // End-to-end of the Issue #362 lag: npm mirror shows 5.3.20, native
-  // registry only has 5.3.19 — the bump must land on 5.3.19, the version
-  // `deno install` can actually resolve.
-  const fetcher = makeFetcher(
-    {
-      "https://npm.jsr.io/@jsr/stsoftware__neat-ai": {
-        versions: { "5.3.15": {}, "5.3.19": {}, "5.3.20": {} },
-        time: {
-          "5.3.15": new Date(now.getTime() - 720 * ONE_HOUR).toISOString(),
-          "5.3.19": new Date(now.getTime() - 48 * ONE_HOUR).toISOString(),
-          "5.3.20": new Date(now.getTime() - 1 * ONE_HOUR).toISOString(),
-        },
-      },
-    },
-    {
-      "https://jsr.io/@stsoftware/neat-ai/meta.json": {
-        versions: { "5.3.15": {}, "5.3.19": {} },
-      },
-    },
-  );
-  const decisions = await decideBumps({
-    imports: { "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.3.15" },
-    quarantineHours: 24,
-    now,
-    fetcher,
-  });
-  const d = decisions.find((x) => x.info.key === "@stsoftware/neat-ai");
-  assertEquals(d?.bumped, true);
-  assertEquals(d?.targetVersion, "5.3.19", "lands on the highest natively-resolvable version");
 });
 
 Deno.test("decideBumps - external dep gated by quarantine, internal dep bumps immediately", async () => {
@@ -617,4 +467,90 @@ Deno.test("formatDecision - human-readable lines for bumped and kept pins", () =
   });
   assert(kept.startsWith("keep"));
   assert(kept.includes("24h quarantine"));
+});
+
+/**
+ * Build a `fetch` that serves npm.jsr.io mirror metadata and jsr.io
+ * authoritative metadata from two maps. Unknown URLs return HTTP 500 so a
+ * stray request fails loudly rather than reaching the network.
+ */
+function makeDualFetcher(
+  mirror: Record<string, { versions: Record<string, unknown>; time: Record<string, string> }>,
+  jsrMeta: Record<string, { versions: Record<string, { yanked?: boolean }> }>,
+) {
+  return (input: string | URL): Promise<Response> => {
+    const url = String(input);
+    const body = mirror[url] ?? jsrMeta[url];
+    if (!body) {
+      return Promise.resolve(new Response(`unexpected URL ${url}`, { status: 500 }));
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  };
+}
+
+Deno.test("decideBumps - JSR bump is constrained to jsr.io-resolvable versions", async () => {
+  // Regression for PR #576: the npm.jsr.io mirror advertised 5.3.20 (with an
+  // old-enough publish time) but jsr.io only resolves up to 5.3.19, so
+  // `deno install @stsoftware/neat-ai@5.3.20` failed. The bump must stop at
+  // the highest version jsr.io can actually resolve.
+  const fetcher = makeDualFetcher({
+    "https://npm.jsr.io/@jsr/stsoftware__neat-ai": {
+      versions: { "5.3.15": {}, "5.3.19": {}, "5.3.20": {} },
+      time: {
+        "5.3.15": new Date(now.getTime() - 720 * ONE_HOUR).toISOString(),
+        "5.3.19": new Date(now.getTime() - 48 * ONE_HOUR).toISOString(),
+        "5.3.20": new Date(now.getTime() - 30 * ONE_HOUR).toISOString(),
+      },
+    },
+  }, {
+    "https://jsr.io/@stsoftware/neat-ai/meta.json": {
+      // jsr.io has not propagated 5.3.20 yet.
+      versions: { "5.3.15": {}, "5.3.19": {} },
+    },
+  });
+  const decisions = await decideBumps({
+    imports: { "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.3.15" },
+    quarantineHours: 24,
+    now,
+    fetcher,
+  });
+  assertEquals(decisions[0]?.bumped, true);
+  assertEquals(decisions[0]?.targetVersion, "5.3.19", "must not select the unresolvable 5.3.20");
+});
+
+Deno.test("decideBumps - JSR meta lookup failure falls back to mirror candidates", async () => {
+  // When jsr.io is unreachable, do not block the bump entirely — fall back
+  // to the mirror-only candidate set (prior behaviour).
+  const fetcher = (input: string | URL): Promise<Response> => {
+    const url = String(input);
+    if (url === "https://npm.jsr.io/@jsr/stsoftware__neat-ai") {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            versions: { "5.3.15": {}, "5.3.19": {} },
+            time: {
+              "5.3.15": new Date(now.getTime() - 720 * ONE_HOUR).toISOString(),
+              "5.3.19": new Date(now.getTime() - 48 * ONE_HOUR).toISOString(),
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    }
+    // jsr.io meta.json is down.
+    return Promise.resolve(new Response("down", { status: 503 }));
+  };
+  const decisions = await decideBumps({
+    imports: { "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.3.15" },
+    quarantineHours: 24,
+    now,
+    fetcher,
+  });
+  assertEquals(decisions[0]?.bumped, true);
+  assertEquals(decisions[0]?.targetVersion, "5.3.19");
 });

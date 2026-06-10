@@ -237,15 +237,25 @@ interface JsrMetadata {
  * JSR import, mapped to whether each is yanked there. This is the source
  * `deno install` resolves against, so any version absent here is not yet
  * installable regardless of what the npm mirror advertises.
+ *
+ * Returns `null` when the `jsr.io` lookup fails (network error or non-OK
+ * response) so the caller falls back to the mirror-only candidate set
+ * rather than blocking every JSR bump on a transient `jsr.io` hiccup
+ * (PR #576).
  */
 export async function fetchJsrAvailableVersions(
   info: ImportInfo,
   fetcher: Fetcher = fetch,
-): Promise<Map<string, { yanked: boolean }>> {
+): Promise<Map<string, { yanked: boolean }> | null> {
   const url = jsrMetaUrl(info);
-  const res = await fetcher(url, { headers: { accept: "application/json" } });
+  let res: Response;
+  try {
+    res = await fetcher(url, { headers: { accept: "application/json" } });
+  } catch {
+    return null;
+  }
   if (!res.ok) {
-    throw new Error(`registry ${url} returned HTTP ${res.status}`);
+    return null;
   }
   const data = (await res.json()) as JsrMetadata;
   const versions = data.versions ?? {};
@@ -355,6 +365,10 @@ export async function decideBumps(opts: DecideBumpsOptions): Promise<BumpDecisio
     const internal = isInternalPackage(info.packageName);
     let versions: VersionInfo[];
     try {
+      // `fetchVersions` already cross-checks JSR candidates against the
+      // authoritative `jsr.io` registry (versions absent there — or yanked —
+      // are flagged so `pickTargetVersion` skips them), so a bump never
+      // writes a pin `deno install` cannot resolve (Issue #362).
       versions = await fetchVersions(info, fetcher);
     } catch (err) {
       decisions.push({
