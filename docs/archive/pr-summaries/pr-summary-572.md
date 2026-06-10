@@ -11,7 +11,7 @@ This PR closes that posture gap with a new `deno-audit.yml` workflow that runs `
 over `deno.json` / `deno.lock` on a weekly cron (plus manual `workflow_dispatch`). A newly-disclosed
 advisory in any pinned JSR package (`@std/*`, `@stsoftware/*`) now fails a scheduled build rather
 than sitting undetected. It complements — does not replace — the PR-time dependency-review action:
-the action guards _incoming_ changes, this audit guards the _standing_ pin set.
+the action guards _incoming_ changes, this audit guards the _standing_ pin set
 
 Closes #572.
 
