@@ -237,15 +237,25 @@ interface JsrMetadata {
  * JSR import, mapped to whether each is yanked there. This is the source
  * `deno install` resolves against, so any version absent here is not yet
  * installable regardless of what the npm mirror advertises.
+ *
+ * Returns `null` when the `jsr.io` lookup fails (network error or non-OK
+ * response) so the caller falls back to the mirror-only candidate set
+ * rather than blocking every JSR bump on a transient `jsr.io` hiccup
+ * (PR #576).
  */
 export async function fetchJsrAvailableVersions(
   info: ImportInfo,
   fetcher: Fetcher = fetch,
-): Promise<Map<string, { yanked: boolean }>> {
+): Promise<Map<string, { yanked: boolean }> | null> {
   const url = jsrMetaUrl(info);
-  const res = await fetcher(url, { headers: { accept: "application/json" } });
+  let res: Response;
+  try {
+    res = await fetcher(url, { headers: { accept: "application/json" } });
+  } catch {
+    return null;
+  }
   if (!res.ok) {
-    throw new Error(`registry ${url} returned HTTP ${res.status}`);
+    return null;
   }
   const data = (await res.json()) as JsrMetadata;
   const versions = data.versions ?? {};
@@ -320,56 +330,6 @@ export async function fetchVersions(
   return result;
 }
 
-/** Shape of the authoritative JSR package metadata served by `jsr.io`. */
-interface JsrMetadata {
-  versions?: Record<string, { yanked?: boolean } | undefined>;
-}
-
-/**
- * Build the authoritative JSR metadata URL for a package, e.g.
- * `https://jsr.io/@scope/name/meta.json`.
- */
-export function jsrMetaUrl(packageName: string): string {
-  return `https://jsr.io/${packageName}/meta.json`;
-}
-
-/**
- * Fetch the set of versions `deno install` can actually resolve for a JSR
- * package, from the authoritative `jsr.io` metadata.
- *
- * The `npm.jsr.io` mirror this module reads for publish timestamps can be
- * ahead of (or hold versions yanked from) `jsr.io` — the registry
- * `deno install` truly resolves against. Bumping a pin to a version that
- * exists only on the mirror produces an unresolvable pin and fails the
- * auto-bump CI job ("Could not find version ... that matches ...").
- * Constraining JSR candidates to this set closes that gap.
- *
- * Yanked versions are excluded. Returns `null` when the lookup fails so
- * the caller falls back to the mirror-only candidate set rather than
- * blocking every JSR bump on a transient `jsr.io` hiccup.
- */
-export async function fetchJsrResolvableVersions(
-  packageName: string,
-  fetcher: Fetcher = fetch,
-): Promise<Set<string> | null> {
-  const url = jsrMetaUrl(packageName);
-  let res: Response;
-  try {
-    res = await fetcher(url, { headers: { accept: "application/json" } });
-  } catch {
-    return null;
-  }
-  if (!res.ok) return null;
-  const data = (await res.json()) as JsrMetadata;
-  const versions = data.versions ?? {};
-  const resolvable = new Set<string>();
-  for (const [version, entry] of Object.entries(versions)) {
-    if (entry?.yanked) continue;
-    resolvable.add(version);
-  }
-  return resolvable;
-}
-
 /** Outcome of evaluating one import against the registry. */
 export interface BumpDecision {
   readonly info: ImportInfo;
@@ -405,6 +365,10 @@ export async function decideBumps(opts: DecideBumpsOptions): Promise<BumpDecisio
     const internal = isInternalPackage(info.packageName);
     let versions: VersionInfo[];
     try {
+      // `fetchVersions` already cross-checks JSR candidates against the
+      // authoritative `jsr.io` registry (versions absent there — or yanked —
+      // are flagged so `pickTargetVersion` skips them), so a bump never
+      // writes a pin `deno install` cannot resolve (Issue #362).
       versions = await fetchVersions(info, fetcher);
     } catch (err) {
       decisions.push({
@@ -416,16 +380,6 @@ export async function decideBumps(opts: DecideBumpsOptions): Promise<BumpDecisio
         note: `registry lookup failed: ${err instanceof Error ? err.message : String(err)}`,
       });
       continue;
-    }
-    // The mirror that supplies publish timestamps can list JSR versions
-    // that `jsr.io` (and therefore `deno install`) cannot yet resolve.
-    // Restrict JSR candidates to the authoritative resolvable set so a
-    // bump never writes an uninstallable pin.
-    if (info.protocol === "jsr") {
-      const resolvable = await fetchJsrResolvableVersions(info.packageName, fetcher);
-      if (resolvable) {
-        versions = versions.filter((v) => resolvable.has(v.version));
-      }
     }
     const target = pickTargetVersion(versions, info.version, now, quarantineMs, !internal);
     if (target === null) {

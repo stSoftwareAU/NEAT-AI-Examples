@@ -14,12 +14,10 @@ import {
   compareVersions,
   decideBumps,
   DEFAULT_QUARANTINE_HOURS,
-  fetchJsrResolvableVersions,
   fetchVersions,
   formatDecision,
   isInternalPackage,
   isPlainSemver,
-  jsrMetaUrl,
   parseSpecifier,
   pickTargetVersion,
   registryUrl,
@@ -471,13 +469,6 @@ Deno.test("formatDecision - human-readable lines for bumped and kept pins", () =
   assert(kept.includes("24h quarantine"));
 });
 
-Deno.test("jsrMetaUrl - builds the authoritative jsr.io metadata URL", () => {
-  assertEquals(
-    jsrMetaUrl("@stsoftware/neat-ai"),
-    "https://jsr.io/@stsoftware/neat-ai/meta.json",
-  );
-});
-
 /**
  * Build a `fetch` that serves npm.jsr.io mirror metadata and jsr.io
  * authoritative metadata from two maps. Unknown URLs return HTTP 500 so a
@@ -501,25 +492,6 @@ function makeDualFetcher(
     );
   };
 }
-
-Deno.test("fetchJsrResolvableVersions - parses versions and excludes yanked", async () => {
-  const fetcher = makeDualFetcher({}, {
-    "https://jsr.io/@stsoftware/neat-ai/meta.json": {
-      versions: { "5.3.18": {}, "5.3.19": {}, "5.3.17": { yanked: true } },
-    },
-  });
-  const out = await fetchJsrResolvableVersions("@stsoftware/neat-ai", fetcher);
-  assert(out !== null);
-  assert(out!.has("5.3.18"));
-  assert(out!.has("5.3.19"));
-  assert(!out!.has("5.3.17"), "yanked versions are excluded");
-});
-
-Deno.test("fetchJsrResolvableVersions - HTTP error returns null (mirror-only fallback)", async () => {
-  const fetcher = () => Promise.resolve(new Response("boom", { status: 503 }));
-  const out = await fetchJsrResolvableVersions("@stsoftware/neat-ai", fetcher);
-  assertEquals(out, null);
-});
 
 Deno.test("decideBumps - JSR bump is constrained to jsr.io-resolvable versions", async () => {
   // Regression for PR #576: the npm.jsr.io mirror advertised 5.3.20 (with an
