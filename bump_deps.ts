@@ -206,6 +206,57 @@ export function registryUrl(info: ImportInfo): string {
 }
 
 /**
+ * Build the native JSR metadata URL for a JSR import.
+ *
+ * `deno install` resolves `jsr:` specifiers against this endpoint, not the
+ * `npm.jsr.io` mirror used for publish timestamps. The two can lag each
+ * other: a freshly-published release may appear on the npm mirror minutes
+ * before the native `meta.json` lists it. Bumping a pin to a version the
+ * native registry has not yet caught up on makes the subsequent lockfile
+ * refresh fail with "Could not find version … that matches …" (Issue
+ * #362). We cross-check candidates against this endpoint so we only ever
+ * pick a version `deno` can actually resolve.
+ */
+export function jsrMetaUrl(info: ImportInfo): string {
+  if (info.protocol !== "jsr") {
+    throw new Error(`jsrMetaUrl called for non-jsr import: ${info.raw}`);
+  }
+  if (!info.packageName.startsWith("@")) {
+    throw new Error(`jsr: imports must be scoped: ${info.packageName}`);
+  }
+  return `https://jsr.io/${info.packageName}/meta.json`;
+}
+
+/** Shape of the native `jsr.io` `meta.json` payload. */
+interface JsrMetadata {
+  versions?: Record<string, { yanked?: boolean } | undefined>;
+}
+
+/**
+ * Fetch the set of versions the native `jsr.io` registry knows about for a
+ * JSR import, mapped to whether each is yanked there. This is the source
+ * `deno install` resolves against, so any version absent here is not yet
+ * installable regardless of what the npm mirror advertises.
+ */
+export async function fetchJsrAvailableVersions(
+  info: ImportInfo,
+  fetcher: Fetcher = fetch,
+): Promise<Map<string, { yanked: boolean }>> {
+  const url = jsrMetaUrl(info);
+  const res = await fetcher(url, { headers: { accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`registry ${url} returned HTTP ${res.status}`);
+  }
+  const data = (await res.json()) as JsrMetadata;
+  const versions = data.versions ?? {};
+  const available = new Map<string, { yanked: boolean }>();
+  for (const [version, entry] of Object.entries(versions)) {
+    available.set(version, { yanked: Boolean(entry?.yanked) });
+  }
+  return available;
+}
+
+/**
  * Shape of the npm-style package metadata returned by both
  * `registry.npmjs.org` and `npm.jsr.io`.
  */
@@ -231,6 +282,18 @@ export async function fetchVersions(
   const data = (await res.json()) as NpmMetadata;
   const versions = data.versions ?? {};
   const time = data.time ?? {};
+
+  // For JSR imports, cross-check against the native `jsr.io` registry — the
+  // source `deno install` resolves against. The npm.jsr.io mirror can
+  // advertise a release before the native registry lists it, and picking
+  // such a version makes the lockfile refresh fail (Issue #362). A version
+  // absent from (or yanked in) the native registry is treated as
+  // untargetable here.
+  let jsrAvailable: Map<string, { yanked: boolean }> | null = null;
+  if (info.protocol === "jsr") {
+    jsrAvailable = await fetchJsrAvailableVersions(info, fetcher);
+  }
+
   const result: VersionInfo[] = [];
   for (const [version, entry] of Object.entries(versions)) {
     if (version === "modified" || version === "created") continue;
@@ -246,7 +309,12 @@ export async function fetchVersions(
       result.push({ version, publishedAt: new Date(0), yanked: true });
       continue;
     }
-    const yanked = Boolean(entry?.deprecated);
+    // A version the native jsr.io registry has not yet caught up on (or has
+    // yanked) is not installable — skip it so `deno install` can resolve the
+    // pin we land on.
+    const jsrEntry = jsrAvailable?.get(version);
+    const unavailableOnJsr = jsrAvailable !== null && (jsrEntry === undefined || jsrEntry.yanked);
+    const yanked = Boolean(entry?.deprecated) || unavailableOnJsr;
     result.push({ version, publishedAt, yanked });
   }
   return result;
