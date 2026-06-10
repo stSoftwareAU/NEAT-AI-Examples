@@ -3,10 +3,10 @@
 ## Summary
 
 The repo had dependency-bumping automation (`deno-outdated.yml` + `bump-deps.sh`) but **no
-security-specific update channel**. Routine bumps run only when a PR is opened against `Develop`
-and the workflow deliberately carries no cron — "never as scheduled bot noise" (#364). That left a
-gap: when an advisory (CVE) lands against a pin that is already current, nothing proactively raises
-a fix, so the team had to notice it manually.
+security-specific update channel**. Routine bumps run only when a PR is opened against `Develop` and
+the workflow deliberately carries no cron — "never as scheduled bot noise" (#364). That left a gap:
+when an advisory (CVE) lands against a pin that is already current, nothing proactively raises a
+fix, so the team had to notice it manually.
 
 This PR adds [`.github/workflows/deno-audit.yml`](../../../.github/workflows/deno-audit.yml), a
 **security-only** channel that is distinct from routine version churn so the maintainers' "no
@@ -29,8 +29,8 @@ Closes #573.
 
 ## Evidence
 
-This is a CI/workflow change with no web interface to screenshot. Verification is via the Deno
-test suite that pins the workflow contract, plus `actionlint` (with `shellcheck`) on the new YAML.
+This is a CI/workflow change with no web interface to screenshot. Verification is via the Deno test
+suite that pins the workflow contract, plus `actionlint` (with `shellcheck`) on the new YAML.
 
 ```text
 $ actionlint -verbose .github/workflows/deno-audit.yml
@@ -62,8 +62,9 @@ flowchart LR
 
 ### Deno regression avoided
 
-- Chose a Deno-native `deno audit` workflow over re-introducing a Node-tooling `.github/dependabot.yml`
-  security channel (Dependabot has limited Deno/JSR support, and #364 already removed it).
+- Chose a Deno-native `deno audit` workflow over re-introducing a Node-tooling
+  `.github/dependabot.yml` security channel (Dependabot has limited Deno/JSR support, and #364
+  already removed it).
 
 ## Test Plan
 
