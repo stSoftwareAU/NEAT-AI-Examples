@@ -1,0 +1,52 @@
+# Scheduled Deno dependency audit for NEAT-AI-Examples (Issue #572)
+#
+# `dependency-review.yml` only inspects the dependency-graph *diff* of a
+# pull request, so it flags vulnerabilities a PR *introduces* — not a CVE
+# disclosed *later* against a pin that is already on `Develop`. This
+# workflow is the standing detector that closes that posture gap: a
+# weekly, Deno-native `deno audit` over the existing locked tree
+# (`deno.json` / `deno.lock`).
+#
+# It complements — does not replace — the PR-time dependency-review
+# action: the action guards *incoming* changes, this scheduled audit
+# guards the *standing* pin set. `workflow_dispatch` lets a maintainer
+# run the scan on demand.
+#
+# Actions are pinned to 40-character commit SHAs (not floating tags) in
+# line with the project's supply-chain hardening rules (AGENTS.md).
+
+name: Deno Audit
+
+on:
+  schedule:
+    # Weekly, Monday 03:00 UTC. A standing scan, not per-PR bot noise.
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+# Cancel a superseded manual run when a newer one starts on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit locked dependency tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Audit locked dependency tree
+        # `--frozen` scans the committed lockfile without rewriting it, so
+        # the audit reflects exactly what is pinned today. A known
+        # advisory in any pinned package fails the job.
+        run: deno audit --frozen

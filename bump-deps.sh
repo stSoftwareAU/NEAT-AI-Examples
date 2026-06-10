@@ -33,14 +33,16 @@ QUARANTINE_HOURS="${VIBE_BUMP_QUARANTINE_HOURS:-24}"
 
 echo "bump_deps: quarantine window = ${QUARANTINE_HOURS}h (override via VIBE_BUMP_QUARANTINE_HOURS)"
 
-# The only network reach the updater needs is the two registries it
-# consults. Keep the allow-net list explicit so an unexpected outbound
-# call would fail loudly.
+# The only network reach the updater needs is the registries it consults:
+# npm.jsr.io / registry.npmjs.org for publish timestamps, plus jsr.io to
+# confirm a JSR candidate is resolvable by `deno install` before adopting
+# it (Issue #362). Keep the allow-net list explicit so an unexpected
+# outbound call would fail loudly.
 deno run \
   --allow-read \
   --allow-write \
   --allow-env=VIBE_BUMP_QUARANTINE_HOURS \
-  --allow-net=npm.jsr.io,registry.npmjs.org \
+  --allow-net=jsr.io,npm.jsr.io,registry.npmjs.org \
   bump_deps.ts \
   --config deno.json \
   --quarantine-hours "${QUARANTINE_HOURS}"
