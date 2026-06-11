@@ -127,14 +127,87 @@ Deno.test("quality workflow — Suggest Improvements example runs in quick mode 
   );
 });
 
-Deno.test("quality workflow — job timeout has headroom above the example budget", async () => {
+// The single `quality` job was split into three independent parallel
+// jobs (Issue #582). The tests below pin that split: the three job keys
+// exist, none depends on another (so they run in parallel), each carries
+// its own timeout with headroom, and the expensive Rust build lives only
+// in the unit-tests job.
+
+// deno-lint-ignore no-explicit-any
+function stepNames(job: any): string[] {
+  const steps = (job?.steps ?? []) as Array<Record<string, unknown>>;
+  return steps.map((s) => (s.name as string) ?? (s.uses as string) ?? "");
+}
+
+Deno.test("quality workflow — split into three parallel jobs with no inter-job needs", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const quality = jobs.quality as { "timeout-minutes"?: number } | undefined;
-  assert(quality, "quality workflow must define a 'quality' job");
+  const keys = Object.keys(jobs).sort();
   assertEquals(
-    quality["timeout-minutes"],
-    45,
-    "quality job timeout-minutes must be 45 to give the example steps headroom (Issue #581)",
+    keys,
+    ["examples", "static-checks", "unit-tests"],
+    "quality workflow must define exactly the static-checks, unit-tests, and examples jobs (Issue #582)",
   );
+  // No `needs:` between them — the three jobs run in parallel so the
+  // critical path is the slowest job, not the sum of all steps.
+  for (const [key, job] of Object.entries(jobs)) {
+    assertEquals(
+      (job as { needs?: unknown }).needs,
+      undefined,
+      `job '${key}' must not declare 'needs:' so the jobs run in parallel`,
+    );
+  }
+});
+
+Deno.test("quality workflow — each job sets its own timeout with headroom", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, { "timeout-minutes"?: number }>;
+  for (const key of ["static-checks", "unit-tests", "examples"]) {
+    const timeout = jobs[key]?.["timeout-minutes"];
+    assert(
+      typeof timeout === "number" && timeout >= 10,
+      `job '${key}' must set a 'timeout-minutes' of at least 10 for reliability headroom (Issue #582)`,
+    );
+  }
+});
+
+Deno.test("quality workflow — rust_scorer build lives only in the unit-tests job", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  // The Rust build, scorer/core checkouts, and sibling symlink are only
+  // needed by the unit-tests job (the sole consumer of the
+  // NEAT_AI_RUST_SCORER_* env vars). They must not be duplicated into the
+  // examples job, which runs the JS path with Deno alone.
+  assert(
+    stepNames(jobs["unit-tests"]).includes("Build rust_scorer"),
+    "unit-tests job must build rust_scorer",
+  );
+  for (const key of ["static-checks", "examples"]) {
+    assert(
+      !stepNames(jobs[key]).includes("Build rust_scorer"),
+      `job '${key}' must not build rust_scorer — the Rust build belongs only to unit-tests (Issue #582)`,
+    );
+  }
+});
+
+Deno.test("quality workflow — every job preserves the bump-aware checkout ref and frozen install", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  for (const [key, job] of Object.entries(jobs)) {
+    const steps = (job.steps ?? []) as Array<Record<string, unknown>>;
+    const checkout = steps.find((s) =>
+      (s.uses as string | undefined)?.startsWith("actions/checkout@") &&
+      (s.with as { repository?: string } | undefined)?.repository === undefined
+    );
+    assert(checkout, `job '${key}' must check out the repository`);
+    assertEquals(
+      (checkout.with as { ref?: string }).ref,
+      "${{ inputs.pr_head_ref || github.ref }}",
+      `job '${key}' must preserve the workflow_dispatch auto-bump checkout ref`,
+    );
+    assert(
+      stepNames(job).includes("Install dependencies with frozen lockfile"),
+      `job '${key}' must install dependencies with the frozen lockfile (#418)`,
+    );
+  }
 });
