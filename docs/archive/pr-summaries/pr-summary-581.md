@@ -4,7 +4,7 @@ The per-PR `Quality Check` workflow (`.github/workflows/quality.yml`) was hittin
 its 30-minute `timeout-minutes` cap because the example steps ran at full budget —
 the Discovery example alone burns its 15-minute internal budget. This PR runs the
 CI example steps in quick mode (matching `quality.sh`) and raises the workflow
-timeout to 45 minutes as headroom. Closes #581.
+timeout to 45 minutes as headroom. Closes #581
 
 Changes:
 
