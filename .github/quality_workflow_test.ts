@@ -128,10 +128,23 @@ Deno.test("quality workflow — Suggest Improvements example runs in quick mode 
 });
 
 // The single `quality` job was split into three independent parallel
-// jobs (Issue #582). The tests below pin that split: the three job keys
-// exist, none depends on another (so they run in parallel), each carries
-// its own timeout with headroom, and the expensive Rust build lives only
-// in the unit-tests job.
+// jobs (Issue #582). The tests below pin that split: the three work job
+// keys exist, none depends on another (so they run in parallel), each
+// carries its own timeout with headroom, and the expensive Rust build
+// lives only in the unit-tests job.
+//
+// A fourth job, the aggregate `quality` gate, was kept so the required
+// branch-protection status context "Run quality checks" still reports
+// after the split (PR #585). It is a pure gate: it `needs:` the three
+// work jobs and runs no checkout/build steps, so it is excluded from the
+// per-work-job invariants below.
+
+// The three real work jobs that run in parallel.
+const WORK_JOBS = ["static-checks", "unit-tests", "examples"] as const;
+
+// The aggregate gate job that fans in on the work jobs to report the
+// required status context.
+const GATE_JOB = "quality";
 
 // deno-lint-ignore no-explicit-any
 function stepNames(job: any): string[] {
@@ -139,24 +152,48 @@ function stepNames(job: any): string[] {
   return steps.map((s) => (s.name as string) ?? (s.uses as string) ?? "");
 }
 
-Deno.test("quality workflow — split into three parallel jobs with no inter-job needs", async () => {
+Deno.test("quality workflow — three parallel work jobs with no inter-job needs", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const keys = Object.keys(jobs).sort();
   assertEquals(
     keys,
-    ["examples", "static-checks", "unit-tests"],
-    "quality workflow must define exactly the static-checks, unit-tests, and examples jobs (Issue #582)",
+    ["examples", "quality", "static-checks", "unit-tests"],
+    "quality workflow must define the static-checks, unit-tests, and examples work jobs plus the aggregate 'quality' gate (Issues #582, PR #585)",
   );
-  // No `needs:` between them — the three jobs run in parallel so the
-  // critical path is the slowest job, not the sum of all steps.
-  for (const [key, job] of Object.entries(jobs)) {
+  // None of the work jobs declares `needs:` — they run in parallel so
+  // the critical path is the slowest job, not the sum of all steps.
+  for (const key of WORK_JOBS) {
     assertEquals(
-      (job as { needs?: unknown }).needs,
+      (jobs[key] as { needs?: unknown }).needs,
       undefined,
-      `job '${key}' must not declare 'needs:' so the jobs run in parallel`,
+      `work job '${key}' must not declare 'needs:' so the jobs run in parallel`,
     );
   }
+});
+
+Deno.test("quality workflow — aggregate 'quality' gate fans in on the three work jobs", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const gate = jobs[GATE_JOB];
+  assert(
+    gate,
+    `quality workflow must keep the aggregate '${GATE_JOB}' gate so the required "Run quality checks" status context still reports (PR #585)`,
+  );
+  // The gate reports under the former single-job name so existing branch
+  // protection keeps gating PRs after the split.
+  assertEquals(
+    gate.name,
+    "Run quality checks",
+    "aggregate gate must keep the required status-context name 'Run quality checks'",
+  );
+  // It depends on every work job so it cannot pass unless they all do.
+  const needs = [...((gate.needs as string[] | undefined) ?? [])].sort();
+  assertEquals(
+    needs,
+    [...WORK_JOBS].sort(),
+    "aggregate gate must 'needs:' exactly the three work jobs",
+  );
 });
 
 Deno.test("quality workflow — each job sets its own timeout with headroom", async () => {
@@ -190,10 +227,13 @@ Deno.test("quality workflow — rust_scorer build lives only in the unit-tests j
   }
 });
 
-Deno.test("quality workflow — every job preserves the bump-aware checkout ref and frozen install", async () => {
+Deno.test("quality workflow — every work job preserves the bump-aware checkout ref and frozen install", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  for (const [key, job] of Object.entries(jobs)) {
+  // Only the work jobs run the suite; the aggregate gate is a pure
+  // fan-in with no checkout/install steps and is excluded here.
+  for (const key of WORK_JOBS) {
+    const job = jobs[key];
     const steps = (job.steps ?? []) as Array<Record<string, unknown>>;
     const checkout = steps.find((s) =>
       (s.uses as string | undefined)?.startsWith("actions/checkout@") &&
