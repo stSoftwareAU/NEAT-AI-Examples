@@ -7,7 +7,7 @@
 // controls the upstream repository can repoint the branch at malicious
 // code, which then executes on the runner with the job's GITHUB_TOKEN
 // and any secrets in scope (this job builds rust_scorer and reads
-// CODECOV_TOKEN).
+// CODECOV_TOKEN)
 //
 // These tests pin that contract for quality.yml so a future unpinned
 // action fails the build instead of slipping through review.
