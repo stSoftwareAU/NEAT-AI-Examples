@@ -162,6 +162,27 @@ jobs:
         with:
           toolchain: stable
 
+      # Cache the cargo registry, git index, and rust_scorer build
+      # artefacts so warm-cache runs skip most of the ~2-minute release
+      # build (Issue #583). Uses actions/cache for consistency with the
+      # Deno cache step above. NEAT-AI-scorer and NEAT-AI-core are checked
+      # out at their moving Develop refs, so hashing Cargo.lock alone can
+      # go stale against source changes — the restore-keys prefix lets a
+      # slightly stale cache seed an incremental rebuild, which is still
+      # far cheaper than a cold build. RUSTFLAGS="-D warnings" behaviour is
+      # unchanged because cargo still recompiles anything whose source
+      # changed.
+      - name: Cache cargo registry and rust_scorer build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            NEAT-AI-scorer/target
+          key: rust-scorer-${{ runner.os }}-${{ hashFiles('NEAT-AI-scorer/Cargo.lock') }}
+          restore-keys: |
+            rust-scorer-${{ runner.os }}-
+
       - name: Build rust_scorer
         run: RUSTFLAGS="-D warnings" cargo build --release -p rust_scorer
         working-directory: NEAT-AI-scorer
