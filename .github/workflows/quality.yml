@@ -40,7 +40,7 @@ jobs:
   quality:
     name: Run quality checks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -195,9 +195,18 @@ jobs:
         # The Discovery example requires a native Rust FFI library
         # (libneat_ai_discovery) which is not available in CI.
         # Allow this step to fail gracefully until the library
-        # is available as a CI artefact.
+        # is available as a CI artefact. DISCOVERY_QUICK forces a tiny
+        # budget (matching quality.sh, issue #375) so the step stops
+        # burning its full 15-minute Discovery budget in CI (issue #581).
         continue-on-error: true
+        env:
+          DISCOVERY_QUICK: "1"
         run: ./discovery/run.sh
 
       - name: Run Suggest Improvements example
+        # SUGGEST_QUICK forces a tiny budget (matching quality.sh,
+        # issue #388) so this blocking step finishes quickly in CI
+        # (issue #581).
+        env:
+          SUGGEST_QUICK: "1"
         run: ./suggest_improvements/run.sh

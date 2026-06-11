@@ -25,6 +25,19 @@ async function loadWorkflow(): Promise<Workflow> {
   return parse(text) as Workflow;
 }
 
+// deno-lint-ignore no-explicit-any
+function findStepByName(wf: Workflow, name: string): any {
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  for (const job of Object.values(jobs)) {
+    const steps = (job as { steps?: Array<Record<string, unknown>> }).steps ??
+      [];
+    for (const step of steps) {
+      if (step.name === name) return step;
+    }
+  }
+  return undefined;
+}
+
 Deno.test("quality workflow — every uses: pins a 40-char commit SHA", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
@@ -75,5 +88,53 @@ Deno.test("quality workflow — rust-toolchain is SHA-pinned and keeps toolchain
     withBlock?.toolchain,
     "stable",
     "SHA-pinned rust-toolchain must set `with: toolchain: stable` to keep the stable toolchain",
+  );
+});
+
+// CI runs the example steps in quick mode so the per-PR job stays well
+// under its timeout cap (Issue #581).
+Deno.test("quality workflow — Discovery example runs in quick mode and stays non-blocking", async () => {
+  const wf = await loadWorkflow();
+  const step = findStepByName(wf, "Run Discovery example");
+  assert(step, "quality workflow must run the Discovery example");
+  const env = step.env as Record<string, string> | undefined;
+  assertEquals(
+    env?.DISCOVERY_QUICK,
+    "1",
+    "Discovery step must set DISCOVERY_QUICK: '1' so it does not burn its full budget in CI",
+  );
+  assertEquals(
+    step["continue-on-error"],
+    true,
+    "Discovery step must remain continue-on-error while the native FFI library is unavailable in CI",
+  );
+});
+
+Deno.test("quality workflow — Suggest Improvements example runs in quick mode and stays blocking", async () => {
+  const wf = await loadWorkflow();
+  const step = findStepByName(wf, "Run Suggest Improvements example");
+  assert(step, "quality workflow must run the Suggest Improvements example");
+  const env = step.env as Record<string, string> | undefined;
+  assertEquals(
+    env?.SUGGEST_QUICK,
+    "1",
+    "Suggest Improvements step must set SUGGEST_QUICK: '1' to finish quickly in CI",
+  );
+  assert(
+    step["continue-on-error"] === undefined ||
+      step["continue-on-error"] === false,
+    "Suggest Improvements step must remain blocking (no continue-on-error)",
+  );
+});
+
+Deno.test("quality workflow — job timeout has headroom above the example budget", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const quality = jobs.quality as { "timeout-minutes"?: number } | undefined;
+  assert(quality, "quality workflow must define a 'quality' job");
+  assertEquals(
+    quality["timeout-minutes"],
+    45,
+    "quality job timeout-minutes must be 45 to give the example steps headroom (Issue #581)",
   );
 });
