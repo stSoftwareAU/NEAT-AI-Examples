@@ -227,6 +227,95 @@ Deno.test("quality workflow — rust_scorer build lives only in the unit-tests j
   }
 });
 
+// The rust_scorer release build costs ~2m03s cold (Issue #583). The
+// unit-tests job caches the cargo registry, git index, and the scorer
+// target dir so warm-cache runs skip most of that. The cache must:
+//   - live in the unit-tests job (the only job that builds rust_scorer),
+//   - run before the build so a restored cache seeds it,
+//   - cover the cargo registry/git and NEAT-AI-scorer/target,
+//   - key on the Cargo.lock hash with a restore-keys prefix fallback so a
+//     slightly stale cache from a moving Develop ref still seeds an
+//     incremental rebuild.
+Deno.test("quality workflow — unit-tests job caches the cargo build before building rust_scorer", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const steps = (jobs["unit-tests"].steps ?? []) as Array<
+    Record<string, unknown>
+  >;
+
+  const cacheIndex = steps.findIndex((s) => {
+    const uses = (s.uses as string | undefined) ?? "";
+    const path = ((s.with as { path?: string } | undefined)?.path) ?? "";
+    return (uses.startsWith("actions/cache@") &&
+      path.includes("NEAT-AI-scorer/target")) ||
+      uses.startsWith("Swatinem/rust-cache@");
+  });
+  assert(
+    cacheIndex !== -1,
+    "unit-tests job must cache the cargo registry and rust_scorer build artefacts (Issue #583)",
+  );
+
+  const buildIndex = steps.findIndex((s) => s.name === "Build rust_scorer");
+  assert(buildIndex !== -1, "unit-tests job must build rust_scorer");
+  assert(
+    cacheIndex < buildIndex,
+    "the cargo cache step must run before 'Build rust_scorer' so a restored cache seeds the build",
+  );
+
+  const cacheStep = steps[cacheIndex];
+  const uses = cacheStep.uses as string;
+  if (uses.startsWith("actions/cache@")) {
+    const withBlock = cacheStep.with as {
+      path?: string;
+      key?: string;
+      "restore-keys"?: string;
+    };
+    const path = withBlock.path ?? "";
+    assert(
+      path.includes("~/.cargo/registry") && path.includes("~/.cargo/git"),
+      "actions/cache must cover the cargo registry and git index",
+    );
+    assert(
+      path.includes("NEAT-AI-scorer/target"),
+      "actions/cache must cover the rust_scorer target directory",
+    );
+    assert(
+      (withBlock.key ?? "").includes("NEAT-AI-scorer/Cargo.lock"),
+      "cache key must reflect the rust_scorer lockfile (hashFiles('NEAT-AI-scorer/Cargo.lock'))",
+    );
+    assert(
+      typeof withBlock["restore-keys"] === "string" &&
+        withBlock["restore-keys"].trim().length > 0,
+      "cache must declare a restore-keys prefix fallback so a stale cache still seeds an incremental rebuild",
+    );
+  } else {
+    // Swatinem/rust-cache variant — must scope to the scorer workspace.
+    const workspaces = (cacheStep.with as { workspaces?: string } | undefined)?.workspaces ?? "";
+    assert(
+      workspaces.includes("NEAT-AI-scorer"),
+      "Swatinem/rust-cache must set workspaces: NEAT-AI-scorer",
+    );
+  }
+});
+
+Deno.test("quality workflow — the cargo build cache lives only in the unit-tests job", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  for (const key of ["static-checks", "examples"]) {
+    const steps = (jobs[key].steps ?? []) as Array<Record<string, unknown>>;
+    for (const s of steps) {
+      const uses = (s.uses as string | undefined) ?? "";
+      const path = ((s.with as { path?: string } | undefined)?.path) ?? "";
+      assert(
+        !uses.startsWith("Swatinem/rust-cache@") &&
+          !(uses.startsWith("actions/cache@") &&
+            path.includes("NEAT-AI-scorer/target")),
+        `job '${key}' must not cache the cargo build — the Rust build belongs only to unit-tests (Issue #583)`,
+      );
+    }
+  }
+});
+
 Deno.test("quality workflow — every work job preserves the bump-aware checkout ref and frozen install", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
