@@ -4,6 +4,19 @@
 # targeting the Develop branch. This automates the quality gate
 # to ensure all examples remain functional across contributions.
 #
+# The single quality job was split into three independent parallel jobs
+# (Issue #582) so the per-PR critical path is the slowest job, not the
+# sum of every step:
+#   - static-checks  — lint, fmt, type-check (Deno only)
+#   - unit-tests     — full test suite + coverage + Codecov, with the
+#                      rust_scorer build (the only consumer of the
+#                      NEAT_AI_RUST_SCORER_* env vars)
+#   - examples       — Intelligent Design, Discovery (quick), Suggest (quick)
+#
+# Only the unit-tests job builds rust_scorer; the examples job runs the
+# JS path and needs Deno alone, so the ~2-minute Rust build is not
+# duplicated.
+#
 # This workflow also generates a coverage report and uploads it to
 # Codecov on pull requests. It is the sole quality workflow for the
 # repository — the previous deno-quality.yml was a duplicate and was
@@ -37,10 +50,12 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Run quality checks
+  # Static checks — lint, formatting, and type-checking. Deno only; no
+  # Rust build or external repo checkouts needed.
+  static-checks:
+    name: Static checks
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
@@ -68,6 +83,53 @@ jobs:
       # rewrite the lockfile) when the import map has drifted from the
       # lockfile, protecting CI from unconstrained transitive bumps
       # (issue #418).
+      - name: Install dependencies with frozen lockfile
+        run: deno install --frozen
+
+      - name: Run deno lint
+        run: deno lint
+
+      # Apply formatter in CI (same as local `quality.sh`), rather than
+      # `deno fmt --check`, so a formatting drift does not fail the job.
+      - name: Apply Deno formatting
+        run: deno fmt
+
+      - name: Run deno check (type checking)
+        # `-- **/*.ts` so a filename starting with `-` (none today, but a
+        # future addition would silently be parsed as a flag) cannot be
+        # mistaken for an option. Flagged by actionlint/shellcheck SC2035
+        # — the new actionlint CI gate (#508) enforces this going forward.
+        run: deno check -- **/*.ts
+
+  # Unit tests + coverage. This is the only job that builds rust_scorer
+  # and sets the NEAT_AI_RUST_SCORER_* env vars, so the scorer/core
+  # checkouts, sibling symlink, and Rust toolchain live here alone.
+  unit-tests:
+    name: Unit tests + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.pr_head_ref || github.ref }}
+
+      - name: Install Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
+          restore-keys: |
+            deno-${{ runner.os }}-
+
       - name: Install dependencies with frozen lockfile
         run: deno install --frozen
 
@@ -103,21 +165,6 @@ jobs:
       - name: Build rust_scorer
         run: RUSTFLAGS="-D warnings" cargo build --release -p rust_scorer
         working-directory: NEAT-AI-scorer
-
-      - name: Run deno lint
-        run: deno lint
-
-      # Apply formatter in CI (same as local `quality.sh`), rather than
-      # `deno fmt --check`, so a formatting drift does not fail the job.
-      - name: Apply Deno formatting
-        run: deno fmt
-
-      - name: Run deno check (type checking)
-        # `-- **/*.ts` so a filename starting with `-` (none today, but a
-        # future addition would silently be parsed as a flag) cannot be
-        # mistaken for an option. Flagged by actionlint/shellcheck SC2035
-        # — the new actionlint CI gate (#508) enforces this going forward.
-        run: deno check -- **/*.ts
 
       # Tests need --allow-net so the @stsoftware/neat-ai WASM
       # activation module can fetch its remote payload from jsr.io,
@@ -188,6 +235,37 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
+  # Examples — run the JS path of each demo. No Rust build: these run the
+  # JS scorer and need Deno only.
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.pr_head_ref || github.ref }}
+
+      - name: Install Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
+          restore-keys: |
+            deno-${{ runner.os }}-
+
+      - name: Install dependencies with frozen lockfile
+        run: deno install --frozen
+
       - name: Run Intelligent Design example
         run: ./intelligent_design/run.sh
 
@@ -210,3 +288,35 @@ jobs:
         env:
           SUGGEST_QUICK: "1"
         run: ./suggest_improvements/run.sh
+
+  # Aggregate gate. Branch protection on Develop requires a status check
+  # named "Run quality checks" — the name of the former single job. The
+  # split (PR #585) renamed that job into three, so the required context
+  # stopped reporting and PRs hung on "Expected — waiting for status".
+  # Keep a job with that exact name that depends on the three real jobs,
+  # so the required check still reports. `if: always()` ensures it runs
+  # (and therefore reports) even when a dependency fails, and it fails
+  # the gate unless all three succeeded.
+  quality:
+    name: Run quality checks
+    runs-on: ubuntu-latest
+    needs: [static-checks, unit-tests, examples]
+    if: ${{ always() }}
+    steps:
+      - name: Verify all quality jobs passed
+        env:
+          STATIC_CHECKS_RESULT: ${{ needs.static-checks.result }}
+          UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
+          EXAMPLES_RESULT: ${{ needs.examples.result }}
+        run: |
+          set -euo pipefail
+          echo "static-checks: ${STATIC_CHECKS_RESULT}"
+          echo "unit-tests:    ${UNIT_TESTS_RESULT}"
+          echo "examples:      ${EXAMPLES_RESULT}"
+          if [ "${STATIC_CHECKS_RESULT}" != "success" ] || \
+             [ "${UNIT_TESTS_RESULT}" != "success" ] || \
+             [ "${EXAMPLES_RESULT}" != "success" ]; then
+            echo "One or more quality jobs did not succeed" >&2
+            exit 1
+          fi
+          echo "All quality jobs passed"

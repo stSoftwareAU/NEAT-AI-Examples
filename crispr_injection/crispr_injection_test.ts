@@ -280,9 +280,18 @@ Deno.test(
       // really work, while the post-injection phase (which starts with
       // the gene's two hidden neurons already in place) has the
       // structural capacity to beat it.
+      //
+      // The run is seeded and single-threaded (threads: 1) so it is
+      // reproducible — but only if the iteration count, not the wall
+      // clock, governs when each phase stops. A tight wall-clock cap
+      // truncates a phase at a different generation on a slow/loaded CI
+      // runner than locally, which breaks the seeded post >= pre
+      // comparison (observed on PR #585's CI). Give generous wall-clock
+      // headroom so maxIterations is always the real bound; with
+      // maxIterations: 60 and 16 members the run still finishes in ~1s.
       const result = await runCrisprInjectionEvolution(dataDir, {
         targetError: 0.0001,
-        timeoutMinutes: 1,
+        timeoutMinutes: 10,
         populationSize: 16,
         maxIterations: 60,
         seed: 209,
