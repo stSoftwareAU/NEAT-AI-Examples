@@ -1,0 +1,124 @@
+# Advisory-driven security-update channel for NEAT-AI-Examples (Issue #601)
+#
+# The repo already has two pieces of supply-chain machinery, but a gap
+# sits between them:
+#
+#   * `deno-outdated.yml` bumps pins — but only `on: pull_request` and
+#     behind the routine 24h supply-chain quarantine (#441). It is the
+#     freshness channel; by design it has no cron (#364), so a CVE
+#     disclosed against an already-pinned dependency triggers nothing
+#     until an unrelated PR happens to touch dependencies.
+#   * `deno-audit.yml` (#572) *detects* a newly-disclosed advisory on a
+#     weekly schedule — but it only fails the build. It never raises the
+#     patch.
+#
+# This workflow is the missing security-UPDATE channel. It runs `deno
+# audit` on a schedule and, when an advisory is found in the locked tree,
+# fast-tracks a patch via the existing `bump-deps.sh` updater with the
+# quarantine window set to 0h — security fixes bypass the routine 24h
+# hold because a disclosed advisory means the *current* pin is the risk.
+# The patch is pushed to a fresh branch and a PR is opened, so the fix
+# lands out-of-band, independently of the PR-time bumper.
+#
+# It complements — does not replace — the other two channels:
+#   detect (deno-audit) → patch (this) → routine freshness (deno-outdated)
+#
+# Actions are pinned to 40-character commit SHAs (not floating tags) in
+# line with the project's supply-chain hardening rules (AGENTS.md).
+
+name: Deno Security Update
+
+on:
+  schedule:
+    # Daily, 04:00 UTC. More frequent than the weekly audit detector so a
+    # disclosed advisory is patched out-of-band within a day, not a week.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+# Never cancel in progress: this job pushes a branch and opens a PR, and
+# interrupting it mid-commit could leave a half-written branch behind.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  security-update:
+    name: Fast-track advisory-driven dependency patches
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Security fixes bypass the routine 24h quarantine (#441): a
+      # disclosed advisory means the currently-pinned version is the
+      # risk, so the patch is fast-tracked with a 0h window (#601).
+      # Pinned here so the fast-track policy is auditable from CI config.
+      VIBE_BUMP_QUARANTINE_HOURS: "0"
+    steps:
+      - name: Check out Develop
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: Develop
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Detect security advisories
+        id: audit
+        run: |
+          set -uo pipefail
+          # `--frozen` scans the committed lockfile without rewriting it,
+          # so detection reflects exactly what is pinned today. A known
+          # advisory in any pinned package makes `deno audit` exit
+          # non-zero — that is the gate that arms the patch step below.
+          if deno audit --frozen; then
+            echo "No advisories in the locked tree — nothing to fast-track."
+            echo "advisory=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Advisory detected — fast-tracking a security bump."
+            echo "advisory=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fast-track the security patch
+        id: bump
+        if: steps.audit.outputs.advisory == 'true'
+        run: |
+          set -euo pipefail
+          # bump-deps.sh reads VIBE_BUMP_QUARANTINE_HOURS=0 from the job
+          # env, so the patched version is pulled even if it is younger
+          # than the routine 24h quarantine window.
+          bash bump-deps.sh
+          if git diff --quiet deno.json deno.lock; then
+            # The advisory has no patched release that the updater can
+            # reach yet (e.g. no fixed version published). Surface it via
+            # the failing weekly audit rather than opening an empty PR.
+            echo "No newer published version clears the advisory yet."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          branch="security/deno-advisory-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add deno.json deno.lock
+          git commit -m "fix(security): fast-track advisory-driven dependency patch (#601)"
+          git push origin "$branch"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open security-update PR
+        if: steps.bump.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr create \
+            --base Develop \
+            --head "${{ steps.bump.outputs.branch }}" \
+            --title "fix(security): advisory-driven dependency patch (#601)" \
+            --body "Automated out-of-band security update. \`deno audit\` reported an advisory against a pinned dependency, so \`bump-deps.sh\` was run with \`VIBE_BUMP_QUARANTINE_HOURS=0\` to fast-track the patch past the routine 24h quarantine (#441). Review the \`deno.json\` / \`deno.lock\` diff and the audit output before merging. Closes the advisory raised by the scheduled \`Deno Audit\` workflow (#572)."
