@@ -12,7 +12,7 @@
 #     set, so a CVE disclosed against a currently-pinned package is caught
 #     the next time anyone opens a PR, not only on the weekly cron.
 #   * `schedule` (Issue #572) — a weekly out-of-band scan so a freshly
-#     disclosed advisory surfaces even when no PR is open.
+#     disclosed advisory surfaces even when no PR is open
 #
 # It complements — does not replace — the PR-time dependency-review
 # action: the action guards *incoming* changes, this audit guards the
