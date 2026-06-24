@@ -147,7 +147,7 @@ sequenceDiagram
     autonumber
     participant CLI as run.sh
     participant State as multi_run_state.ts
-    participant Loop as tsp_constructive.ts
+    participant Driver as tsp_constructive.ts
     participant Chart as milestone_chart.ts
     CLI->>State: parseMultiRunFlags(argv)
     alt --fresh
@@ -155,12 +155,12 @@ sequenceDiagram
     end
     CLI->>State: loadMultiRunState()
     alt prior champion exists
-        State-->>Loop: Creature.fromJSON(creatureExport)
+        State-->>Driver: Creature.fromJSON(creatureExport)
     else first run
-        State-->>Loop: new Creature(13, 5) — random noise
+        State-->>Driver: new Creature(13, 5) — random noise
     end
-    Loop->>Loop: Creature.evolveRL(TspConstructiveAdapter)
-    Loop->>State: appendMultiRunRun({champion, milestones})
+    Driver->>Driver: Creature.evolveRL(TspConstructiveAdapter)
+    Driver->>State: appendMultiRunRun({champion, milestones})
     State->>Chart: renderMilestoneChartSVG(milestones)
     Chart-->>CLI: milestones.svg
 ```
