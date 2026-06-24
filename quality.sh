@@ -109,7 +109,7 @@ echo "----------------------------------------"
 echo "Running: Deno Type Check"
 echo "----------------------------------------"
 
-if deno check **/*.ts; then
+if deno check ./**/*.ts; then
   echo ""
   echo "SUCCESS: Deno Type Check"
   echo ""
@@ -212,6 +212,8 @@ echo ""
 # needed for a non-interactive full quality run.
 DENO_BIN="$(command -v deno)"
 DENO_WRAPPER_DIR="$(mktemp -d)"
+# Invoked indirectly by the `trap ... EXIT` below, which shellcheck cannot see.
+# shellcheck disable=SC2329
 cleanup_deno_wrapper() {
   rm -rf "${DENO_WRAPPER_DIR}"
 }
