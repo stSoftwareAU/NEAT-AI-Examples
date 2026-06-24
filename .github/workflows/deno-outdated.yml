@@ -28,6 +28,17 @@ on:
   pull_request:
     branches:
       - Develop
+  # Emergency fast-lane for an actively-exploited advisory: a maintainer can
+  # dispatch this workflow manually and shorten (or zero out) the 24h
+  # supply-chain quarantine window. The override is explicit and auditable —
+  # the chosen value is recorded in the run inputs (Issue #603). See
+  # SECURITY.md → "Emergency dependency-bump procedure".
+  workflow_dispatch:
+    inputs:
+      quarantine_hours:
+        description: "Quarantine window in hours. Set 0 only for a genuine active-exploitation emergency; leave at 24 otherwise."
+        default: "24"
+        type: string
 
 # Serialise runs on the same ref but never cancel in progress: this job
 # pushes auto-bump commits back to the PR head, and interrupting it
@@ -43,19 +54,27 @@ permissions:
 jobs:
   auto-bump:
     name: Auto-bump Deno dependencies on PR
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Run for same-repo PRs (forks cannot be pushed to) or for a manual
+    # emergency dispatch (#603).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       # Supply-chain quarantine window for external packages (#441).
-      # Pinned in the workflow so the policy is auditable from CI config.
-      VIBE_BUMP_QUARANTINE_HOURS: "24"
+      # Defaults to 24h; a manual workflow_dispatch can override it for an
+      # actively-exploited advisory, and the chosen value is auditable in
+      # the run inputs (#603).
+      VIBE_BUMP_QUARANTINE_HOURS: ${{ inputs.quarantine_hours || '24' }}
     steps:
       - name: Check out PR head
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # On manual dispatch there is no PR head; fall back to the
+          # dispatched ref/repository (#603).
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           # GITHUB_TOKEN pushes do not re-trigger other workflows; required
           # checks are re-dispatched explicitly after a bump push (#485).
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -83,7 +102,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add deno.json deno.lock
           git commit -m "chore: auto-bump Deno dependencies (#362)"
-          git push origin HEAD:"${GITHUB_HEAD_REF}"
+          # GITHUB_HEAD_REF is empty on workflow_dispatch; fall back to the
+          # dispatched branch name (#603).
+          git push origin HEAD:"${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
       - name: Re-dispatch required checks after bump push
@@ -92,6 +113,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # GITHUB_HEAD_REF is empty on workflow_dispatch; fall back to the
+          # dispatched branch name (#603).
+          target_ref="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           for wf in \
             quality.yml \
             shellcheck.yml \
@@ -100,7 +124,7 @@ jobs:
             gitleaks.yml \
             dependency-review.yml
           do
-            echo "Dispatching ${wf} on ${GITHUB_HEAD_REF}"
-            gh workflow run "${wf}" --ref "${GITHUB_HEAD_REF}" \
-              -f pr_head_ref="${GITHUB_HEAD_REF}"
+            echo "Dispatching ${wf} on ${target_ref}"
+            gh workflow run "${wf}" --ref "${target_ref}" \
+              -f pr_head_ref="${target_ref}"
           done
