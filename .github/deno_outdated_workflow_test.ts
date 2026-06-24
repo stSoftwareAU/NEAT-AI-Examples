@@ -93,11 +93,16 @@ Deno.test("deno-outdated workflow — pins VIBE_BUMP_QUARANTINE_HOURS so the sup
     value,
     "auto-bump must pin VIBE_BUMP_QUARANTINE_HOURS so the supply-chain quarantine window is visible in CI config",
   );
-  // The number must be a non-negative integer.
-  const n = Number(value);
+  // The value is either a plain number or an auditable override expression
+  // of the form `${{ inputs.quarantine_hours || '24' }}` (Issue #603). In
+  // both cases the effective default (the value used on an ordinary PR run,
+  // where the dispatch input is empty) must be a non-negative number.
+  const overrideMatch = value.match(/\|\|\s*'?(\d+(?:\.\d+)?)'?\s*}}/);
+  const effectiveDefault = overrideMatch ? overrideMatch[1] : value;
+  const n = Number(effectiveDefault);
   assert(
     Number.isFinite(n) && n >= 0,
-    `VIBE_BUMP_QUARANTINE_HOURS must be a non-negative number, got: ${value}`,
+    `VIBE_BUMP_QUARANTINE_HOURS default must be a non-negative number, got: ${value}`,
   );
 });
 
@@ -127,15 +132,20 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
   );
   assertExists(checkout, "must check out the PR head");
   const cwith = checkout.with as Record<string, unknown>;
-  assertEquals(
-    cwith.ref,
-    "${{ github.event.pull_request.head.ref }}",
-    "checkout must target the PR head ref so commits go back to the PR branch",
+  // On a pull_request run the checkout must target the PR head ref/repo so
+  // bump commits go back to the PR branch. A manual emergency dispatch has
+  // no PR context, so an auditable fallback to the dispatched ref/repository
+  // is permitted (Issue #603) — assert the PR-head reference is present
+  // rather than requiring an exact, fallback-free string.
+  assert(
+    String(cwith.ref ?? "").includes("github.event.pull_request.head.ref"),
+    `checkout must target the PR head ref so commits go back to the PR branch, got: ${cwith.ref}`,
   );
-  assertEquals(
-    cwith.repository,
-    "${{ github.event.pull_request.head.repo.full_name }}",
-    "checkout must target the PR head repository",
+  assert(
+    String(cwith.repository ?? "").includes(
+      "github.event.pull_request.head.repo.full_name",
+    ),
+    `checkout must target the PR head repository, got: ${cwith.repository}`,
   );
 
   // checkout must be pinned to a 40-char SHA per supply-chain policy.
