@@ -36,6 +36,8 @@ const CANCEL_WORKFLOWS = [
 // Workflows that must NOT cancel in progress (push commits back to PR head).
 const NO_CANCEL_WORKFLOWS = [
   "deno-outdated.yml",
+  // Pushes a branch and opens a PR; must not be interrupted mid-commit.
+  "deno-security-update.yml",
 ];
 
 async function loadWorkflow(name: string): Promise<Workflow> {

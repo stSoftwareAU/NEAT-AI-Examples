@@ -564,30 +564,47 @@ the same pipeline on every push and pull request to `Develop`. Failing checks bl
 
 ### Dependency-update channels
 
-Dependency hygiene runs on two deliberately separate channels:
+Dependency hygiene runs on three deliberately separate channels:
 
 - **Routine version bumps** — [`deno-outdated.yml`](.github/workflows/deno-outdated.yml) runs
   `./bump-deps.sh` only when a pull request is opened against `Develop`. It has no cron, so routine
-  refreshes never arrive as scheduled bot noise (Issue #364).
-- **Security advisories** — [`deno-audit.yml`](.github/workflows/deno-audit.yml) runs `deno audit`
-  on a weekly cron (and on demand via `workflow_dispatch`). This channel is _advisory-driven_: a
-  clean audit produces nothing, so it does not re-introduce bump noise. When `deno audit` finds a
-  known advisory against a pinned dependency, it opens (or updates) a `security`-labelled issue so a
+  refreshes never arrive as scheduled bot noise (Issue #364). External pins are held for the routine
+  24h supply-chain quarantine (`VIBE_BUMP_QUARANTINE_HOURS`, Issue #441).
+- **Advisory detection** — [`deno-audit.yml`](.github/workflows/deno-audit.yml) runs `deno audit` on
+  a weekly cron (and on demand via `workflow_dispatch`). This channel is _advisory-driven_: a clean
+  audit produces nothing, so it does not re-introduce bump noise. When `deno audit` finds a known
+  advisory against a pinned dependency, it opens (or updates) a `security`-labelled issue so a
   freshly-disclosed CVE has an automated path to a remediation issue (Issue #573).
+- **Advisory-driven security updates** —
+  [`deno-security-update.yml`](.github/workflows/deno-security-update.yml) is the out-of-band
+  _remediation_ channel (Issue #601). It runs `deno audit` on a daily cron (and on demand) and, when
+  an advisory is found, fast-tracks a patch through the existing `./bump-deps.sh` updater with
+  `VIBE_BUMP_QUARANTINE_HOURS=0` — security fixes bypass the routine 24h quarantine because a
+  disclosed advisory means the currently-pinned version _is_ the risk. The patch is pushed to a
+  fresh `security/` branch and a PR is opened, independently of the PR-time bumper, so a CVE is
+  patched without waiting for an unrelated PR to touch dependencies.
 
 ```mermaid
 flowchart LR
-    PR[PR opened to Develop] --> BUMP[deno-outdated.yml<br/>bump-deps.sh]
+    PR[PR opened to Develop] --> BUMP[deno-outdated.yml<br/>bump-deps.sh<br/>quarantine 24h]
     BUMP --> PINS[Pins refreshed on the PR]
 
     CRON[Weekly cron / manual] --> AUDIT[deno-audit.yml<br/>deno audit]
     AUDIT -->|advisory found| ISSUE[Open/label security issue]
     AUDIT -->|clean| QUIET[No issue — no noise]
 
+    DAILY[Daily cron / manual] --> SEC[deno-security-update.yml<br/>deno audit]
+    SEC -->|advisory found| FAST[bump-deps.sh<br/>quarantine 0h] --> SECPR[Open security PR to Develop]
+    SEC -->|clean| QUIET2[No PR — no noise]
+
     style BUMP fill:#3498db,stroke:#333,color:#fff
     style AUDIT fill:#e67e22,stroke:#333,color:#fff
     style ISSUE fill:#e74c3c,stroke:#333,color:#fff
     style QUIET fill:#2ecc71,stroke:#333,color:#fff
+    style SEC fill:#e67e22,stroke:#333,color:#fff
+    style FAST fill:#9b59b6,stroke:#333,color:#fff
+    style SECPR fill:#e74c3c,stroke:#333,color:#fff
+    style QUIET2 fill:#2ecc71,stroke:#333,color:#fff
 ```
 
 <details>
