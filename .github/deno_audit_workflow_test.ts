@@ -10,6 +10,8 @@
 // These tests pin the contract:
 //   * the workflow runs on a `schedule:` cron AND supports manual
 //     `workflow_dispatch` (the standing detector — focus of Issue #572),
+//   * it also runs on every `pull_request` so the standing pin set is
+//     re-audited per PR, not only weekly (Issue #600),
 //   * it actually invokes `deno audit` so the locked tree is scanned,
 //   * every `uses:` action is pinned to a 40-character commit SHA, and
 //   * it runs on `ubuntu-latest` with read-only `contents` permission.
@@ -64,6 +66,25 @@ Deno.test("deno-audit workflow — runs on a scheduled cron (the standing detect
       `cron expression looks malformed: '${entry.cron}'`,
     );
   }
+});
+
+Deno.test("deno-audit workflow — runs on every pull_request (Issue #600)", async () => {
+  const wf = await loadWorkflow();
+  const t = triggers(wf);
+  assertExists(t, "workflow must declare triggers");
+  assert(
+    Object.prototype.hasOwnProperty.call(t, "pull_request"),
+    "Issue #600 requires the locked tree to be audited on every PR, not " +
+      "only on the weekly cron — a `pull_request:` trigger is mandatory.",
+  );
+  const pr = t.pull_request as { branches?: string[] };
+  assertExists(pr, "`pull_request` trigger must declare a configuration");
+  assert(
+    Array.isArray(pr.branches) && pr.branches.includes("**"),
+    "`pull_request.branches` must be `['**']` so PRs against base " +
+      "branches containing a `/` still trigger the audit (Issue #435). " +
+      `Got: ${JSON.stringify(pr.branches)}`,
+  );
 });
 
 Deno.test("deno-audit workflow — supports manual workflow_dispatch", async () => {

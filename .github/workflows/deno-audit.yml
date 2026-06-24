@@ -1,29 +1,42 @@
-# Scheduled Deno dependency audit for NEAT-AI-Examples (Issue #572)
+# Deno dependency audit for NEAT-AI-Examples (Issues #572, #600)
 #
 # `dependency-review.yml` only inspects the dependency-graph *diff* of a
 # pull request, so it flags vulnerabilities a PR *introduces* — not a CVE
 # disclosed *later* against a pin that is already on `Develop`. This
 # workflow is the standing detector that closes that posture gap: a
-# weekly, Deno-native `deno audit` over the existing locked tree
-# (`deno.json` / `deno.lock`).
+# Deno-native `deno audit` over the existing locked tree (`deno.json` /
+# `deno.lock`).
+#
+# It runs on two cadences:
+#   * `pull_request` (Issue #600) — every PR re-audits the *standing* pin
+#     set, so a CVE disclosed against a currently-pinned package is caught
+#     the next time anyone opens a PR, not only on the weekly cron.
+#   * `schedule` (Issue #572) — a weekly out-of-band scan so a freshly
+#     disclosed advisory surfaces even when no PR is open
 #
 # It complements — does not replace — the PR-time dependency-review
-# action: the action guards *incoming* changes, this scheduled audit
-# guards the *standing* pin set. `workflow_dispatch` lets a maintainer
-# run the scan on demand.
+# action: the action guards *incoming* changes, this audit guards the
+# *standing* pin set. `workflow_dispatch` lets a maintainer run the scan
+# on demand.
 #
 # Actions are pinned to 40-character commit SHAs (not floating tags) in
 # line with the project's supply-chain hardening rules (AGENTS.md).
 
 name: Deno Audit
 
+# `branches: ["**"]` (not `["*"]`) so PRs against base branches that
+# contain a `/` (e.g. `milestone/refresh-2026-05`) still trigger this
+# workflow. The single-`*` glob does NOT match `/` — Issue #435.
 on:
+  pull_request:
+    branches: ["**"]
   schedule:
     # Weekly, Monday 03:00 UTC. A standing scan, not per-PR bot noise.
     - cron: "0 3 * * 1"
   workflow_dispatch:
 
-# Cancel a superseded manual run when a newer one starts on the same ref.
+# Cancel a superseded run when a newer commit arrives on the same ref, so
+# rapid pushes to a PR (or a re-triggered manual run) don't pile up.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
