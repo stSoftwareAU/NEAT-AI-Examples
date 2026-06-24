@@ -31,6 +31,21 @@ Review the resulting `deno.json` / `deno.lock` diff, confirm `./quality.sh` pass
 merge. Use the `VIBE_BUMP_QUARANTINE_HOURS=0` override **only** for a genuine security fast-track;
 routine bumps must respect the default 24-hour quarantine.
 
+### Auditable CI fast-lane
+
+The same override is exposed as a manual **workflow_dispatch** input on the
+[`Deno Dependency Auto-Bump`](.github/workflows/deno-outdated.yml) workflow, so the bypass is logged
+against a run rather than improvised. Trigger it from the Actions tab (or `gh workflow run`) and set
+`quarantine_hours` to `0`:
+
+```bash
+# Dispatch the auto-bump workflow on a branch with the quarantine window zeroed.
+gh workflow run deno-outdated.yml --ref <branch> -f quarantine_hours=0
+```
+
+The input defaults to `24`, so an ordinary dispatch keeps the full quarantine; only an explicit `0`
+opens the fast-lane, and the chosen value is recorded in the run for audit.
+
 ```mermaid
 flowchart LR
     R["🚨 Suspected issue"] --> C["📣 Email service@stsoftware.com.au"]
