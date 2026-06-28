@@ -1,172 +1,177 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST — training error vs cumulative generations chart">
-  <title>MNIST — training error vs cumulative generations</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Classification — multi-run error vs cumulative generations chart">
+  <title>MNIST Classification — multi-run error vs cumulative generations</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST — training error vs cumulative generations</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Classification — multi-run error vs cumulative generations</text>
   <rect x="70" y="50" width="690" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="70" y1="340" x2="70" y2="344" stroke="#333333" stroke-width="1"/>
     <text x="70" y="358" text-anchor="middle">31</text>
-    <line x1="225.25" y1="340" x2="225.25" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="225.25" y="358" text-anchor="middle">100</text>
-    <line x1="530.46" y1="340" x2="530.46" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="530.46" y="358" text-anchor="middle">1000</text>
+    <line x1="223.56" y1="340" x2="223.56" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="223.56" y="358" text-anchor="middle">100</text>
+    <line x1="525.45" y1="340" x2="525.45" y2="344" stroke="#333333" stroke-width="1"/>
+    <text x="525.45" y="358" text-anchor="middle">1000</text>
     <line x1="760" y1="340" x2="760" y2="344" stroke="#333333" stroke-width="1"/>
-    <text x="760" y="358" text-anchor="middle">5650</text>
+    <text x="760" y="358" text-anchor="middle">5983</text>
     <text x="415" y="376" text-anchor="middle" font-weight="bold">cumulative generation (log scale)</text>
   </g>
   <g class="y-axis" font-family="sans-serif" font-size="11" fill="#333333">
     <line x1="66" y1="340" x2="70" y2="340" stroke="#333333" stroke-width="1"/>
     <text x="62" y="340" text-anchor="end" dominant-baseline="middle">0</text>
-    <line x1="66" y1="271.12" x2="70" y2="271.12" stroke="#333333" stroke-width="1"/>
-    <text x="62" y="271.12" text-anchor="end" dominant-baseline="middle">0.2</text>
-    <line x1="66" y1="202.25" x2="70" y2="202.25" stroke="#333333" stroke-width="1"/>
-    <text x="62" y="202.25" text-anchor="end" dominant-baseline="middle">0.4</text>
-    <line x1="66" y1="133.37" x2="70" y2="133.37" stroke="#333333" stroke-width="1"/>
-    <text x="62" y="133.37" text-anchor="end" dominant-baseline="middle">0.6</text>
-    <line x1="66" y1="64.5" x2="70" y2="64.5" stroke="#333333" stroke-width="1"/>
-    <text x="62" y="64.5" text-anchor="end" dominant-baseline="middle">0.8</text>
+    <line x1="66" y1="297.92" x2="70" y2="297.92" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="297.92" text-anchor="end" dominant-baseline="middle">0.5</text>
+    <line x1="66" y1="255.85" x2="70" y2="255.85" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="255.85" text-anchor="end" dominant-baseline="middle">1</text>
+    <line x1="66" y1="213.77" x2="70" y2="213.77" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="213.77" text-anchor="end" dominant-baseline="middle">1.5</text>
+    <line x1="66" y1="171.7" x2="70" y2="171.7" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="171.7" text-anchor="end" dominant-baseline="middle">2</text>
+    <line x1="66" y1="129.62" x2="70" y2="129.62" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="129.62" text-anchor="end" dominant-baseline="middle">2.5</text>
+    <line x1="66" y1="87.54" x2="70" y2="87.54" stroke="#333333" stroke-width="1"/>
+    <text x="62" y="87.54" text-anchor="end" dominant-baseline="middle">3</text>
     <line x1="66" y1="50" x2="70" y2="50" stroke="#333333" stroke-width="1"/>
-    <text x="62" y="50" text-anchor="end" dominant-baseline="middle">0.842</text>
+    <text x="62" y="50" text-anchor="end" dominant-baseline="middle">3.446</text>
     <text x="22" y="195" text-anchor="middle" dominant-baseline="middle" font-weight="bold" transform="rotate(-90 22 195)">error</text>
   </g>
   <g class="axis-footnote" font-family="sans-serif" font-size="10" fill="#666666">
     <text x="415" y="386" text-anchor="middle">Linear error on Y · log₁₀ generations on X · line is best error so far · dots are raw milestone measurements.</text>
   </g>
   <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">
-    <line class="run-boundary" x1="237.88" y1="50" x2="237.88" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="237.88" y="46" text-anchor="middle">run 2</text>
-    <line class="run-boundary" x1="430.66" y1="50" x2="430.66" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="430.66" y="46" text-anchor="middle">run 15</text>
-    <line class="run-boundary" x1="512.15" y1="50" x2="512.15" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="512.15" y="46" text-anchor="middle">run 27</text>
-    <line class="run-boundary" x1="575.44" y1="50" x2="575.44" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="575.44" y="46" text-anchor="middle">run 40</text>
-    <line class="run-boundary" x1="625.81" y1="50" x2="625.81" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="625.81" y="46" text-anchor="middle">run 52</text>
-    <line class="run-boundary" x1="688.76" y1="50" x2="688.76" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="688.76" y="46" text-anchor="middle">run 77</text>
+    <line class="run-boundary" x1="236.05" y1="50" x2="236.05" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="236.05" y="46" text-anchor="middle">run 2</text>
+    <line class="run-boundary" x1="426.74" y1="50" x2="426.74" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="426.74" y="46" text-anchor="middle">run 15</text>
+    <line class="run-boundary" x1="507.34" y1="50" x2="507.34" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="507.34" y="46" text-anchor="middle">run 27</text>
+    <line class="run-boundary" x1="569.94" y1="50" x2="569.94" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="569.94" y="46" text-anchor="middle">run 40</text>
+    <line class="run-boundary" x1="622.29" y1="50" x2="622.29" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="622.29" y="46" text-anchor="middle">run 53</text>
+    <line class="run-boundary" x1="682.19" y1="50" x2="682.19" y2="340" stroke="#cccccc" stroke-width="0.5"/>
+    <text x="682.19" y="46" text-anchor="middle">run 78</text>
     <line class="run-boundary" x1="760" y1="50" x2="760" y2="340" stroke="#cccccc" stroke-width="0.5"/>
-    <text x="760" y="46" text-anchor="middle">run 115</text>
+    <text x="760" y="46" text-anchor="middle">run 116</text>
   </g>
   <g class="error-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,50 237.88,69.18 251.6,69.77 263.05,73.9 267.94,74.69 324.85,85.99 350.36,98.11 354.93,98.11 365.46,103.45 367.74,103.55 385.89,103.65 417.04,104.55 424.91,104.55 429.25,104.69 430.66,104.93 439.38,106.2 449.03,112.47 462.53,112.61 469.64,112.61 470.68,112.61 480.89,113.26 489.47,114.4 491.09,114.4 495.47,119.98 496.33,119.98 503.67,120.05 512.15,121.08 513.67,121.08 515.31,121.73 516.05,121.73 527.78,121.97 536.93,122.35 539.06,122.35 540.05,122.35 540.66,122.35 548.41,122.35 558.33,122.35 567.56,122.35 574.97,122.87 575.44,122.87 581.98,122.87 589.24,123.35 591.51,123.39 592.76,123.39 593.18,123.39 597.24,123.42 608.08,123.42 612.86,123.42 614.84,123.42 615.19,123.42 620.2,123.42 625.81,123.42 628.37,123.42 630.44,123.42 630.75,123.42 634.25,123.46 639.88,123.46 641.21,127.07 643.44,128.52 643.72,128.52 647.5,131.96 651.55,133.75 652.34,133.89 653.4,133.89 653.66,133.89 657.68,133.89 662.51,134.23 663.1,134.23 664.12,134.23 664.36,134.23 670.08,134.79 673.45,134.85 674.93,134.85 675.87,134.85 676.09,134.85 682.26,134.85 688.76,134.85 688.92,134.85 691.39,134.85 691.58,134.85 696.86,134.89 702.08,134.99 704.89,134.99 707.77,135.72 707.94,135.72 711.48,135.82 716,135.82 716.36,135.82 717.33,137.02 717.49,137.02 720.53,137.23 722.85,138.47 723.9,138.5 725.7,138.85 725.86,138.85 729.04,139.09 734.52,139.4 735.71,139.4 736.97,139.4 737.11,139.4 738.75,140.54 741.55,140.54 742.68,140.54 743.43,140.54 743.56,140.54 746.81,140.54 749.61,140.54 750.59,140.54 751.92,143.74 752.05,143.74 753.93,143.98 756.75,144.36 758.49,144.36 759.88,144.36 760,144.36"/>
-    <circle class="error-point" cx="70" cy="50" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="237.88" cy="69.18" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="251.6" cy="69.77" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="263.05" cy="73.9" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="267.94" cy="74.69" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="324.85" cy="85.99" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="350.36" cy="98.11" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="354.93" cy="98.11" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="365.46" cy="103.45" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="367.74" cy="103.55" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="385.89" cy="103.65" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="417.04" cy="104.55" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="424.91" cy="104.55" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="429.25" cy="104.69" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="430.66" cy="104.93" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="439.38" cy="106.2" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="449.03" cy="112.47" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="462.53" cy="112.61" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="469.64" cy="112.61" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="470.68" cy="112.61" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="480.89" cy="113.26" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="489.47" cy="114.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="491.09" cy="114.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="495.47" cy="119.98" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="496.33" cy="119.98" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="503.67" cy="120.05" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="512.15" cy="121.08" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="513.67" cy="121.08" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="515.31" cy="121.73" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="516.05" cy="121.73" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="527.78" cy="121.97" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="536.93" cy="122.35" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="539.06" cy="122.35" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="540.05" cy="122.35" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="540.66" cy="122.35" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="548.41" cy="121.63" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="558.33" cy="122.01" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="567.56" cy="122.01" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="574.97" cy="122.87" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="575.44" cy="122.87" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="581.98" cy="122.87" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="589.24" cy="123.35" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="591.51" cy="123.39" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="592.76" cy="123.39" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="593.18" cy="123.39" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="597.24" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="608.08" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="612.86" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="614.84" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="615.19" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="620.2" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="625.81" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="628.37" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="630.44" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="630.75" cy="123.42" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="634.25" cy="123.46" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="639.88" cy="123.46" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="641.21" cy="127.07" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="643.44" cy="128.52" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="643.72" cy="128.52" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="647.5" cy="131.96" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="651.55" cy="133.75" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="652.34" cy="133.89" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="653.4" cy="133.89" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="653.66" cy="133.89" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="657.68" cy="133.89" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="662.51" cy="134.23" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="663.1" cy="134.23" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="664.12" cy="134.23" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="664.36" cy="134.23" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="670.08" cy="134.79" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="673.45" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="674.93" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="675.87" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="676.09" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="682.26" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="688.76" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="688.92" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="691.39" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="691.58" cy="134.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="696.86" cy="134.89" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="702.08" cy="134.99" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="704.89" cy="134.99" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="707.77" cy="135.72" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="707.94" cy="135.72" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="711.48" cy="135.82" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="716" cy="135.82" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="716.36" cy="135.82" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="717.33" cy="137.02" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="717.49" cy="137.02" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="720.53" cy="137.23" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="722.85" cy="138.47" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="723.9" cy="138.5" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="725.7" cy="138.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="725.86" cy="138.85" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="729.04" cy="139.09" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="734.52" cy="139.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="735.71" cy="139.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="736.97" cy="139.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="737.11" cy="139.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="738.75" cy="140.54" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="741.55" cy="140.54" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="742.68" cy="140.54" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="743.43" cy="140.54" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="743.56" cy="140.54" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="746.81" cy="140.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="749.61" cy="140.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="750.59" cy="140.4" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="751.92" cy="143.74" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="752.05" cy="143.74" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="753.93" cy="143.98" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="756.75" cy="144.36" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="758.49" cy="144.36" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="759.88" cy="144.36" r="2.4" fill="#d62728"/>
-    <circle class="error-point" cx="760" cy="144.36" r="2.4" fill="#d62728"/>
+    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,269.14 236.05,273.82 249.63,273.97 260.95,274.98 265.78,275.17 322.08,277.93 347.31,280.89 351.83,280.89 362.24,282.2 364.5,282.22 382.46,282.25 413.26,282.47 421.05,282.47 425.34,282.5 426.74,282.56 435.36,282.87 444.9,284.4 458.26,284.43 465.29,284.43 466.32,284.43 476.42,284.59 484.91,284.87 486.5,284.87 490.84,286.24 491.69,286.24 498.95,286.25 507.34,286.5 508.84,286.5 510.47,286.66 511.2,286.66 522.8,286.72 531.85,286.82 533.95,286.82 534.93,286.82 535.54,286.82 543.2,286.82 553.02,286.82 562.15,286.82 569.47,286.94 569.94,286.94 576.41,286.94 583.59,287.06 585.84,287.07 587.07,287.07 587.48,287.07 591.51,287.08 602.23,287.08 606.96,287.08 608.91,287.08 609.26,287.08 614.22,287.08 619.76,287.08 622.29,287.08 624.34,287.08 624.65,287.08 628.11,287.09 633.68,287.09 635,287.97 637.2,288.32 637.48,288.32 641.22,289.16 645.22,289.6 646.01,289.64 647.05,289.64 647.31,289.64 651.28,289.64 656.07,289.72 656.65,289.72 657.65,289.72 657.89,289.72 663.55,289.85 666.89,289.87 668.35,289.87 669.27,289.87 669.49,289.87 675.6,289.87 682.03,289.87 682.19,289.87 684.62,289.87 684.82,289.87 690.04,289.88 695.21,289.9 697.98,289.9 700.83,290.08 701,290.08 704.5,290.11 708.97,290.11 709.32,290.11 710.29,290.4 710.45,290.4 713.45,290.45 715.74,290.75 716.78,290.76 718.57,290.85 718.72,290.85 721.86,290.91 727.29,290.98 728.47,290.98 729.71,290.98 729.85,290.98 731.47,291.26 734.25,291.26 735.36,291.26 736.1,291.26 736.23,291.26 739.45,291.26 742.21,291.26 743.19,291.26 744.5,292.04 744.63,292.04 746.49,292.1 749.27,292.19 751,292.19 752.38,292.19 752.49,292.19 760,292.19"/>
+    <circle class="error-point" cx="70" cy="269.14" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="236.05" cy="273.82" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="249.63" cy="273.97" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="260.95" cy="274.98" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="265.78" cy="275.17" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="322.08" cy="277.93" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="347.31" cy="280.89" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="351.83" cy="280.89" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="362.24" cy="282.2" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="364.5" cy="282.22" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="382.46" cy="282.25" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="413.26" cy="282.47" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="421.05" cy="282.47" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="425.34" cy="282.5" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="426.74" cy="282.56" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="435.36" cy="282.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="444.9" cy="284.4" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="458.26" cy="284.43" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="465.29" cy="284.43" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="466.32" cy="284.43" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="476.42" cy="284.59" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="484.91" cy="284.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="486.5" cy="284.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="490.84" cy="286.24" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="491.69" cy="286.24" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="498.95" cy="286.25" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="507.34" cy="286.5" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="508.84" cy="286.5" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="510.47" cy="286.66" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="511.2" cy="286.66" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="522.8" cy="286.72" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="531.85" cy="286.82" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="533.95" cy="286.82" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="534.93" cy="286.82" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="535.54" cy="286.82" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="543.2" cy="286.64" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="553.02" cy="286.73" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="562.15" cy="286.73" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="569.47" cy="286.94" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="569.94" cy="286.94" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="576.41" cy="286.94" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="583.59" cy="287.06" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="585.84" cy="287.07" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="587.07" cy="287.07" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="587.48" cy="287.07" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="591.51" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="602.23" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="606.96" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="608.91" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="609.26" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="614.22" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="619.76" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="622.29" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="624.34" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="624.65" cy="287.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="628.11" cy="287.09" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="633.68" cy="287.09" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="635" cy="287.97" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="637.2" cy="288.32" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="637.48" cy="288.32" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="641.22" cy="289.16" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="645.22" cy="289.6" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="646.01" cy="289.64" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="647.05" cy="289.64" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="647.31" cy="289.64" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="651.28" cy="289.64" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="656.07" cy="289.72" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="656.65" cy="289.72" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="657.65" cy="289.72" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="657.89" cy="289.72" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="663.55" cy="289.85" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="666.89" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="668.35" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="669.27" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="669.49" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="675.6" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="682.03" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="682.19" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="684.62" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="684.82" cy="289.87" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="690.04" cy="289.88" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="695.21" cy="289.9" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="697.98" cy="289.9" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="700.83" cy="290.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="701" cy="290.08" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="704.5" cy="290.11" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="708.97" cy="290.11" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="709.32" cy="290.11" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="710.29" cy="290.4" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="710.45" cy="290.4" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="713.45" cy="290.45" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="715.74" cy="290.75" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="716.78" cy="290.76" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="718.57" cy="290.85" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="718.72" cy="290.85" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="721.86" cy="290.91" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="727.29" cy="290.98" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="728.47" cy="290.98" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="729.71" cy="290.98" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="729.85" cy="290.98" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="731.47" cy="291.26" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="734.25" cy="291.26" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="735.36" cy="291.26" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="736.1" cy="291.26" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="736.23" cy="291.26" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="739.45" cy="291.23" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="742.21" cy="291.23" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="743.19" cy="291.23" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.5" cy="292.04" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="744.63" cy="292.04" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="746.49" cy="292.1" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="749.27" cy="292.19" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="751" cy="292.19" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.38" cy="292.19" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="752.49" cy="292.19" r="2.4" fill="#d62728"/>
+    <circle class="error-point" cx="760" cy="50" r="2.4" fill="#d62728"/>
   </g>
   <g class="caption" font-family="sans-serif" font-size="12" fill="#222222">
-    <text x="400" y="378" text-anchor="middle">final error 0.568 · 115 runs · 5650 cumulative generations · 78520829 ms total · 4.3 gen/min</text>
+    <text x="400" y="378" text-anchor="middle">final error 3.446 · 116 runs · 5983 cumulative generations · 82121440 ms total · 4.4 gen/min</text>
   </g>
 </svg>
