@@ -37,8 +37,8 @@ function resolveBaseDir(baseDir?: string): string {
   return "docs";
 }
 
-/** Path to the campaign record JSON for an example. */
-export function campaignRecordPath(exampleSlug: string, baseDir?: string): string {
+/** Path to the campaign record JSON for an example (module-private helper). */
+function campaignRecordPath(exampleSlug: string, baseDir?: string): string {
   return join(resolveBaseDir(baseDir), "data", exampleSlug, "campaign_record.json");
 }
 
