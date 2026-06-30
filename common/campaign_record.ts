@@ -77,8 +77,8 @@ export async function startCampaignRecord(
   return record;
 }
 
-/** Persist a campaign record. */
-export async function writeCampaignRecord(
+/** Persist a campaign record. Module-private helper. */
+async function writeCampaignRecord(
   record: CampaignRecord,
   baseDir?: string,
 ): Promise<void> {

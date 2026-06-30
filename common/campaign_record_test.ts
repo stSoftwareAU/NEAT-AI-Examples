@@ -11,6 +11,17 @@ import {
   startCampaignRecord,
   wipeCampaignRecord,
 } from "./campaign_record.ts";
+import * as campaignRecord from "./campaign_record.ts";
+
+Deno.test("writeCampaignRecord is not part of the public export surface", () => {
+  // The persistence helper is module-private; only the campaign lifecycle
+  // functions are exported. Asserting its absence (rather than importing it)
+  // enforces the narrowing and guards against re-widening the surface.
+  assertEquals(
+    Object.hasOwn(campaignRecord, "writeCampaignRecord"),
+    false,
+  );
+});
 
 Deno.test("startCampaignRecord then appendCampaignPhase tracks wall-clock and best score", async () => {
   const tmp = Deno.makeTempDirSync({ prefix: "campaign_" });
