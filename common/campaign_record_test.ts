@@ -3,6 +3,7 @@
  */
 
 import { assertEquals } from "@std/assert";
+import { join } from "@std/path";
 
 import {
   appendCampaignPhase,
@@ -31,6 +32,20 @@ Deno.test("startCampaignRecord then appendCampaignPhase tracks wall-clock and be
     assertEquals(record?.totalWallClockMs, 150_000);
     assertEquals(record?.bestHoldoutScore, 0.21);
     assertEquals(record?.bestValidationScore, 0.22);
+  } finally {
+    Deno.removeSync(tmp, { recursive: true });
+  }
+});
+
+Deno.test("startCampaignRecord writes to <baseDir>/data/<slug>/campaign_record.json", async () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "campaign_" });
+  try {
+    await startCampaignRecord("xor_classification", tmp);
+    // The path is resolved by the module-private campaignRecordPath helper;
+    // assert the side effect lands at the expected location.
+    const expected = join(tmp, "data", "xor_classification", "campaign_record.json");
+    const stat = await Deno.stat(expected);
+    assertEquals(stat.isFile, true);
   } finally {
     Deno.removeSync(tmp, { recursive: true });
   }
