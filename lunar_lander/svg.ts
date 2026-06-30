@@ -32,9 +32,6 @@ const LANDER_HALF_LENGTH = 12;
 /** Pixel length of a thruster flame indicator. */
 const FLAME_LENGTH = 14;
 
-/** Number of pose markers drawn along the trajectory. Always 3 (start/mid/end). */
-export const POSE_MARKER_COUNT = 3;
-
 /** Total animation duration (seconds) for one full descent replay. */
 export const ANIMATION_DURATION_SECONDS = 6;
 
