@@ -22,7 +22,7 @@ flowchart LR
 Backend/CLI change with no web interface to screenshot. Verified via the existing unit tests and the
 static checks below.
 
-- `deno test common/campaign_record_test.ts` — 3 passed, 0 failed.
+- `deno test common/campaign_record_test.ts` — 4 passed, 0 failed.
 - Full unit suite
   (`deno test --parallel … --ignore=mnist_classification/evolve_integration_test.ts`) — 1175 passed,
   0 failed.
@@ -32,10 +32,14 @@ static checks below.
 
 ## Test Plan
 
-No new test was needed: the existing `common/campaign_record_test.ts` already exercises
-`writeCampaignRecord` indirectly through its two public callers — the
-`startCampaignRecord then appendCampaignPhase …` and
-`startCampaignRecord writes to <baseDir>/data/<slug>/campaign_record.json` tests both assert the
-JSON side effect the private helper produces. These serve as the regression coverage that the
-now-private helper still works after the change. Adding a test that imported `writeCampaignRecord`
-directly would re-widen the very surface this issue narrows, so it was deliberately avoided.
+- Added
+  `common/campaign_record_test.ts::writeCampaignRecord is not part of the public export
+  surface` —
+  imports the module namespace and asserts `writeCampaignRecord` is no longer an own property.
+  Asserting the symbol's _absence_ (rather than importing it directly) enforces the narrowing and
+  guards against re-widening the surface, without re-introducing the very export this issue removes.
+- Existing tests retained: `common/campaign_record_test.ts` already exercises `writeCampaignRecord`
+  indirectly through its two public callers — the `startCampaignRecord then appendCampaignPhase …`
+  and `startCampaignRecord writes to <baseDir>/data/<slug>/campaign_record.json` tests both assert
+  the JSON side effect the now-private helper produces, providing regression coverage that it still
+  works after the change.
