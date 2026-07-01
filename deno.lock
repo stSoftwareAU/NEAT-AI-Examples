@@ -22,8 +22,9 @@
     "jsr:@std/testing@1.0.19": "1.0.19",
     "jsr:@std/uuid@1.1.1": "1.1.1",
     "jsr:@std/yaml@1.1.1": "1.1.1",
-    "jsr:@stsoftware/neat-ai@5.7.3": "5.7.3",
-    "jsr:@stsoftware/tags@1.0.13": "1.0.13"
+    "jsr:@stsoftware/neat-ai@5.7.4": "5.7.4",
+    "jsr:@stsoftware/tags@1.0.13": "1.0.13",
+    "npm:@types/node@*": "24.2.0"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -95,8 +96,8 @@
     "@std/yaml@1.1.1": {
       "integrity": "a57665ecf3d17b926380593a56625d8a10cc7281802f1e993b5ebc94a48e71f8"
     },
-    "@stsoftware/neat-ai@5.7.3": {
-      "integrity": "8cc157f663137da8336ae4e6d5a834a8de119646519d1610191d1fed534ed87a",
+    "@stsoftware/neat-ai@5.7.4": {
+      "integrity": "9520337d8a60c550de7e73c08a12c24649bd33e6e63fabbc6515ec6a1836e35f",
       "dependencies": [
         "jsr:@std/assert@1.0.19",
         "jsr:@std/bytes@1.0.6",
@@ -114,6 +115,17 @@
       ]
     }
   },
+  "npm": {
+    "@types/node@24.2.0": {
+      "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
+      "dependencies": [
+        "undici-types"
+      ]
+    },
+    "undici-types@7.10.0": {
+      "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="
+    }
+  },
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1.0.19",
@@ -128,7 +140,7 @@
       "jsr:@std/testing@1.0.19",
       "jsr:@std/uuid@1.1.1",
       "jsr:@std/yaml@1.1.1",
-      "jsr:@stsoftware/neat-ai@5.7.3",
+      "jsr:@stsoftware/neat-ai@5.7.4",
       "jsr:@stsoftware/tags@1.0.13"
     ]
   }
