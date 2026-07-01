@@ -58,8 +58,8 @@ export const OUTCOME_ORDER: readonly OutcomeCategory[] = [
 
 /**
  * Colour swatch per outcome — kept here so the count bars and strip cells
- * agree. Module-private: read only by the local SVG renderers below and not
- * re-exported (narrowed from a public export under issue #622).
+ * agree. Module-private: only the local SVG renderers read it (no other module
+ * imports it), so it is not part of this file's public surface (#622).
  */
 const OUTCOME_COLOUR: Readonly<Record<OutcomeCategory, string>> = {
   landed: "#2ca02c",
