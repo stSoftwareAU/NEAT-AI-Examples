@@ -16,12 +16,12 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.19",
-    "@std/cli": "jsr:@std/cli@1.0.30",
+    "@std/cli": "jsr:@std/cli@1.0.31",
     "@std/fmt": "jsr:@std/fmt@1.0.10",
     "@std/fs": "jsr:@std/fs@1.0.24",
-    "@std/path": "jsr:@std/path@1.1.5",
-    "@std/yaml": "jsr:@std/yaml@1.1.1",
-    "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.7.6",
+    "@std/path": "jsr:@std/path@1.1.6",
+    "@std/yaml": "jsr:@std/yaml@1.1.2",
+    "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.7.7",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
   "lint": {
