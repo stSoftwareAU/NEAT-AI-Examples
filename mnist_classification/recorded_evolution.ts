@@ -43,9 +43,6 @@ export interface HoldoutScores {
   testAccuracy: number;
 }
 
-/** Timeline chart path — hold-out score vs cumulative wall-clock. */
-export const MULTI_RUN_TIMELINE_SVG_PATH = "docs/screenshots/mnist_classification/timeline.svg";
-
 /** Build a multi-run milestone from one exploration phase. */
 export function phaseResultToMultiRunSample(
   evolveResult: MnistEvolveResult,

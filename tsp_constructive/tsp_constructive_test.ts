@@ -138,6 +138,18 @@ Deno.test(
 );
 
 Deno.test(
+  "public exports — dead MILESTONES_SVG_PATH is gone, used siblings remain",
+  async () => {
+    const mod = await import("./tsp_constructive.ts") as Record<string, unknown>;
+    // The dead constant (issue #628) must not be re-introduced.
+    assertEquals("MILESTONES_SVG_PATH" in mod, false);
+    // The genuinely-used sibling artefact constants stay exported.
+    assertEquals(mod.EXAMPLE_SLUG, "tsp_constructive");
+    assertEquals(typeof mod.SCREENSHOT_PATH, "string");
+  },
+);
+
+Deno.test(
   "runMultiRunTsp — persists champion + milestones and writes milestone SVG",
   async () => {
     const tmp = await Deno.makeTempDir({ prefix: "tsp_constructive_test_" });

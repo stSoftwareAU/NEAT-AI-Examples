@@ -130,9 +130,6 @@ export const POLISH_MAX_GENERATIONS = 2;
 /** Desired structure-phase generation time on full data (ms). ~1–2 s per gen. */
 export const TARGET_MS_PER_GENERATION = 1500;
 
-/** Generations used when probing full-data speed during calibration. */
-export const CALIBRATION_PROBE_GENERATIONS = 2;
-
 /** Wall-clock budget for the calibration probe (minutes). */
 export const CALIBRATION_PROBE_MINUTES = 2;
 
@@ -498,16 +495,6 @@ export async function appendPhaseRecord(record: ExplorationPhaseRecord): Promise
     `${JSON.stringify(record)}\n`,
     { append: true, create: true },
   );
-}
-
-/** Load the exploration champion, or `undefined` when none exists. */
-export async function loadExplorationChampion(): Promise<CreatureExport | undefined> {
-  try {
-    const text = await Deno.readTextFile(EXPLORATION_CHAMPION_PATH);
-    return JSON.parse(text) as CreatureExport;
-  } catch {
-    return undefined;
-  }
 }
 
 /** Persist the exploration champion (working copy only). */
