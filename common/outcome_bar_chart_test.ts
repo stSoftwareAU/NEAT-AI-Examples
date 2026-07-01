@@ -123,3 +123,19 @@ Deno.test("renderOutcomeBarChartSVG: single-outcome input does not produce NaN",
   const svg = renderOutcomeBarChartSVG(outcomes);
   assert(!svg.includes("NaN"), "SVG must not contain NaN");
 });
+
+Deno.test("renderOutcomeBarChartSVG: fills each category with its outcome colour", () => {
+  // Guards the module-private OUTCOME_COLOUR palette through observable
+  // output: every category present in the input must appear as a fill in
+  // the rendered SVG (count bars, strip cells, and legend swatches).
+  const svg = renderOutcomeBarChartSVG(makeOutcomes());
+  const expectedFills: Record<string, string> = {
+    landed: "#2ca02c",
+    crashed: "#d62728",
+    out_of_bounds: "#7f7f7f",
+    flying: "#1f77b4",
+  };
+  for (const cat of OUTCOME_ORDER) {
+    assertStringIncludes(svg, `fill="${expectedFills[cat]}"`);
+  }
+});
