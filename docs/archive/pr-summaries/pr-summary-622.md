@@ -1,41 +1,32 @@
 ## Summary
 
-Removed the redundant `export` modifier from the `OUTCOME_COLOUR` constant in
-`common/outcome_bar_chart.ts`. A repo-wide search confirmed the constant has no
-importer in any module — it is read only by the three local SVG renderers in
-its own file (lines 178, 242, 288). Narrowing it to module-private tightens the
-public surface without changing any behaviour; the constant and its internal
-read sites are untouched. Closes #622.
+Narrowed the public surface of `common/outcome_bar_chart.ts` by dropping the
+`export` modifier from the `OUTCOME_COLOUR` constant. Module-graph analysis
+confirmed no `.ts` module, test, barrel re-export, or string/dynamic reference
+outside the file imports the constant — it is read only by the three local SVG
+renderers (count bars, cell strip, legend swatches). Removing `export` keeps it
+as a module-private constant with those internal read sites unchanged. Closes #622.
 
 ## Evidence
 
-Backend/CLI change — no web interface to screenshot.
+Backend/library change with no web interface, so no screenshot applies. The
+constant drives the fill colours of the rendered SVG; that behaviour is now
+guarded by a new "what" test asserting each outcome colour appears in the
+output. Verification:
 
-Verification that `OUTCOME_COLOUR` is referenced only within its own file:
+- `deno test common/outcome_bar_chart_test.ts` → 12 passed, 0 failed.
+- `deno test common/` → 205 passed, 0 failed.
+- `deno fmt --check`, `deno lint`, `deno check` on both changed files → clean.
 
-```
-$ grep -rn "OUTCOME_COLOUR" . --include="*.ts" --include="*.md" --include="*.json" --include="*.js"
-common/outcome_bar_chart.ts:60:const OUTCOME_COLOUR: ...
-common/outcome_bar_chart.ts:178: ... fill="${OUTCOME_COLOUR[cat]}" ...
-common/outcome_bar_chart.ts:242: ... fill="${OUTCOME_COLOUR[o.outcome]}" ...
-common/outcome_bar_chart.ts:288: ... fill="${OUTCOME_COLOUR[cat]}" ...
-```
-
-The test file imports only `OUTCOME_ORDER` and `renderOutcomeBarChartSVG`, never
-`OUTCOME_COLOUR`, so dropping the export does not break any consumer.
-
-Lint, format, type-check, and all unit tests pass via `./quality.sh`. The
-`Adaptive Mutation Rate Demo` example failure reported by `quality.sh` is
-pre-existing and unrelated — it fails identically on a clean tree
-(`ValidationError: ... has invalid score`) and does not import
-`common/outcome_bar_chart.ts`.
+The one pre-existing `quality.sh` failure (`Temporal is not defined` in the
+`suggest_improvements` example, from the NEAT-AI dependency needing
+`--unstable-temporal`) is unrelated — it reproduces on the base branch with my
+change stashed.
 
 ## Test Plan
 
-- Added `common/outcome_bar_chart_test.ts::"renderOutcomeBarChartSVG: each
-  outcome renders in its own colour"` — a "what" test asserting each outcome's
-  fill colour appears in the rendered SVG. It exercises the rendered-colour
-  behaviour that `OUTCOME_COLOUR` drives without depending on the constant being
-  an exported symbol, so it survives the export removal.
-- Existing `outcome_bar_chart_test.ts` suite continues to pass (12 tests, all
-  green).
+- Added `common/outcome_bar_chart_test.ts::renderOutcomeBarChartSVG: fills cells
+  with each outcome's colour` — a "what" test that renders the chart and asserts
+  each outcome's `fill="#…"` colour appears, guarding the behaviour the now
+  module-private `OUTCOME_COLOUR` drives without importing the constant.
+- Existing 11 renderer tests continue to pass unchanged.

@@ -56,7 +56,11 @@ export const OUTCOME_ORDER: readonly OutcomeCategory[] = [
   "flying",
 ] as const;
 
-/** Colour swatch per outcome — kept here so the count bars and strip cells agree. */
+/**
+ * Colour swatch per outcome — kept here so the count bars and strip cells
+ * agree. Module-private: only the local SVG renderers read it (no other module
+ * imports it), so it is not part of this file's public surface (#622).
+ */
 const OUTCOME_COLOUR: Readonly<Record<OutcomeCategory, string>> = {
   landed: "#2ca02c",
   crashed: "#d62728",
