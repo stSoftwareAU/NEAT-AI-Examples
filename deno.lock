@@ -4,7 +4,7 @@
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/bytes@1.0.6": "1.0.6",
     "jsr:@std/cli@1.0.17": "1.0.17",
-    "jsr:@std/cli@1.0.30": "1.0.30",
+    "jsr:@std/cli@1.0.31": "1.0.31",
     "jsr:@std/crypto@1.1.0": "1.1.0",
     "jsr:@std/fmt@1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
@@ -12,9 +12,10 @@
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1.1.5": "1.1.5",
-    "jsr:@std/path@^1.1.5": "1.1.5",
-    "jsr:@std/yaml@1.1.1": "1.1.1",
-    "jsr:@stsoftware/neat-ai@5.7.6": "5.7.6",
+    "jsr:@std/path@1.1.6": "1.1.6",
+    "jsr:@std/path@^1.1.5": "1.1.6",
+    "jsr:@std/yaml@1.1.2": "1.1.2",
+    "jsr:@stsoftware/neat-ai@5.7.7": "5.7.7",
     "jsr:@stsoftware/tags@1.0.13": "1.0.13",
     "npm:@types/node@*": "24.2.0"
   },
@@ -31,8 +32,8 @@
     "@std/cli@1.0.17": {
       "integrity": "e15b9abe629e17be90cc6216327f03a29eae613365f1353837fa749aad29ce7b"
     },
-    "@std/cli@1.0.30": {
-      "integrity": "769446536522d0417d7127ebcabcafac1ab0ce6766d0eb3fca1d36326fe98d13",
+    "@std/cli@1.0.31": {
+      "integrity": "190bb61f809378267c06be3bcd689fcc540f0cfaa5892171144cae787d02e2fd",
       "dependencies": [
         "jsr:@std/fmt@^1.0.10",
         "jsr:@std/internal@^1.0.14"
@@ -60,11 +61,17 @@
         "jsr:@std/internal@^1.0.14"
       ]
     },
-    "@std/yaml@1.1.1": {
-      "integrity": "a57665ecf3d17b926380593a56625d8a10cc7281802f1e993b5ebc94a48e71f8"
+    "@std/path@1.1.6": {
+      "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
+      "dependencies": [
+        "jsr:@std/internal@^1.0.14"
+      ]
     },
-    "@stsoftware/neat-ai@5.7.6": {
-      "integrity": "69f290e04ea185b1e677ee98f775b40ab4324e94e16d1a439d1ddba29efd4f26",
+    "@std/yaml@1.1.2": {
+      "integrity": "de612653c036749ba2044165e316f52412b0f0698afffb7ee80b5331d6d2abae"
+    },
+    "@stsoftware/neat-ai@5.7.7": {
+      "integrity": "d9e5d53e63ee02ed5cf90a08e4bd65b6c868f69f7ec34690c61074add4915037",
       "dependencies": [
         "jsr:@std/assert",
         "jsr:@std/bytes",
@@ -96,12 +103,12 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1.0.19",
-      "jsr:@std/cli@1.0.30",
+      "jsr:@std/cli@1.0.31",
       "jsr:@std/fmt@1.0.10",
       "jsr:@std/fs@1.0.24",
-      "jsr:@std/path@1.1.5",
-      "jsr:@std/yaml@1.1.1",
-      "jsr:@stsoftware/neat-ai@5.7.6",
+      "jsr:@std/path@1.1.6",
+      "jsr:@std/yaml@1.1.2",
+      "jsr:@stsoftware/neat-ai@5.7.7",
       "jsr:@stsoftware/tags@1.0.13"
     ]
   }
