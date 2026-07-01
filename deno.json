@@ -27,7 +27,7 @@
     "@std/testing/mock": "jsr:@std/testing@1.0.19/mock",
     "@std/uuid": "jsr:@std/uuid@1.1.1",
     "@std/yaml": "jsr:@std/yaml@1.1.1",
-    "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.7.6",
+    "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@5.7.5",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
   "lint": {
