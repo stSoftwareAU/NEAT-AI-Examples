@@ -130,9 +130,6 @@ export const POLISH_MAX_GENERATIONS = 2;
 /** Desired structure-phase generation time on full data (ms). ~1–2 s per gen. */
 export const TARGET_MS_PER_GENERATION = 1500;
 
-/** Generations used when probing full-data speed during calibration. */
-export const CALIBRATION_PROBE_GENERATIONS = 2;
-
 /** Wall-clock budget for the calibration probe (minutes). */
 export const CALIBRATION_PROBE_MINUTES = 2;
 
