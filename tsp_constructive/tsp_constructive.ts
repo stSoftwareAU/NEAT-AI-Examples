@@ -144,9 +144,6 @@ export const EXAMPLE_SLUG = "tsp_constructive";
 /** Path to the deterministic champion-tour SVG checked into docs. */
 export const SCREENSHOT_PATH = "docs/screenshots/tsp_constructive.svg";
 
-/** Path to the milestone-stats SVG checked into docs. */
-export const MILESTONES_SVG_PATH = "docs/screenshots/tsp_constructive/milestones.svg";
-
 /** Default `targetError` for a multi-run invocation (issue #322 cadence). */
 export const DEFAULT_MULTI_RUN_TARGET_ERROR = DEFAULT_TARGET_ERROR;
 
