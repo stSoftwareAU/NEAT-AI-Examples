@@ -14,9 +14,6 @@
  * (rendered into the SVG grid).
  */
 
-import { ensureDir } from "@std/fs";
-import { dirname } from "@std/path";
-
 /** Native side length of an MNIST image. */
 export const IMAGE_SIZE = 28;
 
@@ -228,13 +225,4 @@ export async function readGzippedFile(srcPath: string): Promise<Uint8Array> {
     offset += chunk.length;
   }
   return out;
-}
-
-/**
- * Ensure the parent directory of `path` exists. Used by the runner to
- * make sure intermediate output paths are writable before saving the
- * champion creature or confusion matrix.
- */
-export async function ensureParentDir(path: string): Promise<void> {
-  await ensureDir(dirname(path));
 }
