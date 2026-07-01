@@ -497,16 +497,6 @@ export async function appendPhaseRecord(record: ExplorationPhaseRecord): Promise
   );
 }
 
-/** Load the exploration champion, or `undefined` when none exists. */
-export async function loadExplorationChampion(): Promise<CreatureExport | undefined> {
-  try {
-    const text = await Deno.readTextFile(EXPLORATION_CHAMPION_PATH);
-    return JSON.parse(text) as CreatureExport;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Persist the exploration champion (working copy only). */
 export async function saveExplorationChampion(creature: Creature): Promise<void> {
   ensureDirSync(EXPLORATION_ROOT);
