@@ -57,7 +57,7 @@ export const OUTCOME_ORDER: readonly OutcomeCategory[] = [
 ] as const;
 
 /** Colour swatch per outcome — kept here so the count bars and strip cells agree. */
-export const OUTCOME_COLOUR: Readonly<Record<OutcomeCategory, string>> = {
+const OUTCOME_COLOUR: Readonly<Record<OutcomeCategory, string>> = {
   landed: "#2ca02c",
   crashed: "#d62728",
   out_of_bounds: "#7f7f7f",
