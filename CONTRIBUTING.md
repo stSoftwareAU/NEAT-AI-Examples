@@ -215,6 +215,23 @@ Before submitting a pull request, verify the following:
 - [ ] Commit messages are clear and reference the relevant issue number
 - [ ] The PR targets the `Develop` branch
 
+## 🔐 Code Owners & Branch Protection
+
+Privileged surfaces — the GitHub Actions workflows under `.github/workflows/` and the supply-chain
+scripts (`bump-deps.sh`, `bump_deps.ts`, `quality.sh`) — are guarded by
+[`.github/CODEOWNERS`](.github/CODEOWNERS). These paths run with secrets beyond the default
+`GITHUB_TOKEN` (the write-capable `ACTIONS_PUSH` PAT, `SEMGREP_APP_TOKEN`, `CODECOV_TOKEN`), so a
+change to them must be reviewed by
+[`@stSoftwareAU/developers`](https://github.com/orgs/stSoftwareAU/teams/developers).
+
+For the CODEOWNERS rule to be enforced at merge time, the `Develop` branch protection rule must have
+**Require review from Code Owners** enabled. Recommended companion settings (repo-level GitHub
+configuration, not visible from the clone):
+
+- at least one required PR approval before merge to `Develop`;
+- block direct push and force-push to `Develop`;
+- require a linear history (for the rebase/squash workflow).
+
 ## 💬 Getting Help
 
 If you have questions about the project or need guidance, open a GitHub issue or check the existing
