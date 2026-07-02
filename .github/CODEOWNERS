@@ -1,0 +1,26 @@
+# CODEOWNERS — required reviewers for privileged surfaces (Issue #654)
+#
+# GitHub requires a listed code owner's approval on any pull request that
+# touches a path matched below, once the "Require review from Code Owners"
+# branch-protection rule is enabled on the default branch (Develop). This
+# closes the poisoned-pipeline / secret-exfiltration path where a workflow
+# edit runs with privileged secrets the moment CI fires — before a human
+# necessarily notices the workflow diff. The workflows here reference
+# secrets beyond the default GITHUB_TOKEN: the write-capable ACTIONS_PUSH
+# PAT (deno-security-update.yml, deno-outdated.yml), SEMGREP_APP_TOKEN
+# (semgrep.yml) and CODECOV_TOKEN (quality.yml).
+#
+# Owner teams MUST have write (push) access to this repository, otherwise
+# GitHub silently ignores the rule. @stSoftwareAU/developers is the
+# maintaining team with push access, matching the sibling NEAT-AI repo.
+
+# CI/CD surface — all GitHub Actions workflows.
+/.github/workflows/  @stSoftwareAU/developers
+
+# The CODEOWNERS file itself, so ownership rules cannot be quietly changed.
+/.github/CODEOWNERS  @stSoftwareAU/developers
+
+# Supply-chain scripts — same blast radius as the workflows that run them.
+/bump-deps.sh  @stSoftwareAU/developers
+/bump_deps.ts  @stSoftwareAU/developers
+/quality.sh    @stSoftwareAU/developers

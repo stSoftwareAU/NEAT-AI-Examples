@@ -11,11 +11,10 @@
     "jsr:@std/fs@1.0.24": "1.0.24",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
-    "jsr:@std/path@1.1.5": "1.1.5",
     "jsr:@std/path@1.1.6": "1.1.6",
     "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/yaml@1.1.2": "1.1.2",
-    "jsr:@stsoftware/neat-ai@5.7.7": "5.7.7",
+    "jsr:@stsoftware/neat-ai@5.7.10": "5.7.10",
     "jsr:@stsoftware/tags@1.0.13": "1.0.13"
   },
   "jsr": {
@@ -54,12 +53,6 @@
     "@std/internal@1.0.14": {
       "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
     },
-    "@std/path@1.1.5": {
-      "integrity": "ccea00982ea28c36becaf6e62f855406c76a8c32d462f66f415bbb7d83a271bc",
-      "dependencies": [
-        "jsr:@std/internal@^1.0.14"
-      ]
-    },
     "@std/path@1.1.6": {
       "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
       "dependencies": [
@@ -69,15 +62,15 @@
     "@std/yaml@1.1.2": {
       "integrity": "de612653c036749ba2044165e316f52412b0f0698afffb7ee80b5331d6d2abae"
     },
-    "@stsoftware/neat-ai@5.7.7": {
-      "integrity": "d9e5d53e63ee02ed5cf90a08e4bd65b6c868f69f7ec34690c61074add4915037",
+    "@stsoftware/neat-ai@5.7.10": {
+      "integrity": "b554dc8e03260ff6d69578edb4d892c07d5b8d9b2ec2625d58a955a6642f69a7",
       "dependencies": [
         "jsr:@std/assert",
         "jsr:@std/bytes",
         "jsr:@std/crypto",
         "jsr:@std/fmt@1.0.10",
         "jsr:@std/fs",
-        "jsr:@std/path@1.1.5",
+        "jsr:@std/path@1.1.6",
         "jsr:@stsoftware/tags"
       ]
     },
@@ -96,7 +89,7 @@
       "jsr:@std/fs@1.0.24",
       "jsr:@std/path@1.1.6",
       "jsr:@std/yaml@1.1.2",
-      "jsr:@stsoftware/neat-ai@5.7.7",
+      "jsr:@stsoftware/neat-ai@5.7.10",
       "jsr:@stsoftware/tags@1.0.13"
     ]
   }

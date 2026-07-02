@@ -4,20 +4,21 @@
 
 `SCR-QUARANTINE-OVERRIDE` — the repo enforces a 24-hour supply-chain quarantine on external
 dependency bumps (`VIBE_BUMP_QUARANTINE_HOURS`), but there was no auditable, documented fast-lane to
-bypass that window when a dependency is being actively exploited. `SECURITY.md` already described the
-local `VIBE_BUMP_QUARANTINE_HOURS=0 ./bump-deps.sh` override (added under #574); the remaining gap
-called out in the issue was the absence of a `workflow_dispatch` override input on the CI workflow.
+bypass that window when a dependency is being actively exploited. `SECURITY.md` already described
+the local `VIBE_BUMP_QUARANTINE_HOURS=0 ./bump-deps.sh` override (added under #574); the remaining
+gap called out in the issue was the absence of a `workflow_dispatch` override input on the CI
+workflow.
 
 This PR closes that gap by exposing the existing knob as an explicit, auditable workflow input:
 
 - **`.github/workflows/deno-outdated.yml`** — adds a `workflow_dispatch` trigger with a
   `quarantine_hours` input (default `"24"`), and wires the job env to
-  `VIBE_BUMP_QUARANTINE_HOURS: ${{ inputs.quarantine_hours || '24' }}`. On an ordinary
-  pull-request run the input context is empty, so the full 24-hour quarantine still applies; only an
-  explicit manual dispatch with `quarantine_hours=0` opens the fast-lane, and the chosen value is
-  recorded against the run for audit. The job now also runs on `workflow_dispatch` (not just
-  same-repo PRs), with `github.ref_name` / `GITHUB_REF_NAME` fallbacks for the checkout, push, and
-  re-dispatch steps that previously assumed a PR-head context.
+  `VIBE_BUMP_QUARANTINE_HOURS: ${{ inputs.quarantine_hours || '24' }}`. On an ordinary pull-request
+  run the input context is empty, so the full 24-hour quarantine still applies; only an explicit
+  manual dispatch with `quarantine_hours=0` opens the fast-lane, and the chosen value is recorded
+  against the run for audit. The job now also runs on `workflow_dispatch` (not just same-repo PRs),
+  with `github.ref_name` / `GITHUB_REF_NAME` fallbacks for the checkout, push, and re-dispatch steps
+  that previously assumed a PR-head context.
 - **`SECURITY.md`** — adds an "Auditable CI fast-lane" subsection documenting the
   `gh workflow run deno-outdated.yml --ref <branch> -f quarantine_hours=0` path alongside the
   existing local override.
