@@ -12,15 +12,21 @@
 # pushed back to the PR head branch — so the PR ships with up-to-date
 # dependencies automatically (#362).
 #
-# Pushes via GITHUB_TOKEN do not re-trigger other `pull_request`
-# workflows. After a successful push this job dispatches the required
-# checks via `workflow_dispatch` so branch protection still sees fresh
-# results on the bumped HEAD (#485).
+# The bump commit is checked out and pushed with the org `ACTIONS_PUSH`
+# PAT, not `GITHUB_TOKEN` (#651). A `GITHUB_TOKEN` push is attributed to
+# `github-actions[bot]`, which has no write access, so GitHub held the
+# resulting `pull_request` check runs in `action_required` state awaiting
+# a maintainer's "Approve and run". A PAT push is a write-access event,
+# so the `synchronize` runs of the required checks start automatically.
+# This replaces the old #485 `workflow_dispatch` re-dispatch workaround,
+# which was unreliable — Semgrep, Gitleaks and Dependency Review fail
+# when dispatched outside PR context.
 #
 # There is deliberately no weekly cron: dependency refreshes only
 # happen when a PR is raised, never as scheduled bot noise (#364).
 #
-# Forked PRs are skipped because GITHUB_TOKEN cannot push to a fork.
+# Forked PRs are skipped: the PAT is scoped to this repo and must not
+# push to a fork, so external contributions still require approval.
 
 name: Deno Dependency Auto-Bump
 
@@ -49,7 +55,6 @@ concurrency:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   auto-bump:
@@ -75,9 +80,11 @@ jobs:
           # dispatched ref/repository (#603).
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          # GITHUB_TOKEN pushes do not re-trigger other workflows; required
-          # checks are re-dispatched explicitly after a bump push (#485).
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Push with the org ACTIONS_PUSH PAT so the bumped HEAD is a
+          # write-access event and the required checks run automatically
+          # instead of stalling in action_required (#651). checkout
+          # persists this credential, so the later `git push` uses it too.
+          token: ${{ secrets.ACTIONS_PUSH }}
 
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
@@ -106,25 +113,3 @@ jobs:
           # dispatched branch name (#603).
           git push origin HEAD:"${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
-
-      - name: Re-dispatch required checks after bump push
-        if: steps.bump.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          # GITHUB_HEAD_REF is empty on workflow_dispatch; fall back to the
-          # dispatched branch name (#603).
-          target_ref="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          for wf in \
-            quality.yml \
-            shellcheck.yml \
-            markdown-lint.yml \
-            semgrep.yml \
-            gitleaks.yml \
-            dependency-review.yml
-          do
-            echo "Dispatching ${wf} on ${target_ref}"
-            gh workflow run "${wf}" --ref "${target_ref}" \
-              -f pr_head_ref="${target_ref}"
-          done
