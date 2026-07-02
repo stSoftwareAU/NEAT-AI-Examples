@@ -61,7 +61,12 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: Develop
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Push the advisory branch with the org ACTIONS_PUSH PAT, not
+          # GITHUB_TOKEN (#651): a PAT push is a write-access event, so the
+          # daily security PR's checks run automatically instead of
+          # stalling in action_required. checkout persists this credential
+          # for the later `git push`.
+          token: ${{ secrets.ACTIONS_PUSH }}
 
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
@@ -114,7 +119,9 @@ jobs:
       - name: Open security-update PR
         if: steps.bump.outputs.pushed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Open the PR with the ACTIONS_PUSH PAT so its checks trigger
+          # automatically — a GITHUB_TOKEN-opened PR does not (#651).
+          GH_TOKEN: ${{ secrets.ACTIONS_PUSH }}
         run: |
           set -euo pipefail
           gh pr create \
