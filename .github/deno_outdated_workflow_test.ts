@@ -1,4 +1,4 @@
-// Tests for .github/workflows/deno-outdated.yml (Issue #362, #364).
+// Tests for .github/workflows/deno-outdated.yml (Issue #362, #364, #651).
 //
 // The workflow must:
 //  * trigger only on `pull_request` to Develop (no weekly cron — #364);
@@ -7,7 +7,12 @@
 //    automatically (#362) — not just warned about;
 //  * skip the auto-bump for PRs from forks (push would fail without a
 //    privileged token);
-//  * request `contents: write` so the push succeeds.
+//  * request `contents: write` so the push succeeds; and
+//  * check out / push with the org `ACTIONS_PUSH` PAT so the bumped
+//    commit re-triggers the `pull_request` checks automatically instead
+//    of leaving them held in `action_required` (#651). Because the PAT
+//    push is a write-access event, no `workflow_dispatch` re-dispatch and
+//    no `actions: write` are needed — both removed under #651.
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { parse } from "@std/yaml";
@@ -61,14 +66,22 @@ Deno.test("deno-outdated workflow — auto-bump job requests contents:write so i
   assertEquals(contents, "write", "auto-bump must have contents: write to push");
 });
 
-Deno.test("deno-outdated workflow — requests actions:write so it can re-dispatch checks after push (#485)", async () => {
+Deno.test("deno-outdated workflow — does NOT request actions:write (re-dispatch removed, #651)", async () => {
+  // Business-logic change (#651): the ACTIONS_PUSH PAT push re-triggers the
+  // `pull_request` checks by itself, so the `workflow_dispatch` re-dispatch
+  // step is gone and the `actions: write` permission it required must not be
+  // granted (principle of least privilege).
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const jobPerms = (job.permissions ?? {}) as Record<string, string>;
   const wfPerms = (wf.permissions ?? {}) as Record<string, string>;
   const actions = jobPerms.actions ?? wfPerms.actions;
-  assertEquals(actions, "write", "auto-bump must have actions: write to re-dispatch CI");
+  assertEquals(
+    actions,
+    undefined,
+    "auto-bump no longer re-dispatches CI, so it must not request actions: write (#651)",
+  );
 });
 
 Deno.test("deno-outdated workflow — skips PRs from forks", async () => {
@@ -153,48 +166,56 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
   assertEquals(sha.length, 40, `actions/checkout must be pinned to a 40-char SHA, got "${sha}"`);
 });
 
-Deno.test("deno-outdated workflow — re-dispatches required checks after a bump push (#485)", async () => {
+Deno.test("deno-outdated workflow — commits both deno.json and deno.lock (#418)", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;
 
   const bump = steps.find((s) => s.id === "bump");
-  assertExists(bump, "bump step must expose pushed output via id: bump");
+  assertExists(bump, "bump step must expose the bump logic via id: bump");
   const bumpRun = String(bump.run ?? "");
-  assert(
-    bumpRun.includes('echo "pushed=true"') && bumpRun.includes('echo "pushed=false"'),
-    "bump step must record whether a push occurred",
-  );
   assert(
     bumpRun.includes("git add deno.json deno.lock"),
     "bump step must commit both deno.json and deno.lock (issue #418)",
   );
+});
+
+Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-triggers them, #651)", async () => {
+  // Business-logic change (#651): pushing the bump with the ACTIONS_PUSH PAT
+  // is a write-access event, so the `pull_request` checks re-run on the
+  // bumped commit automatically. The old `workflow_dispatch` re-dispatch
+  // workaround (#485) was unreliable (Semgrep/Gitleaks/Dependency Review
+  // failed outside PR context) and is removed.
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const steps = job.steps as Array<Record<string, unknown>>;
 
   const redispatch = steps.find((s) =>
     typeof s.run === "string" && (s.run as string).includes("gh workflow run")
   );
-  assertExists(redispatch, "must re-dispatch required workflows after a bump push");
   assertEquals(
-    redispatch.if,
-    "steps.bump.outputs.pushed == 'true'",
-    "re-dispatch must run only when the bump step pushed",
+    redispatch,
+    undefined,
+    "the re-dispatch step must be removed — the ACTIONS_PUSH push re-triggers checks (#651)",
   );
+});
 
-  const dispatchRun = String(redispatch.run ?? "");
-  for (
-    const wfName of [
-      "quality.yml",
-      "shellcheck.yml",
-      "markdown-lint.yml",
-      "semgrep.yml",
-      "gitleaks.yml",
-      "dependency-review.yml",
-    ]
-  ) {
-    assert(
-      dispatchRun.includes(wfName),
-      `re-dispatch must include ${wfName}`,
-    );
-  }
+Deno.test("deno-outdated workflow — checks out with the ACTIONS_PUSH PAT so the bump re-triggers checks (#651)", async () => {
+  const wf = await loadWorkflow();
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const job = jobs[Object.keys(jobs)[0]];
+  const steps = job.steps as Array<Record<string, unknown>>;
+
+  const checkout = steps.find((s) =>
+    typeof s.uses === "string" && (s.uses as string).startsWith("actions/checkout@")
+  );
+  assertExists(checkout, "must check out the PR head");
+  const cwith = checkout.with as Record<string, unknown>;
+  assert(
+    String(cwith.token ?? "").includes("secrets.ACTIONS_PUSH"),
+    `checkout must use the ACTIONS_PUSH PAT so the bumped commit re-triggers ` +
+      `the pull_request checks, got: ${cwith.token}`,
+  );
 });
