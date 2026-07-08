@@ -37,7 +37,10 @@
     "indentWidth": 2,
     "singleQuote": false,
     "exclude": [
-      "**/*.svg"
+      "**/*.svg",
+      "NEAT-AI-scorer",
+      "NEAT-AI-core",
+      ".coverage"
     ]
   }
 }

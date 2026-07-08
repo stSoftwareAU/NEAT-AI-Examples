@@ -53,3 +53,25 @@ Added `deno_fmt_check_ci_test.ts`:
   write-mode `deno fmt`.
 - `committed tree has no deno fmt drift` — runs `deno fmt --check` and asserts a clean exit,
   guarding against future committed drift.
+
+## CI follow-up — scope the drift check to this repo (PR #666)
+
+The `Unit tests + coverage` CI job checks out sibling repos **inside the workspace** —
+`NEAT-AI-scorer/` and `NEAT-AI-core/` — before running `deno test`, and writes the coverage profile
+to `.coverage/`. The new `committed tree has no deno fmt drift` test runs `deno fmt --check` from
+the repo root, so it traversed those foreign checkouts and reported drift on files this repo does
+not own (`Found 183 not formatted files in 696 files`). It passed locally only because the siblings
+are absent there.
+
+Fix: extend `deno.json`'s `fmt.exclude` with `NEAT-AI-scorer`, `NEAT-AI-core`, and `.coverage` so
+the formatter — in both write mode locally and `--check` in CI — only ever touches this repo's own
+files. The excludes are inert when those paths are absent (local, `static-checks`), so behaviour is
+unchanged everywhere except the coverage job. No Node tooling introduced; the fix stays on the
+native Deno toolchain.
+
+```mermaid
+flowchart LR
+    A["deno fmt --check<br/>(coverage job)"] --> B{path}
+    B -->|repo files| C[format-checked]
+    B -->|NEAT-AI-scorer/<br/>NEAT-AI-core/<br/>.coverage/| D[excluded]
+```
