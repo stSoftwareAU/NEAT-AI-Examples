@@ -89,10 +89,13 @@ jobs:
       - name: Run deno lint
         run: deno lint
 
-      # Apply formatter in CI (same as local `quality.sh`), rather than
-      # `deno fmt --check`, so a formatting drift does not fail the job.
-      - name: Apply Deno formatting
-        run: deno fmt
+      # Enforce formatting in CI with `deno fmt --check` so committed
+      # formatting drift fails the pull request rather than being
+      # silently reformatted in the ephemeral runner and never committed
+      # back (Issue #663). Local `quality.sh` still applies the formatter
+      # in write mode to fix drift before it is committed.
+      - name: Check Deno formatting
+        run: deno fmt --check
 
       - name: Run deno check (type checking)
         # `-- **/*.ts` so a filename starting with `-` (none today, but a

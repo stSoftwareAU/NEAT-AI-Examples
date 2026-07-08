@@ -15,9 +15,9 @@ in the org — an unresolvable owner makes CODEOWNERS silently non-enforcing. I 
 `@stSoftwareAU/developers`, the maintaining team with push access, matching the sibling `NEAT-AI`
 repo's CODEOWNERS (Issue #3187 there).
 
-**Out of scope (repo-level GitHub settings, not committable files).** Enabling *Require review from
-Code Owners* on the `Develop` branch protection rule, plus the recommended companion settings
-(≥1 required approval, block direct/force-push, linear history), are GitHub configuration not visible
+**Out of scope (repo-level GitHub settings, not committable files).** Enabling _Require review from
+Code Owners_ on the `Develop` branch protection rule, plus the recommended companion settings (≥1
+required approval, block direct/force-push, linear history), are GitHub configuration not visible
 from the clone. These are documented as recommendations in `CONTRIBUTING.md` so a human with repo
 admin can apply them.
 
@@ -59,7 +59,8 @@ Added `codeowners_test.ts` (TDD — written failing first, then made green):
 - `CODEOWNERS assigns an owner to every rule` — no rule is left without a team owner.
 - `CODEOWNERS covers the privileged .github/workflows/ path` — the CI surface is owned.
 - `CODEOWNERS covers the supply-chain scripts` — `bump-deps.sh`, `bump_deps.ts`, `quality.sh` owned.
-- `CODEOWNERS owns itself so ownership cannot be quietly changed` — the CODEOWNERS file is self-owned.
+- `CODEOWNERS owns itself so ownership cannot be quietly changed` — the CODEOWNERS file is
+  self-owned.
 
 Also updated `CONTRIBUTING.md` with a **Code Owners & Branch Protection** section documenting the
 enforcement mechanism and the human-only branch-protection recommendations.
