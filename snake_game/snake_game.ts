@@ -140,13 +140,6 @@ export const DEFAULT_EVAL_SEEDS: readonly number[] = [
   0x51a5,
 ];
 
-/**
- * Default fallback replay seed used when the runner is asked to render
- * the SVG without first picking the best-performing evaluation seed.
- * Tests pin this so reruns produce identical SVGs.
- */
-export const DEFAULT_REPLAY_SEED = DEFAULT_EVAL_SEEDS[0];
-
 /** Configuration options for {@link evolveSnakeController}. */
 export interface EvolveOptions {
   /** Random seed driving population initialisation and mutation. */
