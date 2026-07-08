@@ -13,6 +13,7 @@
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1.1.6": "1.1.6",
     "jsr:@std/path@^1.1.5": "1.1.6",
+    "jsr:@std/yaml@*": "1.1.2",
     "jsr:@std/yaml@1.1.2": "1.1.2",
     "jsr:@stsoftware/neat-ai@5.7.17": "5.7.17",
     "jsr:@stsoftware/tags@1.0.13": "1.0.13"
