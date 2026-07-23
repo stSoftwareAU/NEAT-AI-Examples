@@ -7,6 +7,11 @@
       "esnext"
     ]
   },
+  "exclude": [
+    "NEAT-AI-scorer",
+    "NEAT-AI-core",
+    ".coverage"
+  ],
   "minimumDependencyAge": {
     "age": "P1D",
     "exclude": [
