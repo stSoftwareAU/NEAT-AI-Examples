@@ -61,12 +61,11 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: Develop
-          # Push the advisory branch with the org ACTIONS_PUSH PAT, not
-          # GITHUB_TOKEN (#651): a PAT push is a write-access event, so the
-          # daily security PR's checks run automatically instead of
-          # stalling in action_required. checkout persists this credential
-          # for the later `git push`.
-          token: ${{ secrets.ACTIONS_PUSH }}
+          # Do not persist a credential in `.git/config` (#678). This job
+          # only runs trusted `Develop` code, so it is the secondary
+          # call-site, but it keeps the same shape as deno-outdated: the
+          # PAT is scoped to the push step alone.
+          persist-credentials: false
 
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
@@ -112,9 +111,25 @@ jobs:
           git checkout -b "$branch"
           git add deno.json deno.lock
           git commit -m "fix(security): fast-track advisory-driven dependency patch (#601)"
-          git push origin "$branch"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      # Separate, secret-bearing step (#678): the PAT lives only in this
+      # step's env, never in the checked-out workspace.
+      - name: Push the advisory branch
+        if: steps.bump.outputs.pushed == 'true'
+        env:
+          # A PAT push is a write-access event, so the daily security PR's
+          # checks run automatically instead of stalling (#651).
+          ACTIONS_PUSH: ${{ secrets.ACTIONS_PUSH }}
+          BRANCH: ${{ steps.bump.outputs.branch }}
+        run: |
+          set -euo pipefail
+          git config --unset-all core.hooksPath || true
+          rm -rf .git/hooks
+          git push \
+            "https://x-access-token:${ACTIONS_PUSH}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${BRANCH}"
 
       - name: Open security-update PR
         if: steps.bump.outputs.pushed == 'true'

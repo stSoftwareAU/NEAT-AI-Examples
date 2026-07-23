@@ -8,11 +8,13 @@
 //  * skip the auto-bump for PRs from forks (push would fail without a
 //    privileged token);
 //  * request `contents: write` so the push succeeds; and
-//  * check out / push with the org `ACTIONS_PUSH` PAT so the bumped
-//    commit re-triggers the `pull_request` checks automatically instead
-//    of leaving them held in `action_required` (#651). Because the PAT
-//    push is a write-access event, no `workflow_dispatch` re-dispatch and
-//    no `actions: write` are needed — both removed under #651.
+//  * push with the org `ACTIONS_PUSH` PAT so the bumped commit
+//    re-triggers the `pull_request` checks automatically instead of
+//    leaving them held in `action_required` (#651). Because the PAT push
+//    is a write-access event, no `workflow_dispatch` re-dispatch and no
+//    `actions: write` are needed — both removed under #651. The PAT is
+//    scoped to the push step alone and never persisted in the workspace
+//    while PR-controlled `bump-deps.sh` runs (#678).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { parse } from "@std/yaml";
@@ -131,13 +133,14 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
   );
   assertExists(bump, "auto-bump must invoke bump-deps.sh");
 
-  // A step must commit and push the changes (signals the auto-update,
-  // not just warning).
-  const commit = steps.find((s) => {
-    const run = String(s.run ?? "");
-    return run.includes("git commit") && run.includes("git push");
-  });
-  assertExists(commit, "auto-bump must commit and push the dependency updates");
+  // The changes must be committed and pushed (signals the auto-update, not
+  // just a warning). Since Issue #678 the commit and the push live in
+  // separate steps: the PAT-bearing push runs only after the PR-controlled
+  // bump script has finished, so it is never readable from the workspace.
+  const commit = steps.find((s) => String(s.run ?? "").includes("git commit"));
+  assertExists(commit, "auto-bump must commit the dependency updates");
+  const push = steps.find((s) => String(s.run ?? "").includes("git push"));
+  assertExists(push, "auto-bump must push the dependency updates");
 
   // Checkout must use the PR head ref so the push targets the PR branch.
   const checkout = steps.find((s) =>
@@ -202,20 +205,34 @@ Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-t
   );
 });
 
-Deno.test("deno-outdated workflow — checks out with the ACTIONS_PUSH PAT so the bump re-triggers checks (#651)", async () => {
+// Business-logic change (#678): the PAT is no longer handed to
+// `actions/checkout` — that persisted it in `.git/config` for the whole
+// job, including while PR-authored `bump-deps.sh` ran. The #651 guarantee
+// is unchanged (the push is still a PAT push, so the checks re-trigger);
+// only the step that holds the credential moved.
+Deno.test("deno-outdated workflow — pushes with the ACTIONS_PUSH PAT so the bump re-triggers checks (#651)", async () => {
   const wf = await loadWorkflow();
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;
+
+  const push = steps.find((s) => String(s.run ?? "").includes("git push"));
+  assertExists(push, "must push the bump commit");
+  const scope = JSON.stringify(push.env ?? {}) + String(push.run ?? "");
+  assert(
+    scope.includes("secrets.ACTIONS_PUSH"),
+    `the push must use the ACTIONS_PUSH PAT so the bumped commit re-triggers ` +
+      `the pull_request checks, got: ${scope}`,
+  );
 
   const checkout = steps.find((s) =>
     typeof s.uses === "string" && (s.uses as string).startsWith("actions/checkout@")
   );
   assertExists(checkout, "must check out the PR head");
   const cwith = checkout.with as Record<string, unknown>;
-  assert(
-    String(cwith.token ?? "").includes("secrets.ACTIONS_PUSH"),
-    `checkout must use the ACTIONS_PUSH PAT so the bumped commit re-triggers ` +
-      `the pull_request checks, got: ${cwith.token}`,
+  assertEquals(
+    cwith.token,
+    undefined,
+    "checkout must not receive the PAT — it would be persisted while PR code runs (#678)",
   );
 });
