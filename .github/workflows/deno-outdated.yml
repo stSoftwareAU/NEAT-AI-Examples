@@ -93,10 +93,12 @@ jobs:
           # below, which runs after the PR-authored script has finished.
           persist-credentials: false
 
-      - name: Install Deno
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
-        with:
-          deno-version: v2.x
+      # Deno runtime only — `bump-deps.sh` runs its own `deno install`, so
+      # this job needs neither the dependency cache nor a frozen install;
+      # install-deps stays false (the default). Shared local composite
+      # action (Issue #682).
+      - name: Set up Deno environment
+        uses: ./.github/actions/setup-deno-env
 
       - name: Bump and commit dependency updates
         id: bump

@@ -1,0 +1,65 @@
+# Local composite action: set up the Deno environment (Issue #682)
+#
+# The checkout + `denoland/setup-deno` pair — with the same SHA pins and
+# `deno-version: v2.x` — was copy-pasted across four workflows, and
+# `quality.yml` additionally repeated the identical dependency cache +
+# `deno install --frozen` block in each of its three parallel jobs. Six
+# copies meant six places to update whenever the Deno version policy,
+# the cache key recipe, or an action SHA pin changed — and drift between
+# copies was silent (one job quietly caching differently, or lagging a
+# pin, would fail nothing).
+#
+# This composite action collapses that duplication to a single file:
+#   * always installs Deno (pinned SHA, `deno-version: v2.x`), and
+#   * optionally — behind the `install-deps` input — restores the Deno
+#     dependency cache and runs `deno install --frozen`.
+#
+# Checkout deliberately stays in each calling job: a local (`./…`) action
+# is only resolvable after the repository has been checked out, so the
+# action cannot check itself out. Local `./` references are exempt from
+# the 40-char SHA-pinning rule (they point at in-repo, already-trusted
+# code), so this adds no supply-chain surface — the third-party actions
+# it wraps stay SHA-pinned here in the single source of truth.
+
+name: Set up Deno environment
+description: >-
+  Install Deno (pinned, v2.x) and, when install-deps is true, restore the
+  Deno dependency cache and run `deno install --frozen`.
+
+inputs:
+  install-deps:
+    description: >-
+      When "true", restore the Deno dependency cache and run
+      `deno install --frozen`. Leave "false" (the default) for jobs that
+      need the Deno runtime only (e.g. `deno audit`, `bump-deps.sh`).
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Deno
+      uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+      with:
+        deno-version: v2.x
+
+    - name: Cache Deno dependencies
+      if: inputs.install-deps == 'true'
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: |
+          ~/.cache/deno
+          ~/.deno
+        key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
+        restore-keys: |
+          deno-${{ runner.os }}-
+
+    # Verify the committed deno.lock matches deno.json before doing any
+    # work. `--frozen` makes `deno install` fail (rather than silently
+    # rewrite the lockfile) when the import map has drifted from the
+    # lockfile, protecting CI from unconstrained transitive bumps
+    # (Issue #418).
+    - name: Install dependencies with frozen lockfile
+      if: inputs.install-deps == 'true'
+      shell: bash
+      run: deno install --frozen
