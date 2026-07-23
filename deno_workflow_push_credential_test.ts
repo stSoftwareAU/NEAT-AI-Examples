@@ -65,13 +65,19 @@ Deno.test("deno-outdated drops the unreliable re-dispatch workaround", () => {
   );
 });
 
+// Issue #679 narrowed the GITHUB_TOKEN grant further. The #651 push moved
+// entirely onto the ACTIONS_PUSH PAT, so `contents: write` was never
+// exercised by any step and is now `contents: read`. The original intent of
+// this test — no `actions: write` after the re-dispatch step was removed —
+// is unchanged; the contents assertion tracks the least-privilege grant.
+// Least-privilege coverage lives in deno_workflow_permission_scope_test.ts.
 Deno.test("deno-outdated no longer requests actions: write", () => {
   const wf = readWorkflow(OUTDATED_PATH);
   const perms = wf.permissions;
   assertEquals(
     perms.contents,
-    "write",
-    "Still needs contents: write to push the bump commit",
+    "read",
+    "The bump commit is pushed with the PAT, so GITHUB_TOKEN needs read only (#679)",
   );
   assert(
     !("actions" in perms),
