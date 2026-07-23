@@ -80,11 +80,13 @@ jobs:
           # dispatched ref/repository (#603).
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          # Push with the org ACTIONS_PUSH PAT so the bumped HEAD is a
-          # write-access event and the required checks run automatically
-          # instead of stalling in action_required (#651). checkout
-          # persists this credential, so the later `git push` uses it too.
-          token: ${{ secrets.ACTIONS_PUSH }}
+          # Do NOT persist a credential in `.git/config` (#678): this job
+          # executes `bump-deps.sh` from the PR branch, and a persisted
+          # PAT is one `git config --get
+          # http.https://github.com/.extraheader` away from any PR author.
+          # The org ACTIONS_PUSH PAT is supplied only to the push step
+          # below, which runs after the PR-authored script has finished.
+          persist-credentials: false
 
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
@@ -109,7 +111,26 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add deno.json deno.lock
           git commit -m "chore: auto-bump Deno dependencies (#362)"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # Separate, secret-bearing step (#678). The PR-authored bump script
+      # has already finished, so it cannot read the PAT: the credential is
+      # never written to the workspace, only held in this step's env.
+      - name: Push the bump commit
+        if: steps.bump.outputs.pushed == 'true'
+        env:
+          # Push as the org PAT so the bumped HEAD is a write-access event
+          # and the required checks run automatically instead of stalling
+          # in action_required (#651).
+          ACTIONS_PUSH: ${{ secrets.ACTIONS_PUSH }}
+        run: |
+          set -euo pipefail
+          # Close the residual tamper path: a PR could have planted a git
+          # hook that would run — with the PAT in env — during the push.
+          git config --unset-all core.hooksPath || true
+          rm -rf .git/hooks
           # GITHUB_HEAD_REF is empty on workflow_dispatch; fall back to the
           # dispatched branch name (#603).
-          git push origin HEAD:"${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          git push \
+            "https://x-access-token:${ACTIONS_PUSH}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:"${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"

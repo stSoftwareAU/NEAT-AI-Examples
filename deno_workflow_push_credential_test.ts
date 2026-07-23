@@ -25,8 +25,8 @@ function readWorkflow(path: string): any {
 }
 
 // deno-lint-ignore no-explicit-any
-function stepByUses(steps: any[], needle: string): any {
-  return steps.find((s) => typeof s.uses === "string" && s.uses.includes(needle));
+function stepByRun(steps: any[], needle: string): any {
+  return steps.find((s) => typeof s.run === "string" && s.run.includes(needle));
 }
 
 // deno-lint-ignore no-explicit-any
@@ -34,18 +34,24 @@ function stepByName(steps: any[], needle: string): any {
   return steps.find((s) => typeof s.name === "string" && s.name.includes(needle));
 }
 
-Deno.test("deno-outdated checks out the PR head with the ACTIONS_PUSH PAT", () => {
+// Issue #678 narrowed where the PAT lives: it is no longer handed to
+// `actions/checkout` (which would persist it in the workspace while
+// PR-authored `bump-deps.sh` runs) but supplied to the push step alone.
+// The #651 guarantee is unchanged — the push is still a PAT push, never a
+// GITHUB_TOKEN one — so this test now asserts it on the push step.
+Deno.test("deno-outdated pushes the bump commit with the ACTIONS_PUSH PAT", () => {
   const wf = readWorkflow(OUTDATED_PATH);
-  const checkout = stepByUses(wf.jobs["auto-bump"].steps, "actions/checkout");
-  assert(checkout, "Expected an actions/checkout step");
-  const token = String(checkout.with.token);
+  const steps = wf.jobs["auto-bump"].steps;
+  const push = stepByRun(steps, "git push");
+  assert(push, "Expected a step that pushes the bump commit");
+  const token = JSON.stringify(push.env ?? {}) + String(push.run);
   assert(
     token.includes("ACTIONS_PUSH"),
-    `Expected checkout to use the ACTIONS_PUSH PAT, got: ${token}`,
+    `Expected the push to use the ACTIONS_PUSH PAT, got: ${token}`,
   );
   assert(
     !token.includes("GITHUB_TOKEN"),
-    "Checkout must not fall back to GITHUB_TOKEN — that push is what stalls the checks",
+    "The push must not fall back to GITHUB_TOKEN — that push is what stalls the checks",
   );
 });
 
@@ -82,18 +88,20 @@ Deno.test("deno-outdated keeps the same-repo fork guard", () => {
   );
 });
 
-Deno.test("deno-security-update checks out with the ACTIONS_PUSH PAT", () => {
+// See the #678 note above — the PAT moved from checkout to the push step.
+Deno.test("deno-security-update pushes the advisory branch with the ACTIONS_PUSH PAT", () => {
   const wf = readWorkflow(SECURITY_PATH);
-  const checkout = stepByUses(wf.jobs["security-update"].steps, "actions/checkout");
-  assert(checkout, "Expected an actions/checkout step");
-  const token = String(checkout.with.token);
+  const steps = wf.jobs["security-update"].steps;
+  const push = stepByRun(steps, "git push");
+  assert(push, "Expected a step that pushes the advisory branch");
+  const token = JSON.stringify(push.env ?? {}) + String(push.run);
   assert(
     token.includes("ACTIONS_PUSH"),
-    `Expected checkout to use the ACTIONS_PUSH PAT, got: ${token}`,
+    `Expected the push to use the ACTIONS_PUSH PAT, got: ${token}`,
   );
   assert(
     !token.includes("GITHUB_TOKEN"),
-    "Checkout must not use GITHUB_TOKEN — the advisory branch push must trigger checks",
+    "The push must not use GITHUB_TOKEN — the advisory branch push must trigger checks",
   );
 });
 
