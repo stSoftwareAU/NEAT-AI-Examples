@@ -1,8 +1,17 @@
 # GitHub Actions CI/CD workflow for NEAT-AI-Examples
 #
-# Runs the project quality checks on every push and pull request
-# targeting the Develop branch. This automates the quality gate
-# to ensure all examples remain functional across contributions.
+# Runs the project quality checks on every push to the Develop default
+# branch and on every pull request, regardless of the base branch. This
+# automates the quality gate to ensure all examples remain functional
+# across contributions.
+#
+# The pull_request filter uses `branches: ["**"]` (not `["*"]`, which
+# does NOT match `/`) so PRs against base branches that contain a `/`
+# — notably milestone sub-issue branches named `milestone/<slug>` — still
+# trigger the gate and report the required `Run quality checks` status.
+# Without this, milestone PRs merged without the quality gate and hung on
+# "Expected — waiting for status" (Issue #677), matching the widening the
+# other PR-gating workflows already made under Issue #435.
 #
 # The single quality job was split into three independent parallel jobs
 # (Issue #582) so the per-PR critical path is the slowest job, not the
@@ -29,8 +38,7 @@ on:
     branches:
       - Develop
   pull_request:
-    branches:
-      - Develop
+    branches: ["**"]
   workflow_dispatch:
     inputs:
       pr_head_ref:
