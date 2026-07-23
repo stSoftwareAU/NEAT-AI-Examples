@@ -65,6 +65,37 @@ Deno.test("deno.json excludes every in-workspace repository checkout", () => {
   }
 });
 
+/** Entries of every `--ignore=` flag passed to `deno test` in quality.yml. */
+function testIgnoreEntries(): string[][] {
+  const yaml = Deno.readTextFileSync(QUALITY_PATH);
+  const flags = [...yaml.matchAll(/--ignore=(\S+)/g)];
+  return flags.map(([, list]) => list.split(","));
+}
+
+Deno.test("deno test --ignore repeats every in-workspace repository checkout", () => {
+  // `--ignore` replaces deno.json's "exclude" rather than adding to it, so a
+  // command that ignores anything must re-state the excluded checkouts.
+  const checkouts = inWorkspaceCheckoutPaths();
+  const ignoreLists = testIgnoreEntries();
+
+  assert(
+    ignoreLists.length > 0,
+    "Expected quality.yml to pass at least one --ignore flag to deno test",
+  );
+
+  for (const entries of ignoreLists) {
+    for (const path of checkouts) {
+      assert(
+        entries.includes(path),
+        `A "--ignore=" list in quality.yml omits "${path}". --ignore ` +
+          `overrides deno.json "exclude", so deno test would walk that ` +
+          `in-workspace checkout and fail under --frozen. Current list: ` +
+          entries.join(","),
+      );
+    }
+  }
+});
+
 Deno.test("deno.json exclude covers the coverage output directory", () => {
   const exclude: string[] = readDenoConfig().exclude ?? [];
   assert(

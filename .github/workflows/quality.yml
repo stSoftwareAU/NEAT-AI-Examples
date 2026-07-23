@@ -229,8 +229,12 @@ jobs:
             --allow-run="${DENO_TEST_ALLOW_RUN}"
             --coverage=.coverage
           )
+          # --ignore REPLACES deno.json's "exclude" for file discovery, so the
+          # in-workspace NEAT-AI-scorer / NEAT-AI-core checkouts must be
+          # repeated here or deno test walks into them and --frozen fails.
+          # deno_config_exclude_test.ts enforces that this list stays in sync.
           deno test --parallel "${DENO_TEST_FLAGS[@]}" \
-            --ignore=mnist_classification/evolve_integration_test.ts
+            --ignore=mnist_classification/evolve_integration_test.ts,NEAT-AI-scorer,NEAT-AI-core,.coverage
           EVOLVE_INTEGRATION_FILTERS=(
             "evolveResultToMultiRunSample carries"
             "evolveMnistClassifier returns finite"
