@@ -336,6 +336,7 @@ jobs:
   quality:
     name: Run quality checks
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [static-checks, unit-tests, examples]
     if: ${{ always() }}
     steps:
