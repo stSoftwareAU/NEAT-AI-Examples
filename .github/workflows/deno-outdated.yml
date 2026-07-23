@@ -53,8 +53,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# Least privilege (#679): `GITHUB_TOKEN` is only ever used to read — the
+# checkout fetch. Every write rides the org `ACTIONS_PUSH` PAT by design
+# (#651), so no write scope is granted. This matters here because the job
+# executes PR-authored `bump-deps.sh`; an unused write grant would be
+# capability handed to that script for zero functional benefit.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   auto-bump:

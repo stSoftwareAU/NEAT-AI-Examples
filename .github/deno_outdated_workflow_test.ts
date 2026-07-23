@@ -55,9 +55,14 @@ Deno.test("deno-outdated workflow — does NOT run on a weekly cron schedule (#3
   );
 });
 
-Deno.test("deno-outdated workflow — auto-bump job requests contents:write so it can push", async () => {
+Deno.test("deno-outdated workflow — auto-bump job grants GITHUB_TOKEN read-only contents", async () => {
+  // Business-logic change (#679): the bump commit is pushed with the org
+  // ACTIONS_PUSH PAT via an explicit remote URL (#651), never with
+  // GITHUB_TOKEN, so the old `contents: write` grant was capability handed
+  // to PR-authored `bump-deps.sh` for zero functional benefit. This test
+  // previously asserted "write"; it now pins the least-privilege grant.
   const wf = await loadWorkflow();
-  // Either job-level or workflow-level permissions must grant write.
+  // Either job-level or workflow-level permissions must grant read.
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const jobNames = Object.keys(jobs);
   assert(jobNames.length >= 1, "must declare at least one job");
@@ -65,7 +70,7 @@ Deno.test("deno-outdated workflow — auto-bump job requests contents:write so i
   const jobPerms = (job.permissions ?? {}) as Record<string, string>;
   const wfPerms = (wf.permissions ?? {}) as Record<string, string>;
   const contents = jobPerms.contents ?? wfPerms.contents;
-  assertEquals(contents, "write", "auto-bump must have contents: write to push");
+  assertEquals(contents, "read", "auto-bump only reads with GITHUB_TOKEN — the checkout fetch");
 });
 
 Deno.test("deno-outdated workflow — does NOT request actions:write (re-dispatch removed, #651)", async () => {

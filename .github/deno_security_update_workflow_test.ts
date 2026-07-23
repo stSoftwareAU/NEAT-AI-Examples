@@ -171,7 +171,13 @@ Deno.test("deno-security-update workflow — every uses: pins a 40-char commit S
   }
 });
 
-Deno.test("deno-security-update workflow — runs on ubuntu-latest with write permissions to push and open a PR", async () => {
+Deno.test("deno-security-update workflow — runs on ubuntu-latest with read-only GITHUB_TOKEN permissions", async () => {
+  // Business-logic change (#679): both writes in this job ride the org
+  // ACTIONS_PUSH PAT — the branch push uses a PAT-bearing remote URL and
+  // `gh pr create` runs with `GH_TOKEN: secrets.ACTIONS_PUSH` (#651). The
+  // old `contents: write` / `pull-requests: write` grants were therefore
+  // never exercised. This test previously asserted both were "write"; it
+  // now pins the least-privilege grant.
   const wf = await loadWorkflow();
   const job = firstJob(wf);
   const jobPerms = (job.permissions ?? {}) as Record<string, string>;
@@ -180,13 +186,13 @@ Deno.test("deno-security-update workflow — runs on ubuntu-latest with write pe
   const pulls = jobPerms["pull-requests"] ?? wfPerms["pull-requests"];
   assertEquals(
     contents,
-    "write",
-    "the channel pushes a branch, so it needs contents: write",
+    "read",
+    "the branch is pushed with the ACTIONS_PUSH PAT, so GITHUB_TOKEN needs read only",
   );
   assertEquals(
     pulls,
-    "write",
-    "the channel opens a PR, so it needs pull-requests: write",
+    undefined,
+    "gh pr create authenticates with the PAT, so pull-requests: write is unused",
   );
   assertEquals(
     job["runs-on"],

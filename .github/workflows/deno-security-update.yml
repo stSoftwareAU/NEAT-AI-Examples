@@ -41,9 +41,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# Least privilege (#679): `GITHUB_TOKEN` only reads here — the checkout
+# fetch. The advisory branch is pushed with the `ACTIONS_PUSH` PAT and the
+# PR is opened with `GH_TOKEN: secrets.ACTIONS_PUSH` (#651), so neither
+# `contents: write` nor `pull-requests: write` is ever exercised.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   security-update:
