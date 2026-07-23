@@ -64,6 +64,7 @@ jobs:
 
       - name: Install Gitleaks
         run: |
+          set -euo pipefail
           GITLEAKS_VERSION="8.30.1"
           curl -sSfL --retry 3 --retry-delay 5 \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
@@ -75,6 +76,7 @@ jobs:
         env:
           BASE_REF: ${{ steps.pr.outputs.base_ref || github.base_ref }}
         run: |
+          set -euo pipefail
           ./gitleaks detect \
             --source . \
             --log-opts "origin/${BASE_REF}..HEAD" \
