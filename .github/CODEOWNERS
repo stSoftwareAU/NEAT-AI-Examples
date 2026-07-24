@@ -17,6 +17,11 @@
 # CI/CD surface — all GitHub Actions workflows.
 /.github/workflows/  @stSoftwareAU/developers
 
+# Local composite actions (Issue #682). These run inside the workflow jobs
+# above, so they execute with the same secrets in scope — an unowned local
+# action would be privileged CI code one directory outside the rule.
+/.github/actions/  @stSoftwareAU/developers
+
 # The CODEOWNERS file itself, so ownership rules cannot be quietly changed.
 /.github/CODEOWNERS  @stSoftwareAU/developers
 

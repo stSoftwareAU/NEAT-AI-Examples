@@ -129,6 +129,9 @@ Deno.test("deno-audit workflow — every uses: pins a 40-char commit SHA", async
     for (const step of steps) {
       const uses = step.uses as string | undefined;
       if (!uses) continue;
+      // Local (`./…`) composite actions are exempt from SHA pinning
+      // (Issue #682) — they wrap already-trusted in-repo code.
+      if (uses.startsWith("./")) continue;
       assert(
         shaPattern.test(uses),
         `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +

@@ -562,6 +562,55 @@ the same pipeline on every push and pull request to `Develop`. Failing checks bl
 > The Discovery example needs a native Rust FFI (Foreign Function Interface) library that is not yet
 > available in CI, so its step is allowed to fail gracefully there.
 
+### Shared Deno environment setup
+
+Every CI job that needs Deno sets it up through one local composite action,
+[`.github/actions/setup-deno-env`](.github/actions/setup-deno-env/action.yml), rather than repeating
+the block per job (Issue #682). The Deno version pin, the dependency cache recipe, and the
+`deno install --frozen` policy therefore have a single source of truth — a version-policy change or
+a manual SHA re-pin touches one file instead of six copies that could silently drift apart.
+
+Jobs that only need the Deno binary (the audit and bump channels resolve or rewrite the lockfile
+themselves) opt out of the cache and install with `install-deps: "false"`:
+
+```yaml
+- name: Set up Deno environment
+  uses: ./.github/actions/setup-deno-env
+  with:
+    install-deps: "false" # omit for the default "true"
+```
+
+Each job still runs its own `actions/checkout` first — a local `./` action is unresolvable until the
+repository is on disk.
+
+```mermaid
+flowchart LR
+    subgraph JOBS["Jobs that need Deno"]
+        SC[quality.yml<br/>static-checks]
+        UT[quality.yml<br/>unit-tests]
+        EX[quality.yml<br/>examples]
+        AU[deno-audit.yml]
+        OD[deno-outdated.yml]
+        SU[deno-security-update.yml]
+    end
+
+    SC --> ACT
+    UT --> ACT
+    EX --> ACT
+    AU --> ACT
+    OD --> ACT
+    SU --> ACT
+
+    ACT["./.github/actions/setup-deno-env<br/>single version pin + cache key"]
+    ACT --> DENO[denoland/setup-deno v2.x]
+    ACT -->|install-deps: true| CACHE[Cache ~/.cache/deno]
+    CACHE --> FROZEN[deno install --frozen]
+
+    style ACT fill:#3498db,stroke:#333,color:#fff
+    style DENO fill:#2ecc71,stroke:#333,color:#fff
+    style FROZEN fill:#e67e22,stroke:#333,color:#fff
+```
+
 ### Dependency-update channels
 
 Dependency hygiene runs on three deliberately separate channels:

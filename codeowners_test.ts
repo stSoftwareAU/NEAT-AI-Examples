@@ -72,6 +72,25 @@ Deno.test("CODEOWNERS covers the privileged .github/workflows/ path", () => {
   );
 });
 
+// Issue #682 moved the shared Deno setup out of the four workflow bodies
+// and into a local composite action. That action runs inside every one of
+// those jobs, so it executes with exactly the same secrets in scope
+// (ACTIONS_PUSH, CODECOV_TOKEN). Leaving `.github/actions/` unowned would
+// reopen the poisoned-pipeline path the `/.github/workflows/` rule closes,
+// by letting privileged CI code be edited one directory across.
+Deno.test("CODEOWNERS covers the privileged .github/actions/ path", () => {
+  const rule = ruleFor(readCodeowners(), "/.github/actions/");
+  assert(
+    rule !== undefined,
+    "Expected a CODEOWNERS rule for /.github/actions/ — local composite " +
+      "actions run with the same secrets as the workflows that call them",
+  );
+  assert(
+    OWNER_PATTERN.test(rule),
+    "Expected the /.github/actions/ rule to name a team owner",
+  );
+});
+
 Deno.test("CODEOWNERS covers the supply-chain scripts", () => {
   const text = readCodeowners();
   for (const path of ["/bump-deps.sh", "/bump_deps.ts", "/quality.sh"]) {
@@ -82,6 +101,22 @@ Deno.test("CODEOWNERS covers the supply-chain scripts", () => {
       `Expected the ${path} rule to name a team owner`,
     );
   }
+});
+
+Deno.test("CODEOWNERS covers local composite actions (Issue #682)", () => {
+  // A local action under `.github/actions/` runs inside the same
+  // privileged jobs as the workflows that call it — including the ones
+  // holding ACTIONS_PUSH and CODECOV_TOKEN — so it carries the same blast
+  // radius and must be owned too.
+  const rule = ruleFor(readCodeowners(), "/.github/actions/");
+  assert(
+    rule !== undefined,
+    "Expected a CODEOWNERS rule for /.github/actions/",
+  );
+  assert(
+    OWNER_PATTERN.test(rule),
+    "Expected the /.github/actions/ rule to name a team owner",
+  );
 });
 
 Deno.test("CODEOWNERS owns itself so ownership cannot be quietly changed", () => {

@@ -71,28 +71,14 @@ jobs:
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
 
-      - name: Install Deno
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+      # Install Deno + cache deps + `deno install --frozen`, shared with
+      # the other jobs and workflows via the local composite action
+      # (Issue #682). Checkout must stay above: a local `./` action is
+      # only resolvable after checkout.
+      - name: Set up Deno environment
+        uses: ./.github/actions/setup-deno-env
         with:
-          deno-version: v2.x
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cache/deno
-            ~/.deno
-          key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
-          restore-keys: |
-            deno-${{ runner.os }}-
-
-      # Verify the committed deno.lock matches deno.json before doing any
-      # work. `--frozen` makes `deno install` fail (rather than silently
-      # rewrite the lockfile) when the import map has drifted from the
-      # lockfile, protecting CI from unconstrained transitive bumps
-      # (issue #418).
-      - name: Install dependencies with frozen lockfile
-        run: deno install --frozen
+          install-deps: "true"
 
       - name: Run deno lint
         run: deno lint
@@ -126,23 +112,12 @@ jobs:
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
 
-      - name: Install Deno
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+      # Shared Deno setup (install + cache + frozen install) via the local
+      # composite action (Issue #682).
+      - name: Set up Deno environment
+        uses: ./.github/actions/setup-deno-env
         with:
-          deno-version: v2.x
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cache/deno
-            ~/.deno
-          key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
-          restore-keys: |
-            deno-${{ runner.os }}-
-
-      - name: Install dependencies with frozen lockfile
-        run: deno install --frozen
+          install-deps: "true"
 
       - name: Check out NEAT-AI-scorer for MNIST CATEGORICAL_ERROR tests
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -284,23 +259,12 @@ jobs:
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
 
-      - name: Install Deno
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+      # Shared Deno setup (install + cache + frozen install) via the local
+      # composite action (Issue #682).
+      - name: Set up Deno environment
+        uses: ./.github/actions/setup-deno-env
         with:
-          deno-version: v2.x
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cache/deno
-            ~/.deno
-          key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
-          restore-keys: |
-            deno-${{ runner.os }}-
-
-      - name: Install dependencies with frozen lockfile
-        run: deno install --frozen
+          install-deps: "true"
 
       - name: Run Intelligent Design example
         run: ./intelligent_design/run.sh

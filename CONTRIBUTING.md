@@ -217,8 +217,9 @@ Before submitting a pull request, verify the following:
 
 ## 🔐 Code Owners & Branch Protection
 
-Privileged surfaces — the GitHub Actions workflows under `.github/workflows/` and the supply-chain
-scripts (`bump-deps.sh`, `bump_deps.ts`, `quality.sh`) — are guarded by
+Privileged surfaces — the GitHub Actions workflows under `.github/workflows/`, the local composite
+actions under `.github/actions/` (they run inside those jobs, with the same secrets in scope), and
+the supply-chain scripts (`bump-deps.sh`, `bump_deps.ts`, `quality.sh`) — are guarded by
 [`.github/CODEOWNERS`](.github/CODEOWNERS). These paths run with secrets beyond the default
 `GITHUB_TOKEN` (the write-capable `ACTIONS_PUSH` PAT, `SEMGREP_APP_TOKEN`, `CODECOV_TOKEN`), so a
 change to them must be reviewed by

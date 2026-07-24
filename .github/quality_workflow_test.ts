@@ -48,6 +48,10 @@ Deno.test("quality workflow — every uses: pins a 40-char commit SHA", async ()
     for (const step of steps) {
       const uses = step.uses as string | undefined;
       if (!uses) continue;
+      // Local (`./…`) composite actions point at in-repo, already-trusted
+      // code and are exempt from the SHA-pinning rule (Issue #682). The
+      // third-party actions they wrap stay SHA-pinned inside the action.
+      if (uses.startsWith("./")) continue;
       assert(
         shaPattern.test(uses),
         `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +
@@ -334,9 +338,21 @@ Deno.test("quality workflow — every work job preserves the bump-aware checkout
       "${{ inputs.pr_head_ref || github.ref }}",
       `job '${key}' must preserve the workflow_dispatch auto-bump checkout ref`,
     );
+    // The Deno install + cache + `deno install --frozen` block was
+    // extracted into the local composite action ./.github/actions/
+    // setup-deno-env (Issue #682). Each work job must invoke it with
+    // install-deps: "true" so the frozen install (#418) still runs.
+    const setup = steps.find((s) =>
+      (s.uses as string | undefined) === "./.github/actions/setup-deno-env"
+    );
     assert(
-      stepNames(job).includes("Install dependencies with frozen lockfile"),
-      `job '${key}' must install dependencies with the frozen lockfile (#418)`,
+      setup,
+      `job '${key}' must set up Deno via the shared ./.github/actions/setup-deno-env composite action (#682)`,
+    );
+    assertEquals(
+      (setup.with as { "install-deps"?: string })["install-deps"],
+      "true",
+      `job '${key}' must pass install-deps: "true" so deps are cached and installed with the frozen lockfile (#418)`,
     );
   }
 });
