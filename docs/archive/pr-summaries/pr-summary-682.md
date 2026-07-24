@@ -102,6 +102,14 @@ TDD order: the nine tests in `.github/setup_deno_env_action_test.ts` were writte
 all nine failed against the unrefactored tree (`FAILED | 0 passed | 9 failed`) — and pass after the
 action and workflow edits.
 
+> [!NOTE]
+> A full `./quality.sh` run hit one **pre-existing, unrelated flake** in its unit-test section:
+> `lunar_lander_test.ts::scoreController with perturbation varies the pad position across trials`.
+> That test scores an unseeded random `Creature` (`new Creature(INPUT_COUNT, OUTPUT_COUNT)`), so the
+> spread it asserts on is stochastic; it passed 3/3 on re-run and 1231/1231 in the standalone suite
+> above. This change touches no runtime code — only `.github/`, `README.md`, and workflow tests — so
+> it cannot affect that example. Left alone as out of scope for this issue.
+
 ### Security self-check
 
 - **Supply chain**: no new third-party action. The two wrapped actions keep their existing
