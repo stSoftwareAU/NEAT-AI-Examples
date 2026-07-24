@@ -103,6 +103,22 @@ Deno.test("CODEOWNERS covers the supply-chain scripts", () => {
   }
 });
 
+Deno.test("CODEOWNERS covers local composite actions (Issue #682)", () => {
+  // A local action under `.github/actions/` runs inside the same
+  // privileged jobs as the workflows that call it — including the ones
+  // holding ACTIONS_PUSH and CODECOV_TOKEN — so it carries the same blast
+  // radius and must be owned too.
+  const rule = ruleFor(readCodeowners(), "/.github/actions/");
+  assert(
+    rule !== undefined,
+    "Expected a CODEOWNERS rule for /.github/actions/",
+  );
+  assert(
+    OWNER_PATTERN.test(rule),
+    "Expected the /.github/actions/ rule to name a team owner",
+  );
+});
+
 Deno.test("CODEOWNERS owns itself so ownership cannot be quietly changed", () => {
   const rule = ruleFor(readCodeowners(), "/.github/CODEOWNERS");
   assert(
