@@ -1,148 +1,150 @@
-# Extract the copy-pasted Deno setup into a composite action
-
 ## Summary
 
-The checkout + `denoland/setup-deno` pair — and, in `quality.yml`, the identical `actions/cache` +
-`deno install --frozen` block — was copy-pasted across **six job bodies in four workflows**. Every
-Deno version-policy change, cache-key tweak, or manual SHA re-pin (done by hand under the 24h
-supply-chain quarantine) had to touch all six copies, and drift between them was silent: a job
-quietly caching differently or lagging a pin would fail nothing.
+Extracted the copy-pasted Deno environment setup into one local composite action,
+[`.github/actions/setup-deno-env`](../../../.github/actions/setup-deno-env/action.yml). The
+`denoland/setup-deno` call — and, in `quality.yml`, the identical `actions/cache` +
+`deno install --frozen` block — was duplicated across six job definitions in four workflows, so the
+Deno version policy, the cache key recipe, and two manually-bumped SHA pins each had six edit sites.
+Drift between copies failed nothing: a job quietly caching differently, or lagging a pin, was
+invisible. Closes #682.
 
-This PR collapses the version pin, the cache recipe, and the frozen-install policy into one local
-composite action, `.github/actions/setup-deno-env`. Checkout necessarily stays in each job — a local
-`./` action is unresolvable until the repository is on disk. Closes #682.
+The action takes two inputs:
 
-### What changed
+| Input          | Default | Purpose                                                                     |
+| -------------- | ------- | --------------------------------------------------------------------------- |
+| `deno-version` | `v2.x`  | Repository-wide Deno release line.                                          |
+| `install-deps` | `true`  | Restore the shared dependency cache and run `deno install --frozen` (#418). |
 
-- **New** `.github/actions/setup-deno-env/action.yml` — installs Deno (single `v2.x` pin behind a
-  `deno-version` input) and, when `install-deps` is `"true"` (the default), restores the Deno
-  dependency cache and runs `deno install --frozen`.
-- **Six inline blocks replaced.** `quality.yml`'s three parallel jobs take the default
-  (`install-deps: "true"`, preserving the #418 frozen-lockfile guarantee). `deno-audit.yml`,
-  `deno-outdated.yml` and `deno-security-update.yml` pass `install-deps: "false"` — the audit
-  resolves the locked tree itself and the two bump channels _rewrite_ the lockfile, so a pre-emptive
-  frozen install would fail on exactly the drift they exist to fix.
-- **`.github/actions/` added to CODEOWNERS.** The action now runs inside those jobs with the same
-  secrets in scope (`ACTIONS_PUSH`, `CODECOV_TOKEN`). Leaving it unowned would reopen the
-  poisoned-pipeline path the `/.github/workflows/` rule closes, by putting privileged CI code one
-  directory outside the gate.
-- **Net effect:** `quality.yml` loses 58 lines; the Deno version pin, cache key and install policy
-  now exist in exactly one file.
+The three `quality.yml` work jobs take the default (cache + frozen install). `deno-audit.yml`,
+`deno-outdated.yml`, and `deno-security-update.yml` pass `install-deps: "false"` — they need the
+Deno binary alone, since `deno audit --frozen` and `bump-deps.sh` resolve their own dependencies.
+`actions/checkout` deliberately stays in every job: a local `./` action is only resolvable once the
+repository is on disk.
 
-**Supply-chain posture is unchanged.** Local `./` references are this repository's own code — there
-is no upstream to re-point, so there is nothing to pin, and GitHub resolves them from the commit
-already checked out. The third-party actions _inside_ the composite action remain pinned to
-40-character commit SHAs, now asserted by a dedicated test.
+Net effect: 66 lines of duplicated workflow YAML removed, and one edit site for the version pin,
+cache key, and wrapped SHA pins.
+
+### Documented business-logic changes to existing tests
+
+No test was removed or commented out. Three were widened, each with an in-file comment explaining
+why:
+
+1. **SHA-pin tests** (`quality_workflow_test.ts`, `deno_audit_workflow_test.ts`,
+   `deno_security_update_workflow_test.ts`) now skip `uses:` values beginning with `./`. A local
+   composite action lives in this repository, so there is no upstream ref to pin. Coverage is not
+   lost — the pins the action wraps are asserted by the new `.github/setup_deno_env_action_test.ts`,
+   which fails if either becomes unpinned.
+2. **`quality workflow — every work job preserves the bump-aware checkout ref and frozen install`**
+   previously required a step literally named `Install dependencies with frozen lockfile`. That step
+   moved into the composite action, so the test now accepts the guarantee delivered either inline or
+   through the action (which installs by default). The guarantee itself — every work job reaches a
+   frozen install — is unchanged.
+3. **CODEOWNERS** gained `/.github/actions/`, with a matching test in `codeowners_test.ts`. The
+   workflows `uses:` these actions, so an edit there executes on the runner with the same secrets in
+   scope as a workflow edit — same blast radius, same required reviewers (Issue #654's rationale).
 
 ## Evidence
 
 This is a CI-configuration change with no web interface, so there is no screenshot to capture. The
-evidence is the test suite plus a clean `actionlint` and `./quality.sh` run.
+evidence is the passing test suite plus `actionlint`, which validates the rewritten workflows.
 
 ### Before → after
 
 ```mermaid
-flowchart TB
-    subgraph BEFORE["Before — 6 copies of the same setup"]
-        B1[quality.yml static-checks<br/>setup-deno + cache + frozen install]
-        B2[quality.yml unit-tests<br/>setup-deno + cache + frozen install]
-        B3[quality.yml examples<br/>setup-deno + cache + frozen install]
-        B4[deno-audit.yml<br/>setup-deno]
-        B5[deno-outdated.yml<br/>setup-deno]
-        B6[deno-security-update.yml<br/>setup-deno]
+flowchart LR
+    subgraph BEFORE["Before — 6 copies"]
+        B1[quality.yml<br/>static-checks] --> BS1[setup-deno + cache + frozen install]
+        B2[quality.yml<br/>unit-tests] --> BS2[setup-deno + cache + frozen install]
+        B3[quality.yml<br/>examples] --> BS3[setup-deno + cache + frozen install]
+        B4[deno-audit.yml] --> BS4[setup-deno]
+        B5[deno-outdated.yml] --> BS5[setup-deno]
+        B6[deno-security-update.yml] --> BS6[setup-deno]
     end
 
-    subgraph AFTER["After — one source of truth"]
-        A1[quality.yml static-checks]
-        A2[quality.yml unit-tests]
-        A3[quality.yml examples]
-        A4[deno-audit.yml]
-        A5[deno-outdated.yml]
-        A6[deno-security-update.yml]
-        A1 --> ACT
-        A2 --> ACT
-        A3 --> ACT
-        A4 -->|install-deps: false| ACT
-        A5 -->|install-deps: false| ACT
-        A6 -->|install-deps: false| ACT
-        ACT["./.github/actions/setup-deno-env"]
-        ACT --> PIN[denoland/setup-deno v2.x<br/>SHA-pinned]
-        ACT --> CACHE[actions/cache<br/>deno.json + deno.lock key]
-        CACHE --> FROZEN[deno install --frozen]
+    subgraph AFTER["After — 1 copy"]
+        A1[quality.yml<br/>static-checks] --> ACT
+        A2[quality.yml<br/>unit-tests] --> ACT
+        A3[quality.yml<br/>examples] --> ACT
+        A4[deno-audit.yml] -. "install-deps: false" .-> ACT
+        A5[deno-outdated.yml] -. "install-deps: false" .-> ACT
+        A6[deno-security-update.yml] -. "install-deps: false" .-> ACT
+        ACT[".github/actions/setup-deno-env"] --> D1[denoland/setup-deno<br/>SHA-pinned, v2.x]
+        ACT --> D2[actions/cache<br/>SHA-pinned]
+        ACT --> D3[deno install --frozen]
     end
-
-    BEFORE -.->|Issue 682| AFTER
 
     style ACT fill:#3498db,stroke:#333,color:#fff
-    style PIN fill:#2ecc71,stroke:#333,color:#fff
-    style FROZEN fill:#e67e22,stroke:#333,color:#fff
+    style D1 fill:#1abc9c,stroke:#333,color:#fff
+    style D2 fill:#f39c12,stroke:#333,color:#fff
+    style D3 fill:#9b59b6,stroke:#333,color:#fff
 ```
 
-### Per-job step sequence
+### Command output
 
-```mermaid
-sequenceDiagram
-    participant J as Workflow job
-    participant C as actions/checkout
-    participant A as setup-deno-env (local)
-    participant W as Job's real work
+```text
+$ deno test --parallel --frozen --no-check … --ignore=mnist_classification/evolve_integration_test.ts
+ok | 1231 passed | 0 failed (27s)
 
-    J->>C: check out repository
-    Note over C,A: a "./" action only resolves<br/>once the repo is on disk
-    J->>A: uses ./.github/actions/setup-deno-env
-    A->>A: denoland/setup-deno (v2.x, SHA-pinned)
-    alt install-deps == "true"
-        A->>A: restore ~/.cache/deno, ~/.deno
-        A->>A: deno install --frozen
-    else install-deps == "false"
-        A-->>A: skip cache + install (Deno binary only)
-    end
-    A-->>J: environment ready
-    J->>W: lint / test / audit / bump
+$ deno fmt --check
+Checked 506 files
+
+$ deno lint
+Checked 178 files
+
+$ actionlint          # validates every rewritten workflow
+(exit 0, no findings)
+
+$ npx markdownlint-cli2@0.22.1 README.md
+Summary: 0 error(s)
 ```
 
-### Verification
+TDD order: the nine tests in `.github/setup_deno_env_action_test.ts` were written and run first —
+all nine failed against the unrefactored tree (`FAILED | 0 passed | 9 failed`) — and pass after the
+action and workflow edits.
 
-- `actionlint .github/workflows/*.yml` — clean, no findings.
-- `./quality.sh` — `Deno Format`, `Deno Lint`, `Deno Type Check`, `Unit Tests (parallel)`, the MNIST
-  integration tests and every example stage reported `SUCCESS`.
-- `markdownlint-cli2 README.md CONTRIBUTING.md` — 0 errors.
+### Security self-check
+
+- **Supply chain**: no new third-party action. The two wrapped actions keep their existing
+  40-character SHA pins, now asserted in a single test. Local `./` references add no supply-chain
+  surface — they resolve to this repository's own tree.
+- **Execution surface**: `deno-audit.yml` previously ran no repository code on a pull request; it
+  now loads the local action from the checked-out PR head, as `quality.yml` already does. That job
+  holds no secrets and runs with `permissions: contents: read`, so the blast radius is unchanged in
+  practice. `.github/actions/` is now CODEOWNERS-owned so a change there requires a maintainer
+  review, matching `.github/workflows/`.
+- **Secrets**: no secret is read by the composite action, and none was staged. `ACTIONS_PUSH`
+  remains scoped to the dedicated push steps (#678).
+- **Least privilege**: no workflow permission block was changed.
 
 ## Test Plan
 
-**New** — `.github/setup_deno_env_action_test.ts` (11 tests, all failing before the action existed):
+Added `.github/setup_deno_env_action_test.ts` — nine "what" tests that parse the action and workflow
+YAML and assert on structure:
 
-- the composite action exists, parses, and declares `using: composite` with a name and description;
-- the Deno version pin lives behind a `deno-version` input defaulting to `v2.x`, and `setup-deno`
-  reads it from that input rather than a second hard-coded pin;
-- `install-deps` defaults to `"true"` and gates **both** the cache and the install step;
-- the install passes `--frozen`, so lockfile/import-map drift fails loudly (#418) rather than being
-  silently rewritten;
-- the cache covers `~/.cache/deno` + `~/.deno`, keys on `deno.json` + `deno.lock`, and declares a
-  `restore-keys` fallback;
-- every composite `run` step declares `shell: bash` (GitHub rejects the action otherwise);
-- every third-party `uses:` inside the action pins a 40-character commit SHA;
-- **every** Deno job in all four workflows reaches Deno through the action, and does so _after_ its
-  checkout;
-- no workflow re-declares `denoland/setup-deno` or the Deno cache block inline;
-- each job requests the install policy its work actually needs;
-- `denoland/setup-deno` is pinned in **exactly one** place across the whole repository — this is the
-  regression test for the issue: re-introducing an inline copy in any workflow fails the build.
+- `the composite action exists and parses` — file present, `using: composite`, name + description.
+- `exposes deno-version and install-deps inputs with documented defaults` — `v2.x` / `true`, every
+  input documented.
+- `installs Deno at the requested version` — the version comes from the input, not a hard-coded pin.
+- `cache and frozen install are gated on install-deps` — cache path/key/restore-keys, the `--frozen`
+  install, both `if:`-gated, and every composite `run:` step names a shell (GitHub rejects the
+  action otherwise, which would break every workflow).
+- `every wrapped action pins a 40-char commit SHA` — replaces the coverage the workflow-level tests
+  now delegate.
+- `no workflow installs Deno directly` — regression test for the duplication this issue removes.
+- `every Deno job reaches Deno through the composite action` — expected job counts per workflow, and
+  a checkout precedes the local action in each.
+- `the quality work jobs install dependencies through the action` — the frozen install (#418) is
+  preserved for all three.
+- `the Deno version pin and cache key live in exactly one file` — no workflow may reintroduce a
+  `deno-version:` or a `deno-` cache key.
 
-**New** — `codeowners_test.ts::CODEOWNERS covers the privileged .github/actions/ path` — fails
-against the unfixed CODEOWNERS and passes after the rule is added.
-
-**Modified (business-logic change, documented in-file — no test was removed or disabled):**
+Modified (widened, not removed — see above):
 
 - `.github/quality_workflow_test.ts`, `.github/deno_audit_workflow_test.ts`,
-  `.github/deno_security_update_workflow_test.ts` — the "every `uses:` pins a 40-char commit SHA"
-  tests now skip `./`-prefixed references _after asserting the referenced `action.yml` actually
-  exists_, so an unpinned third-party action still fails and a dangling local reference is caught.
-  Pinning coverage for the action's own dependencies moved to the new test file.
-- `.github/quality_workflow_test.ts::every work job preserves the bump-aware checkout ref and frozen
-  install`
-  — the frozen install moved into the shared action, so the test now asserts the effective policy
-  (the job uses the action with `install-deps` not disabled) instead of a step name. The #418
-  guarantee it protects is unchanged.
+  `.github/deno_security_update_workflow_test.ts` — exempt local `./` action references from the
+  SHA-pin rule.
+- `.github/quality_workflow_test.ts` — accept the frozen install via the composite action.
+- `codeowners_test.ts` — new `CODEOWNERS covers the local composite actions` test.
 
-All 180 tests in `.github/` and the root `*_test.ts` suites pass.
+Documentation: README gained a **Shared Deno environment setup** section with a Mermaid diagram and
+a usage snippet.
