@@ -24,8 +24,8 @@ Files touched: `exploration_campaign.ts`, `exploration_campaign_test.ts`, `explo
 
 ## Evidence
 
-No web interface to screenshot — this is a documentation/identifier rename in a CLI example. Verified
-instead by:
+No web interface to screenshot — this is a documentation/identifier rename in a CLI example.
+Verified instead by:
 
 - `grep -rni grq mnist_classification/` returns no matches.
 - `deno fmt --check`, `deno lint`, and `deno check` pass on the module.
@@ -37,8 +37,10 @@ instead by:
 No new behaviour, so no new tests — the existing suites were updated to the new names and still
 assert the same outcomes:
 
-- `mnist_classification/exploration_campaign_test.ts` — `randomStructureSampleRate stays within the
-  10–50% band` (renamed from the `grq*` variant) still asserts the 0.10 / 0.50 band endpoints;
+- `mnist_classification/exploration_campaign_test.ts` —
+  `randomStructureSampleRate stays within the
+  10–50% band` (renamed from the `grq*` variant) still
+  asserts the 0.10 / 0.50 band endpoints;
   `structureSampleRatesForCalibration keeps the ladder when full data is fast enough` and
   `buildExplorationLoopPhases repeats the five-loop sampler cadence` renamed, assertions unchanged.
 - `mnist_classification/population_pool_test.ts` — `priorLoopPhaseNames lists earlier sampler loops`
