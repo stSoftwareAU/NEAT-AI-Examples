@@ -1,5 +1,5 @@
 /**
- * GRQ-style exploration campaign for the stock-market direction
+ * Phased exploration campaign for the stock-market direction
  * prediction example (issue #476).
  *
  * The campaign runs a sequence of **structure phases** (random training
@@ -86,7 +86,7 @@ export interface ExplorationPhase {
 }
 
 /**
- * Default phase schedule mirroring the GRQ-style sampler pattern
+ * Default phase schedule mirroring the phased sampler pattern
  * referenced in issue #476: three structure phases that escalate the
  * training subsample (5% → 10% → 15%) followed by a long polish at full
  * data with `costOfGrowth = 0`.

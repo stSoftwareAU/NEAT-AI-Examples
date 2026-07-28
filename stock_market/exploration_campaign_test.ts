@@ -1,10 +1,10 @@
 /**
- * Unit tests for the GRQ-style exploration campaign wired under issue
+ * Unit tests for the phased exploration campaign wired under issue
  * #476. Each test exercises {@link runExplorationCampaign} (or a CLI
  * helper) against a tiny synthetic price split with phase counts kept
  * small so the suite runs well inside the 120s budget.
  *
- * The campaign mirrors the GRQ pattern: structure phases (random
+ * The campaign mirrors the phased sampler pattern: structure phases (random
  * training subsamples + low costOfGrowth so NEAT-AI grows topology
  * cheaply) followed by a polish phase (full training set, costOfGrowth
  * = 0) — and honest scoring of the evolved champion on the full train,

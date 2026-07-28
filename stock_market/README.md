@@ -7,9 +7,10 @@
 > warm-started to the target mean**, a **conservative hidden-capacity budget**, and
 > **constant-feature pruning**. **No dataset-specific architecture is hand-coded** — every default
 > is derived from the observation count, output count, cost, and a scan of the training file, so the
-> same approach transfers to private/unknown problems (this is the closest example to the private
-> GRQ market-prediction use case). **Only the seed changes; the `evolveDir` configuration is
-> untouched** and structural growth still comes from NEAT-AI's own mutation operators.
+> same approach transfers to private/unknown problems (this is the closest example to a production
+> market-prediction system we operate elsewhere). **Only the seed changes; the `evolveDir`
+> configuration is untouched** and structural growth still comes from NEAT-AI's own mutation
+> operators.
 
 **Acronyms.** _NEAT_ = NeuroEvolution of Augmenting Topologies. _MSE_ = Mean Squared Error. _SVG_ =
 Scalable Vector Graphics. _S&P 500_ = Standard & Poor's 500-stock market index.
@@ -207,14 +208,14 @@ Artefacts:
   (`renderMultiRunComplexityChartSVG` from
   [`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts))
 
-## 🧭 GRQ-Style Exploration Campaign (issue #476)
+## 🧭 Phased Exploration Campaign (issue #476)
 
 The standard `run.sh` invocation evolves the full training set with a single set of NEAT options.
 That works when the task is well understood and a single sensible schedule converges quickly. For
 the "unknown problem" narrative — when you do not yet know how much topology the task needs — issue
 [#476](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/476) wires a second runner that
-deliberately separates **structure discovery** from **weight polishing**, mirroring the GRQ-style
-sampler pattern.
+deliberately separates **structure discovery** from **weight polishing**, mirroring the phased
+sampler pattern we use on production market-prediction work.
 
 ```bash
 # Tiny smoke test — finishes in under a minute on a developer machine.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stock-Market GRQ-style exploration campaign (issue #476).
+# Stock-Market phased exploration campaign (issue #476).
 #
 # Runs the structure → polish phase schedule defined in
 # `exploration_campaign.ts` against the public S&P 500 monthly-close
@@ -24,7 +24,7 @@ cd "${REPO_ROOT}"
 # shellcheck source=common/example_runner_preamble.sh
 source "${REPO_ROOT}/common/example_runner_preamble.sh"
 
-echo "📈 Stock Market — GRQ-style exploration campaign"
+echo "📈 Stock Market — phased exploration campaign"
 echo ""
 
 deno run \
