@@ -1,7 +1,7 @@
 /**
- * Local population pool — GRQ `sampler.sh` parity for a single machine.
+ * Local population pool — sampled-exploration parity for a single machine.
  *
- * Mirrors:
+ * Layout:
  *   `.creatures/`  — seeds injected into each Learn/evolveDir population
  *   `.sampler/loop-N.json` — fittest creature after sampler loop N
  *   `experiments/intelligent-design/` — Intelligent Design scratch output
@@ -21,16 +21,16 @@ import {
 const EXPLORATION_ROOT = join(MNIST_ROOT, "exploration");
 const PHASE_CHAMPIONS_DIR = join(EXPLORATION_ROOT, "phase-champions");
 
-/** GRQ `.creatures` — population injected before each evolve phase. */
+/** `.creatures` — population injected before each evolve phase. */
 export const CREATURES_DIR = join(EXPLORATION_ROOT, ".creatures");
 
-/** GRQ `.sampler/loop-N.json` archives. */
+/** `.sampler/loop-N.json` archives. */
 export const SAMPLER_DIR = join(EXPLORATION_ROOT, ".sampler");
 
 /** Intelligent Design experiment output (one subdir per squash pass). */
 export const EXPERIMENTS_DIR = join(EXPLORATION_ROOT, "experiments");
 
-/** Trace scratch (GRQ `.trace` equivalent — reserved for future use). */
+/** Trace scratch (`.trace` — reserved for future use). */
 export const TRACE_DIR = join(EXPLORATION_ROOT, ".trace");
 
 /** Path to one sampler-loop champion file. */
@@ -91,7 +91,7 @@ export async function loadPriorLoopChampions(phaseName: string): Promise<Creatur
 
 /**
  * Refresh `.creatures/` from sampler loops, sample-rate archives, and the
- * current lineage champion — analogous to GRQ `copyNetworks`.
+ * current lineage champion.
  */
 export async function refreshCreaturesDirectory(options: {
   phaseName: string;

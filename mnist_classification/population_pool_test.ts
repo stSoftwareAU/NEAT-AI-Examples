@@ -18,7 +18,7 @@ const exportB = {
   synapses: [],
 };
 
-Deno.test("priorLoopPhaseNames lists earlier GRQ sampler loops", () => {
+Deno.test("priorLoopPhaseNames lists earlier sampler loops", () => {
   assertEquals(priorLoopPhaseNames("loop-1"), []);
   assertEquals(priorLoopPhaseNames("loop-3"), ["loop-1", "loop-2"]);
   assertEquals(priorLoopPhaseNames("loop-4-r2"), ["loop-1-r2", "loop-2-r2", "loop-3-r2"]);

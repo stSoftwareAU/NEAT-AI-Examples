@@ -2,7 +2,7 @@
  * Per-phase and per-sample-rate champion archive for the MNIST exploration
  * campaign.
  *
- * Mirrors GRQ `sampler.sh` / `.sampler/loop-${i}.json`: each training
+ * Sampler-loop archive parity: each training
  * subsample level keeps its fittest creature so later phases can re-seed the
  * population with winners from other sample rates. The lineage champion only
  * advances when full hold-out test accuracy does not regress.

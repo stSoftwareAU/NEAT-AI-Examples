@@ -1,5 +1,5 @@
 /**
- * Unit tests for MNIST phase-champion archiving (GRQ sampler parity).
+ * Unit tests for MNIST phase-champion archiving (sampler-loop parity).
  */
 
 import { assert, assertEquals, assertFalse } from "@std/assert";

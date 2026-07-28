@@ -643,7 +643,7 @@ export interface MnistEvolveOptions {
   /**
    * Fraction of each `.bin` file scored per generation (NEAT-AI
    * `trainingSampleRate`). Defaults to `1` (full training set). Lower
-   * values — e.g. `0.15` — mirror the GRQ sampler idiom for faster
+   * values — e.g. `0.15` — follow the sampler idiom for faster
    * structure exploration before a full-data polish pass.
    */
   trainingSampleRate?: number;

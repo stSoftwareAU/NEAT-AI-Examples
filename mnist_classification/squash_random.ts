@@ -1,5 +1,5 @@
 /**
- * Weighted squash randomisation — mirrors GRQ `worker/shared/squash_random.sh`.
+ * Weighted squash randomisation for the intelligent-design scan.
  */
 
 /** Squash names with selection weights (higher = more likely). */
@@ -30,7 +30,7 @@ export const WEIGHTED_SQUASHES: readonly (readonly [string, number])[] = [
 export const DEFAULT_SQUASH_CANDIDATES = ["GELU", "Swish", "LeakyReLU", "Mish"] as const;
 
 /**
- * Pick one squash name using the GRQ weighted table.
+ * Pick one squash name using the weighted table.
  * Pass `random` for deterministic tests (`() => 0.5`).
  */
 export function randomWeightedSquash(random = Math.random): string {
