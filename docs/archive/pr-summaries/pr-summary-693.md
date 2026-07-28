@@ -13,9 +13,9 @@ unchanged; only wording and two identifier names moved. Closes #693.
 
 Renamed exports (`mnist_classification/exploration_campaign.ts`):
 
-| Before                      | After                    |
-| --------------------------- | ------------------------ |
-| `GRQ_SAMPLER_LOOP_COUNT`    | `SAMPLER_LOOP_COUNT`     |
+| Before                         | After                       |
+| ------------------------------ | --------------------------- |
+| `GRQ_SAMPLER_LOOP_COUNT`       | `SAMPLER_LOOP_COUNT`        |
 | `grqRandomStructureSampleRate` | `randomStructureSampleRate` |
 
 Files touched: `exploration_campaign.ts`, `exploration_campaign_test.ts`, `exploration_campaign.sh`,
