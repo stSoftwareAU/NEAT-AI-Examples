@@ -23,14 +23,14 @@ import {
   evaluateOnHoldout,
   EXPLORATION_ROOT,
   type ExplorationPhaseRecord,
-  grqRandomStructureSampleRate,
   POLISH_MAX_GENERATIONS,
   POLISH_TIMEOUT_MINUTES,
+  randomStructureSampleRate,
   structureSampleRatesForCalibration,
   TARGET_MS_PER_GENERATION,
 } from "./exploration_campaign.ts";
 
-Deno.test("structureSampleRatesForCalibration keeps GRQ ladder when full data is fast enough", () => {
+Deno.test("structureSampleRatesForCalibration keeps the ladder when full data is fast enough", () => {
   const { rates, scale } = structureSampleRatesForCalibration(800, TARGET_MS_PER_GENERATION);
   assertEquals(scale, 1);
   assertEquals(rates, [0.01, 0.05, 0.15, 0.15]);
@@ -43,9 +43,9 @@ Deno.test("structureSampleRatesForCalibration scales ladder when full data is sl
   assertAlmostEquals(rates[3], 0.05, 1e-9);
 });
 
-Deno.test("grqRandomStructureSampleRate stays within the GRQ 10–50% band", () => {
-  assertAlmostEquals(grqRandomStructureSampleRate(() => 0), 0.10, 1e-9);
-  assertAlmostEquals(grqRandomStructureSampleRate(() => 0.999), 0.50, 1e-9);
+Deno.test("randomStructureSampleRate stays within the 10–50% band", () => {
+  assertAlmostEquals(randomStructureSampleRate(() => 0), 0.10, 1e-9);
+  assertAlmostEquals(randomStructureSampleRate(() => 0.999), 0.50, 1e-9);
 });
 
 function syntheticSample(label: number, index: number): DigitSample {
@@ -68,7 +68,7 @@ Deno.test("buildSingleSampleRatePhases builds one long structure phase", () => {
   assertEquals(phases[0]?.maxGenerations, undefined);
 });
 
-Deno.test("buildExplorationLoopPhases repeats the five-loop GRQ cadence", () => {
+Deno.test("buildExplorationLoopPhases repeats the five-loop sampler cadence", () => {
   const phases = buildExplorationLoopPhases({ loopMinutes: 60, repeats: 2 });
   assertEquals(phases.length, 10);
   assertEquals(phases.filter((p) => p.name.startsWith("loop-5")).length, 2);

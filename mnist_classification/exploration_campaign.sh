@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# MNIST recorded-evolution campaign — GRQ-style sampled evolution,
+# MNIST recorded-evolution campaign — sampled evolution,
 # full-data polish, optional intelligent-design squash scan. Every phase
 # is persisted under docs/data/mnist_classification/ immediately.
 # Scratch state lives under .synthetic-mnist/exploration/ (gitignored).

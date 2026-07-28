@@ -1,5 +1,5 @@
 /**
- * MNIST recorded-evolution campaign — GRQ-style sampled exploration, full-data
+ * MNIST recorded-evolution campaign — sampled exploration, full-data
  * polish, optional intelligent-design squash scan. Every phase appends a
  * milestone under `docs/data/mnist_classification/` and refreshes the error,
  * complexity, and **timeline** charts so readers can see how long the
@@ -92,7 +92,7 @@ export const EXPLORATION_SUMMARY_PATH = join(EXPLORATION_ROOT, "campaign_summary
 export const EXPLORATION_CALIBRATION_PATH = join(EXPLORATION_ROOT, "calibration.json");
 
 /**
- * One exploration loop — mirrors the GRQ `sampler.sh` cadence: early loops
+ * One exploration loop — sampled-exploration cadence: early loops
  * use small `trainingSampleRate` and tiny `costOfGrowth` so NEAT can grow
  * structure quickly; the final loop trains on the full set.
  */
@@ -133,21 +133,21 @@ export const TARGET_MS_PER_GENERATION = 1500;
 /** Wall-clock budget for the calibration probe (minutes). */
 export const CALIBRATION_PROBE_MINUTES = 2;
 
-/** Relative structure subsample ladder — GRQ sampler loops 1–4 (loop 5 is 100%). */
+/** Relative structure subsample ladder — sampler loops 1–4 (loop 5 is 100%). */
 const STRUCTURE_SAMPLE_LADDER = [0.01, 0.05, 0.15, 0.15] as const;
 
-/** GRQ sampler loop count per repeat (loops 1–4 structure, loop 5 polish). */
-export const GRQ_SAMPLER_LOOP_COUNT = 5;
+/** Sampler loop count per repeat (loops 1–4 structure, loop 5 polish). */
+export const SAMPLER_LOOP_COUNT = 5;
 
 /**
- * GRQ loops 3–4 randomise the training subsample between 10% and 50%
- * (`sampler.sh` randomises the binary slice rate in the same band).
+ * Loops 3–4 randomise the training subsample between 10% and 50% so
+ * successive structure passes see a different slice of the data.
  */
-export function grqRandomStructureSampleRate(random = Math.random): number {
+export function randomStructureSampleRate(random = Math.random): number {
   return Math.round((0.10 + random() * 0.40) * 100) / 100;
 }
 
-/** One pass of the GRQ sampler cadence (loops 1–4 subsample → loop 5 polish). */
+/** One pass of the sampler cadence (loops 1–4 subsample → loop 5 polish). */
 const EXPLORATION_PHASE_TEMPLATE = [
   {
     name: "loop-1",
@@ -316,7 +316,7 @@ export function buildExplorationLoopPhases(options?: {
         const idx = template.ladderIndex;
         const templateRate = structureRates[idx];
         const trainingSampleRate = (idx === 2 || idx === 3)
-          ? grqRandomStructureSampleRate()
+          ? randomStructureSampleRate()
           : templateRate;
         phases.push({
           name: `${template.name}${suffix}`,
@@ -641,7 +641,7 @@ export async function runExplorationCampaign(
             `(≈${(calibration.msPerGeneration / 1000).toFixed(2)} s/gen at 100% sample).`,
         );
         if (calibration.scale >= 1) {
-          console.log("   Full data meets the target — using the 1%→15% GRQ sampler ladder.");
+          console.log("   Full data meets the target — using the 1%→15% sampler ladder.");
         } else {
           console.log(
             `   Scaled structure ladder by ${(calibration.scale * 100).toFixed(1)}% → ` +
@@ -672,7 +672,7 @@ export async function runExplorationCampaign(
     const repeatCount = phases.filter((p) => p.trainingSampleRate >= 1).length;
     const structureTimeout = phases.find((p) => p.trainingSampleRate < 1)?.timeoutMinutes;
     console.log(
-      `\n📋 GRQ sampler schedule: ${repeatCount} repeat(s) × ${GRQ_SAMPLER_LOOP_COUNT} loops ` +
+      `\n📋 Sampler schedule: ${repeatCount} repeat(s) × ${SAMPLER_LOOP_COUNT} loops ` +
         `(${phases.length} total). Structure timeout ≈${structureTimeout}m each; loop 5 ` +
         `(100% data) capped at ${POLISH_MAX_GENERATIONS} generation(s).`,
     );
@@ -843,7 +843,7 @@ export async function runExplorationCampaign(
   } else if (options.randomizedIntelligentDesign !== false) {
     const squash = randomWeightedSquash();
     console.log(
-      `\n🧠 Intelligent design (GRQ randomized.sh) — weighted-random squash: ${squash}…`,
+      `\n🧠 Intelligent design (randomised pass) — weighted-random squash: ${squash}…`,
     );
     const exportJson = creature.exportJSON();
     const baselineScore = Number.parseFloat(getTag(exportJson, "score") ?? "0") ||

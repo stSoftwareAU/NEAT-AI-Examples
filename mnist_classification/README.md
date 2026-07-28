@@ -168,7 +168,7 @@ Artefacts:
 
 The standard `run.sh` workflow appends one milestone per invocation. For a long-form run that
 produces a **fully trained creature** with charts showing **how long the journey took**, use the
-exploration campaign instead. It mirrors the GRQ `sampler.sh` cadence: early phases subsample the
+exploration campaign instead. It follows a sampled-exploration cadence: early phases subsample the
 training set and use a low `costOfGrowth` so NEAT can grow structure quickly; the final phase trains
 on the full 60 000-record set.
 
