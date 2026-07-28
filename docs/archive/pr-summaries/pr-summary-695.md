@@ -25,9 +25,15 @@ No web interface to screenshot — this is a comment-only change to bash scaffol
 - `grep -rn "GRQ" bump-deps.sh common/*.sh` returns no matches.
 - `bash -n` passes on all four modified scripts.
 - `shellcheck` passes on all four modified scripts.
-- `./quality.sh` passes (formatting, lint, type check, unit tests, and every example runner — the
-  runners source `common/example_runner_preamble.sh`, so a broken comment block would surface
-  there).
+- `./quality.sh` — `deno fmt`, `deno lint`, `deno check`, the full unit-test suite, and every
+  example runner pass. Every runner sources `common/example_runner_preamble.sh` (which in turn
+  sources both reworded `common/ensure_neat_ai_*.sh` helpers), so a broken comment block would
+  surface immediately.
+- One pre-existing, unrelated failure remains: **Adaptive Mutation Rate Demo** aborts with
+  `ValidationError: Creature … has invalid score` thrown inside `jsr:@stsoftware/neat-ai@5.9.43`
+  `FineTunePopulation.make`. It is already tracked as
+  [#699](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/699) (filed before this branch) and
+  is untouched by this comment-only change.
 
 ## Test Plan
 
