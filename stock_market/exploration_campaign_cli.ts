@@ -1,5 +1,5 @@
 /**
- * CLI entry point for the GRQ-style exploration campaign (issue #476).
+ * CLI entry point for the phased exploration campaign (issue #476).
  *
  * Usage (typically via `stock_market/exploration_campaign.sh`):
  *
@@ -68,7 +68,7 @@ if (import.meta.main) {
   const workingDir = String(args["working-dir"]);
   const promoteDir = String(args["promote-dir"]);
 
-  console.log("🧬 Stock Market — GRQ-style exploration campaign (issue #476)");
+  console.log("🧬 Stock Market — phased exploration campaign (issue #476)");
   console.log(`   working dir : ${workingDir}`);
   console.log(`   promote     : ${args.promote ? promoteDir : "(disabled — pass --promote)"}`);
   console.log(`   squash scan : ${args["squash-scan"] ? args["squash-target"] : "off"}`);
