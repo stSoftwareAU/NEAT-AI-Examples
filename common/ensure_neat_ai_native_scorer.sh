@@ -3,7 +3,9 @@
 # SHARED: Build rust_scorer from sibling NEAT-AI-scorer, export env
 # =============================================================================
 #
-# GRQ equivalent: worker/shared/ensure_neat_ai_native_scorer.sh
+# Shared helper: build rust_scorer from the sibling NEAT-AI-scorer clone and
+# export the env vars NEAT-AI reads; on build failure fall back to the JS/WASM
+# scorer.
 #
 # NEAT-AI (JSR @stsoftware/neat-ai) can score via the external binary when:
 #   NEAT_AI_RUST_SCORER_ENABLED=true
@@ -14,9 +16,8 @@
 #   PARENT_DIR/NEAT-AI-core
 #   PARENT_DIR/NEAT-AI-scorer
 #
-# Unlike GRQ, this repo has no model_fetch.sh or circuit breaker — clone the
-# sibling repos locally. On build failure we fall back to the JS/WASM scorer
-# (#1803 behaviour in GRQ).
+# There is no automatic fetch or circuit breaker — clone the sibling repos
+# locally. On build failure we fall back to the JS/WASM scorer.
 #
 # Usage:
 #   source "common/ensure_neat_ai_native_scorer.sh"

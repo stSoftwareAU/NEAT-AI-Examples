@@ -3,14 +3,15 @@
 # SHARED: Ensure NEAT-AI-Discovery is built (runlib.sh)
 # =============================================================================
 #
-# GRQ equivalent: worker/shared/ensure_neat_ai_discovery.sh
+# Shared helper: build the sibling NEAT-AI-Discovery clone so examples can
+# use the Rust Discovery library; skip quietly when the clone is absent.
 #
-# Sibling layout (same as GRQ, with NEAT-AI-Examples instead of GRQ):
+# Sibling layout:
 #   PARENT_DIR/NEAT-AI-Examples
 #   PARENT_DIR/NEAT-AI-Discovery
 #
-# Unlike GRQ, this repo has no model_fetch.sh — clone NEAT-AI-Discovery as a
-# sibling and this script runs ./scripts/runlib.sh when present.
+# There is no automatic fetch — clone NEAT-AI-Discovery as a sibling and this
+# script runs ./scripts/runlib.sh when present.
 #
 # Usage:
 #   source "common/ensure_neat_ai_discovery.sh"

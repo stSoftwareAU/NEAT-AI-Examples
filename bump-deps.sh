@@ -19,9 +19,8 @@
 # the tracked `deno.lock` is refreshed for the new pin set (Issue #418
 # — `quality.sh` runs `deno test --frozen`).
 #
-# Same role as stSoftwareAU/GRQ `bump-deps.sh`: run from the repo root,
-# commit the resulting `deno.json` / `deno.lock` changes, then run
-# `./quality.sh` before merging.
+# Usage: run from the repo root, commit the resulting `deno.json` /
+# `deno.lock` changes, then run `./quality.sh` before merging.
 set -euo pipefail
 
 ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"

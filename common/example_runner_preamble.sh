@@ -1,6 +1,6 @@
 #!/bin/bash
-# Shared preamble for every example run.sh — GRQ learn.sh equivalents for
-# Discovery (runlib), native rust_scorer, training read mode, and Deno flags.
+# Shared preamble sourced by every example run.sh — sets up Discovery
+# (runlib), the native rust_scorer, training read mode, and Deno flags.
 #
 # Requires REPO_ROOT to be set and cwd to be REPO_ROOT before sourcing.
 # Optional: set NEAT_EXAMPLES_MAX_HEAP_MB before sourcing (default 4096).
