@@ -3,10 +3,10 @@
 Build the Stock-Market example's fresh-run seed via the NEAT-AI **dataset-aware factory**
 (`Creature.forDataset(records, { cost: "MSE" })`) instead of a bare `new Creature(WINDOW_SIZE, 1)`,
 and add **robust, frozen input normalisation** that travels with the model into inference. This is
-the closest example to the private GRQ market-prediction use case, so it is the most valuable
-demonstration of data-derived initialisation on a regression / time-series problem (part of the
-factory-adoption tracker #517). **Only the seed and the input transform change — the `evolveDir`
-configuration (population, mutation, stop conditions, seed) is untouched.**
+the closest example to a production market-prediction use case we operate elsewhere, so it is the
+most valuable demonstration of data-derived initialisation on a regression / time-series problem
+(part of the factory-adoption tracker #517). **Only the seed and the input transform change — the
+`evolveDir` configuration (population, mutation, stop conditions, seed) is untouched.**
 
 Closes #519.
 

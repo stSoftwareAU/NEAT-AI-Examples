@@ -1,6 +1,6 @@
 ## Summary
 
-Wires the GRQ-style **exploration campaign** pipeline (structure phases → polish phase → optional
+Wires the phased **exploration campaign** pipeline (structure phases → polish phase → optional
 intelligent-design pass) onto `stock_market` as the first in-scope example to adopt the pattern from
 issue #476. The new runner subsamples training records during structure phases (`trainingSampleRate`
 5 → 10 → 15% with a small positive `costOfGrowth`) so NEAT-AI grows topology cheaply, then switches
@@ -20,8 +20,8 @@ Closes #476.
 ## Evidence
 
 CLI / orchestration change with no UI surface — verified via the unit tests below. Mermaid diagram
-added to `stock_market/README.md` (new "GRQ-Style Exploration Campaign" section) showing the phase
-pipeline and the hidden-dir → promote-dir flow:
+added to `stock_market/README.md` (new exploration-campaign section) showing the phase pipeline and
+the hidden-dir → promote-dir flow:
 
 ```mermaid
 flowchart LR
