@@ -27,6 +27,17 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
 **Why?** "How" tests break whenever the implementation is refactored, even when behaviour is
 unchanged. They add maintenance cost without catching real bugs.
 
+### 🧬 Never hand-roll a `CreatureExport`
+
+`CreatureExport` is a plain value object, not a boundary. A hand-rolled literal agrees with whatever
+the test asserts, hiding field-name typos, missing fields, and drift in the exported shape — and
+`as unknown as CreatureExport` stops the compiler warning at all. Build fixtures with
+`makeCreatureExport({ input, output, hidden?, seed? })` from
+[`common/creature_export_fixture.ts`](common/creature_export_fixture.ts), which exports a genuine
+`Creature`. Omit `hidden` for a fresh seed (`new Creature(input, output)`, random weights each
+call); pass `hidden` with a `seed` for a deterministic evolved-style topology. See
+[#722](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/722).
+
 ## 🌱 No warm starts — evolution must start from random noise
 
 Every in-scope example in this repository starts evolution from **uniform-random noise**. That is

@@ -9,8 +9,9 @@ import { assert, assertEquals, assertNotEquals, assertRejects } from "@std/asser
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 
-import type { CreatureExport } from "@stsoftware/neat-ai";
+import { Creature, type CreatureExport } from "@stsoftware/neat-ai";
 
+import { makeCreatureExport } from "./creature_export_fixture.ts";
 import {
   appendMultiRunRun,
   clampSubEpsilonRegression,
@@ -21,16 +22,13 @@ import {
   wipeMultiRunState,
 } from "./multi_run_state.ts";
 
-/** Tiny stand-in for a real CreatureExport (the helper does not validate the shape). */
-function tinyCreatureExport(seed: number): CreatureExport {
-  return {
-    neurons: [
-      { uuid: `n-${seed}-out`, type: "output", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [],
-    input: 1,
-    output: 1,
-  } as unknown as CreatureExport;
+/**
+ * Export of a real 1→1 creature, deterministic per `seed` so distinct runs
+ * persist distinct creatures. Using a genuine export (issue #722) means these
+ * persistence tests round-trip the same shape production writes to disk.
+ */
+function sampleCreatureExport(seed: number): CreatureExport {
+  return makeCreatureExport({ input: 1, output: 1, hidden: 1, seed });
 }
 
 function tinyMilestone(runGen: number, error: number): Omit<
@@ -64,7 +62,7 @@ Deno.test("appendMultiRunRun → loadMultiRunState round trip preserves data", a
   const tmp = Deno.makeTempDirSync({ prefix: "neat_multirun_" });
   try {
     const slug = "xor_classification";
-    const creatureExport = tinyCreatureExport(1);
+    const creatureExport = sampleCreatureExport(1);
     const newSamples = [tinyMilestone(1, 0.5), tinyMilestone(10, 0.2)];
 
     await appendMultiRunRun(slug, {
@@ -75,7 +73,13 @@ Deno.test("appendMultiRunRun → loadMultiRunState round trip preserves data", a
     }, tmp);
 
     const state = await loadMultiRunState(slug, tmp);
-    assertEquals(state.creatureExport, creatureExport);
+    // JSON persistence drops explicitly-undefined optional fields, so compare
+    // the serialised forms rather than the in-memory objects.
+    assertEquals(JSON.stringify(state.creatureExport), JSON.stringify(creatureExport));
+    // The persisted export must still be a creature the library can reload —
+    // the check a hand-rolled fixture could never satisfy (issue #722).
+    assert(state.creatureExport !== undefined, "creature export must be persisted");
+    Creature.fromJSON(state.creatureExport).validate();
     assertEquals(state.milestones.length, 2);
     assertEquals(state.milestones[0].runIndex, 1);
     assertEquals(state.milestones[0].cumulativeGen, 1);
@@ -97,7 +101,7 @@ Deno.test("runIndex increments and cumulativeGen is monotonic across runs", asyn
     const slug = "cart_pole";
 
     await appendMultiRunRun(slug, {
-      creatureExport: tinyCreatureExport(1),
+      creatureExport: sampleCreatureExport(1),
       newSamples: [tinyMilestone(1, 0.5), tinyMilestone(10, 0.3)],
       runIndex: 1,
       baseCumulativeGen: 0,
@@ -108,7 +112,7 @@ Deno.test("runIndex increments and cumulativeGen is monotonic across runs", asyn
     assertEquals(first.lastCumulativeGen, 10);
 
     await appendMultiRunRun(slug, {
-      creatureExport: tinyCreatureExport(2),
+      creatureExport: sampleCreatureExport(2),
       newSamples: [tinyMilestone(1, 0.2), tinyMilestone(5, 0.1)],
       runIndex: first.nextRunIndex,
       baseCumulativeGen: first.lastCumulativeGen,
@@ -141,7 +145,7 @@ Deno.test("wipeMultiRunState removes all four canonical artefact paths", async (
 
     // Seed creature.json and milestones.json via appendMultiRunRun.
     await appendMultiRunRun(slug, {
-      creatureExport: tinyCreatureExport(1),
+      creatureExport: sampleCreatureExport(1),
       newSamples: [tinyMilestone(1, 0.5)],
       runIndex: 1,
       baseCumulativeGen: 0,
@@ -319,7 +323,7 @@ Deno.test(
       // Run 1 ends at the exact value observed in issue #447.
       const prevError = 0.09991484951372887;
       await appendMultiRunRun(slug, {
-        creatureExport: tinyCreatureExport(1),
+        creatureExport: sampleCreatureExport(1),
         newSamples: [{
           runGen: 95,
           error: prevError,
@@ -335,7 +339,7 @@ Deno.test(
       // Run 2 reports the (slightly noisier) re-evaluated error — sub-epsilon worse.
       const noisyError = 0.0999148515359649;
       await appendMultiRunRun(slug, {
-        creatureExport: tinyCreatureExport(2),
+        creatureExport: sampleCreatureExport(2),
         newSamples: [{
           runGen: 1,
           error: noisyError,
@@ -371,7 +375,7 @@ Deno.test(
       const slug = "cart_pole";
 
       await appendMultiRunRun(slug, {
-        creatureExport: tinyCreatureExport(1),
+        creatureExport: sampleCreatureExport(1),
         newSamples: [tinyMilestone(10, 0.1)],
         runIndex: 1,
         baseCumulativeGen: 0,
@@ -381,7 +385,7 @@ Deno.test(
       // be recorded unchanged so reviewers see the real regression.
       const regressedError = 0.15;
       await appendMultiRunRun(slug, {
-        creatureExport: tinyCreatureExport(2),
+        creatureExport: sampleCreatureExport(2),
         newSamples: [tinyMilestone(5, regressedError)],
         runIndex: 2,
         baseCumulativeGen: 10,
@@ -407,7 +411,7 @@ Deno.test(
       const error1 = 0.2;
       const error2 = 0.2 + 5e-12; // sub-epsilon "regression" within the run
       await appendMultiRunRun(slug, {
-        creatureExport: tinyCreatureExport(1),
+        creatureExport: sampleCreatureExport(1),
         newSamples: [
           tinyMilestone(1, error1),
           { ...tinyMilestone(2, error2), error: error2 },
@@ -430,7 +434,7 @@ Deno.test("appendMultiRunRun writes deterministic JSON (round-trip identical)", 
   const tmp = Deno.makeTempDirSync({ prefix: "neat_multirun_" });
   try {
     const slug = "xor_classification";
-    const creatureExport = tinyCreatureExport(7);
+    const creatureExport = sampleCreatureExport(7);
     const newSamples = [tinyMilestone(1, 0.5)];
 
     await appendMultiRunRun(slug, {

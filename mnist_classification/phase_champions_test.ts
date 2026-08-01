@@ -4,6 +4,8 @@
 
 import { assert, assertEquals, assertFalse } from "@std/assert";
 
+import { makeCreatureExport } from "../common/creature_export_fixture.ts";
+import { CLASS_COUNT, FEATURE_COUNT } from "./data.ts";
 import {
   creatureExportsEqual,
   elitismForArchivedChampions,
@@ -22,6 +24,16 @@ import {
   shouldAdvanceLineageChampion,
   structurePhaseNamesForRepeat,
 } from "./phase_champions.ts";
+
+// Real MNIST-shaped exports (issue #722): a fresh seed exactly as the campaign
+// builds one, and an evolved-style champion carrying hidden neurons.
+const exportA = makeCreatureExport({ input: FEATURE_COUNT, output: CLASS_COUNT });
+const exportB = makeCreatureExport({
+  input: FEATURE_COUNT,
+  output: CLASS_COUNT,
+  hidden: 3,
+  seed: 722,
+});
 
 Deno.test("repeatSuffixFromPhaseName parses optional repeat suffix", () => {
   assertEquals(repeatSuffixFromPhaseName("structure-1"), "");
@@ -56,13 +68,6 @@ Deno.test("shouldAdvanceLineageChampion rejects hold-out regression", () => {
 });
 
 Deno.test("mergePopulationSeedExports deduplicates identical exports", () => {
-  const exportA = { input: 784, output: 10, neurons: [], synapses: [] };
-  const exportB = {
-    input: 784,
-    output: 10,
-    neurons: [{ uuid: "n1", type: "hidden" as const, bias: 0 }],
-    synapses: [],
-  };
   assert(creatureExportsEqual(exportA, { ...exportA }));
   assertEquals(mergePopulationSeedExports([exportA, exportB], [exportA]).length, 2);
 });
@@ -75,24 +80,19 @@ Deno.test("elitismForArchivedChampions reserves slots for archived sample-level 
 });
 
 Deno.test("savePhaseChampion round-trips and loadPriorStructureChampions finds earlier rungs", async () => {
-  const exportA = { input: 784, output: 10, neurons: [], synapses: [] };
-  const exportB = {
-    input: 784,
-    output: 10,
-    neurons: [{ uuid: "n1", type: "hidden" as const, bias: 0 }],
-    synapses: [],
-  };
   try {
     await savePhaseChampion("structure-1", exportA);
     await savePhaseChampion("structure-2", exportB);
 
     const loaded = await loadPhaseChampion("structure-1");
-    assertEquals(loaded?.input, 784);
+    // Whole-export fidelity, not just the input width — a round trip must
+    // preserve every field a real creature exports.
+    assert(loaded !== undefined && creatureExportsEqual(loaded, exportA));
 
     const prior = await loadPriorStructureChampions("structure-3");
     assertEquals(prior.length, 2);
-    assertEquals(prior[0].input, 784);
-    assertEquals(prior[1].neurons.length, 1);
+    assert(creatureExportsEqual(prior[0], exportA));
+    assert(creatureExportsEqual(prior[1], exportB));
   } finally {
     for (const name of ["structure-1", "structure-2"]) {
       try {
@@ -106,13 +106,6 @@ Deno.test("savePhaseChampion round-trips and loadPriorStructureChampions finds e
 
 Deno.test("maybeUpdateSampleRateChampion keeps the best score per sample rate", async () => {
   const trainingSampleRate = 0.991;
-  const exportA = { input: 784, output: 10, neurons: [], synapses: [] };
-  const exportB = {
-    input: 784,
-    output: 10,
-    neurons: [{ uuid: "n1", type: "hidden" as const, bias: 0 }],
-    synapses: [],
-  };
   try {
     try {
       await Deno.remove(sampleRateChampionPath(trainingSampleRate));
@@ -152,7 +145,8 @@ Deno.test("maybeUpdateSampleRateChampion keeps the best score per sample rate", 
 
     const record = await loadSampleRateChampion(trainingSampleRate);
     assertEquals(record?.evolveScore, 0.45);
-    assertEquals(record?.export.neurons.length, 1);
+    // The archived export is the higher-scoring creature, byte-for-byte.
+    assert(record !== undefined && creatureExportsEqual(record.export, exportB));
   } finally {
     try {
       await Deno.remove(sampleRateChampionPath(trainingSampleRate));
@@ -166,13 +160,6 @@ Deno.test("loadOtherSampleRateChampions returns every archived rate except the c
   const currentRate = 0.992;
   const otherRateA = 0.993;
   const otherRateB = 0.994;
-  const exportA = { input: 784, output: 10, neurons: [], synapses: [] };
-  const exportB = {
-    input: 784,
-    output: 10,
-    neurons: [{ uuid: "n1", type: "hidden" as const, bias: 0 }],
-    synapses: [],
-  };
   try {
     await maybeUpdateSampleRateChampion({
       trainingSampleRate: otherRateA,
