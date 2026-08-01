@@ -92,12 +92,16 @@ Deno.test("runConstructiveEpisode — startCity override threads through", () =>
   assert(isCompleteTour(result.tour, TINY_CITIES.length));
 });
 
-Deno.test("geoDistance — symmetric and zero between identical cities", () => {
+Deno.test("geoDistance — symmetric, and identical cities are 1 km apart per TSPLIB GEO", () => {
   const burma14 = loadInstance("burma14");
   const a = burma14.cities[0];
   const b = burma14.cities[1];
   assertAlmostEquals(geoDistance(a, b), geoDistance(b, a), 1e-9);
-  assertEquals(geoDistance(a, a), Math.trunc(0 + 1));
+  // TSPLIB95 §2.4 defines GEO as `dij = (int) (RRR * acos(q1 * q2 * q3) + 1.0)`.
+  // For coincident cities the arc term is acos(1) = 0, so the required answer
+  // is trunc(0 + 1.0) = 1 km — not 0. The +1.0 is part of the spec's integer
+  // rounding, so a self-distance of 1 is required behaviour, not an artefact.
+  assertEquals(geoDistance(a, a), 1);
 });
 
 // Replaces the HOW test that re-summed `geoDistance` inline (issue #490).
