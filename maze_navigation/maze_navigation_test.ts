@@ -177,7 +177,6 @@ Deno.test({
     // With an unreachable targetError and a tiny iterations budget the
     // run must stop at the cap and report `solved=false`.
     const cap = 3;
-    const start = Date.now();
     const result = await evolveMazeController({
       seed: 999,
       populationSize: 4,
@@ -188,7 +187,6 @@ Deno.test({
       mutationRate: 0.01,
       addNeuronRate: 0,
     });
-    const elapsedMs = Date.now() - start;
     assertGreaterOrEqual(
       cap,
       result.generations,
@@ -198,10 +196,6 @@ Deno.test({
       result.solved,
       false,
       "with vanishing mutation the search must not solve the maze within the cap",
-    );
-    assert(
-      elapsedMs < 60_000,
-      `expected the run to finish well under 60 seconds, took ${elapsedMs} ms`,
     );
   },
 });

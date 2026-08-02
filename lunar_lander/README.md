@@ -260,6 +260,17 @@ LUNAR_QUICK=1 ./lunar_lander/run.sh   # env var
 Without quick mode, the single-run path uses `targetError = 0.01` and the multi-run timeout default
 of 5 minutes.
 
+The 60-second quick-mode budget from
+[#201](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/201) is measured by
+[`lunar_lander_bench.ts`](lunar_lander_bench.ts), not asserted in the unit tests — `deno test` runs
+files in parallel, so wall-clock measurements there are unreliable (see
+[AGENTS.md](../AGENTS.md#-unit-tests-vs-benchmarks) and
+[#724](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/724)). Report the number with:
+
+```bash
+deno bench --allow-read --allow-write --allow-env lunar_lander/
+```
+
 Artefacts:
 
 - `.synthetic-lunar-lander/creatures/champion.json` — the fittest controller from the latest run

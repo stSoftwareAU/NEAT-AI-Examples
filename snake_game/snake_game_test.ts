@@ -357,7 +357,6 @@ Deno.test({
     // NEAT-AI 5.0.0 requires `timeoutMinutes` to be an integer ≥ 1, so
     // sub-minute wall-clock budgets are no longer expressible. The
     // standard short-circuit for unit tests is the `iterations` cap.
-    const start = Date.now();
     const result = await evolveSnakeController({
       seed: 999,
       populationSize: 4,
@@ -370,7 +369,6 @@ Deno.test({
       addNeuronRate: 0,
       trials: 2,
     });
-    const elapsedMs = Date.now() - start;
     assertGreaterOrEqual(
       1,
       result.generations,
@@ -380,10 +378,6 @@ Deno.test({
       result.solved,
       false,
       "with vanishing mutation and a 1-gen cap the search must not solve snake",
-    );
-    assert(
-      elapsedMs < 60_000,
-      `expected the run to finish well under 60 seconds, took ${elapsedMs} ms`,
     );
   },
 });

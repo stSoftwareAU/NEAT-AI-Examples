@@ -222,9 +222,8 @@ Deno.test({
     // NEAT-AI 5.0.0 requires `timeoutMinutes` to be an integer ≥ 1, so
     // sub-minute wall-clock budgets are no longer expressible there.
     // The standard short-circuit for unit tests is the `iterations`
-    // cap. We assert the cap is honoured and the run finishes well
-    // inside the surrounding test timeout.
-    const start = Date.now();
+    // cap, which is what this test asserts. Wall-clock budgets belong
+    // in a benchmark, not here (AGENTS.md "Unit Tests vs Benchmarks").
     const result = await evolveCartPoleController({
       seed: 999,
       populationSize: 4,
@@ -237,15 +236,10 @@ Deno.test({
       trialSeed: 1,
       initialPerturbation: 0.2,
     });
-    const elapsedMs = Date.now() - start;
     assertGreaterOrEqual(
       1,
       result.generations,
       `expected the iterations cap to bound generations to 1, got ${result.generations}`,
-    );
-    assert(
-      elapsedMs < 60_000,
-      `expected the run to finish well under 60 seconds, took ${elapsedMs} ms`,
     );
   },
 });

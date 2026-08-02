@@ -560,7 +560,6 @@ Deno.test({
     // With an unreachable targetError and a tiny iterations budget the
     // run must stop at the cap and report `solved=false`.
     const cap = 2;
-    const start = Date.now();
     const result = await evolveLanderController({
       seed: 999,
       populationSize: 4,
@@ -574,7 +573,6 @@ Deno.test({
       trialSeed: 1,
       initialPerturbation: 1.0,
     });
-    const elapsedMs = Date.now() - start;
     assertGreaterOrEqual(
       cap,
       result.generations,
@@ -585,10 +583,6 @@ Deno.test({
       `expected finite wallclockMs, got ${result.wallclockMs}`,
     );
     assertGreater(result.generations, 0);
-    assert(
-      elapsedMs < 60_000,
-      `expected the run to finish well under 60 seconds, took ${elapsedMs} ms`,
-    );
   },
 });
 
@@ -2005,10 +1999,11 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     // Drive the evolver directly with the quick-mode overrides and
-    // assert the run finishes well inside the 60-second regression
-    // budget the issue asks for. This is the closest we can get to a
-    // wall-clock assertion without spawning a subprocess.
-    const start = Date.now();
+    // assert the behavioural contract the issue asks for: the run must
+    // exit via the iterations backstop rather than grinding on. The
+    // 60-second wall-clock budget itself lives in
+    // `lunar_lander_bench.ts` — timing assertions are unreliable in the
+    // parallel test runner (AGENTS.md "Unit Tests vs Benchmarks").
     const result = await evolveLanderController({
       ...DEFAULT_EVOLVE_OPTIONS,
       populationSize: 6,
@@ -2016,13 +2011,13 @@ Deno.test({
       timeoutMinutes: QUICK_TIMEOUT_MINUTES,
       iterations: QUICK_ITERATIONS,
     });
-    const elapsedMs = Date.now() - start;
     // The runner stops on iterations because targetError > 1 is unreachable.
     assertEquals(result.stopReason, "iterations");
-    // Wall-clock must be well under the 60-second regression budget.
-    assert(
-      elapsedMs < 60_000,
-      `quick-mode evolveLanderController took ${elapsedMs}ms, expected < 60000ms`,
+    assertGreaterOrEqual(
+      QUICK_ITERATIONS,
+      result.generations,
+      `expected quick mode to stop at the ${QUICK_ITERATIONS}-generation cap, ` +
+        `got ${result.generations}`,
     );
     assert(
       Number.isFinite(result.wallclockMs),
