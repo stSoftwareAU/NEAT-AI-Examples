@@ -36,6 +36,7 @@ import {
   runMinimalSeedShowcase,
   SYNTHETIC_CONFIG,
 } from "./evolution_showcase.ts";
+import { assertChampionContract } from "../common/champion_contract.ts";
 import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 
 /* ------------------------------------------------------------------ */
@@ -345,13 +346,10 @@ Deno.test(
       assertGreater(s.finalSynapses, 0, "final synapse count must be positive");
       assertEquals(s.targetError, 0.5);
       assertEquals(s.timeoutMinutes, 1);
-      // The champion must be the same JS object the caller passed in —
-      // evolveDir mutates the creature in place.
-      assertEquals(
-        result.champion === seed,
-        true,
-        "champion must be the in-place creature",
-      );
+      // Observable contract (#725): the champion validates, keeps the seed's
+      // arity, and activates to finite output — regardless of whether NEAT-AI
+      // mutates the seed in place or hands back a fresh creature.
+      assertChampionContract(result.champion, { input: INPUT_COUNT, output: OUTPUT_COUNT });
     } finally {
       Deno.removeSync(tmp, { recursive: true });
     }

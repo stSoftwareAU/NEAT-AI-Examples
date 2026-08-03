@@ -29,6 +29,7 @@ import {
   runMinimalSeedEvolution,
   SYNTHETIC_CONFIG,
 } from "./discover_missing_neuron.ts";
+import { assertChampionContract } from "../common/champion_contract.ts";
 import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { asCreatureExport } from "../common/legacy_types.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
@@ -513,7 +514,7 @@ Deno.test("runMinimalSeedEvolution captures milestone fields from a minimal seed
   }
 });
 
-Deno.test("runMinimalSeedEvolution leaves the passed-in creature as the champion", async () => {
+Deno.test("runMinimalSeedEvolution returns a valid champion with the seed's arity", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -534,10 +535,10 @@ Deno.test("runMinimalSeedEvolution leaves the passed-in creature as the champion
       maxIterations: 4,
       seed: 11,
     });
-    // The champion must be the same JS object the caller passed in —
-    // evolveDir mutates the creature in place. This guards against a
-    // future refactor accidentally breaking that contract.
-    assertEquals(result.champion === seed, true, "champion must be the in-place creature");
+    // Observable contract (#725): the champion validates, keeps the seed's
+    // arity, and activates to finite output — regardless of whether NEAT-AI
+    // mutates the seed in place or hands back a fresh creature.
+    assertChampionContract(result.champion, { input: INPUT_COUNT, output: OUTPUT_COUNT });
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
   }
