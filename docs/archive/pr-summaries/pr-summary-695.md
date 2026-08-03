@@ -2,27 +2,28 @@
 
 ## Summary
 
-Comments in the repo's shared shell scaffolding named the private `stSoftwareAU/GRQ` repository and
-pointed public readers at its internal paths (`worker/shared/…`, `model_fetch.sh`, `learn.sh`) and
-at an issue in its private tracker (`#1803`). None of those resolve for a public reader, and they
-leak the shape of a private codebase for no benefit.
+Comments in the repo's shared shell scaffolding named a private production repository and pointed
+public readers at its internal paths (`worker/shared/…`, `model_fetch.sh`, `learn.sh`) and at an
+issue in its private tracker. None of those resolve for a public reader, and they leak the shape of
+a private codebase for no benefit.
 
 Every mention is reworded to concept level — what the script does for **this** repo — with the
 private-repo cross-references dropped entirely. Comment text only; no executable line changed.
 Closes #695.
 
-| File                                     | Before                                                                                                              | After                                                                                                                        |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `bump-deps.sh`                           | "Same role as stSoftwareAU/GRQ `bump-deps.sh`: run from the repo root, …"                                           | "Usage: run from the repo root, …"                                                                                           |
-| `common/ensure_neat_ai_discovery.sh`     | "GRQ equivalent: worker/shared/…", "Sibling layout (same as GRQ …)", "Unlike GRQ, this repo has no model_fetch.sh"  | "Shared helper: build the sibling NEAT-AI-Discovery clone …", "Sibling layout:", "There is no automatic fetch"               |
-| `common/ensure_neat_ai_native_scorer.sh` | "GRQ equivalent: worker/shared/…", "Unlike GRQ, … no model_fetch.sh or circuit breaker", "(#1803 behaviour in GRQ)" | "Shared helper: build rust_scorer from the sibling NEAT-AI-scorer clone …", "There is no automatic fetch or circuit breaker" |
-| `common/example_runner_preamble.sh`      | "Shared preamble for every example run.sh — GRQ learn.sh equivalents for …"                                         | "Shared preamble sourced by every example run.sh — sets up …"                                                                |
+| File                                     | Before                                                                                                                            | After                                                                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `bump-deps.sh`                           | a comment giving the script's role as "same as" the private repository's own `bump-deps.sh`                                       | "Usage: run from the repo root, …"                                                                                           |
+| `common/ensure_neat_ai_discovery.sh`     | comments citing the private repository's equivalent script, its sibling layout, and its `model_fetch.sh`                          | "Shared helper: build the sibling NEAT-AI-Discovery clone …", "Sibling layout:", "There is no automatic fetch"               |
+| `common/ensure_neat_ai_native_scorer.sh` | comments citing the private repository's equivalent script, its `model_fetch.sh` and circuit breaker, and an issue in its tracker | "Shared helper: build rust_scorer from the sibling NEAT-AI-scorer clone …", "There is no automatic fetch or circuit breaker" |
+| `common/example_runner_preamble.sh`      | a comment describing the preamble as the equivalent of the private repository's `learn.sh`                                        | "Shared preamble sourced by every example run.sh — sets up …"                                                                |
 
 ## Evidence
 
 No web interface to screenshot — this is a comment-only change to bash scaffolding. Verified by:
 
-- `grep -rn "GRQ" bump-deps.sh common/*.sh` returns no matches.
+- A grep for the private repository's name across `bump-deps.sh` and `common/*.sh` returns no
+  matches.
 - `bash -n` passes on all four modified scripts.
 - `shellcheck` passes on all four modified scripts.
 - `./quality.sh` — `deno fmt`, `deno lint`, `deno check`, the full unit-test suite, and every
