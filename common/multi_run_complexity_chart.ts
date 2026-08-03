@@ -382,8 +382,8 @@ function renderSeries(
       (s) => `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(s))}`,
     );
     out.push(
-      `    <polyline fill="none" stroke="${colour}" stroke-width="1.5" ` +
-        `points="${points.join(" ")}"/>`,
+      `    <polyline class="${lineClass}-segment" fill="none" stroke="${colour}" ` +
+        `stroke-width="1.5" points="${points.join(" ")}"/>`,
     );
   }
   for (const s of samples) {

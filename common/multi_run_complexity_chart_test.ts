@@ -7,10 +7,17 @@
  * inspecting how the renderer builds it.
  */
 
-import { assert, assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertNotEquals,
+  assertStringIncludes,
+  assertThrows,
+} from "@std/assert";
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
 import { renderMultiRunComplexityChartSVG } from "./multi_run_complexity_chart.ts";
+import { strokeForClass } from "./svg_test_utils.ts";
 
 /** Build a two-run milestone series across the canonical generation schedule. */
 function makeMultiRunSeries(): MultiRunMilestone[] {
@@ -60,13 +67,19 @@ Deno.test("renderMultiRunComplexityChartSVG: happy path emits valid SVG with bot
   // Both series must be plotted (one polyline segment per run each).
   assertStringIncludes(svg, "neurons-line");
   assertStringIncludes(svg, "synapses-line");
-  assertEquals(
-    (svg.match(/<polyline fill="none" stroke="#2ca02c"/g) ?? []).length,
-    2,
-  );
-  assertEquals(
-    (svg.match(/<polyline fill="none" stroke="#d62728"/g) ?? []).length,
-    2,
+  assertEquals((svg.match(/class="neurons-line-segment"/g) ?? []).length, 2);
+  assertEquals((svg.match(/class="synapses-line-segment"/g) ?? []).length, 2);
+
+  // The two series must be visually separable. Asserting the strokes differ —
+  // rather than pinning either hex — survives a palette restyle.
+  const neuronsStroke = strokeForClass(svg, "neurons-line-segment");
+  const synapsesStroke = strokeForClass(svg, "synapses-line-segment");
+  assert(neuronsStroke, "neurons polyline must carry a stroke");
+  assert(synapsesStroke, "synapses polyline must carry a stroke");
+  assertNotEquals(
+    neuronsStroke,
+    synapsesStroke,
+    "neurons and synapses series need distinct strokes",
   );
 
   // Dual axes plus shared x axis present.

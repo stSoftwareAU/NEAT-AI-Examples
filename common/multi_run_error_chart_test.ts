@@ -61,10 +61,7 @@ Deno.test("renderMultiRunErrorChartSVG: happy path emits valid SVG with error po
   // runs (issue #431 — the evolution-progress line is monotonically
   // non-increasing, so per-run segmentation is no longer needed).
   assertStringIncludes(svg, "error-line");
-  assertEquals(
-    (svg.match(/<polyline fill="none" stroke="#d62728"/g) ?? []).length,
-    1,
-  );
+  assertEquals((svg.match(/class="error-envelope"/g) ?? []).length, 1);
 
   // Both axes present.
   assertStringIncludes(svg, "x-axis");
@@ -136,7 +133,7 @@ Deno.test(
     // (SVG Y grows downward, lower error → larger Y). Equivalently: the
     // Y coordinates must be non-decreasing as we walk left → right.
     const polyMatch = svg.match(
-      /<polyline fill="none" stroke="#d62728"[^>]*points="([^"]+)"/,
+      /<polyline class="error-envelope"[^>]*points="([^"]+)"/,
     );
     assert(polyMatch, "envelope polyline must be present in SVG");
     const ys = polyMatch[1]

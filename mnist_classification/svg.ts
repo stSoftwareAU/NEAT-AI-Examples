@@ -225,7 +225,8 @@ function renderCell(
     const labelX = originX + CELL_IMAGE_SIZE / 2;
     const labelY = originY + CELL_IMAGE_SIZE + CELL_LABEL_HEIGHT - 8;
     fragments.push(
-      `    <text x="${fmt(labelX)}" y="${fmt(labelY)}" text-anchor="middle" ` +
+      `    <text class="cell-label cell-label-${correct ? "correct" : "wrong"}" ` +
+        `x="${fmt(labelX)}" y="${fmt(labelY)}" text-anchor="middle" ` +
         `font-family="monospace" font-size="14" fill="${labelColour}">` +
         `${escapeXml(labelText)}</text>`,
     );

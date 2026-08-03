@@ -12,6 +12,7 @@ import {
   renderOutcomeBarChartSVG,
   type ScenarioOutcome,
 } from "./outcome_bar_chart.ts";
+import { fillForClass } from "./svg_test_utils.ts";
 
 function makeOutcomes(): ScenarioOutcome[] {
   // A spread that exercises every outcome category at least once.
@@ -124,18 +125,38 @@ Deno.test("renderOutcomeBarChartSVG: single-outcome input does not produce NaN",
   assert(!svg.includes("NaN"), "SVG must not contain NaN");
 });
 
-Deno.test("renderOutcomeBarChartSVG: fills each category with its outcome colour", () => {
-  // Guards the module-private OUTCOME_COLOUR palette through observable
-  // output: every category present in the input must appear as a fill in
-  // the rendered SVG (count bars, strip cells, and legend swatches).
+Deno.test("renderOutcomeBarChartSVG: each outcome category gets a distinct fill", () => {
+  // The contract is that the four categories are visually separable, not
+  // that any particular hex is used — a palette restyle must not fail here.
   const svg = renderOutcomeBarChartSVG(makeOutcomes());
-  const expectedFills: Record<string, string> = {
-    landed: "#2ca02c",
-    crashed: "#d62728",
-    out_of_bounds: "#7f7f7f",
-    flying: "#1f77b4",
-  };
+  const fills = OUTCOME_ORDER.map((cat) => fillForClass(svg, `count-bar-${cat}`));
+  for (let i = 0; i < OUTCOME_ORDER.length; i++) {
+    assert(fills[i], `count bar for ${OUTCOME_ORDER[i]} must carry a fill`);
+  }
+  assertEquals(
+    new Set(fills).size,
+    fills.length,
+    "each outcome needs a distinct colour",
+  );
+});
+
+Deno.test("renderOutcomeBarChartSVG: bar, strip cell and legend swatch agree per category", () => {
+  // The three surfaces exist to be read together, so they must share one
+  // colour per category. Asserting agreement — rather than the hex itself —
+  // keeps the test behavioural.
+  const svg = renderOutcomeBarChartSVG(makeOutcomes());
   for (const cat of OUTCOME_ORDER) {
-    assertStringIncludes(svg, `fill="${expectedFills[cat]}"`);
+    const bar = fillForClass(svg, `count-bar-${cat}`);
+    assert(bar, `count bar for ${cat} must carry a fill`);
+    assertEquals(
+      fillForClass(svg, `scenario-cell-${cat}`),
+      bar,
+      `strip cell for ${cat} must match its count bar`,
+    );
+    assertEquals(
+      fillForClass(svg, `legend-swatch-${cat}`),
+      bar,
+      `legend swatch for ${cat} must match its count bar`,
+    );
   }
 });
