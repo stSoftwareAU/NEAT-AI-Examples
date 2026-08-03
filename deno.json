@@ -26,7 +26,7 @@
     "@std/fs": "jsr:@std/fs@1.0.24",
     "@std/path": "jsr:@std/path@1.1.6",
     "@std/yaml": "jsr:@std/yaml@1.2.0",
-    "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@6.2.2",
+    "@stsoftware/neat-ai": "jsr:@stsoftware/neat-ai@6.2.4",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
   "lint": {
