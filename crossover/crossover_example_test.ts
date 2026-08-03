@@ -20,6 +20,7 @@ import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature } from "@stsoftware/neat-ai";
 
+import { assertChampionContract } from "../common/champion_contract.ts";
 import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import {
   buildFactorySeedCreature,
@@ -631,16 +632,18 @@ Deno.test(
         seedSynapses,
         "seedSynapseCount should match the seed",
       );
-      // Champion is the same reference as the seed, mutated in place.
-      assertEquals(result.champion, seed, "champion should be the same reference as the seed");
+      // Observable contract (#725): the champion validates, keeps the seed's
+      // arity, and activates to finite output — regardless of whether NEAT-AI
+      // mutates the seed in place or hands back a fresh creature.
+      assertChampionContract(result.champion, { input: INPUT_COUNT, output: OUTPUT_COUNT });
 
       // Summary contract — all numeric fields finite, topology matches champion.
       assertEquals(Number.isFinite(result.summary.finalError), true);
       assertEquals(Number.isFinite(result.summary.finalScore), true);
       assertEquals(result.summary.seedNeurons, seedNeurons);
       assertEquals(result.summary.seedSynapses, seedSynapses);
-      assertEquals(result.summary.finalNeurons, seed.neurons.length);
-      assertEquals(result.summary.finalSynapses, seed.synapses.length);
+      assertEquals(result.summary.finalNeurons, result.champion.neurons.length);
+      assertEquals(result.summary.finalSynapses, result.champion.synapses.length);
       assertGreater(result.summary.generations, 0);
     } finally {
       Deno.removeSync(tmpDir, { recursive: true });
