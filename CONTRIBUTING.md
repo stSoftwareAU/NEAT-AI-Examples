@@ -212,6 +212,8 @@ Before submitting a pull request, verify the following:
 - [ ] New code has corresponding unit tests (placed next to the module as `*_test.ts`)
 - [ ] Australian English spelling is used throughout 🇦🇺
 - [ ] `README.md` is updated if your change adds or modifies an example
+- [ ] [`CHANGELOG.md`](CHANGELOG.md) has an `[Unreleased]` entry if the change is notable (a
+      behaviour shift, a new example, or a dependency bump that changes results)
 - [ ] Commit messages are clear and reference the relevant issue number
 - [ ] The PR targets the `Develop` branch
 
