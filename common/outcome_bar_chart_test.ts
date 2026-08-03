@@ -12,17 +12,7 @@ import {
   renderOutcomeBarChartSVG,
   type ScenarioOutcome,
 } from "./outcome_bar_chart.ts";
-
-/**
- * Read the `fill` attribute of the first element tagged with `className`.
- * Lets colour assertions name a semantic hook instead of a hex literal.
- */
-function fillForClass(svg: string, className: string): string | undefined {
-  const tag = svg.match(
-    new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${className}\\b[^"]*"[^>]*>`),
-  );
-  return tag?.[0].match(/fill="([^"]+)"/)?.[1];
-}
+import { fillForClass } from "./svg_test_utils.ts";
 
 function makeOutcomes(): ScenarioOutcome[] {
   // A spread that exercises every outcome category at least once.

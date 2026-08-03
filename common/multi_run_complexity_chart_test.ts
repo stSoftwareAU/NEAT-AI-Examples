@@ -17,17 +17,7 @@ import {
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
 import { renderMultiRunComplexityChartSVG } from "./multi_run_complexity_chart.ts";
-
-/**
- * Read the `stroke` attribute of the first element tagged with `className`.
- * Lets colour assertions name a semantic hook instead of a hex literal.
- */
-function strokeForClass(svg: string, className: string): string | undefined {
-  const tag = svg.match(
-    new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${className}\\b[^"]*"[^>]*>`),
-  );
-  return tag?.[0].match(/stroke="([^"]+)"/)?.[1];
-}
+import { strokeForClass } from "./svg_test_utils.ts";
 
 /** Build a two-run milestone series across the canonical generation schedule. */
 function makeMultiRunSeries(): MultiRunMilestone[] {

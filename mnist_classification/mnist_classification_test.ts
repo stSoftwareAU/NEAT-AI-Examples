@@ -65,17 +65,7 @@ import {
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
-
-/**
- * Read the `fill` attribute of the first element tagged with `className`.
- * Lets colour assertions name a semantic hook instead of a hex literal.
- */
-function fillForClass(svg: string, className: string): string | undefined {
-  const tag = svg.match(
-    new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${className}\\b[^"]*"[^>]*>`),
-  );
-  return tag?.[0].match(/fill="([^"]+)"/)?.[1];
-}
+import { fillForClass } from "../common/svg_test_utils.ts";
 
 /**
  * Build a synthetic IDX-3 image buffer with `count` images of size
