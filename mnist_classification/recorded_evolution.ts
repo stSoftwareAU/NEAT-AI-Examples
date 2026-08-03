@@ -31,8 +31,8 @@ import {
   buildGridCells,
   EXAMPLE_SLUG,
   type MnistEvolveResult,
-  RUN_SUMMARY_DOCS_PATH,
-  SCREENSHOT_PATH,
+  mnistRunSummaryDocsPath,
+  mnistScreenshotPath,
 } from "./mnist_classification.ts";
 import { type DigitSplit } from "./data.ts";
 import { renderDigitGridSVG } from "./svg.ts";
@@ -69,9 +69,8 @@ export async function wipeRecordedEvolution(baseDir = "docs"): Promise<void> {
   await wipeCampaignRecord(EXAMPLE_SLUG, baseDir);
   for (
     const path of [
-      RUN_SUMMARY_DOCS_PATH,
-      SCREENSHOT_PATH,
-      join(baseDir, "data", EXAMPLE_SLUG, "run_summary.json"),
+      mnistRunSummaryDocsPath(baseDir),
+      mnistScreenshotPath(baseDir),
     ]
   ) {
     try {
@@ -158,9 +157,9 @@ export async function persistMnistRecordedPhase(options: {
     validationAccuracy: options.holdout.validationAccuracy,
   });
   ensureDirSync(join(base, "screenshots"));
-  await Deno.writeTextFile(SCREENSHOT_PATH, gridSvg);
+  await Deno.writeTextFile(mnistScreenshotPath(base), gridSvg);
 
-  await safeWriteJson(RUN_SUMMARY_DOCS_PATH, {
+  await safeWriteJson(mnistRunSummaryDocsPath(base), {
     trainingRecords: options.trainingRecords,
     evolveWallClockMs: options.evolveResult.wallClockMs,
     targetError: 0.0001,

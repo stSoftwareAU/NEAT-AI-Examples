@@ -12,10 +12,15 @@ import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import type { CreatureExport } from "@stsoftware/neat-ai";
 
-import { MNIST_ROOT } from "./mnist_classification.ts";
+import { MNIST_EXPLORATION_ROOT } from "./mnist_classification.ts";
+
+/** Per-phase / per-rate champion directory under an exploration root. */
+export function phaseChampionsDir(explorationRoot = MNIST_EXPLORATION_ROOT): string {
+  return join(explorationRoot, "phase-champions");
+}
 
 /** On-disk directory for per-phase and per-rate champion JSON exports. */
-export const PHASE_CHAMPIONS_DIR = join(MNIST_ROOT, "exploration", "phase-champions");
+export const PHASE_CHAMPIONS_DIR = phaseChampionsDir();
 
 /** Persisted champion for one training sample rate. */
 export interface SampleRateChampionRecord {
@@ -65,13 +70,22 @@ export function sampleRateKey(trainingSampleRate: number): string {
 }
 
 /** Path to the archived champion for one completed phase. */
-export function phaseChampionPath(phaseName: string): string {
-  return join(PHASE_CHAMPIONS_DIR, `${phaseName}.json`);
+export function phaseChampionPath(
+  phaseName: string,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
+): string {
+  return join(phaseChampionsDir(explorationRoot), `${phaseName}.json`);
 }
 
 /** Path to the best-known champion at one training sample rate. */
-export function sampleRateChampionPath(trainingSampleRate: number): string {
-  return join(PHASE_CHAMPIONS_DIR, `rate-${sampleRateKey(trainingSampleRate)}.json`);
+export function sampleRateChampionPath(
+  trainingSampleRate: number,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
+): string {
+  return join(
+    phaseChampionsDir(explorationRoot),
+    `rate-${sampleRateKey(trainingSampleRate)}.json`,
+  );
 }
 
 /** True when two creature exports describe the same topology and weights. */
@@ -111,17 +125,22 @@ export function shouldAdvanceLineageChampion(
 export async function savePhaseChampion(
   phaseName: string,
   creatureExport: CreatureExport,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
 ): Promise<void> {
-  ensureDirSync(PHASE_CHAMPIONS_DIR);
-  await Deno.writeTextFile(phaseChampionPath(phaseName), JSON.stringify(creatureExport));
+  ensureDirSync(phaseChampionsDir(explorationRoot));
+  await Deno.writeTextFile(
+    phaseChampionPath(phaseName, explorationRoot),
+    JSON.stringify(creatureExport),
+  );
 }
 
 /** Load a previously archived phase champion, if present. */
 export async function loadPhaseChampion(
   phaseName: string,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
 ): Promise<CreatureExport | undefined> {
   try {
-    const text = await Deno.readTextFile(phaseChampionPath(phaseName));
+    const text = await Deno.readTextFile(phaseChampionPath(phaseName, explorationRoot));
     return JSON.parse(text) as CreatureExport;
   } catch {
     return undefined;
@@ -134,10 +153,11 @@ export async function loadPhaseChampion(
  */
 export async function loadPriorStructureChampions(
   phaseName: string,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
 ): Promise<CreatureExport[]> {
   const exports: CreatureExport[] = [];
   for (const name of priorStructurePhaseNames(phaseName)) {
-    const creatureExport = await loadPhaseChampion(name);
+    const creatureExport = await loadPhaseChampion(name, explorationRoot);
     if (creatureExport !== undefined) {
       exports.push(creatureExport);
     }
@@ -148,9 +168,12 @@ export async function loadPriorStructureChampions(
 /** Load the archived champion for one training sample rate, if present. */
 export async function loadSampleRateChampion(
   trainingSampleRate: number,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
 ): Promise<SampleRateChampionRecord | undefined> {
   try {
-    const text = await Deno.readTextFile(sampleRateChampionPath(trainingSampleRate));
+    const text = await Deno.readTextFile(
+      sampleRateChampionPath(trainingSampleRate, explorationRoot),
+    );
     return JSON.parse(text) as SampleRateChampionRecord;
   } catch {
     return undefined;
@@ -168,13 +191,16 @@ export async function maybeUpdateSampleRateChampion(options: {
   evolveScore: number;
   testAccuracy: number;
   validationAccuracy: number;
+  /** Working root override (defaults to the hidden campaign directory). */
+  explorationRoot?: string;
 }): Promise<boolean> {
-  const existing = await loadSampleRateChampion(options.trainingSampleRate);
+  const explorationRoot = options.explorationRoot ?? MNIST_EXPLORATION_ROOT;
+  const existing = await loadSampleRateChampion(options.trainingSampleRate, explorationRoot);
   if (existing !== undefined && options.evolveScore <= existing.evolveScore) {
     return false;
   }
 
-  ensureDirSync(PHASE_CHAMPIONS_DIR);
+  ensureDirSync(phaseChampionsDir(explorationRoot));
   const record: SampleRateChampionRecord = {
     trainingSampleRate: options.trainingSampleRate,
     evolveScore: options.evolveScore,
@@ -185,7 +211,7 @@ export async function maybeUpdateSampleRateChampion(options: {
     timestamp: new Date().toISOString(),
   };
   await Deno.writeTextFile(
-    sampleRateChampionPath(options.trainingSampleRate),
+    sampleRateChampionPath(options.trainingSampleRate, explorationRoot),
     JSON.stringify(record),
   );
   return true;
@@ -197,19 +223,21 @@ export async function maybeUpdateSampleRateChampion(options: {
  */
 export async function loadOtherSampleRateChampions(
   currentTrainingSampleRate: number,
+  explorationRoot = MNIST_EXPLORATION_ROOT,
 ): Promise<CreatureExport[]> {
   const exports: CreatureExport[] = [];
   const currentKey = sampleRateKey(currentTrainingSampleRate);
+  const championsDir = phaseChampionsDir(explorationRoot);
 
   try {
-    for await (const entry of Deno.readDir(PHASE_CHAMPIONS_DIR)) {
+    for await (const entry of Deno.readDir(championsDir)) {
       if (!entry.isFile || !entry.name.startsWith("rate-") || !entry.name.endsWith(".json")) {
         continue;
       }
       const key = entry.name.slice("rate-".length, -".json".length);
       if (key === currentKey) continue;
 
-      const text = await Deno.readTextFile(join(PHASE_CHAMPIONS_DIR, entry.name));
+      const text = await Deno.readTextFile(join(championsDir, entry.name));
       const record = JSON.parse(text) as SampleRateChampionRecord;
       exports.push(record.export);
     }

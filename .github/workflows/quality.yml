@@ -217,7 +217,7 @@ jobs:
           # repeated here or deno test walks into them and --frozen fails.
           # deno_config_exclude_test.ts enforces that this list stays in sync.
           deno test --parallel "${DENO_TEST_FLAGS[@]}" \
-            --ignore=mnist_classification/evolve_integration_test.ts,NEAT-AI-scorer,NEAT-AI-core,.coverage
+            --ignore=mnist_classification/evolve_integration_test.ts,mnist_classification/exploration_campaign_driver_test.ts,NEAT-AI-scorer,NEAT-AI-core,.coverage
           EVOLVE_INTEGRATION_FILTERS=(
             "evolveResultToMultiRunSample carries"
             "evolveMnistClassifier returns finite"
@@ -230,6 +230,18 @@ jobs:
           for filter in "${EVOLVE_INTEGRATION_FILTERS[@]}"; do
             deno test "${DENO_TEST_FLAGS[@]}" \
               mnist_classification/evolve_integration_test.ts \
+              --filter "${filter}"
+          done
+          EXPLORATION_CAMPAIGN_FILTERS=(
+            "records one phase per schedule entry"
+            "resumes from the persisted champion"
+            "rejects when there is no saved champion"
+            "round-trips a persisted calibration record"
+            "derives a four-rung ladder"
+          )
+          for filter in "${EXPLORATION_CAMPAIGN_FILTERS[@]}"; do
+            deno test "${DENO_TEST_FLAGS[@]}" \
+              mnist_classification/exploration_campaign_driver_test.ts \
               --filter "${filter}"
           done
 
