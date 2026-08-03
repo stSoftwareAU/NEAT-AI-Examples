@@ -25,6 +25,7 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertNotEquals,
   assertRejects,
   assertThrows,
 } from "@std/assert";
@@ -64,6 +65,17 @@ import {
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
+
+/**
+ * Read the `fill` attribute of the first element tagged with `className`.
+ * Lets colour assertions name a semantic hook instead of a hex literal.
+ */
+function fillForClass(svg: string, className: string): string | undefined {
+  const tag = svg.match(
+    new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${className}\\b[^"]*"[^>]*>`),
+  );
+  return tag?.[0].match(/fill="([^"]+)"/)?.[1];
+}
 
 /**
  * Build a synthetic IDX-3 image buffer with `count` images of size
@@ -522,7 +534,7 @@ Deno.test("buildGridCells emits at most GRID_ROWS*GRID_COLS cells with frames", 
   }
 });
 
-Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels for the 784-feature flow", () => {
+Deno.test("renderDigitGridSVG emits an animated SVG with distinctly coloured hit/miss labels for the 784-feature flow", () => {
   const cells = [
     {
       frames: [
@@ -544,8 +556,18 @@ Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels for th
   assert(svg.includes("</svg>"));
   assertGreater(svg.length, 0);
   assert(svg.match(/<animate /), "expected at least one <animate> element");
-  assert(svg.includes("#2ecc71"));
-  assert(svg.includes("#e74c3c"));
+  // A correct prediction and a wrong one must be told apart by colour. The
+  // contract is "different", not any particular hex — a restyle must not
+  // fail this test.
+  const correctFill = fillForClass(svg, "cell-label-correct");
+  const wrongFill = fillForClass(svg, "cell-label-wrong");
+  assert(correctFill, "correct-prediction label must carry a fill");
+  assert(wrongFill, "wrong-prediction label must carry a fill");
+  assertNotEquals(
+    correctFill,
+    wrongFill,
+    "correct and wrong prediction labels need distinct colours",
+  );
   assert(svg.includes("Validation accuracy"));
   assert(svg.includes("Test accuracy"));
 });

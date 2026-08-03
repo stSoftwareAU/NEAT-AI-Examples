@@ -67,16 +67,16 @@
     <text x="720.04" y="46" text-anchor="middle">run 10</text>
   </g>
   <g class="neurons-line">
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="70,236.43 290,236.43 510,236.43"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="510.95,215.71 519.11,215.71 576.23,215.71"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="576.7,195 580.89,195 614.97,195"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="615.28,174.29 618.1,174.29 642.45,174.29"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="642.69,153.57 644.81,153.57 663.77,153.57"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="663.96,132.86 665.67,132.86 681.19,132.86"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="681.35,112.14 682.77,112.14 695.92,112.14"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="696.06,91.43 697.28,91.43 708.68,91.43"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="708.8,70.71 709.87,70.71 719.93,70.71"/>
-    <polyline fill="none" stroke="#2ca02c" stroke-width="1.5" points="720.04,50 720.99,50 730,50"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="70,236.43 290,236.43 510,236.43"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="510.95,215.71 519.11,215.71 576.23,215.71"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="576.7,195 580.89,195 614.97,195"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="615.28,174.29 618.1,174.29 642.45,174.29"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="642.69,153.57 644.81,153.57 663.77,153.57"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="663.96,132.86 665.67,132.86 681.19,132.86"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="681.35,112.14 682.77,112.14 695.92,112.14"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="696.06,91.43 697.28,91.43 708.68,91.43"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="708.8,70.71 709.87,70.71 719.93,70.71"/>
+    <polyline class="neurons-line-segment" fill="none" stroke="#2ca02c" stroke-width="1.5" points="720.04,50 720.99,50 730,50"/>
     <circle class="neurons-point" cx="70" cy="236.43" r="2.4" fill="#2ca02c"/>
     <circle class="neurons-point" cx="290" cy="236.43" r="2.4" fill="#2ca02c"/>
     <circle class="neurons-point" cx="510" cy="236.43" r="2.4" fill="#2ca02c"/>
@@ -109,16 +109,16 @@
     <circle class="neurons-point" cx="730" cy="50" r="2.4" fill="#2ca02c"/>
   </g>
   <g class="synapses-line">
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="70,250.77 290,250.77 510,250.77"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="510.95,228.46 519.11,228.46 576.23,228.46"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="576.7,206.15 580.89,206.15 614.97,206.15"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="615.28,183.85 618.1,183.85 642.45,183.85"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="642.69,161.54 644.81,161.54 663.77,161.54"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="663.96,139.23 665.67,139.23 681.19,139.23"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="681.35,116.92 682.77,116.92 695.92,116.92"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="696.06,94.62 697.28,94.62 708.68,94.62"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="708.8,72.31 709.87,72.31 719.93,72.31"/>
-    <polyline fill="none" stroke="#d62728" stroke-width="1.5" points="720.04,50 720.99,50 730,50"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="70,250.77 290,250.77 510,250.77"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="510.95,228.46 519.11,228.46 576.23,228.46"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="576.7,206.15 580.89,206.15 614.97,206.15"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="615.28,183.85 618.1,183.85 642.45,183.85"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="642.69,161.54 644.81,161.54 663.77,161.54"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="663.96,139.23 665.67,139.23 681.19,139.23"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="681.35,116.92 682.77,116.92 695.92,116.92"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="696.06,94.62 697.28,94.62 708.68,94.62"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="708.8,72.31 709.87,72.31 719.93,72.31"/>
+    <polyline class="synapses-line-segment" fill="none" stroke="#d62728" stroke-width="1.5" points="720.04,50 720.99,50 730,50"/>
     <circle class="synapses-point" cx="70" cy="250.77" r="2.4" fill="#d62728"/>
     <circle class="synapses-point" cx="290" cy="250.77" r="2.4" fill="#d62728"/>
     <circle class="synapses-point" cx="510" cy="250.77" r="2.4" fill="#d62728"/>

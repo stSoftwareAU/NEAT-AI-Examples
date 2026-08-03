@@ -345,8 +345,8 @@ function renderErrorSeries(
     `${fmt(xScale(s.cumulativeGen))},${fmt(yScale(envelope[i]))}`
   );
   out.push(
-    `    <polyline fill="none" stroke="${ERROR_COLOUR}" stroke-width="1.5" ` +
-      `points="${points.join(" ")}"/>`,
+    `    <polyline class="error-envelope" fill="none" stroke="${ERROR_COLOUR}" ` +
+      `stroke-width="1.5" points="${points.join(" ")}"/>`,
   );
   // Circles plot the raw milestone error — viewers can still see the
   // re-evaluation noise that motivated the envelope.

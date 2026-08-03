@@ -27,6 +27,11 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
   pins an in-place-mutation detail, not observable behaviour. Assert what the result _is_ instead,
   via [`common/champion_contract.ts`](common/champion_contract.ts)
   ([#725](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/725)).
+- Pin a renderer's exact colour hex literals — or any other expected value pasted straight from
+  current output — when the contract is structural. Select SVG elements by their semantic `class`
+  hook and assert the _behaviour_ instead: each category gets a distinct fill, the two series use
+  different strokes, the car's fill changes once it crosses the flag. A legitimate restyle must not
+  turn a test red ([#726](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/726)).
 
 **Why?** "How" tests break whenever the implementation is refactored, even when behaviour is
 unchanged. They add maintenance cost without catching real bugs.

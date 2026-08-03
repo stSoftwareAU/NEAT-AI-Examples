@@ -288,7 +288,8 @@ function renderLegend(x: number, y: number, w: number): string {
     const cat = OUTCOME_ORDER[i];
     const itemX = x + i * itemW;
     out.push(
-      `    <rect class="legend-swatch" x="${fmt(itemX)}" y="${fmt(y)}" width="14" height="12" ` +
+      `    <rect class="legend-swatch legend-swatch-${cat}" x="${fmt(itemX)}" y="${fmt(y)}" ` +
+        `width="14" height="12" ` +
         `fill="${OUTCOME_COLOUR[cat]}"/>`,
     );
     out.push(
