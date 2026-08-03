@@ -5,10 +5,9 @@
 Six unit tests asserted a wall-clock threshold (`assert(elapsedMs < 60_000, …)`) measured from
 `Date.now()` deltas, which breaches this repo's own convention in
 [AGENTS.md](../../../AGENTS.md#-unit-tests-vs-benchmarks) rule 1: _"Do not put timing assertions in
-unit tests. If a test checks `performance.now()` or `Date.now()` deltas it belongs in a
-benchmark."_ `deno test` runs files in parallel, so a loaded CI runner could breach 60 s and fail
-the suite with no behavioural regression, while a genuine slowdown staying under 60 s was never
-caught.
+unit tests. If a test checks `performance.now()` or `Date.now()` deltas it belongs in a benchmark."_
+`deno test` runs files in parallel, so a loaded CI runner could breach 60 s and fail the suite with
+no behavioural regression, while a genuine slowdown staying under 60 s was never caught.
 
 Every site already carried the behavioural assertion that holds the real signal (the
 generation/iterations cap), so the timing assertion and its `Date.now()` bookkeeping were removed
