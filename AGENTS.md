@@ -23,6 +23,15 @@ Every test in this project must be a **"what" test** — it verifies _what_ the 
 - Assert that one function calls another.
 - Check that a specific algorithm or data structure is used internally.
 - Inspect function bodies or count lines of code.
+- Assert reference identity between an input and a result (e.g. `result.champion === seed`) — that
+  pins an in-place-mutation detail, not observable behaviour. Assert what the result _is_ instead,
+  via [`common/champion_contract.ts`](common/champion_contract.ts)
+  ([#725](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/725)).
+- Pin a renderer's exact colour hex literals — or any other expected value pasted straight from
+  current output — when the contract is structural. Select SVG elements by their semantic `class`
+  hook and assert the _behaviour_ instead: each category gets a distinct fill, the two series use
+  different strokes, the car's fill changes once it crosses the flag. A legitimate restyle must not
+  turn a test red ([#726](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/726)).
 
 **Why?** "How" tests break whenever the implementation is refactored, even when behaviour is
 unchanged. They add maintenance cost without catching real bugs.
@@ -229,6 +238,7 @@ reinventing equivalent logic in a new example.
 
 | Module                                 | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common/champion_contract.ts`          | Behavioural assertions for an evolved champion — validates, keeps the seed's arity, activates to finite output (from [#725](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/725)).                                                                                                                                                                                                                                                                                                   |
 | `common/deterministic_random.ts`       | Seeded PRNG for reproducible data generation.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `common/synthetic_data.ts`             | Synthetic dataset generation and scoring.                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `common/working_dirs.ts`               | Standard hidden working-directory layout for examples.                                                                                                                                                                                                                                                                                                                                                                                                                                       |

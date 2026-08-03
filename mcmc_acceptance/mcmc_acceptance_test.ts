@@ -31,6 +31,7 @@ import {
   windowedAcceptanceRates,
 } from "./mcmc_acceptance.ts";
 import { renderAcceptanceSVG, TARGET_LINE_CLASS } from "./svg.ts";
+import { assertChampionContract } from "../common/champion_contract.ts";
 import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { generateSyntheticData } from "../common/synthetic_data.ts";
 import { asCreatureExport } from "../common/legacy_types.ts";
@@ -290,17 +291,18 @@ Deno.test(
         seed: 215,
       });
 
-      // Champion is the same JS object the caller passed in — evolveDir
-      // mutates the creature in place.
-      assertEquals(result.champion === seed, true, "champion must be the in-place creature");
+      // Observable contract (#725): the champion validates, keeps the seed's
+      // arity, and activates to finite output — regardless of whether NEAT-AI
+      // mutates the seed in place or hands back a fresh creature.
+      assertChampionContract(result.champion, { input: INPUT_COUNT, output: OUTPUT_COUNT });
 
       // Summary contract — all numeric fields finite, topology matches champion.
       assertEquals(Number.isFinite(result.summary.finalError), true);
       assertEquals(Number.isFinite(result.summary.finalScore), true);
       assertEquals(result.summary.seedNeurons, seedNeurons);
       assertEquals(result.summary.seedSynapses, seedSynapses);
-      assertEquals(result.summary.finalNeurons, seed.neurons.length);
-      assertEquals(result.summary.finalSynapses, seed.synapses.length);
+      assertEquals(result.summary.finalNeurons, result.champion.neurons.length);
+      assertEquals(result.summary.finalSynapses, result.champion.synapses.length);
       assertGreater(result.summary.generations, 0);
       assertEquals(result.seedNeuronCount, seedNeurons);
       assertEquals(result.seedSynapseCount, seedSynapses);

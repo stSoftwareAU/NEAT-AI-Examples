@@ -27,7 +27,8 @@ import {
   confusionMatrix,
   evolveMnistClassifier,
   MNIST_EVOLVE_COST_NAME,
-  MNIST_ROOT,
+  MNIST_EXPLORATION_ROOT,
+  type MnistEvolveOptions,
   readMnistTrainingRecords,
   TEST_IMAGES_PATH,
   TEST_IMAGES_SHA256,
@@ -77,19 +78,49 @@ import {
 import { DEFAULT_SQUASH_CANDIDATES, randomWeightedSquash } from "./squash_random.ts";
 
 /** Hidden working directory for exploration state (never checked in). */
-export const EXPLORATION_ROOT = join(MNIST_ROOT, "exploration");
+export const EXPLORATION_ROOT = MNIST_EXPLORATION_ROOT;
+
+/** Campaign artefact paths under one exploration root (tests pass a temp dir). */
+export function explorationPaths(explorationRoot = EXPLORATION_ROOT): {
+  champion: string;
+  phaseLog: string;
+  summary: string;
+  calibration: string;
+  generationLog: string;
+  experiments: string;
+} {
+  return {
+    champion: join(explorationRoot, "champion.json"),
+    phaseLog: join(explorationRoot, "phases.jsonl"),
+    summary: join(explorationRoot, "campaign_summary.json"),
+    calibration: join(explorationRoot, "calibration.json"),
+    generationLog: join(explorationRoot, "generations.tsv"),
+    experiments: join(explorationRoot, "experiments"),
+  };
+}
 
 /** Persisted champion between exploration phases. */
-export const EXPLORATION_CHAMPION_PATH = join(EXPLORATION_ROOT, "champion.json");
+export const EXPLORATION_CHAMPION_PATH = explorationPaths().champion;
 
 /** Append-only JSONL log — one record per completed phase. */
-export const EXPLORATION_PHASE_LOG_PATH = join(EXPLORATION_ROOT, "phases.jsonl");
+export const EXPLORATION_PHASE_LOG_PATH = explorationPaths().phaseLog;
 
 /** Latest campaign summary (test accuracy, topology, phase count). */
-export const EXPLORATION_SUMMARY_PATH = join(EXPLORATION_ROOT, "campaign_summary.json");
+export const EXPLORATION_SUMMARY_PATH = explorationPaths().summary;
 
 /** Persisted sampler calibration from the last `--fresh` probe. */
-export const EXPLORATION_CALIBRATION_PATH = join(EXPLORATION_ROOT, "calibration.json");
+export const EXPLORATION_CALIBRATION_PATH = explorationPaths().calibration;
+
+/**
+ * Evolve-option overrides applied in unit tests only — the runner never
+ * sets these, so production runs keep NEAT-AI's defaults (issue #727).
+ */
+export type ExplorationEvolveOverrides = Partial<
+  Pick<
+    MnistEvolveOptions,
+    "testCaps" | "timeoutMinutes" | "freshSeedExport" | "elitism" | "maxGenerations"
+  >
+>;
 
 /**
  * One exploration loop — sampled-exploration cadence: early loops
@@ -209,6 +240,8 @@ export async function calibrateTrainingSampleRate(options: {
   seedCreatureExport: CreatureExport;
   targetMsPerGeneration?: number;
   probeGenerations?: number;
+  /** Unit-test-only evolve overrides (never set by the runner). */
+  evolveOverrides?: ExplorationEvolveOverrides;
 }): Promise<{
   sampleRates: readonly [number, number, number, number];
   scale: number;
@@ -230,6 +263,7 @@ export async function calibrateTrainingSampleRate(options: {
     trainingSampleRate: 1,
     costOfGrowth: 0,
     populationSize: 20,
+    ...options.evolveOverrides,
   });
   const msPerGeneration = probe.wallClockMs / Math.max(1, probe.generations);
   const { rates, scale } = structureSampleRatesForCalibration(msPerGeneration, target);
@@ -248,7 +282,9 @@ export async function calibrateTrainingSampleRate(options: {
 }
 
 /** Load a prior calibration record written under {@link EXPLORATION_CALIBRATION_PATH}. */
-export async function loadExplorationCalibration(): Promise<
+export async function loadExplorationCalibration(
+  explorationRoot = EXPLORATION_ROOT,
+): Promise<
   {
     sampleRates: readonly [number, number, number, number];
     msPerGeneration: number;
@@ -256,7 +292,7 @@ export async function loadExplorationCalibration(): Promise<
   } | undefined
 > {
   try {
-    const text = await Deno.readTextFile(EXPLORATION_CALIBRATION_PATH);
+    const text = await Deno.readTextFile(explorationPaths(explorationRoot).calibration);
     const parsed = JSON.parse(text) as {
       sampleRates: readonly [number, number, number, number];
       msPerGeneration: number;
@@ -423,6 +459,19 @@ export interface RunExplorationCampaignOptions {
   trainingRecords: number;
   /** Skip the full-data calibration probe (tests / explicit schedules). */
   skipCalibrate?: boolean;
+  /**
+   * Working root for gitignored campaign scratch state — champion, phase
+   * log, calibration, population pool. Defaults to {@link EXPLORATION_ROOT};
+   * tests pass a temp directory so no run pollutes the working tree.
+   */
+  explorationRoot?: string;
+  /**
+   * Base directory for the recorded artefacts (milestones, charts, run
+   * summary). Defaults to `docs`; tests pass a temp directory.
+   */
+  baseDir?: string;
+  /** Unit-test-only evolve overrides (never set by the runner). */
+  evolveOverrides?: ExplorationEvolveOverrides;
 }
 
 /** Outcome of {@link runExplorationCampaign}. */
@@ -488,19 +537,25 @@ export function evaluateOnHoldout(creature: Creature, split: DigitSplit): Holdou
 }
 
 /** Append one {@link ExplorationPhaseRecord} to the phase log. */
-export async function appendPhaseRecord(record: ExplorationPhaseRecord): Promise<void> {
-  ensureDirSync(EXPLORATION_ROOT);
+export async function appendPhaseRecord(
+  record: ExplorationPhaseRecord,
+  explorationRoot = EXPLORATION_ROOT,
+): Promise<void> {
+  ensureDirSync(explorationRoot);
   await Deno.writeTextFile(
-    EXPLORATION_PHASE_LOG_PATH,
+    explorationPaths(explorationRoot).phaseLog,
     `${JSON.stringify(record)}\n`,
     { append: true, create: true },
   );
 }
 
 /** Persist the exploration champion (working copy only). */
-export async function saveExplorationChampion(creature: Creature): Promise<void> {
-  ensureDirSync(EXPLORATION_ROOT);
-  await safeWriteJson(EXPLORATION_CHAMPION_PATH, creature.exportJSON());
+export async function saveExplorationChampion(
+  creature: Creature,
+  explorationRoot = EXPLORATION_ROOT,
+): Promise<void> {
+  ensureDirSync(explorationRoot);
+  await safeWriteJson(explorationPaths(explorationRoot).champion, creature.exportJSON());
 }
 
 /**
@@ -544,13 +599,15 @@ export async function runSquashImprovementPass(
 }
 
 /** Wipe gitignored scratch state under {@link EXPLORATION_ROOT}. */
-export async function wipeExplorationState(): Promise<void> {
+export async function wipeExplorationState(
+  explorationRoot = EXPLORATION_ROOT,
+): Promise<void> {
   try {
-    await Deno.remove(EXPLORATION_ROOT, { recursive: true });
+    await Deno.remove(explorationRoot, { recursive: true });
   } catch {
     // Directory may not exist yet.
   }
-  await wipePopulationPool();
+  await wipePopulationPool(explorationRoot);
 }
 
 /**
@@ -560,15 +617,19 @@ export async function wipeExplorationState(): Promise<void> {
 export async function runExplorationCampaign(
   options: RunExplorationCampaignOptions,
 ): Promise<ExplorationCampaignResult> {
+  const explorationRoot = options.explorationRoot ?? EXPLORATION_ROOT;
+  const paths = explorationPaths(explorationRoot);
+  const baseDir = options.baseDir ?? "docs";
+
   if (options.fresh) {
     console.log("🧹 --fresh: wiping creature, milestones, charts, and campaign record.");
-    await wipeRecordedEvolution();
-    await wipeExplorationState();
+    await wipeRecordedEvolution(baseDir);
+    await wipeExplorationState(explorationRoot);
   }
 
-  ensureDirSync(EXPLORATION_ROOT);
+  ensureDirSync(explorationRoot);
 
-  const multiState = await loadMultiRunState("mnist_classification");
+  const multiState = await loadMultiRunState("mnist_classification", baseDir);
   let runIndex = multiState.nextRunIndex;
   let baseCumulativeGen = multiState.lastCumulativeGen;
 
@@ -619,10 +680,11 @@ export async function runExplorationCampaign(
         const calibration = await calibrateTrainingSampleRate({
           dataDir: options.dataDir,
           seedCreatureExport: championExport,
+          evolveOverrides: options.evolveOverrides,
         });
         championExport = calibration.championExport;
         structureSampleRates = calibration.sampleRates;
-        await safeWriteJson(EXPLORATION_CALIBRATION_PATH, {
+        await safeWriteJson(paths.calibration, {
           targetMsPerGeneration: TARGET_MS_PER_GENERATION,
           msPerGeneration: calibration.msPerGeneration,
           scale: calibration.scale,
@@ -649,7 +711,7 @@ export async function runExplorationCampaign(
           );
         }
       } else {
-        const saved = await loadExplorationCalibration();
+        const saved = await loadExplorationCalibration(explorationRoot);
         if (saved) {
           structureSampleRates = saved.sampleRates;
           console.log(
@@ -691,6 +753,7 @@ export async function runExplorationCampaign(
       phaseName: phase.name,
       currentTrainingSampleRate: phase.trainingSampleRate,
       lineageExport,
+      explorationRoot,
     });
 
     if (populationSeedExports.length > 0) {
@@ -720,11 +783,12 @@ export async function runExplorationCampaign(
       costOfGrowth: phase.costOfGrowth,
       populationSize: phase.populationSize,
       maxGenerations: phase.maxGenerations,
-      generationLogPath: join(EXPLORATION_ROOT, "generations.tsv"),
+      generationLogPath: paths.generationLog,
       runIndex,
       populationSeedExports,
       elitism: elitismForArchivedChampions(populationSeedExports.length),
       verbose: true,
+      ...options.evolveOverrides,
     });
 
     const phaseChampion = evolveResult.champion;
@@ -737,6 +801,7 @@ export async function runExplorationCampaign(
       evolveScore: evolveResult.bestScore,
       testAccuracy: holdoutCandidate.testAccuracy,
       validationAccuracy: holdoutCandidate.validationAccuracy,
+      explorationRoot,
     });
     if (archiveUpdated) {
       console.log(
@@ -757,14 +822,14 @@ export async function runExplorationCampaign(
       );
     }
 
-    await saveExplorationChampion(creature);
+    await saveExplorationChampion(creature, explorationRoot);
 
     const loopIndex = loopIndexFromPhaseName(phase.name);
     if (loopIndex !== undefined) {
-      await saveSamplerLoopChampion(loopIndex, phaseChampion.exportJSON());
+      await saveSamplerLoopChampion(loopIndex, phaseChampion.exportJSON(), explorationRoot);
     }
     if (phase.name.startsWith("loop-")) {
-      await savePhaseChampion(phase.name, phaseChampion.exportJSON());
+      await savePhaseChampion(phase.name, phaseChampion.exportJSON(), explorationRoot);
     }
 
     const holdout = evaluateOnHoldout(creature, options.split);
@@ -777,6 +842,7 @@ export async function runExplorationCampaign(
       baseCumulativeGen,
       campaignFresh: campaignFresh && runIndex === multiState.nextRunIndex,
       trainingRecords: options.trainingRecords,
+      baseDir,
     });
 
     baseCumulativeGen += evolveResult.generations;
@@ -797,7 +863,7 @@ export async function runExplorationCampaign(
       timestamp: new Date().toISOString(),
     };
     phaseRecords.push(record);
-    await appendPhaseRecord(record);
+    await appendPhaseRecord(record, explorationRoot);
 
     console.log(
       `   ✅ ${phase.name}: ${evolveResult.generations} generations in ` +
@@ -812,7 +878,7 @@ export async function runExplorationCampaign(
   let squashImproved = false;
   if (options.squashScan) {
     const candidates = options.squashCandidates ?? DEFAULT_SQUASH_CANDIDATES;
-    const idOutputDir = join(EXPLORATION_ROOT, "experiments", "intelligent-design");
+    const idOutputDir = join(paths.experiments, "intelligent-design");
     let exportJson = creature.exportJSON();
     const baselineScore = Number.parseFloat(getTag(exportJson, "score") ?? "0") ||
       (phaseRecords.at(-1)?.evolveDirScore ?? 0);
@@ -832,7 +898,7 @@ export async function runExplorationCampaign(
         squashImproved = true;
         exportJson = pass.creatureExport;
         creature = Creature.fromJSON(exportJson);
-        await saveExplorationChampion(creature);
+        await saveExplorationChampion(creature, explorationRoot);
         const holdout = evaluateOnHoldout(creature, options.split);
         console.log(
           `   ♻️  After ${squash}: test=${(holdout.testAccuracy * 100).toFixed(2)}% ` +
@@ -853,13 +919,13 @@ export async function runExplorationCampaign(
       options.dataDir,
       squash,
       baselineScore,
-      intelligentDesignOutputDir(squash),
+      intelligentDesignOutputDir(squash, explorationRoot),
     );
     console.log(`   ${pass.message}`);
     if (pass.improved) {
       squashImproved = true;
       creature = Creature.fromJSON(pass.creatureExport);
-      await saveExplorationChampion(creature);
+      await saveExplorationChampion(creature, explorationRoot);
       const holdout = evaluateOnHoldout(creature, options.split);
       console.log(
         `   ♻️  After ${squash}: test=${(holdout.testAccuracy * 100).toFixed(2)}% ` +
@@ -869,7 +935,7 @@ export async function runExplorationCampaign(
   }
 
   const finalHoldout = evaluateOnHoldout(creature, options.split);
-  await safeWriteJson(EXPLORATION_SUMMARY_PATH, {
+  await safeWriteJson(paths.summary, {
     validationAccuracy: finalHoldout.validationAccuracy,
     testAccuracy: finalHoldout.testAccuracy,
     phasesCompleted: phaseRecords.length,

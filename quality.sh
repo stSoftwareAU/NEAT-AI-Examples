@@ -153,7 +153,7 @@ DENO_TEST_FLAGS=(
 )
 
 if deno test --parallel "${DENO_TEST_FLAGS[@]}" \
-  --ignore=mnist_classification/evolve_integration_test.ts; then
+  --ignore=mnist_classification/evolve_integration_test.ts,mnist_classification/exploration_campaign_driver_test.ts; then
   echo ""
   echo "SUCCESS: Unit Tests (parallel)"
   echo ""
@@ -196,6 +196,40 @@ if [[ "${EVOLVE_INTEGRATION_FAILED}" -eq 0 ]]; then
 else
   echo ""
   echo "FAILED: MNIST evolveDir integration tests"
+  echo ""
+  FAILED=1
+fi
+
+echo "----------------------------------------"
+echo "Running: MNIST exploration-campaign driver tests (isolated processes)"
+echo "Same evolveDir constraints as above; both the working root and the"
+echo "recorded-artefact base dir are temp directories (issue #727)."
+echo "----------------------------------------"
+
+EXPLORATION_CAMPAIGN_FILTERS=(
+  "records one phase per schedule entry"
+  "resumes from the persisted champion"
+  "rejects when there is no saved champion"
+  "round-trips a persisted calibration record"
+  "derives a four-rung ladder"
+)
+
+EXPLORATION_CAMPAIGN_FAILED=0
+for filter in "${EXPLORATION_CAMPAIGN_FILTERS[@]}"; do
+  if ! deno test "${DENO_TEST_FLAGS[@]}" \
+    mnist_classification/exploration_campaign_driver_test.ts \
+    --filter "${filter}"; then
+    EXPLORATION_CAMPAIGN_FAILED=1
+  fi
+done
+
+if [[ "${EXPLORATION_CAMPAIGN_FAILED}" -eq 0 ]]; then
+  echo ""
+  echo "SUCCESS: MNIST exploration-campaign driver tests"
+  echo ""
+else
+  echo ""
+  echo "FAILED: MNIST exploration-campaign driver tests"
   echo ""
   FAILED=1
 fi

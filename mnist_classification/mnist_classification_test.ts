@@ -25,6 +25,7 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertNotEquals,
   assertRejects,
   assertThrows,
 } from "@std/assert";
@@ -64,6 +65,7 @@ import {
   writeMnistTrainingBin,
 } from "./mnist_classification.ts";
 import { GRID_COLS, GRID_ROWS, renderDigitGridSVG } from "./svg.ts";
+import { fillForClass } from "../common/svg_test_utils.ts";
 
 /**
  * Build a synthetic IDX-3 image buffer with `count` images of size
@@ -522,7 +524,7 @@ Deno.test("buildGridCells emits at most GRID_ROWS*GRID_COLS cells with frames", 
   }
 });
 
-Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels for the 784-feature flow", () => {
+Deno.test("renderDigitGridSVG emits an animated SVG with distinctly coloured hit/miss labels for the 784-feature flow", () => {
   const cells = [
     {
       frames: [
@@ -544,8 +546,18 @@ Deno.test("renderDigitGridSVG emits an animated SVG with green/red labels for th
   assert(svg.includes("</svg>"));
   assertGreater(svg.length, 0);
   assert(svg.match(/<animate /), "expected at least one <animate> element");
-  assert(svg.includes("#2ecc71"));
-  assert(svg.includes("#e74c3c"));
+  // A correct prediction and a wrong one must be told apart by colour. The
+  // contract is "different", not any particular hex — a restyle must not
+  // fail this test.
+  const correctFill = fillForClass(svg, "cell-label-correct");
+  const wrongFill = fillForClass(svg, "cell-label-wrong");
+  assert(correctFill, "correct-prediction label must carry a fill");
+  assert(wrongFill, "wrong-prediction label must carry a fill");
+  assertNotEquals(
+    correctFill,
+    wrongFill,
+    "correct and wrong prediction labels need distinct colours",
+  );
   assert(svg.includes("Validation accuracy"));
   assert(svg.includes("Test accuracy"));
 });

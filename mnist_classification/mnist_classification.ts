@@ -85,6 +85,12 @@ const MNIST_MODULE_DIR = fromFileUrl(new URL(".", import.meta.url));
 /** Per-generation TSV log (`onTrainingEvent` / `generation_complete`). */
 export const MNIST_GENERATION_LOG_PATH = join(MNIST_ROOT, "overnight", "generations.tsv");
 
+/**
+ * Canonical working root for exploration-campaign scratch state (gitignored).
+ * Tests point the campaign at a temp directory instead.
+ */
+export const MNIST_EXPLORATION_ROOT = join(MNIST_ROOT, "exploration");
+
 const GENERATION_LOG_HEADER =
   "timestamp\trun_index\tgeneration\tbest_fitness\taverage_fitness\tpopulation\telapsed_ms\n";
 
@@ -207,6 +213,16 @@ export const SCREENSHOT_PATH = "docs/screenshots/mnist_classification.svg";
  * working-directory copy under `.synthetic-mnist/`.
  */
 export const RUN_SUMMARY_DOCS_PATH = "docs/data/mnist_classification/run_summary.json";
+
+/** {@link SCREENSHOT_PATH} rebased onto `baseDir` (tests pass a temp dir). */
+export function mnistScreenshotPath(baseDir = "docs"): string {
+  return join(baseDir, "screenshots", `${EXAMPLE_SLUG}.svg`);
+}
+
+/** {@link RUN_SUMMARY_DOCS_PATH} rebased onto `baseDir` (tests pass a temp dir). */
+export function mnistRunSummaryDocsPath(baseDir = "docs"): string {
+  return join(baseDir, "data", EXAMPLE_SLUG, "run_summary.json");
+}
 
 /** Sub-directory under `MNIST_ROOT` holding the binary `.bin` training set. */
 export const BIN_TRAIN_DIR = `${MNIST_ROOT}/bin`;

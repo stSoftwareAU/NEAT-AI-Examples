@@ -218,6 +218,26 @@ minutes while still giving intelligent-design a well-trained champion.
 
 Scratch logs (gitignored): `.synthetic-mnist/exploration/` (`phases.jsonl`, `overnight.log`).
 
+### Where the campaign writes
+
+`runExplorationCampaign` writes to two roots, both redirectable so tests never touch the working
+tree or the committed `docs/` (issue
+[#727](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/727)):
+
+```mermaid
+flowchart LR
+    C[runExplorationCampaign] --> W["explorationRoot<br/>(default .synthetic-mnist/exploration)"]
+    C --> D["baseDir<br/>(default docs)"]
+    W --> W1["champion.json · phases.jsonl<br/>campaign_summary.json · calibration.json<br/>.creatures · .sampler · phase-champions"]
+    D --> D1["data/mnist_classification/*.json<br/>screenshots/mnist_classification/*.svg"]
+```
+
+| Option            | Default                        | Purpose                                                  |
+| ----------------- | ------------------------------ | -------------------------------------------------------- |
+| `explorationRoot` | `.synthetic-mnist/exploration` | Gitignored scratch: champion, phase log, population pool |
+| `baseDir`         | `docs`                         | Recorded artefacts: milestones, charts, run summary      |
+| `evolveOverrides` | _(unset)_                      | Unit-test-only evolveDir caps — never set by the runner  |
+
 ### Minimum native scorer capability
 
 MNIST evolves with `costName: "CROSS_ENTROPY"` (see

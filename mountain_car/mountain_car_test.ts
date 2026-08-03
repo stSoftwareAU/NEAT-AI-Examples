@@ -18,7 +18,13 @@
  *   exercise the resume code path, the `--fresh` wipe, and the
  *   end-to-end multi-run runner.
  */
-import { assert, assertEquals, assertGreater, assertGreaterOrEqual } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreater,
+  assertGreaterOrEqual,
+  assertNotEquals,
+} from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import { join } from "@std/path";
 import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
@@ -567,18 +573,49 @@ Deno.test("renderRunSVG repeats the animation indefinitely", () => {
   );
 });
 
-Deno.test("renderRunSVG colour change appears once the trace crosses the flag line", () => {
-  // Synthesise a trace that ends past the flag — we just want to
-  // confirm the renderer emits the success colour somewhere in the
-  // fill-keyframe list when the trace crosses the threshold.
+/** Pull the car's `fill` keyframe list out of the rendered SVG. */
+function fillKeyframes(svg: string): string[] {
+  const match = svg.match(/<animate attributeName="fill" values="([^"]+)"/);
+  assert(match, "expected a fill animation on the car");
+  return match[1].split(";");
+}
+
+Deno.test("renderRunSVG switches the car's fill colour once the trace crosses the flag line", () => {
+  // A trace that ends past the flag must change the car's colour: the
+  // keyframe list starts on the pre-flag colour and ends on a different
+  // one. Asserting the *change* rather than a hex literal keeps this test
+  // alive through a palette restyle.
   const trace = [
     { x: -0.5, v: 0 },
     { x: 0.0, v: 0.05 },
     { x: GOAL_POSITION, v: 0.06 },
     { x: 0.55, v: 0.06 },
   ];
-  const svg = renderRunSVG(trace);
-  assert(svg.includes("#2ecc71"), "expected the success-green keyframe in the fill animation");
+  const keyframes = fillKeyframes(renderRunSVG(trace));
+  assertEquals(
+    new Set(keyframes).size,
+    2,
+    "a crossing run needs exactly two fill colours: before and after the flag",
+  );
+  assertNotEquals(
+    keyframes[keyframes.length - 1],
+    keyframes[0],
+    "the car must not end on its starting colour after crossing the flag",
+  );
+});
+
+Deno.test("renderRunSVG keeps one fill colour when the trace never reaches the flag", () => {
+  const trace = [
+    { x: -0.5, v: 0 },
+    { x: -0.3, v: 0.02 },
+    { x: -0.1, v: 0.03 },
+  ];
+  const keyframes = fillKeyframes(renderRunSVG(trace));
+  assertEquals(
+    new Set(keyframes).size,
+    1,
+    "a failed run stays on a single fill colour throughout",
+  );
 });
 
 Deno.test({

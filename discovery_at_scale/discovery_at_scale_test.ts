@@ -39,6 +39,7 @@ import {
   snapshotTopology,
 } from "./discovery_at_scale.ts";
 import { DEFECT_COLOURS, renderDiscoveryAtScaleSVG } from "./svg.ts";
+import { assertChampionContract } from "../common/champion_contract.ts";
 import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { buildLargeCreature } from "../common/large_creature.ts";
 import { generateSyntheticData } from "../common/synthetic_data.ts";
@@ -550,7 +551,7 @@ Deno.test(
   },
 );
 
-Deno.test("runMinimalSeedAtScaleEvolution leaves the passed-in creature as the champion", async () => {
+Deno.test("runMinimalSeedAtScaleEvolution returns a valid champion with the seed's arity", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "discovery_at_scale_test_" });
   const dataDir = join(tmpDir, "data");
   ensureDirSync(dataDir);
@@ -576,9 +577,10 @@ Deno.test("runMinimalSeedAtScaleEvolution leaves the passed-in creature as the c
       maxIterations: 4,
       seed: 11,
     });
-    // The champion must be the same JS object the caller passed in —
-    // evolveDir mutates the creature in place.
-    assertEquals(result.champion === seed, true, "champion must be the in-place creature");
+    // Observable contract (#725): the champion validates, keeps the seed's
+    // arity, and activates to finite output — regardless of whether NEAT-AI
+    // mutates the seed in place or hands back a fresh creature.
+    assertChampionContract(result.champion, { input: INPUT_COUNT, output: OUTPUT_COUNT });
   } finally {
     Deno.removeSync(tmpDir, { recursive: true });
   }
