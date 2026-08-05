@@ -27,10 +27,15 @@ function readWorkflow(path: string): Workflow {
   return parse(Deno.readTextFileSync(path)) as Workflow;
 }
 
-/** Steps of the workflow's single job. */
+/**
+ * Every step of the workflow, across all jobs. Issue #747 split the auto-bump
+ * push into its own `push-bump` job, so the least-privilege sweep below covers
+ * the whole workflow rather than one named job.
+ */
 // deno-lint-ignore no-explicit-any
-function stepsOf(wf: Workflow, job: string): any[] {
-  return wf.jobs[job].steps;
+function stepsOf(wf: Workflow): any[] {
+  // deno-lint-ignore no-explicit-any
+  return Object.values(wf.jobs as Record<string, any>).flatMap((job) => job.steps ?? []);
 }
 
 /** Everything a step can read a token from: its `env`, `with` and `run` body. */
@@ -80,12 +85,8 @@ Deno.test("deno-security-update no longer requests pull-requests: write", () => 
 });
 
 Deno.test("no step in either workflow uses GITHUB_TOKEN for a write", () => {
-  const jobs: Array<[string, string]> = [
-    [OUTDATED_PATH, "auto-bump"],
-    [SECURITY_PATH, "security-update"],
-  ];
-  for (const [path, job] of jobs) {
-    for (const step of stepsOf(readWorkflow(path), job)) {
+  for (const path of [OUTDATED_PATH, SECURITY_PATH]) {
+    for (const step of stepsOf(readWorkflow(path))) {
       const surface = surfaceOf(step);
       if (!surface.includes("GITHUB_TOKEN")) continue;
       const run = String(step.run ?? "");

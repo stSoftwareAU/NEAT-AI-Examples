@@ -42,8 +42,27 @@ function secretsInStep(step: Step): string {
   return JSON.stringify({ env: step.env ?? {}, run: step.run ?? "", with: step.with ?? {} });
 }
 
+/**
+ * Every step of the workflow, across all jobs. Issue #747 split the push out
+ * of `auto-bump` into its own `push-bump` job so PR code and the PAT no longer
+ * share a runner environment, so the #678 guarantees below are asserted over
+ * the whole workflow rather than a single job.
+ */
+function allSteps(path: string): Step[] {
+  const jobs = readWorkflow(path).jobs as Record<string, Step>;
+  return Object.values(jobs).flatMap((job) => (job.steps ?? []) as Step[]);
+}
+
 function outdatedSteps(): Step[] {
-  return readWorkflow(OUTDATED_PATH).jobs["auto-bump"].steps;
+  return allSteps(OUTDATED_PATH);
+}
+
+/** The job that owns a given step, keyed by a substring of its `run` body. */
+function jobByRun(path: string, needle: string): Step {
+  const jobs = readWorkflow(path).jobs as Record<string, Step>;
+  return Object.values(jobs).find((job) =>
+    ((job.steps ?? []) as Step[]).some((s) => String(s.run ?? "").includes(needle))
+  );
 }
 
 function securitySteps(): Step[] {
@@ -97,12 +116,17 @@ Deno.test("deno-outdated pushes from a dedicated step scoped to the PAT", () => 
   );
 });
 
-Deno.test("deno-outdated push step is gated on the bump having produced a commit", () => {
-  const steps = outdatedSteps();
-  const push = steps.find((s: Step) => typeof s.run === "string" && s.run.includes("git push"));
+// #747 moved the gate from the step to the job: the push now lives in its own
+// `push-bump` job, whose job-level `if` reads the `pushed` output of the bump
+// job. The guarantee is unchanged — no push happens without a bump.
+Deno.test("deno-outdated push is gated on the bump having produced a commit", () => {
+  const pushJob = jobByRun(OUTDATED_PATH, "git push");
+  assert(pushJob, "Expected a job that pushes the bump commit");
+  const push = (pushJob.steps as Step[]).find((s) => String(s.run ?? "").includes("git push"));
+  const gate = String(pushJob.if ?? "") + String(push.if ?? "");
   assert(
-    typeof push.if === "string" && push.if.includes("pushed"),
-    "The push step must only run when the bump step reported a commit",
+    gate.includes("pushed"),
+    `The push must only run when the bump reported a commit, got gate: ${gate}`,
   );
 });
 

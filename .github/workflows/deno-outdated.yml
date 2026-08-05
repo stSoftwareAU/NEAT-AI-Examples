@@ -12,7 +12,14 @@
 # pushed back to the PR head branch — so the PR ships with up-to-date
 # dependencies automatically (#362).
 #
-# The bump commit is checked out and pushed with the org `ACTIONS_PUSH`
+# The bump runs in `auto-bump` and the push in a separate `push-bump`
+# job (#747). A fresh job gets a fresh runner environment, so nothing
+# PR-authored `bump-deps.sh` appended to `$GITHUB_PATH` or `$GITHUB_ENV`
+# is in scope when the org PAT is handed to the push — closing the last
+# step-boundary-crossing primitive left after #678. The bumped manifests
+# cross the boundary as an artefact.
+#
+# The bump commit is pushed with the org `ACTIONS_PUSH`
 # PAT, not `GITHUB_TOKEN` (#651). A `GITHUB_TOKEN` push is attributed to
 # `github-actions[bot]`, which has no write access, so GitHub held the
 # resulting `pull_request` check runs in `action_required` state awaiting
@@ -71,6 +78,10 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      # Gate the secret-bearing push job on the bump having produced a
+      # change worth pushing (#747).
+      pushed: ${{ steps.bump.outputs.pushed }}
     env:
       # Supply-chain quarantine window for external packages (#441).
       # Defaults to 24h; a manual workflow_dispatch can override it for an
@@ -100,31 +111,72 @@ jobs:
       - name: Set up Deno environment
         uses: ./.github/actions/setup-deno-env
 
-      - name: Bump and commit dependency updates
+      - name: Bump dependency updates
         id: bump
         run: |
           set -euo pipefail
           bash bump-deps.sh
           # Issue #418 — `deno.lock` is tracked; `bump-deps.sh` refreshes
-          # it via `deno install`. Commit both files when either changes.
+          # it via `deno install`. Hand both files to the push job when
+          # either changes.
           if git diff --quiet deno.json deno.lock; then
             echo "All Deno dependencies already match \`deno update --latest\`."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "Pinned versions lag the registry — committing the bump."
+          echo "Pinned versions lag the registry — handing the bump to the push job."
           git diff --stat deno.json deno.lock
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add deno.json deno.lock
-          git commit -m "chore: auto-bump Deno dependencies (#362)"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      # Separate, secret-bearing step (#678). The PR-authored bump script
-      # has already finished, so it cannot read the PAT: the credential is
-      # never written to the workspace, only held in this step's env.
-      - name: Push the bump commit
+      # The bumped manifests cross the job boundary as data, not as a
+      # runner environment: an artefact carries no `$GITHUB_PATH` /
+      # `$GITHUB_ENV` mutation with it (#747).
+      - name: Upload the bumped manifests
         if: steps.bump.outputs.pushed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deno-bump-manifests
+          path: |
+            deno.json
+            deno.lock
+          if-no-files-found: error
+          retention-days: 1
+
+  # Secret-bearing job (#747). It runs on a fresh runner, so nothing the
+  # PR-authored `bump-deps.sh` appended to `$GITHUB_PATH` or `$GITHUB_ENV`
+  # in `auto-bump` is in scope here — a planted `git` shim cannot execute
+  # alongside the org PAT. This job checks the PR head out (files only)
+  # and applies the bumped manifests from the artefact; it never executes
+  # any pull-request-authored code.
+  push-bump:
+    name: Push the bump commit
+    needs: auto-bump
+    if: needs.auto-bump.outputs.pushed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # On manual dispatch there is no PR head; fall back to the
+          # dispatched ref/repository (#603).
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          # Keep the GITHUB_TOKEN out of `.git/config` (#678). The push
+          # below authenticates with the PAT via an explicit remote URL.
+          persist-credentials: false
+
+      # Extracted into a scratch directory, never straight over the
+      # workspace: the `auto-bump` job ran PR code, so treat the artefact
+      # it produced as untrusted data and unpack it somewhere it cannot
+      # reach `.git/`.
+      - name: Download the bumped manifests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deno-bump-manifests
+          path: .bump-artefact
+
+      - name: Push the bump commit
         env:
           # Push as the org PAT so the bumped HEAD is a write-access event
           # and the required checks run automatically instead of stalling
@@ -132,10 +184,22 @@ jobs:
           ACTIONS_PUSH: ${{ secrets.ACTIONS_PUSH }}
         run: |
           set -euo pipefail
-          # Close the residual tamper path: a PR could have planted a git
-          # hook that would run — with the PAT in env — during the push.
+          # Copy exactly the two expected manifests out of the artefact.
+          # An allowlist, not an overlay: nothing else the artefact may
+          # contain can land in the workspace — least of all under `.git/`,
+          # where a planted hook or `core.*` helper would execute during
+          # the commit below with the PAT in env.
+          cp .bump-artefact/deno.json deno.json
+          cp .bump-artefact/deno.lock deno.lock
+          rm -rf .bump-artefact
+          # Belt and braces: no PR code has run on this runner, so no hook
+          # can have been planted — but a fresh checkout is cheap to scrub.
           git config --unset-all core.hooksPath || true
           rm -rf .git/hooks
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deno.json deno.lock
+          git commit -m "chore: auto-bump Deno dependencies (#362)"
           # GITHUB_HEAD_REF is empty on workflow_dispatch; fall back to the
           # dispatched branch name (#603).
           git push \
