@@ -80,7 +80,7 @@ jobs:
       - name: Detect security advisories
         id: audit
         run: |
-          set -uo pipefail
+          set -euo pipefail
           # `--frozen` scans the committed lockfile without rewriting it,
           # so detection reflects exactly what is pinned today. A known
           # advisory in any pinned package makes `deno audit` exit
