@@ -12,12 +12,7 @@
 // including segments separated by `/`.
 
 import { assert } from "@std/assert";
-import { parse } from "@std/yaml";
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-const WORKFLOW_DIR = new URL("./workflows/", import.meta.url);
+import { loadWorkflow, type Workflow } from "./workflow_test_utils.ts";
 
 // Workflows that should run on every PR regardless of base branch.
 // `quality.yml` and `deno-outdated.yml` deliberately restrict to
@@ -30,12 +25,6 @@ const ALL_BRANCH_WORKFLOWS = [
   "semgrep.yml",
   "shellcheck.yml",
 ];
-
-async function loadWorkflow(name: string): Promise<Workflow> {
-  const path = new URL(name, WORKFLOW_DIR);
-  const text = await Deno.readTextFile(path);
-  return parse(text) as Workflow;
-}
 
 function prBranches(wf: Workflow): unknown {
   // YAML parser may decode the top-level `on` key as the boolean `true`

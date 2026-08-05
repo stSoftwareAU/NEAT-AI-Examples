@@ -13,17 +13,9 @@
 // not masked by the exit status of its last command.
 
 import { assert, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, type Workflow } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/gitleaks.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
+const WORKFLOW = "gitleaks.yml";
 
 function allSteps(wf: Workflow): Array<Record<string, unknown>> {
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
@@ -36,7 +28,7 @@ function allSteps(wf: Workflow): Array<Record<string, unknown>> {
 }
 
 Deno.test("gitleaks workflow — no run: step interpolates ${{ ... }} directly", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const steps = allSteps(wf);
   for (const step of steps) {
     const run = step.run;
@@ -49,7 +41,7 @@ Deno.test("gitleaks workflow — no run: step interpolates ${{ ... }} directly",
 });
 
 Deno.test("gitleaks workflow — Run Gitleaks step passes base_ref via env:", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const steps = allSteps(wf);
   const runStep = steps.find((s) => s.name === "Run Gitleaks");
   assertExists(runStep, "must have a 'Run Gitleaks' step");
@@ -126,7 +118,7 @@ async function writeStub(
 }
 
 Deno.test("gitleaks workflow — every multi-line run: block enables strict mode", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const steps = multiLineRunSteps(wf);
   assert(steps.length > 0, "expected at least one multi-line run: block");
   for (const step of steps) {
@@ -140,7 +132,7 @@ Deno.test("gitleaks workflow — every multi-line run: block enables strict mode
 });
 
 Deno.test("gitleaks workflow — Run Gitleaks aborts instead of scanning when BASE_REF is unset", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const step = allSteps(wf).find((s) => s.name === "Run Gitleaks");
   assertExists(step, "must have a 'Run Gitleaks' step");
 
@@ -168,7 +160,7 @@ Deno.test("gitleaks workflow — Run Gitleaks aborts instead of scanning when BA
 });
 
 Deno.test("gitleaks workflow — Run Gitleaks still scans when BASE_REF is set", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const step = allSteps(wf).find((s) => s.name === "Run Gitleaks");
   assertExists(step, "must have a 'Run Gitleaks' step");
 
@@ -193,7 +185,7 @@ Deno.test("gitleaks workflow — Run Gitleaks still scans when BASE_REF is set",
 });
 
 Deno.test("gitleaks workflow — Install Gitleaks completes under strict mode", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const step = allSteps(wf).find((s) => s.name === "Install Gitleaks");
   assertExists(step, "must have an 'Install Gitleaks' step");
 

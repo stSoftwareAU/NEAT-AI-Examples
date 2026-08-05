@@ -12,41 +12,25 @@
 //     `workflow_dispatch` (the standing detector — focus of Issue #572),
 //   * it also runs on every `pull_request` so the standing pin set is
 //     re-audited per PR, not only weekly (Issue #600),
-//   * it actually invokes `deno audit` so the locked tree is scanned,
-//   * every `uses:` action is pinned to a 40-character commit SHA, and
+//   * it actually invokes `deno audit` so the locked tree is scanned, and
 //   * it runs on `ubuntu-latest` with read-only `contents` permission.
+//
+// The 40-character SHA-pin policy is asserted for every workflow at once
+// in `workflow_pin_policy_test.ts` (Issue #744).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/deno-audit.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
-
-function triggers(wf: Workflow): Record<string, unknown> {
-  // YAML's `on:` key is sometimes parsed as the boolean `true` because
-  // `on` is a YAML 1.1 boolean literal; @std/yaml uses YAML 1.2 and
-  // keeps it as the string `on`, but accept both for safety.
-  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<
-    string,
-    unknown
-  >;
-}
+const WORKFLOW = "deno-audit.yml";
 
 Deno.test("deno-audit workflow — file exists and parses as YAML", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assertExists(wf, "workflow YAML must parse to an object");
   assertExists(wf.jobs, "workflow must declare at least one job");
 });
 
 Deno.test("deno-audit workflow — runs on a scheduled cron (the standing detector)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assertExists(t, "workflow must declare triggers");
   assert(
@@ -69,7 +53,7 @@ Deno.test("deno-audit workflow — runs on a scheduled cron (the standing detect
 });
 
 Deno.test("deno-audit workflow — runs on every pull_request (Issue #600)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assertExists(t, "workflow must declare triggers");
   assert(
@@ -88,7 +72,7 @@ Deno.test("deno-audit workflow — runs on every pull_request (Issue #600)", asy
 });
 
 Deno.test("deno-audit workflow — supports manual workflow_dispatch", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assert(
     Object.prototype.hasOwnProperty.call(t, "workflow_dispatch"),
@@ -97,7 +81,7 @@ Deno.test("deno-audit workflow — supports manual workflow_dispatch", async () 
 });
 
 Deno.test("deno-audit workflow — actually invokes `deno audit`", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   let invokesAudit = false;
   for (const job of Object.values(jobs)) {
@@ -119,31 +103,8 @@ Deno.test("deno-audit workflow — actually invokes `deno audit`", async () => {
   );
 });
 
-Deno.test("deno-audit workflow — every uses: pins a 40-char commit SHA", async () => {
-  const wf = await loadWorkflow();
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const shaPattern = /@[0-9a-f]{40}\b/;
-  for (const [jobKey, job] of Object.entries(jobs)) {
-    const steps = (job as { steps?: Array<Record<string, unknown>> }).steps ??
-      [];
-    for (const step of steps) {
-      const uses = step.uses as string | undefined;
-      if (!uses) continue;
-      // Local (`./…`) composite actions are exempt from SHA pinning
-      // (Issue #682) — they wrap already-trusted in-repo code.
-      if (uses.startsWith("./")) continue;
-      assert(
-        shaPattern.test(uses),
-        `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +
-          `to a 40-character commit SHA (got '${uses}'). See the ` +
-          `supply-chain hardening rules in AGENTS.md.`,
-      );
-    }
-  }
-});
-
 Deno.test("deno-audit workflow — runs on ubuntu-latest with read-only contents", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const perms = wf.permissions as Record<string, string> | undefined;
   assertExists(perms, "workflow must declare an explicit permissions block");
   assertEquals(

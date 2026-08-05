@@ -19,35 +19,16 @@
 //   * invokes `bump-deps.sh` to apply the patch (the update channel);
 //   * pins VIBE_BUMP_QUARANTINE_HOURS to "0" so security fixes are
 //     fast-tracked past the routine 24h quarantine;
-//   * opens a PR via `gh pr create` so the patch lands out-of-band;
-//   * every `uses:` action is pinned to a 40-character commit SHA; and
+//   * opens a PR via `gh pr create` so the patch lands out-of-band; and
 //   * runs on `ubuntu-latest` with contents:write + pull-requests:write.
+//
+// The 40-character SHA-pin policy is asserted for every workflow at once
+// in `workflow_pin_policy_test.ts` (Issue #744).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, triggers, type Workflow } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL(
-  "./workflows/deno-security-update.yml",
-  import.meta.url,
-);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
-
-function triggers(wf: Workflow): Record<string, unknown> {
-  // YAML's `on:` key is sometimes parsed as the boolean `true` because
-  // `on` is a YAML 1.1 boolean literal; @std/yaml uses YAML 1.2 and
-  // keeps it as the string `on`, but accept both for safety.
-  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<
-    string,
-    unknown
-  >;
-}
+const WORKFLOW = "deno-security-update.yml";
 
 function firstJob(wf: Workflow): Record<string, unknown> {
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
@@ -66,13 +47,13 @@ function allRun(wf: Workflow): string {
 }
 
 Deno.test("deno-security-update workflow — file exists and parses as YAML", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assertExists(wf, "workflow YAML must parse to an object");
   assertExists(wf.jobs, "workflow must declare at least one job");
 });
 
 Deno.test("deno-security-update workflow — runs on a scheduled cron (advisory-driven channel)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assertExists(t, "workflow must declare triggers");
   assert(
@@ -95,7 +76,7 @@ Deno.test("deno-security-update workflow — runs on a scheduled cron (advisory-
 });
 
 Deno.test("deno-security-update workflow — supports manual workflow_dispatch", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assert(
     Object.prototype.hasOwnProperty.call(t, "workflow_dispatch"),
@@ -104,7 +85,7 @@ Deno.test("deno-security-update workflow — supports manual workflow_dispatch",
 });
 
 Deno.test("deno-security-update workflow — runs `deno audit` to detect the advisory", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assert(
     /\bdeno\s+audit\b/.test(allRun(wf)),
     "the security-update channel must gate on `deno audit` so it only " +
@@ -113,7 +94,7 @@ Deno.test("deno-security-update workflow — runs `deno audit` to detect the adv
 });
 
 Deno.test("deno-security-update workflow — applies the patch via bump-deps.sh", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assert(
     /bump-deps\.sh/.test(allRun(wf)),
     "the update channel must invoke bump-deps.sh to apply the patch — " +
@@ -122,7 +103,7 @@ Deno.test("deno-security-update workflow — applies the patch via bump-deps.sh"
 });
 
 Deno.test("deno-security-update workflow — fast-tracks past quarantine with VIBE_BUMP_QUARANTINE_HOURS=0", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const job = firstJob(wf);
   const jobEnv = (job.env ?? {}) as Record<string, string>;
   const wfEnv = (wf.env ?? {}) as Record<string, string>;
@@ -143,35 +124,12 @@ Deno.test("deno-security-update workflow — fast-tracks past quarantine with VI
 });
 
 Deno.test("deno-security-update workflow — opens a PR so the patch lands out-of-band", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assert(
     /gh\s+pr\s+create/.test(allRun(wf)),
     "the channel must raise its own PR (gh pr create) so the security " +
       "patch lands independently of the PR-time bumper (#601).",
   );
-});
-
-Deno.test("deno-security-update workflow — every uses: pins a 40-char commit SHA", async () => {
-  const wf = await loadWorkflow();
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const shaPattern = /@[0-9a-f]{40}\b/;
-  for (const [jobKey, job] of Object.entries(jobs)) {
-    const steps = (job as { steps?: Array<Record<string, unknown>> }).steps ??
-      [];
-    for (const step of steps) {
-      const uses = step.uses as string | undefined;
-      if (!uses) continue;
-      // Local (`./…`) composite actions are exempt from SHA pinning
-      // (Issue #682) — they wrap already-trusted in-repo code.
-      if (uses.startsWith("./")) continue;
-      assert(
-        shaPattern.test(uses),
-        `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +
-          `to a 40-character commit SHA (got '${uses}'). See the ` +
-          `supply-chain hardening rules in AGENTS.md.`,
-      );
-    }
-  }
 });
 
 Deno.test("deno-security-update workflow — runs on ubuntu-latest with read-only GITHUB_TOKEN permissions", async () => {
@@ -181,7 +139,7 @@ Deno.test("deno-security-update workflow — runs on ubuntu-latest with read-onl
   // old `contents: write` / `pull-requests: write` grants were therefore
   // never exercised. This test previously asserted both were "write"; it
   // now pins the least-privilege grant.
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const job = firstJob(wf);
   const jobPerms = (job.permissions ?? {}) as Record<string, string>;
   const wfPerms = (wf.permissions ?? {}) as Record<string, string>;
