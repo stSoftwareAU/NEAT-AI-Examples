@@ -258,14 +258,22 @@ Deno.test({
  * costs a single run. */
 const SOLVE_FALLBACK_SEEDS = [23456, 34567, 45678] as const;
 
-Deno.test({
-  name: "evolveCartPoleController finds a controller above SOLVED_THRESHOLD with the default seed",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    const candidateSeeds = [CI_DEFAULT_EVOLVE_OPTIONS.seed, ...SOLVE_FALLBACK_SEEDS];
+/** The ensemble draw, memoised so the expensive evolution runs once for
+ * the whole file however the tests are ordered or filtered. Both the
+ * solve test and the generalisation test need a champion that actually
+ * reached SOLVED_THRESHOLD: scoring an unsolved champion on unseen starts
+ * measures a failed search, not poor generalisation. */
+let solvedRun:
+  | Promise<{
+    result: Awaited<ReturnType<typeof evolveCartPoleController>>;
+    attempts: string[];
+  }>
+  | undefined;
 
-    let result: Awaited<ReturnType<typeof evolveCartPoleController>> | undefined;
+function evolveSolvedChampion() {
+  solvedRun ??= (async () => {
+    const candidateSeeds = [CI_DEFAULT_EVOLVE_OPTIONS.seed, ...SOLVE_FALLBACK_SEEDS];
+    let result!: Awaited<ReturnType<typeof evolveCartPoleController>>;
     const attempts: string[] = [];
     for (const seed of candidateSeeds) {
       result = await evolveCartPoleController({ ...CI_DEFAULT_EVOLVE_OPTIONS, seed });
@@ -275,19 +283,30 @@ Deno.test({
       );
       if (result.solved) break;
     }
+    return { result, attempts };
+  })();
+  return solvedRun;
+}
+
+Deno.test({
+  name: "evolveCartPoleController finds a controller above SOLVED_THRESHOLD with the default seed",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const { result, attempts } = await evolveSolvedChampion();
 
     assertEquals(
-      result!.solved,
+      result.solved,
       true,
       `expected at least one seed to reach SOLVED_THRESHOLD=${SOLVED_THRESHOLD}; ` +
         `attempts: ${attempts.join("; ")}`,
     );
-    assertGreaterOrEqual(result!.bestScore, SOLVED_THRESHOLD);
+    assertGreaterOrEqual(result.bestScore, SOLVED_THRESHOLD);
 
     const tmp = await Deno.makeTempDir({ prefix: "cart_pole_test_" });
     try {
       const path = join(tmp, "champion.json");
-      await safeWriteJson(path, result!.champion.exportJSON());
+      await safeWriteJson(path, result.champion.exportJSON());
       assertEquals(existsSync(path), true);
     } finally {
       await Deno.remove(tmp, { recursive: true });
@@ -300,7 +319,18 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    const result = await evolveCartPoleController(CI_DEFAULT_EVOLVE_OPTIONS);
+    const { result, attempts } = await evolveSolvedChampion();
+    // Generalisation is only meaningful for a champion that solved its
+    // training seed set — an unsolved champion scores low on unseen
+    // starts because the search missed the target, not because it
+    // overfits. Fail loudly on that distinct cause rather than reporting
+    // it as a generalisation miss.
+    assertEquals(
+      result.solved,
+      true,
+      `no seed reached SOLVED_THRESHOLD=${SOLVED_THRESHOLD}, so generalisation ` +
+        `cannot be assessed; attempts: ${attempts.join("; ")}`,
+    );
     const independentScore = scoreController(result.champion, MAX_STEPS, {
       trials: 10,
       trialSeed: 987654,
