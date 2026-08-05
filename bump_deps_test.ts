@@ -7,17 +7,19 @@
  * shape, and the end-to-end bumpDenoConfig flow on a temp file.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import {
   applyBumps,
   bumpDenoConfig,
   compareVersions,
   decideBumps,
   DEFAULT_QUARANTINE_HOURS,
+  fetchJsrAvailableVersions,
   fetchVersions,
   formatDecision,
   isInternalPackage,
   isPlainSemver,
+  jsrMetaUrl,
   parseSpecifier,
   pickTargetVersion,
   registryUrl,
@@ -119,6 +121,37 @@ Deno.test("registryUrl - npm packages route to registry.npmjs.org", () => {
     subpath: "",
   });
   assertEquals(url, "https://registry.npmjs.org/typescript");
+});
+
+Deno.test("jsrMetaUrl - scoped jsr import resolves to the native meta.json endpoint", () => {
+  const info = parseSpecifier("@std/yaml", "jsr:@std/yaml@1.0.5")!;
+  assertEquals(jsrMetaUrl(info), "https://jsr.io/@std/yaml/meta.json");
+});
+
+Deno.test("jsrMetaUrl - a subpath in the specifier does not leak into the URL", () => {
+  const info = parseSpecifier("@std/testing/mock", "jsr:@std/testing@1.0.18/mock")!;
+  assertEquals(jsrMetaUrl(info), "https://jsr.io/@std/testing/meta.json");
+});
+
+Deno.test("jsrMetaUrl - rejects a non-jsr import", () => {
+  const info = parseSpecifier("typescript", "npm:typescript@5.4.0")!;
+  assertThrows(() => jsrMetaUrl(info), Error, "non-jsr import");
+});
+
+Deno.test("jsrMetaUrl - rejects an unscoped jsr package name", () => {
+  assertThrows(
+    () =>
+      jsrMetaUrl({
+        key: "cli",
+        raw: "jsr:cli@1.0.0",
+        protocol: "jsr",
+        packageName: "cli",
+        version: "1.0.0",
+        subpath: "",
+      }),
+    Error,
+    "must be scoped",
+  );
 });
 
 const now = new Date("2026-05-20T12:00:00Z");
@@ -243,6 +276,65 @@ Deno.test("fetchVersions - HTTP error throws", async () => {
     threw = true;
   }
   assert(threw, "expected HTTP 404 to throw");
+});
+
+/** A JSR import used by the `fetchJsrAvailableVersions` tests below. */
+const neatAiImport = parseSpecifier(
+  "@stsoftware/neat-ai",
+  "jsr:@stsoftware/neat-ai@5.3.15",
+)!;
+
+Deno.test("fetchJsrAvailableVersions - maps every advertised version to its yanked flag", async () => {
+  const served = (input: string | URL): Promise<Response> => {
+    assertEquals(String(input), "https://jsr.io/@stsoftware/neat-ai/meta.json");
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          versions: { "5.3.15": {}, "5.3.18": { yanked: true }, "5.3.19": {} },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+  };
+  const available = await fetchJsrAvailableVersions(neatAiImport, served);
+  assertEquals(available?.size, 3);
+  assertEquals(available?.get("5.3.15"), { yanked: false });
+  assertEquals(available?.get("5.3.18"), { yanked: true }, "yanked releases are flagged");
+  assertEquals(available?.get("5.3.20"), undefined, "unpublished versions are absent");
+});
+
+Deno.test("fetchJsrAvailableVersions - a payload without versions yields an empty map", async () => {
+  const served = () =>
+    Promise.resolve(
+      new Response(JSON.stringify({ latest: "5.3.19" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  const available = await fetchJsrAvailableVersions(neatAiImport, served);
+  assertEquals(available?.size, 0, "an empty map is distinct from a failed lookup");
+});
+
+Deno.test("fetchJsrAvailableVersions - non-OK response returns null", async () => {
+  const served = () => Promise.resolve(new Response("down", { status: 503 }));
+  assertEquals(await fetchJsrAvailableVersions(neatAiImport, served), null);
+});
+
+Deno.test("fetchJsrAvailableVersions - a network error returns null", async () => {
+  const served = () => Promise.reject(new TypeError("connection refused"));
+  assertEquals(await fetchJsrAvailableVersions(neatAiImport, served), null);
+});
+
+Deno.test("fetchJsrAvailableVersions - rejects a non-jsr import", async () => {
+  const npmImport = parseSpecifier("typescript", "npm:typescript@5.4.0")!;
+  const served = () => Promise.reject(new Error("must not be called"));
+  let threw = false;
+  try {
+    await fetchJsrAvailableVersions(npmImport, served);
+  } catch {
+    threw = true;
+  }
+  assert(threw, "an npm import must fail loudly rather than fetching a bogus URL");
 });
 
 Deno.test("decideBumps - external dep gated by quarantine, internal dep bumps immediately", async () => {
