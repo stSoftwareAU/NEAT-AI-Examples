@@ -12,6 +12,7 @@ import {
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
+  assertRejects,
 } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
@@ -37,6 +38,7 @@ import {
   evolveStockController,
   EXAMPLE_SLUG,
   INPUT_COUNT,
+  loadPrices,
   OUTPUT_COUNT,
   predictionFromOutput,
   readTrainingRecords,
@@ -564,6 +566,94 @@ Deno.test("classifyGlyph maps each prediction × outcome pair to a unique glyph"
   assertEquals(classifyGlyph({ prediction: 1, outcome: 0 }), "up_miss");
   assertEquals(classifyGlyph({ prediction: 0, outcome: 0 }), "down_hit");
   assertEquals(classifyGlyph({ prediction: 0, outcome: 1 }), "down_miss");
+});
+
+/**
+ * Write a dataset CSV into a fresh temp dir and hand the path to `fn`,
+ * cleaning up afterwards. Keeps the `loadPrices` cases below focused on
+ * the observable contract (issue #742).
+ */
+async function withDatasetFile(
+  csv: string,
+  fn: (path: string) => Promise<void>,
+): Promise<void> {
+  const dir = await Deno.makeTempDir({ prefix: "stock_load_prices_" });
+  try {
+    const path = join(dir, "prices.csv");
+    await Deno.writeTextFile(path, csv);
+    await fn(path);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+}
+
+Deno.test("loadPrices reads a dataset file into ordered PricePoint records", async () => {
+  await withDatasetFile(
+    "Date,SP500\n2020-01-01,101.5\n2020-01-02,102.25\n2020-01-03,99.75\n",
+    async (path) => {
+      const prices = await loadPrices(path);
+      assertEquals(prices.length, 3);
+      assertEquals(prices.map((p) => p.date), ["2020-01-01", "2020-01-02", "2020-01-03"]);
+      assertEquals(prices.map((p) => p.close), [101.5, 102.25, 99.75]);
+    },
+  );
+});
+
+Deno.test("loadPrices locates columns by name, not position", async () => {
+  await withDatasetFile(
+    "SP500,Other,Date\n101.5,x,2020-01-01\n102.25,y,2020-01-02\n",
+    async (path) => {
+      const prices = await loadPrices(path);
+      assertEquals(prices, [
+        { date: "2020-01-01", close: 101.5 },
+        { date: "2020-01-02", close: 102.25 },
+      ]);
+    },
+  );
+});
+
+Deno.test("loadPrices drops blank and unusable rows", async () => {
+  await withDatasetFile(
+    "Date,SP500\n2020-01-01,101.5\n\n2020-01-02,.\n2020-01-03,0\n,102.25\n2020-01-04,103\n",
+    async (path) => {
+      const prices = await loadPrices(path);
+      assertEquals(prices, [
+        { date: "2020-01-01", close: 101.5 },
+        { date: "2020-01-04", close: 103 },
+      ]);
+    },
+  );
+});
+
+Deno.test("loadPrices returns no points for a header-only or empty file", async () => {
+  await withDatasetFile("Date,SP500\n", async (path) => {
+    assertEquals(await loadPrices(path), []);
+  });
+  await withDatasetFile("", async (path) => {
+    assertEquals(await loadPrices(path), []);
+  });
+});
+
+Deno.test("loadPrices throws when the header lacks the required columns", async () => {
+  await withDatasetFile("Date,Close\n2020-01-01,101.5\n", async (path) => {
+    const error = await assertRejects(() => loadPrices(path), Error);
+    assert(
+      error.message.includes("SP500"),
+      `expected the failure to name the missing column, got: ${error.message}`,
+    );
+  });
+});
+
+Deno.test("loadPrices rejects when the dataset file is missing", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "stock_load_prices_missing_" });
+  try {
+    await assertRejects(
+      () => loadPrices(join(dir, "does-not-exist.csv")),
+      Deno.errors.NotFound,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });
 
 Deno.test("renderChartSVG emits an animated SVG with prediction markers in multiple colours", () => {
