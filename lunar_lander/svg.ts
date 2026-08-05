@@ -27,7 +27,7 @@ export const SVG_HEIGHT = 400;
 const MARGIN = 30;
 
 /** Half-length of the rendered lander body (pixels). */
-const LANDER_HALF_LENGTH = 12;
+export const LANDER_HALF_LENGTH = 12;
 
 /** Pixel length of a thruster flame indicator. */
 const FLAME_LENGTH = 14;
@@ -202,7 +202,7 @@ export function renderRunSVG(
     // Stars — purely cosmetic, deterministic positions for reproducibility.
     renderStars(),
     // Terrain silhouette: filled area from ground down to the bottom of the SVG.
-    `  <rect x="0" y="${groundSvg.toFixed(2)}" width="${SVG_WIDTH}" ` +
+    `  <rect class="terrain" x="0" y="${groundSvg.toFixed(2)}" width="${SVG_WIDTH}" ` +
     `height="${(SVG_HEIGHT - groundSvg).toFixed(2)}" fill="#3a2a1a"/>`,
     // Landing pad: bright strip on top of the terrain.
     `  <rect class="pad" x="${padLeft.toFixed(2)}" y="${(groundSvg - 4).toFixed(2)}" ` +
