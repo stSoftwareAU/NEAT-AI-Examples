@@ -28,15 +28,11 @@ flowchart LR
         A3[actionlint_workflow_test.ts]
         A4[deno_audit_workflow_test.ts]
         A5[deno_security_update_workflow_test.ts]
-        A1 & A2 & A3 & A4 & A5 --> AG[["identical shaPattern body
-        (5 workflows covered)"]]
+        A1 & A2 & A3 & A4 & A5 --> AG[["identical shaPattern body<br/>(5 workflows covered)"]]
     end
     subgraph after["After — one policy, enumerated from disk"]
-        U["workflow_test_utils.ts
-        unpinnedUses()"] --> P["workflow_pin_policy_test.ts"]
-        P -->|t.step per file| W["workflows/*.yml
-        actions/*/action.yml
-        (10 + 1 covered)"]
+        U["workflow_test_utils.ts<br/>unpinnedUses()"] --> P["workflow_pin_policy_test.ts"]
+        P -->|t.step per file| W["workflows/*.yml<br/>actions/*/action.yml<br/>(10 + 1 covered)"]
     end
     before -.->|Issue #744| after
 ```
