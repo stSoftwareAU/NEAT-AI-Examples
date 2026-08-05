@@ -11,32 +11,26 @@
 // These tests pin the contract:
 //   * the job-level container image is pinned to an immutable
 //     `@sha256:` digest (the focus of Issue #555),
-//   * every `uses:` action is pinned to a 40-character commit SHA,
 //   * the workflow runs on `ubuntu-latest` with read-only `contents`
 //     permission, and
 //   * it actually invokes the `semgrep` CLI so a regression fails CI
+//
+// The 40-character SHA-pin policy for `uses:` is asserted for every
+// workflow at once in `workflow_pin_policy_test.ts` (Issue #744).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/semgrep.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
+const WORKFLOW = "semgrep.yml";
 
 Deno.test("semgrep workflow — file exists and parses as YAML", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assertExists(wf, "workflow YAML must parse to an object");
   assertExists(wf.jobs, "workflow must declare at least one job");
 });
 
 Deno.test("semgrep workflow — job container image is pinned to a sha256 digest", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const digestPattern = /@sha256:[0-9a-f]{64}\b/;
   let containerCount = 0;
@@ -65,28 +59,8 @@ Deno.test("semgrep workflow — job container image is pinned to a sha256 digest
   );
 });
 
-Deno.test("semgrep workflow — every uses: pins a 40-char commit SHA", async () => {
-  const wf = await loadWorkflow();
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const shaPattern = /@[0-9a-f]{40}\b/;
-  for (const [jobKey, job] of Object.entries(jobs)) {
-    const steps = (job as { steps?: Array<Record<string, unknown>> }).steps ??
-      [];
-    for (const step of steps) {
-      const uses = step.uses as string | undefined;
-      if (!uses) continue;
-      assert(
-        shaPattern.test(uses),
-        `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +
-          `to a 40-character commit SHA (got '${uses}'). See the supply-chain ` +
-          `hardening rules in AGENTS.md.`,
-      );
-    }
-  }
-});
-
 Deno.test("semgrep workflow — runs on ubuntu-latest with read-only contents", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const perms = wf.permissions as Record<string, string> | undefined;
   assertExists(perms, "workflow must declare an explicit permissions block");
   assertEquals(
@@ -104,7 +78,7 @@ Deno.test("semgrep workflow — runs on ubuntu-latest with read-only contents", 
 });
 
 Deno.test("semgrep workflow — actually invokes the semgrep CLI", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   let invokesSemgrep = false;
   for (const job of Object.values(jobs)) {

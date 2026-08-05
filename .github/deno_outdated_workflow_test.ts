@@ -17,27 +17,12 @@
 //    while PR-controlled `bump-deps.sh` runs (#678).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/deno-outdated.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
-
-function triggers(wf: Workflow): Record<string, unknown> {
-  // YAML's `on:` key is sometimes parsed as the boolean `true` because
-  // `on` is a YAML 1.1 boolean literal; @std/yaml uses YAML 1.2 and
-  // keeps it as the string `on`, but accept both for safety.
-  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<string, unknown>;
-}
+const WORKFLOW = "deno-outdated.yml";
 
 Deno.test("deno-outdated workflow — triggers only on pull_request to Develop", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assertExists(t, "workflow must declare triggers");
   assertExists(t.pull_request, "must trigger on pull_request");
@@ -46,7 +31,7 @@ Deno.test("deno-outdated workflow — triggers only on pull_request to Develop",
 });
 
 Deno.test("deno-outdated workflow — does NOT run on a weekly cron schedule (#364)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assertEquals(
     Object.prototype.hasOwnProperty.call(t, "schedule"),
@@ -61,7 +46,7 @@ Deno.test("deno-outdated workflow — auto-bump job grants GITHUB_TOKEN read-onl
   // GITHUB_TOKEN, so the old `contents: write` grant was capability handed
   // to PR-authored `bump-deps.sh` for zero functional benefit. This test
   // previously asserted "write"; it now pins the least-privilege grant.
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   // Either job-level or workflow-level permissions must grant read.
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const jobNames = Object.keys(jobs);
@@ -78,7 +63,7 @@ Deno.test("deno-outdated workflow — does NOT request actions:write (re-dispatc
   // `pull_request` checks by itself, so the `workflow_dispatch` re-dispatch
   // step is gone and the `actions: write` permission it required must not be
   // granted (principle of least privilege).
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const jobPerms = (job.permissions ?? {}) as Record<string, string>;
@@ -92,7 +77,7 @@ Deno.test("deno-outdated workflow — does NOT request actions:write (re-dispatc
 });
 
 Deno.test("deno-outdated workflow — skips PRs from forks", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const guard = String(job.if ?? "");
@@ -103,7 +88,7 @@ Deno.test("deno-outdated workflow — skips PRs from forks", async () => {
 });
 
 Deno.test("deno-outdated workflow — pins VIBE_BUMP_QUARANTINE_HOURS so the supply-chain policy is auditable (#441)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const jobEnv = (job.env ?? {}) as Record<string, string>;
@@ -127,7 +112,7 @@ Deno.test("deno-outdated workflow — pins VIBE_BUMP_QUARANTINE_HOURS so the sup
 });
 
 Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits the result", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;
@@ -175,7 +160,7 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
 });
 
 Deno.test("deno-outdated workflow — commits both deno.json and deno.lock (#418)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;
@@ -195,7 +180,7 @@ Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-t
   // bumped commit automatically. The old `workflow_dispatch` re-dispatch
   // workaround (#485) was unreliable (Semgrep/Gitleaks/Dependency Review
   // failed outside PR context) and is removed.
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;
@@ -216,7 +201,7 @@ Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-t
 // is unchanged (the push is still a PAT push, so the checks re-trigger);
 // only the step that holds the credential moved.
 Deno.test("deno-outdated workflow — pushes with the ACTIONS_PUSH PAT so the bump re-triggers checks (#651)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;

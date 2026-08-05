@@ -12,12 +12,7 @@
 // auto-bump push mid-commit
 
 import { assert, assertEquals } from "@std/assert";
-import { parse } from "@std/yaml";
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-const WORKFLOW_DIR = new URL("./workflows/", import.meta.url);
+import { loadWorkflow, type Workflow } from "./workflow_test_utils.ts";
 
 // Expected group expression for every workflow.
 const EXPECTED_GROUP = "${{ github.workflow }}-${{ github.ref }}";
@@ -39,12 +34,6 @@ const NO_CANCEL_WORKFLOWS = [
   // Pushes a branch and opens a PR; must not be interrupted mid-commit.
   "deno-security-update.yml",
 ];
-
-async function loadWorkflow(name: string): Promise<Workflow> {
-  const path = new URL(name, WORKFLOW_DIR);
-  const text = await Deno.readTextFile(path);
-  return parse(text) as Workflow;
-}
 
 function concurrency(wf: Workflow): Record<string, unknown> | undefined {
   // deno-lint-ignore no-explicit-any

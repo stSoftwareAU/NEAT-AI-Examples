@@ -9,21 +9,15 @@
 // and any secrets in scope (this job builds rust_scorer and reads
 // CODECOV_TOKEN)
 //
-// These tests pin that contract for quality.yml so a future unpinned
-// action fails the build instead of slipping through review.
+// The blanket "every `uses:` is SHA-pinned" contract now lives in
+// `workflow_pin_policy_test.ts`, which applies it to every committed
+// workflow at once (Issue #744). The tests below pin the parts of
+// quality.yml that are specific to this workflow.
 
 import { assert, assertEquals } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, type Workflow } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/quality.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
+const WORKFLOW = "quality.yml";
 
 // deno-lint-ignore no-explicit-any
 function findStepByName(wf: Workflow, name: string): any {
@@ -38,32 +32,8 @@ function findStepByName(wf: Workflow, name: string): any {
   return undefined;
 }
 
-Deno.test("quality workflow — every uses: pins a 40-char commit SHA", async () => {
-  const wf = await loadWorkflow();
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const shaPattern = /@[0-9a-f]{40}\b/;
-  for (const [jobKey, job] of Object.entries(jobs)) {
-    const steps = (job as { steps?: Array<Record<string, unknown>> }).steps ??
-      [];
-    for (const step of steps) {
-      const uses = step.uses as string | undefined;
-      if (!uses) continue;
-      // Local (`./…`) composite actions point at in-repo, already-trusted
-      // code and are exempt from the SHA-pinning rule (Issue #682). The
-      // third-party actions they wrap stay SHA-pinned inside the action.
-      if (uses.startsWith("./")) continue;
-      assert(
-        shaPattern.test(uses),
-        `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +
-          `to a 40-character commit SHA (got '${uses}'). See the supply-chain ` +
-          `hardening rules in AGENTS.md.`,
-      );
-    }
-  }
-});
-
 Deno.test("quality workflow — rust-toolchain is SHA-pinned and keeps toolchain: stable", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   let found: Record<string, unknown> | undefined;
   for (const job of Object.values(jobs)) {
@@ -98,7 +68,7 @@ Deno.test("quality workflow — rust-toolchain is SHA-pinned and keeps toolchain
 // CI runs the example steps in quick mode so the per-PR job stays well
 // under its timeout cap (Issue #581).
 Deno.test("quality workflow — Discovery example runs in quick mode and stays non-blocking", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const step = findStepByName(wf, "Run Discovery example");
   assert(step, "quality workflow must run the Discovery example");
   const env = step.env as Record<string, string> | undefined;
@@ -115,7 +85,7 @@ Deno.test("quality workflow — Discovery example runs in quick mode and stays n
 });
 
 Deno.test("quality workflow — Suggest Improvements example runs in quick mode and stays blocking", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const step = findStepByName(wf, "Run Suggest Improvements example");
   assert(step, "quality workflow must run the Suggest Improvements example");
   const env = step.env as Record<string, string> | undefined;
@@ -157,7 +127,7 @@ function stepNames(job: any): string[] {
 }
 
 Deno.test("quality workflow — three parallel work jobs with no inter-job needs", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const keys = Object.keys(jobs).sort();
   assertEquals(
@@ -177,7 +147,7 @@ Deno.test("quality workflow — three parallel work jobs with no inter-job needs
 });
 
 Deno.test("quality workflow — aggregate 'quality' gate fans in on the three work jobs", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const gate = jobs[GATE_JOB];
   assert(
@@ -201,7 +171,7 @@ Deno.test("quality workflow — aggregate 'quality' gate fans in on the three wo
 });
 
 Deno.test("quality workflow — each job sets its own timeout with headroom", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, { "timeout-minutes"?: number }>;
   for (const key of ["static-checks", "unit-tests", "examples"]) {
     const timeout = jobs[key]?.["timeout-minutes"];
@@ -213,7 +183,7 @@ Deno.test("quality workflow — each job sets its own timeout with headroom", as
 });
 
 Deno.test("quality workflow — rust_scorer build lives only in the unit-tests job", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   // The Rust build, scorer/core checkouts, and sibling symlink are only
   // needed by the unit-tests job (the sole consumer of the
@@ -241,7 +211,7 @@ Deno.test("quality workflow — rust_scorer build lives only in the unit-tests j
 //     slightly stale cache from a moving Develop ref still seeds an
 //     incremental rebuild.
 Deno.test("quality workflow — unit-tests job caches the cargo build before building rust_scorer", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const steps = (jobs["unit-tests"].steps ?? []) as Array<
     Record<string, unknown>
@@ -303,7 +273,7 @@ Deno.test("quality workflow — unit-tests job caches the cargo build before bui
 });
 
 Deno.test("quality workflow — the cargo build cache lives only in the unit-tests job", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   for (const key of ["static-checks", "examples"]) {
     const steps = (jobs[key].steps ?? []) as Array<Record<string, unknown>>;
@@ -321,7 +291,7 @@ Deno.test("quality workflow — the cargo build cache lives only in the unit-tes
 });
 
 Deno.test("quality workflow — every work job preserves the bump-aware checkout ref and frozen install", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   // Only the work jobs run the suite; the aggregate gate is a pure
   // fan-in with no checkout/install steps and is excluded here.

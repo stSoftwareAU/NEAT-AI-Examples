@@ -8,29 +8,12 @@
 // Issue #435.
 
 import { assert, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/markdown-lint.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
-
-function triggers(wf: Workflow): Record<string, unknown> {
-  // YAML 1.1 treats `on` as a boolean; @std/yaml uses YAML 1.2 and keeps
-  // it as the string `on`. Accept both for safety.
-  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<
-    string,
-    unknown
-  >;
-}
+const WORKFLOW = "markdown-lint.yml";
 
 Deno.test("markdown-lint workflow — triggers on push to Develop", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   assertExists(t, "workflow must declare triggers");
   const push = t.push as { branches?: string[] } | undefined;
@@ -45,7 +28,7 @@ Deno.test("markdown-lint workflow — triggers on push to Develop", async () => 
 });
 
 Deno.test("markdown-lint workflow — triggers on pull_request to any branch", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   const pr = t.pull_request as { branches?: string[] } | undefined;
   assertExists(pr, "workflow must trigger on pull_request");
@@ -63,7 +46,7 @@ Deno.test("markdown-lint workflow — triggers on pull_request to any branch", a
 // pattern `<name>@<version>`), so an attacker who compromises the
 // package cannot ship malicious bytes into the next PR run.
 Deno.test("markdown-lint workflow — markdownlint-cli2 install is version-pinned (#442)", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const job = jobs[Object.keys(jobs)[0]];
   const steps = job.steps as Array<Record<string, unknown>>;

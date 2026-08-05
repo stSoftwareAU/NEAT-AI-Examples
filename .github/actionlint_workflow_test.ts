@@ -9,42 +9,26 @@
 //   * triggers on every pull request (against any base branch) and on
 //     pushes to the default branch `Develop`,
 //   * runs on `ubuntu-latest` with read-only `contents` permission,
-//     mirroring the other lint workflows,
-//   * pins every third-party action to a 40-character commit SHA in
-//     line with the project's supply-chain hardening rules, and
+//     mirroring the other lint workflows, and
 //   * actually invokes `actionlint` so workflow regressions fail the
 //     build.
+//
+// The 40-character SHA-pin policy is asserted for every workflow at once
+// in `workflow_pin_policy_test.ts` (Issue #744).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
+import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
 
-const WORKFLOW_PATH = new URL("./workflows/actionlint.yml", import.meta.url);
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-async function loadWorkflow(): Promise<Workflow> {
-  const text = await Deno.readTextFile(WORKFLOW_PATH);
-  return parse(text) as Workflow;
-}
-
-function triggers(wf: Workflow): Record<string, unknown> {
-  // YAML 1.1 treats `on` as a boolean; @std/yaml uses YAML 1.2 and keeps
-  // it as the string `on`. Accept both for safety.
-  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<
-    string,
-    unknown
-  >;
-}
+const WORKFLOW = "actionlint.yml";
 
 Deno.test("actionlint workflow — file exists and parses as YAML", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   assertExists(wf, "workflow YAML must parse to an object");
   assertExists(wf.jobs, "workflow must declare at least one job");
 });
 
 Deno.test("actionlint workflow — triggers on pull_request to any branch", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   const pr = t.pull_request as { branches?: string[] } | undefined;
   assertExists(pr, "workflow must trigger on pull_request");
@@ -58,7 +42,7 @@ Deno.test("actionlint workflow — triggers on pull_request to any branch", asyn
 });
 
 Deno.test("actionlint workflow — triggers on push to Develop", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   const push = t.push as { branches?: string[] } | undefined;
   assertExists(push, "workflow must trigger on push so regressions on Develop fail loudly");
@@ -70,7 +54,7 @@ Deno.test("actionlint workflow — triggers on push to Develop", async () => {
 });
 
 Deno.test("actionlint workflow — declares read-only contents permission", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const perms = wf.permissions as Record<string, string> | undefined;
   assertExists(perms, "workflow must declare an explicit permissions block");
   assertEquals(
@@ -81,7 +65,7 @@ Deno.test("actionlint workflow — declares read-only contents permission", asyn
 });
 
 Deno.test("actionlint workflow — runs on ubuntu-latest", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   const jobKey = Object.keys(jobs)[0];
   const job = jobs[jobKey];
@@ -92,28 +76,8 @@ Deno.test("actionlint workflow — runs on ubuntu-latest", async () => {
   );
 });
 
-Deno.test("actionlint workflow — every uses: pins a 40-char commit SHA", async () => {
-  const wf = await loadWorkflow();
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const shaPattern = /@[0-9a-f]{40}\b/;
-  for (const [jobKey, job] of Object.entries(jobs)) {
-    const steps = (job as { steps?: Array<Record<string, unknown>> }).steps ??
-      [];
-    for (const step of steps) {
-      const uses = step.uses as string | undefined;
-      if (!uses) continue;
-      assert(
-        shaPattern.test(uses),
-        `job '${jobKey}' step '${step.name ?? uses}' must pin its action ` +
-          `to a 40-character commit SHA (got '${uses}'). See the supply-chain ` +
-          `hardening rules in AGENTS.md.`,
-      );
-    }
-  }
-});
-
 Deno.test("actionlint workflow — actually invokes the actionlint binary", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const jobs = wf.jobs as Record<string, Record<string, unknown>>;
   let invokesActionlint = false;
   for (const job of Object.values(jobs)) {
@@ -141,7 +105,7 @@ Deno.test("actionlint workflow — actually invokes the actionlint binary", asyn
 });
 
 Deno.test("actionlint workflow — workflow_dispatch accepts pr_head_ref for CI re-dispatch", async () => {
-  const wf = await loadWorkflow();
+  const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   const wd = t.workflow_dispatch as
     | { inputs?: Record<string, { required?: boolean; type?: string }> }

@@ -6,12 +6,7 @@
 // re-dispatch them on the updated PR head.
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { parse } from "@std/yaml";
-
-// deno-lint-ignore no-explicit-any
-type Workflow = any;
-
-const WORKFLOW_DIR = new URL("./workflows/", import.meta.url);
+import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
 
 const REDISPATCH_WORKFLOWS = [
   "quality.yml",
@@ -21,16 +16,6 @@ const REDISPATCH_WORKFLOWS = [
   "gitleaks.yml",
   "dependency-review.yml",
 ];
-
-async function loadWorkflow(name: string): Promise<Workflow> {
-  const path = new URL(name, WORKFLOW_DIR);
-  const text = await Deno.readTextFile(path);
-  return parse(text) as Workflow;
-}
-
-function triggers(wf: Workflow): Record<string, unknown> {
-  return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<string, unknown>;
-}
 
 for (const wfName of REDISPATCH_WORKFLOWS) {
   Deno.test(`${wfName} — supports workflow_dispatch with pr_head_ref (#485)`, async () => {

@@ -13,12 +13,7 @@
 // contract that keeps the six former copies from drifting apart.
 
 import { assert, assertEquals } from "@std/assert";
-import { parse } from "@std/yaml";
-
-const ACTION_PATH = new URL(
-  "./actions/setup-deno-env/action.yml",
-  import.meta.url,
-);
+import { loadCompositeAction, loadWorkflow, type Workflow } from "./workflow_test_utils.ts";
 
 // The four workflows that consumed the duplicated setup block.
 const CONSUMER_WORKFLOWS = [
@@ -30,20 +25,12 @@ const CONSUMER_WORKFLOWS = [
 
 const COMPOSITE_USES = "./.github/actions/setup-deno-env";
 
-// deno-lint-ignore no-explicit-any
-type Yaml = any;
-
-async function loadAction(): Promise<Yaml> {
-  return parse(await Deno.readTextFile(ACTION_PATH)) as Yaml;
-}
-
-async function loadWorkflow(file: string): Promise<Yaml> {
-  const url = new URL(`./workflows/${file}`, import.meta.url);
-  return parse(await Deno.readTextFile(url)) as Yaml;
+function loadAction(): Promise<Workflow> {
+  return loadCompositeAction("setup-deno-env");
 }
 
 // deno-lint-ignore no-explicit-any
-function actionSteps(action: Yaml): Array<Record<string, any>> {
+function actionSteps(action: Workflow): Array<Record<string, any>> {
   return (action.runs?.steps ?? []) as Array<Record<string, unknown>>;
 }
 
@@ -76,15 +63,13 @@ Deno.test("setup-deno-env — declares the install-deps input defaulting to fals
   );
 });
 
-Deno.test("setup-deno-env — always installs Deno, pinned to a 40-char SHA at v2.x", async () => {
+// The SHA pins on this action's own steps are asserted alongside every
+// other workflow in `workflow_pin_policy_test.ts` (Issue #744).
+Deno.test("setup-deno-env — always installs Deno at v2.x", async () => {
   const action = await loadAction();
   const steps = actionSteps(action);
   const setup = stepByUsesPrefix(steps, "denoland/setup-deno@");
   assert(setup, "action must install Deno via denoland/setup-deno");
-  assert(
-    /@[0-9a-f]{40}\b/.test(setup.uses as string),
-    `denoland/setup-deno must pin a 40-char commit SHA (got '${setup.uses}')`,
-  );
   assertEquals(
     (setup.with as { "deno-version"?: string })["deno-version"],
     "v2.x",
@@ -104,10 +89,6 @@ Deno.test("setup-deno-env — cache and frozen install are gated on install-deps
 
   const cache = stepByUsesPrefix(steps, "actions/cache@");
   assert(cache, "action must cache Deno dependencies");
-  assert(
-    /@[0-9a-f]{40}\b/.test(cache.uses as string),
-    `actions/cache must pin a 40-char commit SHA (got '${cache.uses}')`,
-  );
   assertEquals(
     String(cache.if),
     "inputs.install-deps == 'true'",
