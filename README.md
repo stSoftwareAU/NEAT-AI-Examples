@@ -656,6 +656,42 @@ flowchart LR
     style QUIET2 fill:#2ecc71,stroke:#333,color:#fff
 ```
 
+### Secrets never share a job with pull-request code
+
+A job's steps share one runner environment. Anything a step appends to `$GITHUB_PATH` is prepended
+to `PATH` for **every later step in the same job**, and `$GITHUB_PATH` is not on the runner's
+blocked list. So a job that first executes pull-request-authored code and later hands a secret to a
+step is exploitable: the PR can drop a shim named `git` (or `node`, which launches every `node20`
+JavaScript action) onto `PATH` and have it run inside the secret-bearing step, reading the
+credential straight out of that step's process environment. `persist-credentials: false` does not
+help — the credential is never in the workspace to begin with.
+
+Issue #747 removed the last two instances by splitting the secret-bearing step into its own job. A
+fresh job means a fresh runner, so neither `$GITHUB_PATH` nor `$GITHUB_ENV` carries over, and the
+payload crosses the boundary as an artefact — inert data rather than an environment:
+
+```mermaid
+flowchart LR
+    subgraph OUT["deno-outdated.yml"]
+        AB["auto-bump<br/>runs PR bump-deps.sh<br/>no secrets"]
+        AB -->|artefact: deno.json + deno.lock| PB["push-bump<br/>checkout only, no PR code<br/>secrets.ACTIONS_PUSH"]
+    end
+
+    subgraph QC["quality.yml"]
+        UT["unit-tests<br/>runs the PR's deno test suite<br/>no secrets"]
+        UT -->|artefact: coverage.lcov| CU["coverage-upload<br/>checkout only, no PR code<br/>secrets.CODECOV_TOKEN"]
+    end
+
+    style AB fill:#e67e22,stroke:#333,color:#fff
+    style UT fill:#e67e22,stroke:#333,color:#fff
+    style PB fill:#2ecc71,stroke:#333,color:#fff
+    style CU fill:#2ecc71,stroke:#333,color:#fff
+```
+
+`workflow_secret_job_isolation_test.ts` enforces the invariant: no job in either workflow may
+contain both a step that executes workspace code (a local `./` composite action, `bump-deps.sh`,
+`deno test`, a `run.sh`) and a step that references `secrets.`.
+
 <details>
 <summary>🧪 Running tests, lint, fmt, and benchmarks independently</summary>
 

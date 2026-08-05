@@ -17,10 +17,13 @@
 # (Issue #582) so the per-PR critical path is the slowest job, not the
 # sum of every step:
 #   - static-checks  — lint, fmt, type-check (Deno only)
-#   - unit-tests     — full test suite + coverage + Codecov, with the
-#                      rust_scorer build (the only consumer of the
+#   - unit-tests     — full test suite + coverage, with the rust_scorer
+#                      build (the only consumer of the
 #                      NEAT_AI_RUST_SCORER_* env vars)
 #   - examples       — Intelligent Design, Discovery (quick), Suggest (quick)
+#   - coverage-upload — Codecov upload, split out of unit-tests (#747) so
+#                      the CODECOV_TOKEN never shares a runner environment
+#                      with the pull request's own test suite
 #
 # Only the unit-tests job builds rust_scorer; the examples job runs the
 # JS path and needs Deno alone, so the ~2-minute Rust build is not
@@ -248,6 +251,45 @@ jobs:
 
       - name: Generate lcov coverage report
         run: deno coverage .coverage --lcov --output=.coverage/coverage.lcov
+
+      # The report crosses to the Codecov job as data. An artefact carries
+      # no `$GITHUB_PATH` / `$GITHUB_ENV` mutation with it, so the PR's own
+      # test suite cannot reach the upload's token (#747).
+      - name: Upload the lcov report as an artefact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-lcov
+          path: .coverage/coverage.lcov
+          if-no-files-found: error
+          retention-days: 1
+
+  # Codecov upload — split out of unit-tests (#747). The PR's own test
+  # suite runs with --allow-write/--allow-env/--allow-run, so sharing a
+  # job with CODECOV_TOKEN let it prepend a `node` shim to `$GITHUB_PATH`
+  # that the `node20` codecov-action would then execute with the token in
+  # its environment. A fresh runner has neither the shim nor the PATH
+  # mutation. The upload is deliberately NOT part of the aggregate gate:
+  # fail_ci_if_error stays false so a Codecov outage cannot block a PR.
+  coverage-upload:
+    name: Upload coverage to Codecov
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: unit-tests
+
+    steps:
+      # Checked out for file paths only — no step in this job executes any
+      # pull-request-authored code.
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.pr_head_ref || github.ref }}
+          persist-credentials: false
+
+      - name: Download the lcov report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: coverage-lcov
+          path: .coverage
 
       # The codecov-action is a no-op when no coverage file is found,
       # and we set fail_ci_if_error: false so a transient Codecov

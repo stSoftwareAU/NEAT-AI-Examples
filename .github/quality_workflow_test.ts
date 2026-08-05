@@ -112,6 +112,10 @@ Deno.test("quality workflow — Suggest Improvements example runs in quick mode 
 // after the split (PR #585). It is a pure gate: it `needs:` the three
 // work jobs and runs no checkout/build steps, so it is excluded from the
 // per-work-job invariants below.
+//
+// A fifth job, `coverage-upload` (Issue #747), consumes the lcov artefact
+// produced by `unit-tests` and holds `CODECOV_TOKEN`. It runs no
+// pull-request code, so it too is excluded from the work-job invariants.
 
 // The three real work jobs that run in parallel.
 const WORK_JOBS = ["static-checks", "unit-tests", "examples"] as const;
@@ -132,8 +136,8 @@ Deno.test("quality workflow — three parallel work jobs with no inter-job needs
   const keys = Object.keys(jobs).sort();
   assertEquals(
     keys,
-    ["examples", "quality", "static-checks", "unit-tests"],
-    "quality workflow must define the static-checks, unit-tests, and examples work jobs plus the aggregate 'quality' gate (Issues #582, PR #585)",
+    ["coverage-upload", "examples", "quality", "static-checks", "unit-tests"],
+    "quality workflow must define the static-checks, unit-tests, and examples work jobs, the aggregate 'quality' gate, and the secret-bearing coverage-upload job (Issues #582, PR #585, Issue #747)",
   );
   // None of the work jobs declares `needs:` — they run in parallel so
   // the critical path is the slowest job, not the sum of all steps.

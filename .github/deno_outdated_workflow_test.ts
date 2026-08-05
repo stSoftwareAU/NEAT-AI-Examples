@@ -21,6 +21,16 @@ import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
 
 const WORKFLOW = "deno-outdated.yml";
 
+// Since #747 the bump and the secret-bearing push live in separate jobs
+// (`auto-bump` / `push-bump`) so no PR-authored `$GITHUB_PATH` mutation is
+// in scope when the PAT is used. The invariants below are about the
+// workflow as a whole, so they sweep every job's steps rather than one.
+// deno-lint-ignore no-explicit-any
+function allSteps(wf: any): Array<Record<string, unknown>> {
+  const jobs = (wf.jobs ?? {}) as Record<string, { steps?: unknown }>;
+  return Object.values(jobs).flatMap((j) => (j?.steps ?? []) as Array<Record<string, unknown>>);
+}
+
 Deno.test("deno-outdated workflow — triggers only on pull_request to Develop", async () => {
   const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
@@ -113,9 +123,7 @@ Deno.test("deno-outdated workflow — pins VIBE_BUMP_QUARANTINE_HOURS so the sup
 
 Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits the result", async () => {
   const wf = await loadWorkflow(WORKFLOW);
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const job = jobs[Object.keys(jobs)[0]];
-  const steps = job.steps as Array<Record<string, unknown>>;
+  const steps = allSteps(wf);
 
   // bump-deps.sh must be invoked.
   const bump = steps.find((s) =>
@@ -124,9 +132,10 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
   assertExists(bump, "auto-bump must invoke bump-deps.sh");
 
   // The changes must be committed and pushed (signals the auto-update, not
-  // just a warning). Since Issue #678 the commit and the push live in
-  // separate steps: the PAT-bearing push runs only after the PR-controlled
-  // bump script has finished, so it is never readable from the workspace.
+  // just a warning). Since Issue #747 the bump and the commit/push live in
+  // separate jobs: the PAT-bearing job runs on a fresh runner once the
+  // PR-controlled bump script has finished, so the credential is never
+  // readable from the workspace nor reachable via `$GITHUB_PATH`.
   const commit = steps.find((s) => String(s.run ?? "").includes("git commit"));
   assertExists(commit, "auto-bump must commit the dependency updates");
   const push = steps.find((s) => String(s.run ?? "").includes("git push"));
@@ -161,17 +170,18 @@ Deno.test("deno-outdated workflow — auto-bump runs bump-deps.sh and commits th
 
 Deno.test("deno-outdated workflow — commits both deno.json and deno.lock (#418)", async () => {
   const wf = await loadWorkflow(WORKFLOW);
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const job = jobs[Object.keys(jobs)[0]];
-  const steps = job.steps as Array<Record<string, unknown>>;
+  const steps = allSteps(wf);
 
   const bump = steps.find((s) => s.id === "bump");
   assertExists(bump, "bump step must expose the bump logic via id: bump");
-  const bumpRun = String(bump.run ?? "");
+  // The bump step decides whether either manifest drifted; the commit
+  // itself lives in the separate push job since #747, so assert both.
   assert(
-    bumpRun.includes("git add deno.json deno.lock"),
-    "bump step must commit both deno.json and deno.lock (issue #418)",
+    String(bump.run ?? "").includes("deno.json deno.lock"),
+    "bump step must consider both deno.json and deno.lock (issue #418)",
   );
+  const commit = steps.find((s) => String(s.run ?? "").includes("git add deno.json deno.lock"));
+  assertExists(commit, "the bump must commit both deno.json and deno.lock (issue #418)");
 });
 
 Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-triggers them, #651)", async () => {
@@ -181,9 +191,7 @@ Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-t
   // workaround (#485) was unreliable (Semgrep/Gitleaks/Dependency Review
   // failed outside PR context) and is removed.
   const wf = await loadWorkflow(WORKFLOW);
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const job = jobs[Object.keys(jobs)[0]];
-  const steps = job.steps as Array<Record<string, unknown>>;
+  const steps = allSteps(wf);
 
   const redispatch = steps.find((s) =>
     typeof s.run === "string" && (s.run as string).includes("gh workflow run")
@@ -202,9 +210,7 @@ Deno.test("deno-outdated workflow — does NOT re-dispatch checks (PAT push re-t
 // only the step that holds the credential moved.
 Deno.test("deno-outdated workflow — pushes with the ACTIONS_PUSH PAT so the bump re-triggers checks (#651)", async () => {
   const wf = await loadWorkflow(WORKFLOW);
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const job = jobs[Object.keys(jobs)[0]];
-  const steps = job.steps as Array<Record<string, unknown>>;
+  const steps = allSteps(wf);
 
   const push = steps.find((s) => String(s.run ?? "").includes("git push"));
   assertExists(push, "must push the bump commit");
@@ -215,14 +221,16 @@ Deno.test("deno-outdated workflow — pushes with the ACTIONS_PUSH PAT so the bu
       `the pull_request checks, got: ${scope}`,
   );
 
-  const checkout = steps.find((s) =>
+  const checkouts = steps.filter((s) =>
     typeof s.uses === "string" && (s.uses as string).startsWith("actions/checkout@")
   );
-  assertExists(checkout, "must check out the PR head");
-  const cwith = checkout.with as Record<string, unknown>;
-  assertEquals(
-    cwith.token,
-    undefined,
-    "checkout must not receive the PAT — it would be persisted while PR code runs (#678)",
-  );
+  assert(checkouts.length > 0, "must check out the PR head");
+  for (const checkout of checkouts) {
+    const cwith = (checkout.with ?? {}) as Record<string, unknown>;
+    assertEquals(
+      cwith.token,
+      undefined,
+      "checkout must not receive the PAT — it would be persisted while PR code runs (#678)",
+    );
+  }
 });

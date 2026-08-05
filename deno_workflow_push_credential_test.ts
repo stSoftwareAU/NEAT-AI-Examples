@@ -24,6 +24,14 @@ function readWorkflow(path: string): any {
   return parse(Deno.readTextFileSync(path));
 }
 
+// Issue #747 split the auto-bump push into its own `push-bump` job, so the
+// #651/#678 assertions below look across every job of the workflow.
+// deno-lint-ignore no-explicit-any
+function allSteps(wf: any): any[] {
+  // deno-lint-ignore no-explicit-any
+  return Object.values(wf.jobs as Record<string, any>).flatMap((job) => job.steps ?? []);
+}
+
 // deno-lint-ignore no-explicit-any
 function stepByRun(steps: any[], needle: string): any {
   return steps.find((s) => typeof s.run === "string" && s.run.includes(needle));
@@ -41,7 +49,7 @@ function stepByName(steps: any[], needle: string): any {
 // GITHUB_TOKEN one — so this test now asserts it on the push step.
 Deno.test("deno-outdated pushes the bump commit with the ACTIONS_PUSH PAT", () => {
   const wf = readWorkflow(OUTDATED_PATH);
-  const steps = wf.jobs["auto-bump"].steps;
+  const steps = allSteps(wf);
   const push = stepByRun(steps, "git push");
   assert(push, "Expected a step that pushes the bump commit");
   const token = JSON.stringify(push.env ?? {}) + String(push.run);
@@ -57,7 +65,7 @@ Deno.test("deno-outdated pushes the bump commit with the ACTIONS_PUSH PAT", () =
 
 Deno.test("deno-outdated drops the unreliable re-dispatch workaround", () => {
   const wf = readWorkflow(OUTDATED_PATH);
-  const steps = wf.jobs["auto-bump"].steps;
+  const steps = allSteps(wf);
   assertEquals(
     stepByName(steps, "Re-dispatch required checks"),
     undefined,
