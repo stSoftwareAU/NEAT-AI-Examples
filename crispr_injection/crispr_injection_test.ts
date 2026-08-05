@@ -281,19 +281,30 @@ Deno.test(
       // the gene's two hidden neurons already in place) has the
       // structural capacity to beat it.
       //
-      // The run is seeded and single-threaded (threads: 1) so it is
-      // reproducible — but only if the iteration count, not the wall
-      // clock, governs when each phase stops. A tight wall-clock cap
-      // truncates a phase at a different generation on a slow/loaded CI
-      // runner than locally, which breaks the seeded post >= pre
-      // comparison (observed on PR #585's CI). Give generous wall-clock
-      // headroom so maxIterations is always the real bound; with
-      // maxIterations: 60 and 16 members the run still finishes in ~1s.
+      // The budget must be big enough for both phases to get near
+      // convergence, or the post >= pre comparison measures truncation
+      // noise rather than the gene's contribution.
+      //
+      // The seed does NOT make this run bit-reproducible — measured over 20
+      // repetitions at the previous maxIterations: 60, the post-minus-pre
+      // delta ranged from -0.050 to +0.013 and broke the assertion in 4 of
+      // 20 runs (~20% flake; this is what failed CI on PR #754). At 60
+      // generations neither phase has settled, so the comparison is decided
+      // by wherever each run happened to be cut off. Raising the cap to 400
+      // lets both phases approach targetError: over 20 repetitions the
+      // delta became consistently positive (+0.005 to +0.014, 0 failures),
+      // because the injected gene genuinely converges further (max final
+      // error 0.005 post vs 0.014 pre).
+      //
+      // Wall-clock headroom stays generous so maxIterations, not the clock,
+      // is the real bound — a tight cap truncates a phase at a different
+      // generation on a loaded CI runner than locally (seen on PR #585).
+      // At 400 generations with 16 members a run still takes only ~3.5s.
       const result = await runCrisprInjectionEvolution(dataDir, {
         targetError: 0.0001,
         timeoutMinutes: 10,
         populationSize: 16,
-        maxIterations: 60,
+        maxIterations: 400,
         seed: 209,
       });
 

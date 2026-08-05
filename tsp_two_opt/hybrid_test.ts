@@ -19,13 +19,21 @@ import {
   buildTspEditGene,
   HYBRID_LOG_MARKERS,
   isChunkStalled,
+  measureChampionImprovement,
   runHybridEvolution,
   spliceCrisprGene,
   TSP_GENE_NEURON_UUIDS,
 } from "./hybrid.ts";
-import { shouldAcceptSwap } from "./environment.ts";
+import { runEpisode, shouldAcceptSwap } from "./environment.ts";
 import { buildSeedCreature, type EvolveResult } from "./tsp_two_opt.ts";
-import { loadInstance } from "../common/tsp_instances.ts";
+import { INPUT_COUNT, OUTPUT_COUNT } from "./agent.ts";
+import {
+  loadInstance,
+  nearestNeighbourTour,
+  tourLength,
+  type TspInstance,
+} from "../common/tsp_instances.ts";
+import { makeCreatureExport } from "../common/creature_export_fixture.ts";
 
 /* ------------------------------------------------------------------ */
 /*  CRISPR splice tests                                                */
@@ -123,8 +131,141 @@ Deno.test("isChunkStalled — subsequent transitions compare to the prior chunk"
 });
 
 /* ------------------------------------------------------------------ */
+/*  Champion improvement measurement (the default replay, issue #743)  */
+/* ------------------------------------------------------------------ */
+
+/** Deterministic champion fixtures — same topology and weights every run. */
+const CHAMPION_SEEDS = [1, 7, 42, 99] as const;
+
+/** Build a deterministic champion with the controller's real arity. */
+function makeChampion(seed: number): Creature {
+  return Creature.fromJSON(
+    makeCreatureExport({
+      input: INPUT_COUNT,
+      output: OUTPUT_COUNT,
+      hidden: 6,
+      seed,
+    }),
+  );
+}
+
+Deno.test(
+  "measureChampionImprovement — reports the fraction by which the champion shortened the seed tour",
+  () => {
+    const instance = loadInstance("burma14");
+    const proposalBudget = 50;
+    const cities = instance.cities;
+    const seedLength = tourLength(cities, nearestNeighbourTour(cities, 0));
+
+    const reported: number[] = [];
+    for (const seed of CHAMPION_SEEDS) {
+      const champion = makeChampion(seed);
+      const measured = measureChampionImprovement(champion, instance, proposalBudget);
+
+      // Recompute the expected ratio from the tour the champion actually
+      // ended on, using the published formula and an independent length
+      // calculation (the episode tracks length incrementally). A sign
+      // flip or a change of scoring basis turns this red.
+      const finalTour = runEpisode(champion, instance, { proposalBudget }).finalTour;
+      const expected = (seedLength - tourLength(cities, finalTour)) / seedLength;
+
+      assertAlmostEquals(measured, expected, 1e-12, `seed ${seed} ratio mismatch`);
+      reported.push(measured);
+    }
+
+    // At least one deterministic champion genuinely shortens the tour, so
+    // the measurement must be able to report a positive improvement — a
+    // flipped delta would clamp every champion to zero.
+    assert(
+      reported.some((ratio) => ratio > 0),
+      `no champion reported an improvement: ${JSON.stringify(reported)}`,
+    );
+  },
+);
+
+Deno.test(
+  "measureChampionImprovement — reports exactly zero when no 2-opt swap can improve the tour",
+  () => {
+    // Every tour over three cities has the same length, so no reversal
+    // can shorten it: the improvement is zero by construction, whatever
+    // the champion proposes.
+    const triangle: TspInstance = {
+      name: "triangle3",
+      cities: [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 0, y: 4 }],
+      optimum: 12,
+    };
+    for (const seed of CHAMPION_SEEDS) {
+      assertEquals(measureChampionImprovement(makeChampion(seed), triangle, 25), 0);
+    }
+  },
+);
+
+Deno.test(
+  "measureChampionImprovement — is deterministic, bounded in [0, 1], and never worsens with a bigger budget",
+  () => {
+    const instance = loadInstance("burma14");
+    for (const seed of CHAMPION_SEEDS) {
+      const small = measureChampionImprovement(makeChampion(seed), instance, 5);
+      const large = measureChampionImprovement(makeChampion(seed), instance, 200);
+      const repeat = measureChampionImprovement(makeChampion(seed), instance, 200);
+
+      assert(
+        Number.isFinite(small) && Number.isFinite(large),
+        `seed ${seed} produced a non-finite ratio`,
+      );
+      for (const ratio of [small, large]) {
+        assert(ratio >= 0 && ratio <= 1, `seed ${seed} ratio ${ratio} outside [0, 1]`);
+      }
+      // Same champion, same instance, same budget → same answer.
+      assertEquals(repeat, large, `seed ${seed} is not deterministic`);
+      // Strict acceptance never lengthens the tour, so more proposals can
+      // only ever help.
+      assert(
+        large >= small,
+        `seed ${seed}: budget 200 (${large}) reported worse than budget 5 (${small})`,
+      );
+    }
+  },
+);
+
+/* ------------------------------------------------------------------ */
 /*  Orchestrator wiring                                                */
 /* ------------------------------------------------------------------ */
+
+Deno.test(
+  "runHybridEvolution — with no replay override, each chunk records the real champion improvement",
+  async () => {
+    const instance = loadInstance("burma14");
+    const champion = makeChampion(1);
+    const proposalBudget = 25;
+    const stubEvolver = (): Promise<EvolveResult> =>
+      Promise.resolve({
+        champion,
+        error: 1,
+        score: 0,
+        generations: 1,
+        wallclockMs: 1,
+      });
+
+    const result = await runHybridEvolution({
+      instance,
+      totalTimeMinutes: 0.05,
+      chunks: 2,
+      proposalBudget,
+      // `replay` deliberately omitted — this pins the default occupant of
+      // the seam that the other orchestration tests stub out (#743).
+      // deno-lint-ignore no-explicit-any
+      evolver: stubEvolver as any,
+      log: () => {},
+    });
+
+    const expected = measureChampionImprovement(champion, instance, proposalBudget);
+    assert(expected > 0, "fixture champion must improve the tour for this test to bite");
+    for (const chunk of result.chunks) {
+      assertEquals(chunk.improvementRatio, expected);
+    }
+  },
+);
 
 Deno.test(
   "runHybridEvolution — chunk 2's seed creature matches chunk 1's champion export (memetic re-seed)",
