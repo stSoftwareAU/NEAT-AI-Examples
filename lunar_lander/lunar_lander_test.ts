@@ -63,7 +63,7 @@ import {
   VALIDATION_BASE_SEED,
   type ValidationScenarioResult,
 } from "./lunar_lander.ts";
-import { renderRunSVG } from "./svg.ts";
+import { LANDER_HALF_LENGTH, renderRunSVG } from "./svg.ts";
 import {
   DEFAULT_START_X,
   DEFAULT_TERRAIN,
@@ -1821,7 +1821,7 @@ Deno.test(
     // Top edge of the terrain silhouette rect — anything drawn at a
     // larger SVG y is below the ground line.
     const terrainMatch = svg.match(
-      /<rect x="0" y="([\d.]+)" width="800" height="[\d.]+" fill="#3a2a1a"\/>/,
+      /<rect class="terrain"[^>]*\sy="([\d.]+)"/,
     );
     assert(terrainMatch, "expected a terrain silhouette rect");
     const groundSvg = parseFloat(terrainMatch[1]);
@@ -1857,7 +1857,7 @@ Deno.test(
     // Local body geometry extends from `-LANDER_HALF_LENGTH` to
     // `+LANDER_HALF_LENGTH` around the translate point. The lowest
     // visible y is therefore `lastY + LANDER_HALF_LENGTH`.
-    const animLowest = lastY + 12; // LANDER_HALF_LENGTH
+    const animLowest = lastY + LANDER_HALF_LENGTH;
     assertGreaterOrEqual(
       groundSvg + 0.01,
       animLowest,
