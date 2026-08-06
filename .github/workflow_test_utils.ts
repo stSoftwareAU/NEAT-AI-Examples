@@ -66,6 +66,8 @@ export const INSTALL_VERIFIED_TOOL = ".github/scripts/install_verified_tool.sh";
 export interface RunStep {
   location: string;
   run: string;
+  /** The step's explicit `shell:`, when it declares one. */
+  shell?: string;
 }
 
 /** Every `run:` body in a workflow's jobs or in a composite action's steps. */
@@ -74,7 +76,9 @@ export function runSteps(doc: Workflow): RunStep[] {
   const collect = (raw: unknown, label: (name: string) => string) => {
     for (const step of (raw ?? []) as Array<Record<string, unknown>>) {
       const run = step.run as string | undefined;
-      if (run) steps.push({ location: label(String(step.name ?? "unnamed")), run });
+      if (!run) continue;
+      const shell = step.shell as string | undefined;
+      steps.push({ location: label(String(step.name ?? "unnamed")), run, shell });
     }
   };
 
@@ -98,6 +102,32 @@ export function unverifiedDownloads(doc: Workflow): string[] {
   return runSteps(doc)
     .filter(({ run }) => /\b(curl|wget)\b/.test(run))
     .filter(({ run }) => !(run.includes(INSTALL_VERIFIED_TOOL) && digestPattern.test(run)))
+    .map(({ location }) => location);
+}
+
+/** The strict-mode preamble every multi-line `run:` block must open with. */
+export const STRICT_MODE_PREAMBLE = "set -euo pipefail";
+
+/** Shells the strict-mode policy applies to; anything else (pwsh, python) is exempt. */
+const POSIX_SHELLS = /^(bash|sh)\b/;
+
+/**
+ * The multi-line `run:` blocks that do not open with `set -euo pipefail`
+ * (Issue #750). GitHub's default shell is `bash -e {0}` — `errexit` only —
+ * so without the preamble an unset variable expands to an empty string and a
+ * failure mid-pipeline is masked by the exit status of the last command. That
+ * turns a fault into a green step: `deno-security-update.yml` once dropped
+ * `-e` and a failed `echo … >> "$GITHUB_OUTPUT"` would have left the advisory
+ * gate empty, silently skipping the patch while the run reported success.
+ *
+ * Single-line blocks are exempt — the default `-e` already propagates the sole
+ * command's exit status.
+ */
+export function missingStrictMode(doc: Workflow): string[] {
+  return runSteps(doc)
+    .filter(({ shell }) => shell === undefined || POSIX_SHELLS.test(shell))
+    .filter(({ run }) => run.trimEnd().includes("\n"))
+    .filter(({ run }) => run.split("\n")[0].trim() !== STRICT_MODE_PREAMBLE)
     .map(({ location }) => location);
 }
 
