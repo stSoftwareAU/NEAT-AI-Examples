@@ -46,8 +46,35 @@ jobs:
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
 
+      # Lints with koalaman/shellcheck (https://github.com/koalaman/shellcheck),
+      # preinstalled on the ubuntu-latest runner. Issue #751 dropped the
+      # `ludeeus/action-shellcheck` wrapper: it is dormant (no release since
+      # 2023-01, no push since 2024-06), so its pinned SHA could never receive a
+      # fix. Calling the binary directly removes the orphaned dependency rather
+      # than swapping it for another wrapper, and the lint tracks the actively
+      # maintained runner image's shellcheck version.
+      #
+      # Mirrors the retired configuration (`scandir: .`, `severity: warning`)
+      # and fails loud (Issue #3234): a missing binary, an empty scan, or any
+      # warning-and-above finding exits non-zero.
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
-        with:
-          scandir: .
-          severity: warning
+        run: |
+          set -euo pipefail
+          shellcheck --version
+          scripts=()
+          while IFS= read -r -d '' script; do
+            scripts+=("${script}")
+          done < <(
+            find . -name '*.sh' -type f \
+              -not -path './.git/*' \
+              -not -path './NEAT-AI-core/*' \
+              -not -path './NEAT-AI-scorer/*' \
+              -not -path '*/node_modules/*' \
+              -print0
+          )
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "No shell scripts found to lint — the discovery pattern is broken" >&2
+            exit 1
+          fi
+          printf 'Linting %d shell script(s)\n' "${#scripts[@]}"
+          shellcheck --severity=warning "${scripts[@]}"
