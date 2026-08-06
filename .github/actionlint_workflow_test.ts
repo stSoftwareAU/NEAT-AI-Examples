@@ -17,7 +17,7 @@
 // in `workflow_pin_policy_test.ts` (Issue #744).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
+import { INSTALL_VERIFIED_TOOL, loadWorkflow, runSteps, triggers } from "./workflow_test_utils.ts";
 
 const WORKFLOW = "actionlint.yml";
 
@@ -101,6 +101,21 @@ Deno.test("actionlint workflow — actually invokes the actionlint binary", asyn
   assert(
     invokesActionlint,
     "workflow must run actionlint (either rhysd/actionlint-* action or `actionlint` binary directly)",
+  );
+});
+
+Deno.test("actionlint workflow — installs the binary against a pinned SHA-256 (Issue #748)", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  const install = runSteps(wf).filter(({ run }) => run.includes(INSTALL_VERIFIED_TOOL));
+  assertEquals(
+    install.length,
+    1,
+    `exactly one step must install actionlint via ${INSTALL_VERIFIED_TOOL}`,
+  );
+  assert(
+    /\b[0-9a-f]{64}\b/.test(install[0].run),
+    "the install step must pin the tarball's 64-character SHA-256 next to the version, " +
+      "so a re-uploaded release asset fails the job instead of executing",
   );
 });
 

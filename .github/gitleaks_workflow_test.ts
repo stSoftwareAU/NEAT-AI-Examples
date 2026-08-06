@@ -12,7 +12,7 @@
 // expanding to an empty string, and a failure anywhere in a pipeline is
 // not masked by the exit status of its last command.
 
-import { assert, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { loadWorkflow, type Workflow } from "./workflow_test_utils.ts";
 
 const WORKFLOW = "gitleaks.yml";
@@ -184,30 +184,43 @@ Deno.test("gitleaks workflow — Run Gitleaks still scans when BASE_REF is set",
   }
 });
 
+// Issue #748 moved the download, digest check and extraction out of this
+// `run:` block and into `.github/scripts/install_verified_tool.sh`, which is
+// exercised end-to-end in `install_verified_tool_test.ts`. What is left to
+// verify here is that the step still completes under strict mode and hands the
+// verifier the right pinned arguments — so this test now stubs the verifier
+// instead of stubbing `curl` and `tar`.
 Deno.test("gitleaks workflow — Install Gitleaks completes under strict mode", async () => {
   const wf = await loadWorkflow(WORKFLOW);
   const step = allSteps(wf).find((s) => s.name === "Install Gitleaks");
   assertExists(step, "must have an 'Install Gitleaks' step");
 
   const dir = await Deno.makeTempDir({ prefix: "gitleaks-install-" });
-  const stubs = `${dir}/bin`;
   try {
-    await Deno.mkdir(stubs);
-    // curl writes the tarball named by -o; tar drops the extracted binary.
+    await Deno.mkdir(`${dir}/.github/scripts`, { recursive: true });
     await writeStub(
-      stubs,
-      "curl",
-      'out=""\nwhile [ $# -gt 0 ]; do if [ "$1" = "-o" ]; then out="$2"; fi; shift; done\nprintf tarball > "${out}"',
+      `${dir}/.github/scripts`,
+      "install_verified_tool.sh",
+      `printf '%s' "$*" > "${dir}/args"`,
     );
-    await writeStub(stubs, "tar", "printf binary > gitleaks");
 
-    const code = await runAsAction(String(step.run), dir, {
-      PATH: `${stubs}:/usr/bin:/bin`,
-    });
+    const code = await runAsAction(String(step.run), dir, { PATH: "/usr/bin:/bin" });
 
     assert(code === 0, `install step should succeed, exited ${code}`);
-    const mode = (await Deno.stat(`${dir}/gitleaks`)).mode ?? 0;
-    assert((mode & 0o111) !== 0, "extracted gitleaks binary must be executable");
+    const args = (await Deno.readTextFile(`${dir}/args`)).split(/\s+/);
+    assert(
+      args.some((a) => a.includes("gitleaks_8.30.1_linux_x64.tar.gz")),
+      `install step must fetch the pinned release asset, got args: ${args.join(" ")}`,
+    );
+    assert(
+      args.some((a) => /^[0-9a-f]{64}$/.test(a)),
+      `install step must pass a pinned 64-character SHA-256, got args: ${args.join(" ")}`,
+    );
+    assertEquals(
+      args[args.length - 1],
+      "gitleaks",
+      `install step must extract the gitleaks binary, got args: ${args.join(" ")}`,
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

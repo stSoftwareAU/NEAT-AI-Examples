@@ -59,6 +59,48 @@ export function triggers(wf: Workflow): Record<string, unknown> {
   return (wf.on ?? wf["true"] ?? wf[true as unknown as string]) as Record<string, unknown>;
 }
 
+/** Path (relative to the repository root) of the verified-download helper. */
+export const INSTALL_VERIFIED_TOOL = ".github/scripts/install_verified_tool.sh";
+
+/** A single `run:` body plus a human-readable location. */
+export interface RunStep {
+  location: string;
+  run: string;
+}
+
+/** Every `run:` body in a workflow's jobs or in a composite action's steps. */
+export function runSteps(doc: Workflow): RunStep[] {
+  const steps: RunStep[] = [];
+  const collect = (raw: unknown, label: (name: string) => string) => {
+    for (const step of (raw ?? []) as Array<Record<string, unknown>>) {
+      const run = step.run as string | undefined;
+      if (run) steps.push({ location: label(String(step.name ?? "unnamed")), run });
+    }
+  };
+
+  const jobs = (doc?.jobs ?? {}) as Record<string, { steps?: unknown }>;
+  for (const [jobKey, job] of Object.entries(jobs)) {
+    collect(job?.steps, (name) => `job '${jobKey}' step '${name}'`);
+  }
+  collect(doc?.runs?.steps, (name) => `composite step '${name}'`);
+  return steps;
+}
+
+/**
+ * The `run:` steps that pull an executable over the network without proving
+ * which bytes arrived (Issue #748). Pinning an upstream *version* is not
+ * enough: a release asset can be deleted and re-uploaded under the same tag,
+ * so every download must go through `install_verified_tool.sh` with a pinned
+ * 64-character SHA-256 digest.
+ */
+export function unverifiedDownloads(doc: Workflow): string[] {
+  const digestPattern = /\b[0-9a-f]{64}\b/;
+  return runSteps(doc)
+    .filter(({ run }) => /\b(curl|wget)\b/.test(run))
+    .filter(({ run }) => !(run.includes(INSTALL_VERIFIED_TOOL) && digestPattern.test(run)))
+    .map(({ location }) => location);
+}
+
 /** A single `uses:` reference plus a human-readable location. */
 export interface UsesRef {
   location: string;
