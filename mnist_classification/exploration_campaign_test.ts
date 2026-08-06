@@ -22,6 +22,7 @@ import {
   DEFAULT_EXPLORATION_PHASES,
   evaluateOnHoldout,
   EXPLORATION_ROOT,
+  explorationPaths,
   type ExplorationPhaseRecord,
   POLISH_MAX_GENERATIONS,
   POLISH_TIMEOUT_MINUTES,
@@ -124,6 +125,15 @@ Deno.test("evaluateOnHoldout returns finite fractions in [0, 1]", () => {
 Deno.test("EXPLORATION_ROOT is under the hidden MNIST working directory", () => {
   assert(EXPLORATION_ROOT.startsWith(".synthetic-mnist/"));
   assert(EXPLORATION_ROOT.includes("exploration"));
+});
+
+Deno.test("phase-log path comes from explorationPaths(), not a module-level alias", async () => {
+  const paths = explorationPaths(EXPLORATION_ROOT);
+  assertEquals(paths.phaseLog, `${EXPLORATION_ROOT}/phases.jsonl`);
+
+  // Regression guard for #763: the unused `EXPLORATION_PHASE_LOG_PATH` alias is gone.
+  const surface = await import("./exploration_campaign.ts");
+  assert(!("EXPLORATION_PHASE_LOG_PATH" in surface));
 });
 
 Deno.test("ExplorationPhaseRecord shape is JSON-serialisable", () => {

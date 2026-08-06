@@ -102,9 +102,6 @@ export function explorationPaths(explorationRoot = EXPLORATION_ROOT): {
 /** Persisted champion between exploration phases. */
 export const EXPLORATION_CHAMPION_PATH = explorationPaths().champion;
 
-/** Append-only JSONL log — one record per completed phase. */
-export const EXPLORATION_PHASE_LOG_PATH = explorationPaths().phaseLog;
-
 /** Latest campaign summary (test accuracy, topology, phase count). */
 export const EXPLORATION_SUMMARY_PATH = explorationPaths().summary;
 
@@ -409,7 +406,7 @@ export const DEFAULT_EXPLORATION_PHASES: readonly ExplorationPhase[] = buildExpl
 /** Squash candidates for a full `--squash-scan` pass (one scan each). */
 export { DEFAULT_SQUASH_CANDIDATES } from "./squash_random.ts";
 
-/** One line in {@link EXPLORATION_PHASE_LOG_PATH}. */
+/** One line in the append-only phase log at `explorationPaths().phaseLog`. */
 export interface ExplorationPhaseRecord {
   phase: string;
   trainingSampleRate: number;
