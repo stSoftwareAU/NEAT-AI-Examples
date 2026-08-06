@@ -50,20 +50,23 @@ jobs:
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
 
-      # Pin actionlint to an exact release. The deno-outdated bot does
-      # not bump non-Deno CI tools, so bumps here are manual — when
-      # raising the pin, allow the project quarantine window
-      # (`VIBE_BUMP_QUARANTINE_HOURS`, default 24h) to elapse after the
-      # new release before merging.
+      # Pin actionlint to an exact release AND to the SHA-256 of that
+      # release's asset: a release asset is mutable, so the version alone
+      # does not fix which bytes arrive (Issue #748). The deno-outdated
+      # bot does not bump non-Deno CI tools, so bumps here are manual —
+      # raise the version and the digest together (take the digest from
+      # the upstream `actionlint_<version>_checksums.txt`), and allow the
+      # project quarantine window (`VIBE_BUMP_QUARANTINE_HOURS`, default
+      # 24h) to elapse after the new release before merging.
       - name: Install actionlint
         run: |
           set -euo pipefail
           ACTIONLINT_VERSION="1.7.12"
-          curl -sSfL --retry 3 --retry-delay 5 \
+          ACTIONLINT_SHA256="8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+          .github/scripts/install_verified_tool.sh \
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
-            -o actionlint.tar.gz
-          tar -xzf actionlint.tar.gz actionlint
-          chmod +x actionlint
+            "${ACTIONLINT_SHA256}" \
+            actionlint
 
       - name: Run actionlint
         run: ./actionlint -color

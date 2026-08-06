@@ -62,15 +62,24 @@ jobs:
           ref: ${{ inputs.pr_head_ref || github.ref }}
           fetch-depth: 0
 
+      # Pin Gitleaks to an exact release AND to the SHA-256 of that
+      # release's asset: a release asset is mutable, so the version alone
+      # does not fix which bytes arrive (Issue #748). This job checks out
+      # the full history, so a substituted binary would see every commit.
+      # Bumps are manual — raise the version and the digest together
+      # (take the digest from the upstream
+      # `gitleaks_<version>_checksums.txt`), and allow the project
+      # quarantine window (`VIBE_BUMP_QUARANTINE_HOURS`, default 24h) to
+      # elapse after the new release before merging.
       - name: Install Gitleaks
         run: |
           set -euo pipefail
           GITLEAKS_VERSION="8.30.1"
-          curl -sSfL --retry 3 --retry-delay 5 \
+          GITLEAKS_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+          .github/scripts/install_verified_tool.sh \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            -o gitleaks.tar.gz
-          tar -xzf gitleaks.tar.gz gitleaks
-          chmod +x gitleaks
+            "${GITLEAKS_SHA256}" \
+            gitleaks
 
       - name: Run Gitleaks
         env:
