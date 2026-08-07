@@ -19,9 +19,6 @@ export function phaseChampionsDir(explorationRoot = MNIST_EXPLORATION_ROOT): str
   return join(explorationRoot, "phase-champions");
 }
 
-/** On-disk directory for per-phase and per-rate champion JSON exports. */
-export const PHASE_CHAMPIONS_DIR = phaseChampionsDir();
-
 /** Persisted champion for one training sample rate. */
 export interface SampleRateChampionRecord {
   trainingSampleRate: number;

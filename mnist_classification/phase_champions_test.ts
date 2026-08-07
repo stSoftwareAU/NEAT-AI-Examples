@@ -3,6 +3,7 @@
  */
 
 import { assert, assertEquals, assertFalse } from "@std/assert";
+import { join } from "@std/path";
 
 import { makeCreatureExport } from "../common/creature_export_fixture.ts";
 import { CLASS_COUNT, FEATURE_COUNT } from "./data.ts";
@@ -16,6 +17,7 @@ import {
   maybeUpdateSampleRateChampion,
   mergePopulationSeedExports,
   phaseChampionPath,
+  phaseChampionsDir,
   priorStructurePhaseNames,
   repeatSuffixFromPhaseName,
   sampleRateChampionPath,
@@ -46,6 +48,18 @@ Deno.test("sampleRateKey maps training fractions to stable filenames", () => {
   assertEquals(sampleRateKey(0.01), "0.01");
   assertEquals(sampleRateKey(0.05), "0.05");
   assertEquals(sampleRateKey(0.15), "0.15");
+});
+
+Deno.test("champions directory comes from phaseChampionsDir(), not a module-level alias", async () => {
+  assertEquals(phaseChampionsDir("/tmp/root-766"), join("/tmp/root-766", "phase-champions"));
+  assertEquals(
+    phaseChampionPath("structure-1", "/tmp/root-766"),
+    join("/tmp/root-766", "phase-champions", "structure-1.json"),
+  );
+
+  // Regression guard for #766: the unused `PHASE_CHAMPIONS_DIR` alias is gone.
+  const surface = await import("./phase_champions.ts");
+  assertFalse("PHASE_CHAMPIONS_DIR" in surface);
 });
 
 Deno.test("priorStructurePhaseNames lists earlier structure rungs in the same repeat", () => {
