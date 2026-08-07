@@ -40,9 +40,6 @@ export const CREATURES_DIR = populationPoolDirs().creatures;
 /** `.sampler/loop-N.json` archives. */
 export const SAMPLER_DIR = populationPoolDirs().sampler;
 
-/** Intelligent Design experiment output (one subdir per squash pass). */
-export const EXPERIMENTS_DIR = populationPoolDirs().experiments;
-
 /** Trace scratch (`.trace` — reserved for future use). */
 export const TRACE_DIR = populationPoolDirs().trace;
 

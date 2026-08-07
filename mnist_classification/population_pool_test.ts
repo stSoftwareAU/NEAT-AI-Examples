@@ -1,15 +1,19 @@
 import { assertEquals } from "@std/assert";
+import { join } from "@std/path";
 
 import { makeCreatureExport } from "../common/creature_export_fixture.ts";
 import { CLASS_COUNT, FEATURE_COUNT } from "./data.ts";
 import {
   CREATURES_DIR,
+  intelligentDesignOutputDir,
   loadPopulationPoolSeeds,
   loadSamplerLoopChampion,
+  populationPoolDirs,
   priorLoopPhaseNames,
   SAMPLER_DIR,
   samplerLoopPath,
   saveSamplerLoopChampion,
+  wipePopulationPool,
 } from "./population_pool.ts";
 
 // Real MNIST-shaped exports (issue #722): a fresh seed exactly as the campaign
@@ -27,6 +31,35 @@ Deno.test("priorLoopPhaseNames lists earlier sampler loops", () => {
   assertEquals(priorLoopPhaseNames("loop-3"), ["loop-1", "loop-2"]);
   assertEquals(priorLoopPhaseNames("loop-4-r2"), ["loop-1-r2", "loop-2-r2", "loop-3-r2"]);
 });
+
+// The experiments directory is reached through populationPoolDirs().experiments
+// — the only supported accessor now that the unused EXPERIMENTS_DIR alias is
+// gone (issue #767).
+Deno.test("experiments directory is created and wiped via populationPoolDirs", async () => {
+  const root = await Deno.makeTempDir();
+  try {
+    const experiments = populationPoolDirs(root).experiments;
+    assertEquals(experiments, join(root, "experiments"));
+
+    const outputDir = intelligentDesignOutputDir("LOGISTIC", root);
+    assertEquals(outputDir, join(experiments, "intelligent-design", "LOGISTIC"));
+    assertEquals(Deno.statSync(outputDir).isDirectory, true);
+
+    await wipePopulationPool(root);
+    assertEquals(await pathExists(experiments), false);
+  } finally {
+    await Deno.remove(root, { recursive: true });
+  }
+});
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await Deno.stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 Deno.test("saveSamplerLoopChampion round-trips under .sampler", async () => {
   try {
