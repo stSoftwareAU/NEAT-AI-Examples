@@ -102,9 +102,6 @@ export function explorationPaths(explorationRoot = EXPLORATION_ROOT): {
 /** Persisted champion between exploration phases. */
 export const EXPLORATION_CHAMPION_PATH = explorationPaths().champion;
 
-/** Persisted sampler calibration from the last `--fresh` probe. */
-export const EXPLORATION_CALIBRATION_PATH = explorationPaths().calibration;
-
 /**
  * Evolve-option overrides applied in unit tests only — the runner never
  * sets these, so production runs keep NEAT-AI's defaults (issue #727).
@@ -275,7 +272,7 @@ export async function calibrateTrainingSampleRate(options: {
   };
 }
 
-/** Load a prior calibration record written under {@link EXPLORATION_CALIBRATION_PATH}. */
+/** Load a prior calibration record written under `explorationPaths().calibration`. */
 export async function loadExplorationCalibration(
   explorationRoot = EXPLORATION_ROOT,
 ): Promise<

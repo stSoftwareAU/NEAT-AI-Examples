@@ -145,6 +145,15 @@ Deno.test("summary path comes from explorationPaths(), not a module-level alias"
   assert(!("EXPLORATION_SUMMARY_PATH" in surface));
 });
 
+Deno.test("calibration path comes from explorationPaths(), not a module-level alias", async () => {
+  const paths = explorationPaths(EXPLORATION_ROOT);
+  assertEquals(paths.calibration, `${EXPLORATION_ROOT}/calibration.json`);
+
+  // Regression guard for #765: the unused `EXPLORATION_CALIBRATION_PATH` alias is gone.
+  const surface = await import("./exploration_campaign.ts");
+  assert(!("EXPLORATION_CALIBRATION_PATH" in surface));
+});
+
 Deno.test("ExplorationPhaseRecord shape is JSON-serialisable", () => {
   const record: ExplorationPhaseRecord = {
     phase: "loop-1-r1",
