@@ -65,5 +65,6 @@ Other changes:
 - `README.md`, `CONTRIBUTING.md`, `AGENTS.md` — document the gate and add it to the quality-check
   flow diagram
 
-`shellcheck --severity=warning quality/bash_syntax.sh`, `actionlint .github/workflows/shellcheck.yml`,
-`deno lint`, `deno fmt --check`, `markdownlint-cli2`, and `./quality.sh` all pass.
+`shellcheck --severity=warning quality/bash_syntax.sh`,
+`actionlint .github/workflows/shellcheck.yml`, `deno lint`, `deno fmt --check`, `markdownlint-cli2`,
+and `./quality.sh` all pass.
