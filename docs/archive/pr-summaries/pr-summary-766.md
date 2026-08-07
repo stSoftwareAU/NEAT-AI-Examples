@@ -15,13 +15,17 @@ and `EXPLORATION_CALIBRATION_PATH` (#765). Closes #766.
 
 Backend/CLI change only — no web interface to screenshot.
 
-Dynamic-use check requested by the issue: a repository-wide search finds no remaining reference to
-the identifier, and no string-keyed lookup of `"PHASE_CHAMPIONS_DIR"` exists, so nothing resolves it
-reflectively.
+Dynamic-use check requested by the issue: before the change, a repository-wide search found exactly
+one occurrence of the identifier — the declaration itself. There was no string-keyed or reflective
+lookup, so nothing resolved it dynamically.
 
 ```
-$ grep -rn "PHASE_CHAMPIONS_DIR" .
-(no matches)
+$ grep -rn "PHASE_CHAMPIONS_DIR" .          # before
+mnist_classification/phase_champions.ts:23:export const PHASE_CHAMPIONS_DIR = phaseChampionsDir();
+
+$ grep -rn "PHASE_CHAMPIONS_DIR" .          # after — only the regression guard and this summary
+mnist_classification/phase_champions_test.ts:60:  // Regression guard for #766: ...
+mnist_classification/phase_champions_test.ts:62:  assertFalse("PHASE_CHAMPIONS_DIR" in surface);
 ```
 
 Module tests after the change:
