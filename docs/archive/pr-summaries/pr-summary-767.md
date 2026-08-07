@@ -48,9 +48,11 @@ ok | 4 passed | 0 failed (19ms)
 
 ## Test Plan
 
-- Added `mnist_classification/population_pool_test.ts::"experiments directory is created and wiped
-  via populationPoolDirs"` — a "what" test that pins the behaviour the deleted alias stood in for,
-  against a `Deno.makeTempDir()` exploration root:
+- Added
+  `mnist_classification/population_pool_test.ts::"experiments directory is created and wiped
+  via populationPoolDirs"`
+  — a "what" test that pins the behaviour the deleted alias stood in for, against a
+  `Deno.makeTempDir()` exploration root:
   - `populationPoolDirs(root).experiments` resolves to `<root>/experiments`;
   - `intelligentDesignOutputDir("LOGISTIC", root)` returns
     `<root>/experiments/intelligent-design/LOGISTIC` and creates it on disk;
