@@ -42,7 +42,8 @@ Then copy the compiled library to `~/.cargo/lib/`:
 
 ## 🔄 Development Workflow
 
-Before submitting any changes, run the full quality gate (`./quality.sh`), which runs `deno lint`,
+Before submitting any changes, run the full quality gate (`./quality.sh`), which runs
+`quality/bash_syntax.sh` (a `bash -n` syntax gate over every shell script), `deno lint`,
 `deno fmt --check`, `deno test`, and all example runner scripts. See
 [Quality Check](README.md#-quality-check) in the README for full details on each step.
 

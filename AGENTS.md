@@ -378,5 +378,6 @@ suggest_improvements/
   run.sh                           — Runner script for the example
 
 quality.sh                         — Runs all tests and examples
+quality/bash_syntax.sh             — `bash -n` syntax gate for every *.sh file
 deno.json                          — Deno configuration and dependencies
 ```

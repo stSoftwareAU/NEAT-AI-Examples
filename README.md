@@ -527,6 +527,7 @@ Run linting, formatting, type checks, unit tests, and every example end-to-end:
 
 ```mermaid
 flowchart LR
+    BASH["🐚 Bash Syntax<br/>quality/bash_syntax.sh"]
     LINT["🔎 Lint<br/>deno lint"]
     FMT["✨ Format Check<br/>deno fmt --check"]
     CHECK["🧐 Type Check<br/>deno check"]
@@ -535,17 +536,20 @@ flowchart LR
     PASS["✅ All Passed"]
     FAIL["❌ Failed"]
 
+    BASH -->|pass| LINT
     LINT -->|pass| FMT
     FMT -->|pass| CHECK
     CHECK -->|pass| TEST
     TEST -->|pass| EX
     EX -->|pass| PASS
+    BASH -->|fail| FAIL
     LINT -->|fail| FAIL
     FMT -->|fail| FAIL
     CHECK -->|fail| FAIL
     TEST -->|fail| FAIL
     EX -->|fail| FAIL
 
+    style BASH fill:#34495e,stroke:#333,color:#fff
     style LINT fill:#3498db,stroke:#333,color:#fff
     style FMT fill:#9b59b6,stroke:#333,color:#fff
     style CHECK fill:#f39c12,stroke:#333,color:#fff
@@ -557,6 +561,18 @@ flowchart LR
 
 A GitHub Actions workflow ([`.github/workflows/quality.yml`](.github/workflows/quality.yml)) runs
 the same pipeline on every push and pull request to `Develop`. Failing checks block merges.
+
+### Bash syntax gate
+
+Bash has no compile step, so a syntax error in a committed `*.sh` file only surfaces when someone
+runs it. [`quality/bash_syntax.sh`](quality/bash_syntax.sh) closes that gap: it parses every shell
+script in the repository with `bash -n` (parse, never execute) and exits non-zero on the first
+script that does not parse, naming every offender. `quality.sh` runs it locally, and the ShellCheck
+workflow ([`.github/workflows/shellcheck.yml`](.github/workflows/shellcheck.yml)) runs it on every
+pull request alongside the ShellCheck lint — ShellCheck is a linter, not the bash parser, so both
+gates are needed. The script takes an optional root directory argument and fails loud when that root
+is missing or the scan finds no scripts at all, so a broken discovery pattern can never report a
+vacuous pass.
 
 > [!NOTE]
 > The Discovery example needs a native Rust FFI (Foreign Function Interface) library that is not yet
