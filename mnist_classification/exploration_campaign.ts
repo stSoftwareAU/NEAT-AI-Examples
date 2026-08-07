@@ -102,9 +102,6 @@ export function explorationPaths(explorationRoot = EXPLORATION_ROOT): {
 /** Persisted champion between exploration phases. */
 export const EXPLORATION_CHAMPION_PATH = explorationPaths().champion;
 
-/** Latest campaign summary (test accuracy, topology, phase count). */
-export const EXPLORATION_SUMMARY_PATH = explorationPaths().summary;
-
 /** Persisted sampler calibration from the last `--fresh` probe. */
 export const EXPLORATION_CALIBRATION_PATH = explorationPaths().calibration;
 
