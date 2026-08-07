@@ -78,3 +78,12 @@ jobs:
           fi
           printf 'Linting %d shell script(s)\n' "${#scripts[@]}"
           shellcheck --severity=warning "${scripts[@]}"
+
+      # ShellCheck is a linter, not the bash parser — bash has no compile
+      # step, so a syntax error can only be caught by parsing every
+      # script. The committed gate script runs `bash -n` over the same
+      # discovery set and fails the pull request on any script that does
+      # not parse (Issue #768). The repository commits and owns its gate;
+      # there is no shared cross-repo Action.
+      - name: Run bash syntax gate
+        run: ./quality/bash_syntax.sh

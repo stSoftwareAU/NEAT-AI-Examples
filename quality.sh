@@ -88,6 +88,24 @@ else
   FAILED=1
 fi
 
+# --- Bash Syntax ---
+# Parses every committed shell script with `bash -n` (Issue #768), the
+# same gate the ShellCheck workflow runs on pull requests.
+echo "----------------------------------------"
+echo "Running: Bash Syntax"
+echo "----------------------------------------"
+
+if ./quality/bash_syntax.sh; then
+  echo ""
+  echo "SUCCESS: Bash Syntax"
+  echo ""
+else
+  echo ""
+  echo "FAILED: Bash Syntax"
+  echo ""
+  FAILED=1
+fi
+
 # --- Linting ---
 echo "----------------------------------------"
 echo "Running: Deno Lint"
