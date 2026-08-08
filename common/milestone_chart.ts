@@ -18,6 +18,17 @@
  * byte-identical for identical inputs.
  */
 
+import {
+  escapeAttr,
+  escapeText,
+  fmt,
+  formatAxisValue,
+  renderLeftAxis,
+  renderRightAxis,
+  renderXAxis,
+} from "./chart_axis.ts";
+import { makeScale, makeXScale, maxBy, minBy } from "./chart_scale.ts";
+
 /** A single milestone sample emitted by `Creature.evolveRL`. */
 export interface MilestoneSample {
   /** Milestone generation (e.g. 1, 10, 100, 1000). */
@@ -141,9 +152,30 @@ export function renderMilestoneChartSVG(
       `fill="#ffffff" stroke="#333333" stroke-width="1"/>`,
   );
 
-  lines.push(renderXAxis(genMin, genMax, xScale, plotY + plotH, logX));
-  lines.push(renderLeftAxis(leftMin, leftMax, yLeftScale, plotX));
-  lines.push(renderRightAxis(countMin, countMax, yRightScale, plotX + plotW));
+  lines.push(renderXAxis({
+    min: genMin,
+    max: genMax,
+    scale: xScale,
+    baseY: plotY + plotH,
+    logX,
+    label: "generation",
+  }));
+  lines.push(renderLeftAxis({
+    min: leftMin,
+    max: leftMax,
+    scale: yLeftScale,
+    baseX: plotX,
+    label: "score / mean steps",
+    integerTicks: false,
+  }));
+  lines.push(renderRightAxis({
+    min: countMin,
+    max: countMax,
+    scale: yRightScale,
+    baseX: plotX + plotW,
+    label: "neurons / synapses",
+    integerTicks: true,
+  }));
 
   // Series — left axis first, then right axis.
   lines.push(
@@ -198,168 +230,8 @@ export function renderMilestoneChartSVG(
 }
 
 // ---------------------------------------------------------------------------
-// Scaling helpers
+// Series, legend and caption rendering
 // ---------------------------------------------------------------------------
-
-function minBy<T>(arr: readonly T[], get: (t: T) => number): number {
-  let best = Infinity;
-  for (const item of arr) {
-    const v = get(item);
-    if (v < best) best = v;
-  }
-  return best;
-}
-
-function maxBy<T>(arr: readonly T[], get: (t: T) => number): number {
-  let best = -Infinity;
-  for (const item of arr) {
-    const v = get(item);
-    if (v > best) best = v;
-  }
-  return best;
-}
-
-/**
- * Build a linear scale mapping `[domainMin, domainMax]` onto
- * `[rangeMin, rangeMax]`. Collapses to the centre of the range when the
- * domain is degenerate.
- */
-function makeScale(
-  domainMin: number,
-  domainMax: number,
-  rangeMin: number,
-  rangeMax: number,
-): (v: number) => number {
-  const dSpan = domainMax - domainMin;
-  if (dSpan === 0) {
-    const mid = (rangeMin + rangeMax) / 2;
-    return () => mid;
-  }
-  const rSpan = rangeMax - rangeMin;
-  return (v: number) => rangeMin + ((v - domainMin) / dSpan) * rSpan;
-}
-
-/**
- * Build an X scale that maps generation onto `[rangeMin, rangeMax]`.
- * In log mode, generation values are passed through `Math.log10` after
- * clamping to a minimum of 1 (avoids log(0)). Linear mode delegates to
- * {@link makeScale}.
- */
-function makeXScale(
-  genMin: number,
-  genMax: number,
-  rangeMin: number,
-  rangeMax: number,
-  logX: boolean,
-): (v: number) => number {
-  if (!logX) {
-    return makeScale(genMin, genMax, rangeMin, rangeMax);
-  }
-  const lMin = Math.log10(Math.max(1, genMin));
-  const lMax = Math.log10(Math.max(1, genMax));
-  const linear = makeScale(lMin, lMax, rangeMin, rangeMax);
-  return (v: number) => linear(Math.log10(Math.max(1, v)));
-}
-
-// ---------------------------------------------------------------------------
-// Axis and series rendering
-// ---------------------------------------------------------------------------
-
-function renderXAxis(
-  genMin: number,
-  genMax: number,
-  xScale: (v: number) => number,
-  baseY: number,
-  logX: boolean,
-): string {
-  const ticks = logX ? logTicks(genMin, genMax) : niceTicks(genMin, genMax, 8, true);
-  const out: string[] = [];
-  out.push(
-    `  <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">`,
-  );
-  for (const t of ticks) {
-    const x = xScale(t);
-    out.push(
-      `    <line x1="${fmt(x)}" y1="${fmt(baseY)}" x2="${fmt(x)}" y2="${fmt(baseY + 4)}" ` +
-        `stroke="#333333" stroke-width="1"/>`,
-    );
-    out.push(
-      `    <text x="${fmt(x)}" y="${fmt(baseY + 18)}" text-anchor="middle">${t}</text>`,
-    );
-  }
-  const labelX = (xScale(genMin) + xScale(genMax)) / 2;
-  const label = logX ? "generation (log scale)" : "generation";
-  out.push(
-    `    <text x="${fmt(labelX)}" y="${fmt(baseY + 36)}" text-anchor="middle" ` +
-      `font-weight="bold">${escapeText(label)}</text>`,
-  );
-  out.push(`  </g>`);
-  return out.join("\n");
-}
-
-function renderLeftAxis(
-  leftMin: number,
-  leftMax: number,
-  yScale: (v: number) => number,
-  baseX: number,
-): string {
-  const ticks = niceTicks(leftMin, leftMax, 5, false);
-  const out: string[] = [];
-  out.push(
-    `  <g class="left-axis" font-family="sans-serif" font-size="11" fill="#333333">`,
-  );
-  for (const t of ticks) {
-    const y = yScale(t);
-    out.push(
-      `    <line x1="${fmt(baseX - 4)}" y1="${fmt(y)}" x2="${fmt(baseX)}" y2="${fmt(y)}" ` +
-        `stroke="#333333" stroke-width="1"/>`,
-    );
-    out.push(
-      `    <text x="${fmt(baseX - 8)}" y="${fmt(y)}" text-anchor="end" ` +
-        `dominant-baseline="middle">${formatScore(t)}</text>`,
-    );
-  }
-  const midY = (yScale(leftMin) + yScale(leftMax)) / 2;
-  out.push(
-    `    <text x="${fmt(baseX - 48)}" y="${fmt(midY)}" text-anchor="middle" ` +
-      `dominant-baseline="middle" font-weight="bold" ` +
-      `transform="rotate(-90 ${fmt(baseX - 48)} ${fmt(midY)})">score / mean steps</text>`,
-  );
-  out.push(`  </g>`);
-  return out.join("\n");
-}
-
-function renderRightAxis(
-  countMin: number,
-  countMax: number,
-  yScale: (v: number) => number,
-  baseX: number,
-): string {
-  const ticks = niceTicks(countMin, countMax, 5, true);
-  const out: string[] = [];
-  out.push(
-    `  <g class="right-axis" font-family="sans-serif" font-size="11" fill="#333333">`,
-  );
-  for (const t of ticks) {
-    const y = yScale(t);
-    out.push(
-      `    <line x1="${fmt(baseX)}" y1="${fmt(y)}" x2="${fmt(baseX + 4)}" y2="${fmt(y)}" ` +
-        `stroke="#333333" stroke-width="1"/>`,
-    );
-    out.push(
-      `    <text x="${fmt(baseX + 8)}" y="${fmt(y)}" text-anchor="start" ` +
-        `dominant-baseline="middle">${t}</text>`,
-    );
-  }
-  const midY = (yScale(countMin) + yScale(countMax)) / 2;
-  out.push(
-    `    <text x="${fmt(baseX + 48)}" y="${fmt(midY)}" text-anchor="middle" ` +
-      `dominant-baseline="middle" font-weight="bold" ` +
-      `transform="rotate(90 ${fmt(baseX + 48)} ${fmt(midY)})">neurons / synapses</text>`,
-  );
-  out.push(`  </g>`);
-  return out.join("\n");
-}
 
 function renderSeries(
   lineClass: string,
@@ -424,7 +296,7 @@ function renderCaption(
 ): string {
   const last = samples[samples.length - 1];
   const totalMs = samples.reduce((acc, s) => acc + s.generationWallClockMs, 0);
-  const text = `final score ${formatScore(last.bestScore)} · ` +
+  const text = `final score ${formatAxisValue(last.bestScore)} · ` +
     `${last.bestNeurons} neurons · ${last.bestSynapses} synapses · ` +
     `${totalMs} ms total`;
   return [
@@ -433,88 +305,4 @@ function renderCaption(
     escapeText(text) + `</text>`,
     `  </g>`,
   ].join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// Tick generation and number formatting
-// ---------------------------------------------------------------------------
-
-/**
- * Produce roughly `target` evenly spaced tick values across `[min, max]`.
- * When `integerOnly` is true (count axis), ticks are rounded to integers
- * and de-duplicated. When the range is degenerate the function returns
- * the single value as the only tick.
- */
-function niceTicks(min: number, max: number, target: number, integerOnly: boolean): number[] {
-  if (min === max) {
-    return [integerOnly ? Math.round(min) : min];
-  }
-  const span = max - min;
-  const rawStep = span / Math.max(1, target);
-  const step = integerOnly ? Math.max(1, Math.round(rawStep)) : niceStep(rawStep);
-  const out: number[] = [];
-  const start = integerOnly ? Math.ceil(min / step) * step : min;
-  for (let v = start; v <= max + 1e-9; v += step) {
-    if (integerOnly) out.push(Math.round(v));
-    else out.push(v);
-  }
-  if (out.length === 0) out.push(integerOnly ? Math.round(min) : min);
-  const lastTick = integerOnly ? Math.round(max) : max;
-  if (out[out.length - 1] !== lastTick) out.push(lastTick);
-  return integerOnly ? Array.from(new Set(out)) : out;
-}
-
-/**
- * Produce powers-of-ten tick values across `[min, max]`, with the bounds
- * themselves added when they are not already on a decade boundary.
- */
-function logTicks(min: number, max: number): number[] {
-  const lo = Math.max(1, min);
-  const hi = Math.max(lo, max);
-  const startExp = Math.floor(Math.log10(lo));
-  const endExp = Math.ceil(Math.log10(hi));
-  const out: number[] = [];
-  for (let e = startExp; e <= endExp; e++) {
-    const v = Math.pow(10, e);
-    if (v >= lo && v <= hi) out.push(v);
-  }
-  if (out.length === 0 || out[0] !== lo) out.unshift(lo);
-  if (out[out.length - 1] !== hi) out.push(hi);
-  return Array.from(new Set(out)).sort((a, b) => a - b);
-}
-
-function niceStep(raw: number): number {
-  if (raw <= 0) return 1;
-  const exp = Math.floor(Math.log10(raw));
-  const base = Math.pow(10, exp);
-  const frac = raw / base;
-  let nice: number;
-  if (frac < 1.5) nice = 1;
-  else if (frac < 3) nice = 2;
-  else if (frac < 7) nice = 5;
-  else nice = 10;
-  return nice * base;
-}
-
-/** Round a numeric coordinate to two decimal places for compact, deterministic output. */
-function fmt(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 100) / 100).toString();
-}
-
-/** Format a score value to a short, deterministic string. */
-function formatScore(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 1000) / 1000).toString();
-}
-
-function escapeText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string): string {
-  return escapeText(s).replace(/"/g, "&quot;");
 }
