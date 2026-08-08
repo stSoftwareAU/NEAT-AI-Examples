@@ -16,6 +16,15 @@
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
 import { selectVisibleBoundaryIndices } from "./multi_run_boundary_thinning.ts";
+import {
+  escapeAttr,
+  escapeText,
+  fmt,
+  formatAxisValue,
+  renderLeftAxis,
+  renderXAxis,
+} from "./chart_axis.ts";
+import { makeScale, makeXScale, maxBy } from "./chart_scale.ts";
 
 /** Options controlling {@link renderMultiRunErrorChartSVG}. */
 export interface RenderMultiRunErrorChartOptions {
@@ -113,8 +122,23 @@ export function renderMultiRunErrorChartSVG(
       `fill="#ffffff" stroke="#333333" stroke-width="1"/>`,
   );
 
-  lines.push(renderXAxis(genMin, genMax, xScale, plotY + plotH, logX));
-  lines.push(renderYAxis(yMin, yMax, yScale, plotX));
+  lines.push(renderXAxis({
+    min: genMin,
+    max: genMax,
+    scale: xScale,
+    baseY: plotY + plotH,
+    logX,
+    label: "cumulative generation",
+  }));
+  lines.push(renderLeftAxis({
+    min: yMin,
+    max: yMax,
+    scale: yScale,
+    baseX: plotX,
+    label: "error",
+    integerTicks: false,
+    groupClass: "y-axis",
+  }));
   if (logX) {
     lines.push(
       renderAxisFootnote(
@@ -147,126 +171,8 @@ export function renderMultiRunErrorChartSVG(
 }
 
 // ---------------------------------------------------------------------------
-// Scaling helpers
+// Run boundaries, series and caption rendering
 // ---------------------------------------------------------------------------
-
-function maxBy<T>(arr: readonly T[], get: (t: T) => number): number {
-  let best = -Infinity;
-  for (const item of arr) {
-    const v = get(item);
-    if (v > best) best = v;
-  }
-  return best;
-}
-
-/**
- * Build a linear scale mapping `[domainMin, domainMax]` onto
- * `[rangeMin, rangeMax]`. Collapses to the centre of the range when the
- * domain is degenerate.
- */
-function makeScale(
-  domainMin: number,
-  domainMax: number,
-  rangeMin: number,
-  rangeMax: number,
-): (v: number) => number {
-  const dSpan = domainMax - domainMin;
-  if (dSpan === 0) {
-    const mid = (rangeMin + rangeMax) / 2;
-    return () => mid;
-  }
-  const rSpan = rangeMax - rangeMin;
-  return (v: number) => rangeMin + ((v - domainMin) / dSpan) * rSpan;
-}
-
-/**
- * Build an X scale that maps cumulative generation onto
- * `[rangeMin, rangeMax]`. In log mode, generation values are passed
- * through `Math.log10` after clamping to a minimum of 1 (avoids log(0)).
- */
-function makeXScale(
-  genMin: number,
-  genMax: number,
-  rangeMin: number,
-  rangeMax: number,
-  logX: boolean,
-): (v: number) => number {
-  if (!logX) {
-    return makeScale(genMin, genMax, rangeMin, rangeMax);
-  }
-  const lMin = Math.log10(Math.max(1, genMin));
-  const lMax = Math.log10(Math.max(1, genMax));
-  const linear = makeScale(lMin, lMax, rangeMin, rangeMax);
-  return (v: number) => linear(Math.log10(Math.max(1, v)));
-}
-
-// ---------------------------------------------------------------------------
-// Axis and series rendering
-// ---------------------------------------------------------------------------
-
-function renderXAxis(
-  genMin: number,
-  genMax: number,
-  xScale: (v: number) => number,
-  baseY: number,
-  logX: boolean,
-): string {
-  const ticks = logX ? logTicks(genMin, genMax) : niceTicks(genMin, genMax, 8, true);
-  const out: string[] = [];
-  out.push(
-    `  <g class="x-axis" font-family="sans-serif" font-size="11" fill="#333333">`,
-  );
-  for (const t of ticks) {
-    const x = xScale(t);
-    out.push(
-      `    <line x1="${fmt(x)}" y1="${fmt(baseY)}" x2="${fmt(x)}" y2="${fmt(baseY + 4)}" ` +
-        `stroke="#333333" stroke-width="1"/>`,
-    );
-    out.push(
-      `    <text x="${fmt(x)}" y="${fmt(baseY + 18)}" text-anchor="middle">${t}</text>`,
-    );
-  }
-  const labelX = (xScale(genMin) + xScale(genMax)) / 2;
-  const label = logX ? "cumulative generation (log scale)" : "cumulative generation";
-  out.push(
-    `    <text x="${fmt(labelX)}" y="${fmt(baseY + 36)}" text-anchor="middle" ` +
-      `font-weight="bold">${escapeText(label)}</text>`,
-  );
-  out.push(`  </g>`);
-  return out.join("\n");
-}
-
-function renderYAxis(
-  yMin: number,
-  yMax: number,
-  yScale: (v: number) => number,
-  baseX: number,
-): string {
-  const ticks = niceTicks(yMin, yMax, 5, false);
-  const out: string[] = [];
-  out.push(
-    `  <g class="y-axis" font-family="sans-serif" font-size="11" fill="#333333">`,
-  );
-  for (const t of ticks) {
-    const y = yScale(t);
-    out.push(
-      `    <line x1="${fmt(baseX - 4)}" y1="${fmt(y)}" x2="${fmt(baseX)}" y2="${fmt(y)}" ` +
-        `stroke="#333333" stroke-width="1"/>`,
-    );
-    out.push(
-      `    <text x="${fmt(baseX - 8)}" y="${fmt(y)}" text-anchor="end" ` +
-        `dominant-baseline="middle">${formatError(t)}</text>`,
-    );
-  }
-  const midY = (yScale(yMin) + yScale(yMax)) / 2;
-  out.push(
-    `    <text x="${fmt(baseX - 48)}" y="${fmt(midY)}" text-anchor="middle" ` +
-      `dominant-baseline="middle" font-weight="bold" ` +
-      `transform="rotate(-90 ${fmt(baseX - 48)} ${fmt(midY)})">error</text>`,
-  );
-  out.push(`  </g>`);
-  return out.join("\n");
-}
 
 function renderRunBoundaries(
   samples: readonly MultiRunMilestone[],
@@ -383,7 +289,7 @@ function renderCaption(
   // wall-clock total. `totalMs === 0` is treated as 0 gens/min to keep
   // the caption finite and free of divide-by-zero artefacts.
   const gensPerMinute = totalMs > 0 ? (totalGens / totalMs) * 60_000 : 0;
-  const text = `final error ${formatError(last.error)} · ${distinctRuns} runs · ` +
+  const text = `final error ${formatAxisValue(last.error)} · ${distinctRuns} runs · ` +
     `${totalGens} cumulative generations · ${totalMs} ms total · ` +
     `${formatRate(gensPerMinute)} gen/min`;
   return [
@@ -399,88 +305,4 @@ function formatRate(v: number): string {
   if (!Number.isFinite(v)) return "0";
   if (v >= 10) return Math.round(v).toString();
   return (Math.round(v * 10) / 10).toString();
-}
-
-// ---------------------------------------------------------------------------
-// Tick generation and number formatting
-// ---------------------------------------------------------------------------
-
-/**
- * Produce roughly `target` evenly spaced tick values across `[min, max]`.
- * When `integerOnly` is true the ticks are rounded to integers and
- * de-duplicated. When the range is degenerate the function returns the
- * single value as the only tick.
- */
-function niceTicks(min: number, max: number, target: number, integerOnly: boolean): number[] {
-  if (min === max) {
-    return [integerOnly ? Math.round(min) : min];
-  }
-  const span = max - min;
-  const rawStep = span / Math.max(1, target);
-  const step = integerOnly ? Math.max(1, Math.round(rawStep)) : niceStep(rawStep);
-  const out: number[] = [];
-  const start = integerOnly ? Math.ceil(min / step) * step : min;
-  for (let v = start; v <= max + 1e-9; v += step) {
-    if (integerOnly) out.push(Math.round(v));
-    else out.push(v);
-  }
-  if (out.length === 0) out.push(integerOnly ? Math.round(min) : min);
-  const lastTick = integerOnly ? Math.round(max) : max;
-  if (out[out.length - 1] !== lastTick) out.push(lastTick);
-  return integerOnly ? Array.from(new Set(out)) : out;
-}
-
-/**
- * Produce powers-of-ten tick values across `[min, max]`, with the bounds
- * themselves added when they are not already on a decade boundary.
- */
-function logTicks(min: number, max: number): number[] {
-  const lo = Math.max(1, min);
-  const hi = Math.max(lo, max);
-  const startExp = Math.floor(Math.log10(lo));
-  const endExp = Math.ceil(Math.log10(hi));
-  const out: number[] = [];
-  for (let e = startExp; e <= endExp; e++) {
-    const v = Math.pow(10, e);
-    if (v >= lo && v <= hi) out.push(v);
-  }
-  if (out.length === 0 || out[0] !== lo) out.unshift(lo);
-  if (out[out.length - 1] !== hi) out.push(hi);
-  return Array.from(new Set(out)).sort((a, b) => a - b);
-}
-
-function niceStep(raw: number): number {
-  if (raw <= 0) return 1;
-  const exp = Math.floor(Math.log10(raw));
-  const base = Math.pow(10, exp);
-  const frac = raw / base;
-  let nice: number;
-  if (frac < 1.5) nice = 1;
-  else if (frac < 3) nice = 2;
-  else if (frac < 7) nice = 5;
-  else nice = 10;
-  return nice * base;
-}
-
-/** Round a numeric coordinate to two decimal places for compact, deterministic output. */
-function fmt(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 100) / 100).toString();
-}
-
-/** Format an error value to a short, deterministic string. */
-function formatError(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 1000) / 1000).toString();
-}
-
-function escapeText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string): string {
-  return escapeText(s).replace(/"/g, "&quot;");
 }

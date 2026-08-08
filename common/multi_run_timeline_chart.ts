@@ -12,6 +12,8 @@ import {
   enrichMilestonesWithCumulativeWallClock,
   holdoutScoreForMilestone,
 } from "./multi_run_state.ts";
+import { escapeAttr, escapeText } from "./chart_axis.ts";
+import { makeScale } from "./chart_scale.ts";
 
 /** Options controlling {@link renderMultiRunTimelineChartSVG}. */
 export interface RenderMultiRunTimelineChartOptions {
@@ -123,21 +125,6 @@ export function renderMultiRunTimelineChartSVG(
   return lines.join("\n");
 }
 
-function makeScale(
-  domainMin: number,
-  domainMax: number,
-  rangeMin: number,
-  rangeMax: number,
-): (v: number) => number {
-  const dSpan = domainMax - domainMin;
-  if (dSpan === 0) {
-    const mid = (rangeMin + rangeMax) / 2;
-    return () => mid;
-  }
-  const rSpan = rangeMax - rangeMin;
-  return (v: number) => rangeMin + ((v - domainMin) / dSpan) * rSpan;
-}
-
 function renderTimeXAxis(
   tMin: number,
   tMax: number,
@@ -187,12 +174,4 @@ function renderScoreYAxis(
     );
   }
   return lines.join("\n");
-}
-
-function escapeText(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string): string {
-  return escapeText(s).replace(/"/g, "&quot;");
 }

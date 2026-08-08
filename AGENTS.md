@@ -252,6 +252,8 @@ reinventing equivalent logic in a new example.
 | `common/multi_run_state.ts`            | Multi-run persistence helper: load/save champion + merged milestones across runs, plus a `--fresh` / `--timeout` / `--target-error` CLI flag parser (from [#318](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/318)). Snaps sub-`1e-6` "regressions" in recorded `error` between successive milestones to the prior value so float-jitter on a resumed champion does not produce spurious monitoring alerts ([#447](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/447)). |
 | `common/multi_run_error_chart.ts`      | Multi-run error-curve SVG renderer plotting error vs cumulative generation with faint run-boundary markers (from [#319](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/319)).                                                                                                                                                                                                                                                                                                       |
 | `common/multi_run_complexity_chart.ts` | Multi-run complexity-curve SVG renderer plotting neuron + synapse counts vs cumulative generation with faint run-boundary markers (from [#320](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/320)).                                                                                                                                                                                                                                                                                |
+| `common/chart_scale.ts`                | Shared chart-geometry maths for every SVG chart renderer — extents (`minBy` / `maxBy`), the linear and log-X scales, and tick generation (`niceTicks` / `logTicks` / `niceStep`) (from [#776](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/776)).                                                                                                                                                                                                                                 |
+| `common/chart_axis.ts`                 | Shared axis renderers (`renderXAxis` / `renderLeftAxis` / `renderRightAxis`, with label, group class and integer-tick mode as parameters) plus the deterministic number formatting and XML escaping the chart bodies share (from [#776](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/776)).                                                                                                                                                                                       |
 
 ### `common/data_cache.ts`
 
@@ -351,6 +353,10 @@ common/
   multi_run_complexity_chart_test.ts — Unit tests for the multi-run complexity chart renderer
   multi_run_boundary_thinning.ts   — Shared run-boundary label/tick thinning policy for both renderers
   multi_run_boundary_thinning_test.ts — Unit tests for the boundary thinning policy
+  chart_scale.ts                   — Shared chart geometry: extents, linear/log scales, tick generation
+  chart_scale_test.ts              — Unit tests for the shared chart geometry
+  chart_axis.ts                    — Shared axis renderers + deterministic SVG number/text formatting
+  chart_axis_test.ts               — Unit tests for the shared axis renderers
 
 crossover/
   crossover_example.ts             — Example: breed two creatures (crossover)
