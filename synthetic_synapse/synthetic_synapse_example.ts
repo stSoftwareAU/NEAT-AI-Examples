@@ -43,6 +43,14 @@ import {
 
 import { buildLargeCreature } from "../common/large_creature.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
+import {
+  type FeedForwardNetwork,
+  forward,
+  heldOutScore,
+  networkFromCreature as buildFeedForwardNetwork,
+  type NetworkNeuron,
+  type NetworkSynapse as FeedForwardSynapse,
+} from "../common/feed_forward_network.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderSyntheticSynapseSVG } from "./svg.ts";
@@ -172,12 +180,13 @@ export interface SyntheticSynapseResult {
 // it could run analytical SGD. The audit moves training to NEAT-AI's
 // evolveDir, but several utilities (forward pass, dataset generation,
 // held-out scoring) are still reused by tests and the SVG renderer, so
-// the lightweight representation is kept.
+// the lightweight representation is kept. The evaluation core itself —
+// creature → network conversion, the forward pass, and the scorers —
+// lives in `common/feed_forward_network.ts` (issue #775); only the
+// synthetic-synapse bookkeeping below is demo-specific.
 
 /** Minimal feed-forward network used by helper utilities. */
-export interface Network {
-  inputCount: number;
-  outputCount: number;
+export interface Network extends FeedForwardNetwork {
   /** All neurons sorted by index (inputs, then hidden, then outputs). */
   neurons: NetworkNeuron[];
   /** All synapses; `from < to` always (strictly feed-forward). */
@@ -186,17 +195,7 @@ export interface Network {
   originalSynapseKeys: Set<string>;
 }
 
-interface NetworkNeuron {
-  index: number;
-  type: "input" | "hidden" | "output";
-  squash: SquashName;
-  bias: number;
-}
-
-interface NetworkSynapse {
-  from: number;
-  to: number;
-  weight: number;
+interface NetworkSynapse extends FeedForwardSynapse {
   /** True if added during densification, false if part of the original creature. */
   synthetic: boolean;
 }
@@ -209,120 +208,36 @@ export interface TopologySnapshot {
   edges: Array<{ from: number; to: number; synthetic: boolean }>;
 }
 
-type SquashName = "IDENTITY" | "TANH" | "LOGISTIC";
-
-const KNOWN_SQUASHES: SquashName[] = ["IDENTITY", "TANH", "LOGISTIC"];
-
-function isKnownSquash(name: string): name is SquashName {
-  return (KNOWN_SQUASHES as string[]).includes(name);
-}
-
-/** Activation function evaluated on `z`. */
-function activate(squash: SquashName, z: number): number {
-  switch (squash) {
-    case "IDENTITY":
-      return z;
-    case "TANH":
-      return Math.tanh(z);
-    case "LOGISTIC": {
-      // Numerically stable logistic.
-      if (z >= 0) {
-        const e = Math.exp(-z);
-        return 1 / (1 + e);
-      }
-      const e = Math.exp(z);
-      return e / (1 + e);
-    }
-  }
-}
-
 function synapseKey(from: number, to: number): string {
   return `${from}->${to}`;
 }
 
 /**
- * Construct an internal {@link Network} from a `Creature`. Only LOGISTIC,
+ * Construct an internal {@link Network} from a `Creature`, tagging every
+ * existing synapse as original (i.e. not synthetic). Only LOGISTIC,
  * TANH, and IDENTITY squashes are supported — anything else throws.
  */
 export function networkFromCreature(creature: Creature): Network {
-  const neurons: NetworkNeuron[] = creature.neurons.map((n, idx) => {
-    const squash = (n.squash ?? "IDENTITY").toUpperCase();
-    if (!isKnownSquash(squash)) {
-      throw new Error(`Unsupported squash function for synthetic-synapse demo: ${squash}`);
-    }
-    const type: NetworkNeuron["type"] = idx < creature.input
-      ? "input"
-      : idx >= creature.neurons.length - creature.output
-      ? "output"
-      : "hidden";
-    return {
-      index: idx,
-      type,
-      squash: squash as SquashName,
-      bias: n.bias ?? 0,
-    };
-  });
-
+  const base = buildFeedForwardNetwork(creature, { label: "synthetic-synapse demo" });
   const originalSynapseKeys = new Set<string>();
-  const synapses: NetworkSynapse[] = creature.synapses.map((s) => {
-    const key = synapseKey(s.from, s.to);
-    originalSynapseKeys.add(key);
-    return { from: s.from, to: s.to, weight: s.weight, synthetic: false };
+  const synapses: NetworkSynapse[] = base.synapses.map((s) => {
+    originalSynapseKeys.add(synapseKey(s.from, s.to));
+    return { ...s, synthetic: false };
   });
 
   return {
-    inputCount: creature.input,
-    outputCount: creature.output,
-    neurons,
+    inputCount: base.inputCount,
+    outputCount: base.outputCount,
+    neurons: [...base.neurons],
     synapses,
     originalSynapseKeys,
   };
 }
 
-/** Forward pass over `network`. Returns the activations for every neuron. */
-export function forward(network: Network, input: ArrayLike<number>): Float32Array {
-  if (input.length !== network.inputCount) {
-    throw new Error(
-      `forward: expected ${network.inputCount} inputs, got ${input.length}`,
-    );
-  }
-  const activations = new Float32Array(network.neurons.length);
-  for (let i = 0; i < network.inputCount; i++) {
-    activations[i] = activate(network.neurons[i].squash, input[i]);
-  }
-  const sums = new Float32Array(network.neurons.length);
-  for (let i = network.inputCount; i < network.neurons.length; i++) {
-    sums[i] = network.neurons[i].bias;
-  }
-  for (const s of network.synapses) {
-    sums[s.to] += s.weight * activations[s.from];
-  }
-  for (let i = network.inputCount; i < network.neurons.length; i++) {
-    activations[i] = activate(network.neurons[i].squash, sums[i]);
-  }
-  return activations;
-}
-
-/** Mean-squared error of a network across `dataset`. */
-function mseAgainst(network: Network, dataset: readonly DataPoint[]): number {
-  if (dataset.length === 0) return 0;
-  let sum = 0;
-  for (const point of dataset) {
-    const acts = forward(network, point.inputs);
-    const start = network.neurons.length - network.outputCount;
-    for (let o = 0; o < network.outputCount; o++) {
-      const yhat = acts[start + o];
-      const err = yhat - point.targets[o];
-      sum += err * err;
-    }
-  }
-  return sum / dataset.length;
-}
-
-/** Held-out score (-MSE — higher is better). */
-export function heldOutScore(network: Network, dataset: readonly DataPoint[]): number {
-  return -mseAgainst(network, dataset);
-}
+// The forward pass and the held-out scorer are re-exported unchanged
+// from the shared module so the example's public surface is unaffected
+// by the extraction.
+export { forward, heldOutScore };
 
 /**
  * Held-out score for a `Creature` using its own `activate(...)` method.

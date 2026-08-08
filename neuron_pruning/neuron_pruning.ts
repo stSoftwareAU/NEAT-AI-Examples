@@ -55,6 +55,15 @@ import {
 
 import { buildLargeCreature } from "../common/large_creature.ts";
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
+import {
+  activate,
+  type FeedForwardNetwork,
+  forward,
+  heldOutScore,
+  networkFromCreature as buildFeedForwardNetwork,
+  type NetworkNeuron,
+  type NetworkSynapse,
+} from "../common/feed_forward_network.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
 import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderNeuronPruningSVG } from "./svg.ts";
@@ -210,30 +219,20 @@ export interface NeuronPruningResult {
   champion: Creature;
 }
 
-/** Minimal feed-forward network the pruner manipulates. */
-export interface Network {
-  inputCount: number;
-  outputCount: number;
+/**
+ * Minimal feed-forward network the pruner manipulates. The evaluation
+ * core — creature → network conversion, the forward pass, and the
+ * scorers — is shared with the synthetic-synapse demo via
+ * `common/feed_forward_network.ts` (issue #775).
+ */
+export interface Network extends FeedForwardNetwork {
   /** All neurons sorted by index (inputs, then hidden, then outputs). */
   neurons: NetworkNeuron[];
   /** All synapses; `from < to` always (strictly feed-forward). */
   synapses: NetworkSynapse[];
 }
 
-/** A single neuron in the {@link Network} representation. */
-export interface NetworkNeuron {
-  index: number;
-  type: "input" | "hidden" | "output";
-  squash: SquashName;
-  bias: number;
-}
-
-/** A single synapse in the {@link Network} representation. */
-export interface NetworkSynapse {
-  from: number;
-  to: number;
-  weight: number;
-}
+export type { NetworkNeuron, NetworkSynapse };
 
 /** Topology snapshot captured for rendering. */
 export interface TopologySnapshot {
@@ -257,128 +256,24 @@ export interface TopologySnapshot {
   biasFolds: Array<{ from: number; to: number }>;
 }
 
-type SquashName = "IDENTITY" | "TANH" | "LOGISTIC";
-
-const KNOWN_SQUASHES: SquashName[] = ["IDENTITY", "TANH", "LOGISTIC"];
-
-function isKnownSquash(name: string): name is SquashName {
-  return (KNOWN_SQUASHES as string[]).includes(name);
-}
-
-/** Activation function evaluated on `z`. */
-export function activate(squash: SquashName, z: number): number {
-  switch (squash) {
-    case "IDENTITY":
-      return z;
-    case "TANH":
-      return Math.tanh(z);
-    case "LOGISTIC": {
-      // Numerically stable logistic.
-      if (z >= 0) {
-        const e = Math.exp(-z);
-        return 1 / (1 + e);
-      }
-      const e = Math.exp(z);
-      return e / (1 + e);
-    }
-  }
-}
-
 /**
  * Construct an internal {@link Network} from a `Creature`. Only LOGISTIC,
  * TANH, and IDENTITY squashes are supported — anything else throws.
  */
 export function networkFromCreature(creature: Creature): Network {
-  const neurons: NetworkNeuron[] = creature.neurons.map((n, idx) => {
-    const squash = (n.squash ?? "IDENTITY").toUpperCase();
-    if (!isKnownSquash(squash)) {
-      throw new Error(`Unsupported squash function for neuron-pruning demo: ${squash}`);
-    }
-    const type: NetworkNeuron["type"] = idx < creature.input
-      ? "input"
-      : idx >= creature.neurons.length - creature.output
-      ? "output"
-      : "hidden";
-    return {
-      index: idx,
-      type,
-      squash: squash as SquashName,
-      bias: n.bias ?? 0,
-    };
-  });
-
-  const synapses: NetworkSynapse[] = creature.synapses.map((s) => ({
-    from: s.from,
-    to: s.to,
-    weight: s.weight,
-  }));
-
+  const base = buildFeedForwardNetwork(creature, { label: "neuron-pruning demo" });
   return {
-    inputCount: creature.input,
-    outputCount: creature.output,
-    neurons,
-    synapses,
+    inputCount: base.inputCount,
+    outputCount: base.outputCount,
+    neurons: [...base.neurons],
+    synapses: [...base.synapses],
   };
 }
 
-/** Forward pass over `network`. Returns the activations for every neuron. */
-export function forward(network: Network, input: ArrayLike<number>): Float32Array {
-  if (input.length !== network.inputCount) {
-    throw new Error(
-      `forward: expected ${network.inputCount} inputs, got ${input.length}`,
-    );
-  }
-  const N = network.neurons.length;
-  const activations = new Float32Array(N);
-  // Inputs pass through their squash (usually IDENTITY).
-  for (let i = 0; i < network.inputCount; i++) {
-    activations[i] = activate(network.neurons[i].squash, input[i]);
-  }
-  // Bin incoming synapses by target neuron so each non-input neuron can
-  // be activated in turn — finalising its sum before any downstream
-  // neuron reads its activation. This is essential for hidden→hidden
-  // cascades; pre-aggregating all sums in a single pass would read
-  // upstream hidden activations before they were computed.
-  const incoming: Array<Array<{ from: number; weight: number }>> = Array.from(
-    { length: N },
-    () => [],
-  );
-  for (const s of network.synapses) {
-    incoming[s.to].push({ from: s.from, weight: s.weight });
-  }
-  // Synapses are guaranteed `from < to` (strictly feed-forward), so
-  // processing neurons in index order is a valid topological order.
-  for (let i = network.inputCount; i < N; i++) {
-    let z = network.neurons[i].bias;
-    const inc = incoming[i];
-    for (let k = 0; k < inc.length; k++) {
-      z += inc[k].weight * activations[inc[k].from];
-    }
-    activations[i] = activate(network.neurons[i].squash, z);
-  }
-  return activations;
-}
-
-/** Mean-squared error between the network's outputs and `targets`. */
-function mseAgainst(network: Network, dataset: readonly DataPoint[]): number {
-  if (dataset.length === 0) return 0;
-  let sum = 0;
-  for (const point of dataset) {
-    const acts = forward(network, point.inputs);
-    const start = network.neurons.length - network.outputCount;
-    for (let o = 0; o < network.outputCount; o++) {
-      const yhat = acts[start + o];
-      const err = yhat - point.targets[o];
-      sum += err * err;
-    }
-  }
-  return sum / dataset.length;
-}
-
-/** Held-out score (-MSE — higher is better). */
-export function heldOutScore(network: Network, dataset: readonly DataPoint[]): number {
-  return -mseAgainst(network, dataset);
-}
+// The activation function, the forward pass, and the held-out scorer are
+// re-exported unchanged from the shared module so the example's public
+// surface is unaffected by the extraction.
+export { activate, forward, heldOutScore };
 
 /**
  * Generate a deterministic dataset by feeding `size` random inputs through
@@ -857,33 +752,15 @@ export async function runNeuronPruningDemo(
  * activation bounded so the bias-fold path stays well-defined.
  */
 function networkFromEvolvedCreature(creature: Creature): Network {
-  const neurons: NetworkNeuron[] = creature.neurons.map((n, idx) => {
-    const raw = (n.squash ?? "IDENTITY").toUpperCase();
-    const squash: SquashName = isKnownSquash(raw) ? raw : "TANH";
-    const type: NetworkNeuron["type"] = idx < creature.input
-      ? "input"
-      : idx >= creature.neurons.length - creature.output
-      ? "output"
-      : "hidden";
-    return {
-      index: idx,
-      type,
-      squash,
-      bias: n.bias ?? 0,
-    };
+  const base = buildFeedForwardNetwork(creature, {
+    label: "neuron-pruning demo",
+    onUnknownSquash: "tanh",
   });
-
-  const synapses: NetworkSynapse[] = creature.synapses.map((s) => ({
-    from: s.from,
-    to: s.to,
-    weight: s.weight,
-  }));
-
   return {
-    inputCount: creature.input,
-    outputCount: creature.output,
-    neurons,
-    synapses,
+    inputCount: base.inputCount,
+    outputCount: base.outputCount,
+    neurons: [...base.neurons],
+    synapses: [...base.synapses],
   };
 }
 
