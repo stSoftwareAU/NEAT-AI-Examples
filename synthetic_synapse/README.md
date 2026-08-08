@@ -138,6 +138,16 @@ the safety net. `targetError` was tightened from 0.005 to 0.0005 under issue #38
 budget bump so the sparse phase doesn't converge in seconds and leave the densify-train-prune cycle
 nothing to do.
 
+### Analytical evaluation helpers
+
+The creature → network conversion, the deterministic forward pass, and the held-out scorer used by
+the demo's helper utilities live in
+[`common/feed_forward_network.ts`](../common/feed_forward_network.ts) and are shared with the
+`neuron_pruning` demo, so the activation-ordering rule (each neuron finalises its sum before any
+downstream neuron reads it — essential for hidden→hidden cascades) is stated in exactly one place
+([#775](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/775)). Only the synthetic-synapse
+bookkeeping — the `synthetic` flag and `originalSynapseKeys` — stays in this example.
+
 ## 📊 Milestone Telemetry
 
 Each `evolveDir` phase's return value is captured as an `EvolveDirSummary` and exposed on the demo's
@@ -167,6 +177,8 @@ densify-train-prune narrative remains visible at a glance.
 `synthetic_synapse_example_test.ts` verifies:
 
 - The forward pass returns finite outputs of the correct shape and rejects mismatched input length.
+- The forward pass reads the upstream activation of a hidden→hidden cascade rather than a stale zero
+  ([#775](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/775)).
 - The synthetic dataset is deterministic for a given seed.
 - `writeBinaryDataset` emits a Float32 `.bin` of the expected size.
 - `densifyCreature` adds a zero-weight synthetic synapse for every missing forward edge and is

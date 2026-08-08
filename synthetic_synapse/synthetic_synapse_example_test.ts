@@ -15,6 +15,7 @@
  */
 import {
   assert,
+  assertAlmostEquals,
   assertEquals,
   assertGreater,
   assertGreaterOrEqual,
@@ -32,6 +33,7 @@ import {
   generateDataset,
   heldOutScore,
   INPUT_COUNT,
+  type Network,
   OUTPUT_COUNT,
   pruneCreature,
   runSyntheticSynapseDemo,
@@ -74,6 +76,39 @@ Deno.test("forward - rejects mismatched input length", () => {
     Error,
     "expected",
   );
+});
+
+Deno.test("forward - hidden→hidden cascade reads the upstream hidden activation", () => {
+  // Regression test for issue #775: the demo's forward pass previously
+  // pre-aggregated every synapse in a single pass, so a hidden→hidden
+  // edge read its upstream activation as zero.
+  const network: Network = {
+    inputCount: 1,
+    outputCount: 1,
+    neurons: [
+      { index: 0, type: "input", squash: "IDENTITY", bias: 0 },
+      { index: 1, type: "hidden", squash: "TANH", bias: 0.1 },
+      { index: 2, type: "hidden", squash: "TANH", bias: -0.2 },
+      { index: 3, type: "output", squash: "IDENTITY", bias: 0.05 },
+    ],
+    synapses: [
+      { from: 0, to: 1, weight: 0.7, synthetic: false },
+      { from: 1, to: 2, weight: 1.3, synthetic: false },
+      { from: 0, to: 2, weight: 0.4, synthetic: false },
+      { from: 2, to: 3, weight: 0.9, synthetic: false },
+    ],
+    originalSynapseKeys: new Set(["0->1", "1->2", "0->2", "2->3"]),
+  };
+
+  const x = 0.6;
+  const acts = forward(network, new Float32Array([x]));
+  const a1 = Math.tanh(0.1 + 0.7 * x);
+  const a2 = Math.tanh(-0.2 + 1.3 * a1 + 0.4 * x);
+  const a3 = 0.05 + 0.9 * a2;
+
+  assertAlmostEquals(acts[1], a1, 1e-6);
+  assertAlmostEquals(acts[2], a2, 1e-6);
+  assertAlmostEquals(acts[3], a3, 1e-6);
 });
 
 Deno.test("generateDataset - is deterministic for a given seed", () => {

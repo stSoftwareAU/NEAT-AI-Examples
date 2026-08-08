@@ -123,6 +123,11 @@ training pipeline to do here. The example evaluates the held-out score with stra
 math directly on the synapse array (after remapping any non-supported squash to TANH), which keeps
 the bias-fold path self-contained and byte-deterministic.
 
+That evaluation core — creature → network conversion, the forward pass, and the held-out scorer —
+lives in [`common/feed_forward_network.ts`](../common/feed_forward_network.ts) and is shared with
+the `synthetic_synapse` demo, so the activation-ordering rule is stated in exactly one place
+([#775](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/775)).
+
 ## 📊 Milestone Telemetry
 
 The single `evolveDir` call's return value is captured as an `EvolveDirSummary` and exposed on the
