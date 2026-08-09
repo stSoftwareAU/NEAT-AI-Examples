@@ -455,7 +455,11 @@ The [`common/`](common/) module provides the building blocks every example reuse
 - 🎲 **`deterministic_random.ts`** — splitmix32-style seeded PRNG (pseudorandom number generator) so
   runs are reproducible across machines.
 - 📊 **`synthetic_data.ts`** — `generateSyntheticData` and `scoreCreature`. Each example picks its
-  own seed so data sets are independent but deterministic.
+  own seed so data sets are independent but deterministic. It also owns the `evolveDir` binary
+  record layout: `writeBinaryDataset(dataset, dataDir, inputCount, outputCount)` writes the
+  single-file `training.bin` (inputs then targets, Float32, no header), and
+  `generateNetworkDataset(target, size, seed)` labels uniform `[-1, 1]` inputs with a target
+  network's own outputs.
 - 📁 **`working_dirs.ts`** — `setupWorkingDirs` creates `data/`, `creatures/`, and `output/`
   subdirectories under a per-example hidden root and clears `output/` on each run.
 - 🐘 **`large_creature.ts`** — `buildLargeCreature(opts)` constructs a deterministic creature with

@@ -65,6 +65,10 @@ import {
   type NetworkSynapse,
 } from "../common/feed_forward_network.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import {
+  generateNetworkDataset as generateDataset,
+  writeBinaryDataset as writeTrainingBin,
+} from "../common/synthetic_data.ts";
 import { type EvolveDirSummary, renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { renderNeuronPruningSVG } from "./svg.ts";
 
@@ -275,57 +279,19 @@ export function networkFromCreature(creature: Creature): Network {
 // surface is unaffected by the extraction.
 export { activate, forward, heldOutScore };
 
-/**
- * Generate a deterministic dataset by feeding `size` random inputs through
- * `targetNetwork`. Inputs are drawn uniformly from `[-1, 1]`.
- */
-export function generateDataset(
-  targetNetwork: Network,
-  size: number,
-  seed: number,
-): DataPoint[] {
-  if (size <= 0) {
-    throw new Error(`dataset size must be positive, got ${size}`);
-  }
-  const rng = createDeterministicRandom(seed);
-  const N = targetNetwork.neurons.length;
-  const outStart = N - targetNetwork.outputCount;
-  const dataset: DataPoint[] = [];
-  for (let i = 0; i < size; i++) {
-    const inputs = new Float32Array(targetNetwork.inputCount);
-    for (let k = 0; k < targetNetwork.inputCount; k++) {
-      inputs[k] = rng() * 2 - 1;
-    }
-    const acts = forward(targetNetwork, inputs);
-    const targets = new Float32Array(targetNetwork.outputCount);
-    for (let o = 0; o < targetNetwork.outputCount; o++) {
-      targets[o] = acts[outStart + o];
-    }
-    dataset.push({ inputs, targets });
-  }
-  return dataset;
-}
+// The network-driven dataset generator is re-exported unchanged from the
+// shared module (issue #777) — it was verbatim-identical to the
+// `synthetic_synapse` copy.
+export { generateDataset };
 
 /**
- * Write `dataset` as a Float32 binary file the NEAT-AI library can
- * consume via `Creature.evolveDir(dir, ...)`. Each record is laid out
- * as `INPUT_COUNT + OUTPUT_COUNT` little-endian floats.
+ * Write `dataset` as the Float32 `training.bin` the NEAT-AI library
+ * consumes via `Creature.evolveDir(dir, ...)`. The binary layout itself
+ * lives in `common/synthetic_data.ts` (issue #777); this example only
+ * supplies its arity.
  */
 export function writeBinaryDataset(dataset: readonly DataPoint[], dataDir: string): string {
-  ensureDirSync(dataDir);
-  const stride = INPUT_COUNT + OUTPUT_COUNT;
-  const buffer = new Float32Array(dataset.length * stride);
-  for (let i = 0; i < dataset.length; i++) {
-    for (let k = 0; k < INPUT_COUNT; k++) {
-      buffer[i * stride + k] = dataset[i].inputs[k];
-    }
-    for (let o = 0; o < OUTPUT_COUNT; o++) {
-      buffer[i * stride + INPUT_COUNT + o] = dataset[i].targets[o];
-    }
-  }
-  const path = join(dataDir, "training.bin");
-  Deno.writeFileSync(path, new Uint8Array(buffer.buffer));
-  return path;
+  return writeTrainingBin(dataset, dataDir, INPUT_COUNT, OUTPUT_COUNT);
 }
 
 /**
