@@ -54,6 +54,7 @@ import {
 
 import { createDeterministicRandom } from "../common/deterministic_random.ts";
 import { setupWorkingDirs } from "../common/working_dirs.ts";
+import { writeBinaryDataset as writeTrainingBin } from "../common/synthetic_data.ts";
 import { type EvolveDirSummary } from "../common/evolve_dir_summary.ts";
 import { renderMemeticSVG } from "./svg.ts";
 
@@ -234,22 +235,18 @@ export function fitnessOn(weights: readonly number[], records: readonly DataPoin
 }
 
 /**
- * Write the synthetic dataset as a Float32 binary file the NEAT-AI
- * library can consume via `Creature.evolveDir(dir, ...)`. Each record
- * is laid out as `INPUT_COUNT + OUTPUT_COUNT` little-endian floats.
+ * Write the synthetic dataset as the Float32 `training.bin` the NEAT-AI
+ * library consumes via `Creature.evolveDir(dir, ...)`. The binary layout
+ * itself lives in `common/synthetic_data.ts` (issue #777); this example
+ * only supplies its single-output record shape and arity.
  */
 export function writeBinaryDataset(dataset: readonly DataPoint[], dataDir: string): string {
-  ensureDirSync(dataDir);
-  const stride = INPUT_COUNT + OUTPUT_COUNT;
-  const buffer = new Float32Array(dataset.length * stride);
-  for (let i = 0; i < dataset.length; i++) {
-    buffer[i * stride] = dataset[i].inputs[0];
-    buffer[i * stride + 1] = dataset[i].inputs[1];
-    buffer[i * stride + INPUT_COUNT] = dataset[i].output;
-  }
-  const path = join(dataDir, "training.bin");
-  Deno.writeFileSync(path, new Uint8Array(buffer.buffer));
-  return path;
+  return writeTrainingBin(
+    dataset.map((point) => ({ inputs: point.inputs, targets: [point.output] })),
+    dataDir,
+    INPUT_COUNT,
+    OUTPUT_COUNT,
+  );
 }
 
 /**

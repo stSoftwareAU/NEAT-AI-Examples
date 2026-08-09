@@ -106,6 +106,24 @@ or, in the XOR case, an inline writer that emits the identical format:
 | `crossover`          | `generateSyntheticData(parentA, …)`                | `.synthetic-crossover/data/synthetic_*.bin`          |
 | `intelligent_design` | `generateSyntheticData(creature, …)`               | `.synthetic-intelligent-design/data/synthetic_*.bin` |
 
+## 📦 Examples that emit a single `training.bin`
+
+Four examples generate one dataset up front rather than a chunked stream. They all call the shared
+`common/synthetic_data.ts::writeBinaryDataset(dataset, dataDir, inputCount, outputCount)`, which
+writes exactly the record layout described above into `<dataDir>/training.bin`
+([#777](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/777)):
+
+| Example                | Record shape                                  | Working directory                                   |
+| ---------------------- | --------------------------------------------- | --------------------------------------------------- |
+| `memetic_evolution`    | 2 inputs → 1 output (fixed arity)             | `.synthetic-memetic-evolution/data/training.bin`    |
+| `suggest_improvements` | 2 inputs → 1 output (fixed arity)             | `.synthetic-suggest-improvements/data/training.bin` |
+| `neuron_pruning`       | arbitrary arity, labelled by a target network | `.neuron-pruning/data/training.bin`                 |
+| `synthetic_synapse`    | arbitrary arity, labelled by a target network | `.synthetic-synapse/data/training.bin`              |
+
+The two network-driven examples build their datasets with the shared
+`generateNetworkDataset(targetNetwork, size, seed)` — uniform `[-1, 1]` inputs fed through the
+target network, whose outputs become the labels.
+
 ## 🧭 Related examples that discuss the `.bin` stream
 
 These examples do not currently emit a `.bin` file themselves, but their READMEs discuss the binary
@@ -115,9 +133,9 @@ training-data path as a NEAT-AI feature worth knowing about:
   example self-contained. Its README's "Where NEAT-AI is faster than this demo suggests" section
   calls out the IDX → `.bin` path as the production accelerator that the demo deliberately leaves
   out.
-- **`synthetic_synapse`** — densify-train-prune on an existing creature using a bespoke in-memory
-  mini-batch loop. Its README notes that the production `creature.evolveDir` / `TrainingSetup`
-  pipeline expects the same chunked binary format described here.
+
+`synthetic_synapse` also discusses the stream in its README, but it does emit a `.bin` — see the
+`training.bin` table above.
 
 ## 🔗 See also
 
