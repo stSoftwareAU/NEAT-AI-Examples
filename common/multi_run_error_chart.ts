@@ -16,14 +16,8 @@
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
 import { selectVisibleBoundaryIndices } from "./multi_run_boundary_thinning.ts";
-import {
-  escapeAttr,
-  escapeText,
-  fmt,
-  formatAxisValue,
-  renderLeftAxis,
-  renderXAxis,
-} from "./chart_axis.ts";
+import { renderLeftAxis, renderXAxis } from "./chart_axis.ts";
+import { escapeAttr, escapeText, fmt, formatScore } from "./svg_text.ts";
 import { makeScale, makeXScale, maxBy } from "./chart_scale.ts";
 
 /** Options controlling {@link renderMultiRunErrorChartSVG}. */
@@ -289,7 +283,7 @@ function renderCaption(
   // wall-clock total. `totalMs === 0` is treated as 0 gens/min to keep
   // the caption finite and free of divide-by-zero artefacts.
   const gensPerMinute = totalMs > 0 ? (totalGens / totalMs) * 60_000 : 0;
-  const text = `final error ${formatAxisValue(last.error)} · ${distinctRuns} runs · ` +
+  const text = `final error ${formatScore(last.error)} · ${distinctRuns} runs · ` +
     `${totalGens} cumulative generations · ${totalMs} ms total · ` +
     `${formatRate(gensPerMinute)} gen/min`;
   return [

@@ -18,15 +18,8 @@
  * byte-identical for identical inputs.
  */
 
-import {
-  escapeAttr,
-  escapeText,
-  fmt,
-  formatAxisValue,
-  renderLeftAxis,
-  renderRightAxis,
-  renderXAxis,
-} from "./chart_axis.ts";
+import { renderLeftAxis, renderRightAxis, renderXAxis } from "./chart_axis.ts";
+import { escapeAttr, escapeText, fmt, formatScore } from "./svg_text.ts";
 import { makeScale, makeXScale, maxBy, minBy } from "./chart_scale.ts";
 
 /** A single milestone sample emitted by `Creature.evolveRL`. */
@@ -296,7 +289,7 @@ function renderCaption(
 ): string {
   const last = samples[samples.length - 1];
   const totalMs = samples.reduce((acc, s) => acc + s.generationWallClockMs, 0);
-  const text = `final score ${formatAxisValue(last.bestScore)} · ` +
+  const text = `final score ${formatScore(last.bestScore)} · ` +
     `${last.bestNeurons} neurons · ${last.bestSynapses} synapses · ` +
     `${totalMs} ms total`;
   return [
