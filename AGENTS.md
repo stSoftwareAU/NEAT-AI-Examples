@@ -254,6 +254,7 @@ reinventing equivalent logic in a new example.
 | `common/multi_run_complexity_chart.ts` | Multi-run complexity-curve SVG renderer plotting neuron + synapse counts vs cumulative generation with faint run-boundary markers (from [#320](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/320)).                                                                                                                                                                                                                                                                                |
 | `common/chart_scale.ts`                | Shared chart-geometry maths for every SVG chart renderer — extents (`minBy` / `maxBy`), the linear and log-X scales, and tick generation (`niceTicks` / `logTicks` / `niceStep`) (from [#776](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/776)).                                                                                                                                                                                                                                 |
 | `common/chart_axis.ts`                 | Shared axis renderers (`renderXAxis` / `renderLeftAxis` / `renderRightAxis`, with label, group class and integer-tick mode as parameters) (from [#776](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/776)).                                                                                                                                                                                                                                                                        |
+| `common/chart_run_boundaries.ts`       | Shared run-boundary detection (`detectRunBoundaries`), run segmentation (`segmentSamplesByRun`) and `<g class="run-boundaries">` emission (`renderRunBoundaries`) for both multi-run renderers (from [#780](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/780)).                                                                                                                                                                                                                   |
 | `common/svg_text.ts`                   | Shared XML escaping (`escapeText` / `escapeAttr`) and deterministic number formatting (`fmt` two decimals, `formatScore` three) for every SVG emitter under `common/` (from [#778](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/778)).                                                                                                                                                                                                                                            |
 
 ### `common/data_cache.ts`
@@ -358,6 +359,8 @@ common/
   chart_scale_test.ts              — Unit tests for the shared chart geometry
   chart_axis.ts                    — Shared axis renderers
   chart_axis_test.ts               — Unit tests for the shared axis renderers
+  chart_run_boundaries.ts          — Shared run-boundary detection, segmentation and SVG emission
+  chart_run_boundaries_test.ts     — Unit tests for the shared run-boundary helpers
   svg_text.ts                      — Shared XML escaping + deterministic SVG number formatting
   svg_text_test.ts                 — Unit tests for the shared SVG text/number helpers
 

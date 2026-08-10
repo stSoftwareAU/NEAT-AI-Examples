@@ -17,8 +17,8 @@
  */
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
-import { selectVisibleBoundaryIndices } from "./multi_run_boundary_thinning.ts";
 import { renderLeftAxis, renderRightAxis, renderXAxis } from "./chart_axis.ts";
+import { renderRunBoundaries, segmentSamplesByRun } from "./chart_run_boundaries.ts";
 import { escapeAttr, escapeText, fmt } from "./svg_text.ts";
 import { makeScale, makeXScale, maxBy } from "./chart_scale.ts";
 
@@ -47,8 +47,6 @@ export interface RenderMultiRunComplexityChartOptions {
 const NEURONS_COLOUR = "#2ca02c";
 /** Stroke colour for the synapses polyline (right axis). */
 const SYNAPSES_COLOUR = "#d62728";
-/** Stroke colour for the faint run-boundary guide line. */
-const BOUNDARY_COLOUR = "#cccccc";
 
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 400;
@@ -149,7 +147,13 @@ export function renderMultiRunComplexityChartSVG(
 
   // Run-boundary markers — render under the polylines so the data stays
   // visually on top. Detect each runIndex transition in cumulative order.
-  lines.push(renderRunBoundaries(ordered, xScale, plotY, plotH, plotW));
+  lines.push(renderRunBoundaries({
+    samples: ordered,
+    xScale,
+    plotTop: plotY,
+    plotH,
+    plotW,
+  }));
 
   // Series — neurons on left axis, synapses on right axis.
   lines.push(
@@ -184,61 +188,8 @@ export function renderMultiRunComplexityChartSVG(
 }
 
 // ---------------------------------------------------------------------------
-// Run boundaries, series, legend and caption rendering
+// Series, legend and caption rendering
 // ---------------------------------------------------------------------------
-
-function renderRunBoundaries(
-  samples: readonly MultiRunMilestone[],
-  xScale: (v: number) => number,
-  plotTop: number,
-  plotH: number,
-  plotW: number,
-): string {
-  // Detect every runIndex transition in cumulative order before
-  // applying the thinning policy — boundaries are de-duplicated to
-  // (runIndex, cumulativeGen) pairs at this stage.
-  const boundaries: Array<{ runIndex: number; cumulativeGen: number }> = [];
-  for (let i = 1; i < samples.length; i++) {
-    const prev = samples[i - 1];
-    const curr = samples[i];
-    if (curr.runIndex === prev.runIndex) continue;
-    boundaries.push({
-      runIndex: curr.runIndex,
-      cumulativeGen: curr.cumulativeGen,
-    });
-  }
-
-  const longestLabel = boundaries.length === 0 ? 0 : Math.max(
-    ...boundaries.map((b) => `run ${b.runIndex}`.length),
-  );
-  const selected = selectVisibleBoundaryIndices(
-    boundaries,
-    plotW,
-    longestLabel,
-    xScale,
-  );
-
-  const out: string[] = [];
-  out.push(
-    `  <g class="run-boundaries" font-family="sans-serif" font-size="10" fill="#666666">`,
-  );
-  for (let i = 0; i < boundaries.length; i++) {
-    if (!selected.has(i)) continue;
-    const b = boundaries[i];
-    const x = xScale(b.cumulativeGen);
-    out.push(
-      `    <line class="run-boundary" x1="${fmt(x)}" y1="${fmt(plotTop)}" ` +
-        `x2="${fmt(x)}" y2="${fmt(plotTop + plotH)}" ` +
-        `stroke="${BOUNDARY_COLOUR}" stroke-width="0.5"/>`,
-    );
-    out.push(
-      `    <text x="${fmt(x)}" y="${fmt(plotTop - 4)}" text-anchor="middle">` +
-        `run ${b.runIndex}</text>`,
-    );
-  }
-  out.push(`  </g>`);
-  return out.join("\n");
-}
 
 function renderSeries(
   lineClass: string,
@@ -268,23 +219,6 @@ function renderSeries(
   }
   out.push(`  </g>`);
   return out.join("\n");
-}
-
-/** Split milestones into contiguous runs so polylines do not draw vertical connectors at run boundaries. */
-function segmentSamplesByRun(
-  samples: readonly MultiRunMilestone[],
-): MultiRunMilestone[][] {
-  const out: MultiRunMilestone[][] = [];
-  let cur: MultiRunMilestone[] = [];
-  for (const s of samples) {
-    if (cur.length > 0 && s.runIndex !== cur[cur.length - 1].runIndex) {
-      out.push(cur);
-      cur = [];
-    }
-    cur.push(s);
-  }
-  if (cur.length > 0) out.push(cur);
-  return out;
 }
 
 function renderLegend(plotX: number, plotY: number): string {
