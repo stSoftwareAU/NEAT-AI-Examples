@@ -4,8 +4,9 @@
  * Multi-run examples can accumulate dozens or hundreds of run boundaries
  * (see issue #514 — 115 runs across ~5650 generations on a log-x axis).
  * Drawing one tick + `run N` label per boundary collapses into an
- * unreadable smear, so both `multi_run_error_chart.ts` and
- * `multi_run_complexity_chart.ts` route their boundary rendering through
+ * unreadable smear, so the shared `./chart_run_boundaries.ts` emitter
+ * used by both `multi_run_error_chart.ts` and
+ * `multi_run_complexity_chart.ts` routes its boundary rendering through
  * {@link selectBoundaryIndices}: it picks the indices of the boundaries
  * that should actually receive a visible tick + label.
  *
