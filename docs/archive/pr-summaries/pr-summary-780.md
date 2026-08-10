@@ -15,10 +15,10 @@ other renderer — lived only in the complexity chart. Both now live once in a n
 - `renderRunBoundaries({ samples, xScale, plotTop, plotH, plotW })` — emits the
   `<g class="run-boundaries">` fragment, keeping only the boundaries the thinning policy selects.
 
-The boundary *policy* stays where it was, in `common/multi_run_boundary_thinning.ts`; this change
+The boundary _policy_ stays where it was, in `common/multi_run_boundary_thinning.ts`; this change
 moves only the detection, segmentation and emission around it. Both renderers now import from the
-shared module and their local copies (plus the duplicated `BOUNDARY_COLOUR` constant) are gone —
-135 lines deleted against 24 added across the two charts.
+shared module and their local copies (plus the duplicated `BOUNDARY_COLOUR` constant) are gone — 135
+lines deleted against 24 added across the two charts.
 
 Closes #780.
 
@@ -43,9 +43,9 @@ flowchart LR
 ```
 
 **Byte-identical SVG check.** Both renderers were run over five multi-run series before and after
-the change — 4 runs (3 boundaries, ≤10 path) and 25 runs (24 boundaries, thinned path), each on
-both log and linear X, plus a single-run series with no boundaries — with captions on. `diff` and
-`cmp` both report the concatenated output identical:
+the change — 4 runs (3 boundaries, ≤10 path) and 25 runs (24 boundaries, thinned path), each on both
+log and linear X, plus a single-run series with no boundaries — with captions on. `diff` and `cmp`
+both report the concatenated output identical:
 
 ```text
 $ diff /tmp/svg_before_780.txt /tmp/svg_after_780.txt && cmp ... && echo OK
@@ -53,26 +53,25 @@ BYTE-IDENTICAL
 cmp OK
 ```
 
-The repository's own pre-#521 baseline snapshots
-(`common/testdata/baseline_err_10runs.svg`, `baseline_cx_10runs.svg`) still match — those two
-snapshot tests pass unchanged.
+The repository's own pre-#521 baseline snapshots (`common/testdata/baseline_err_10runs.svg`,
+`baseline_cx_10runs.svg`) still match — those two snapshot tests pass unchanged.
 
 ## Test Plan
 
-- Added `common/chart_run_boundaries_test.ts` (10 cases), each calling a real function and
-  asserting on the returned value or emitted SVG structure:
+- Added `common/chart_run_boundaries_test.ts` (10 cases), each calling a real function and asserting
+  on the returned value or emitted SVG structure:
   - `detectRunBoundaries` — one boundary per transition; none for a single run or an empty series;
     de-duplication when several samples share the transition generation.
   - `segmentSamplesByRun` — contiguous runs in order; single-run and empty inputs; caller's extra
     sample fields preserved.
-  - `renderRunBoundaries` — a guide line spanning the plot height plus a `run N` label per
-    boundary at the scaled X; an empty `run-boundaries` group when there are no transitions; all
-    ten labels kept at ten boundaries; thinning past ten with both anchors surviving and ticks
-    never emitted without a label.
+  - `renderRunBoundaries` — a guide line spanning the plot height plus a `run N` label per boundary
+    at the scaled X; an empty `run-boundaries` group when there are no transitions; all ten labels
+    kept at ten boundaries; thinning past ten with both anchors surviving and ticks never emitted
+    without a label.
 - Existing `common/multi_run_error_chart_test.ts`, `common/multi_run_complexity_chart_test.ts`,
   `common/multi_run_boundary_thinning_test.ts`, `common/chart_axis_test.ts`,
-  `common/milestone_chart_test.ts` and `common/multi_run_timeline_chart_test.ts` pass unmodified
-  (81 tests), including the two byte-identical baseline snapshot tests.
+  `common/milestone_chart_test.ts` and `common/multi_run_timeline_chart_test.ts` pass unmodified (81
+  tests), including the two byte-identical baseline snapshot tests.
 - `./quality.sh` run clean.
 
 ## Documentation
