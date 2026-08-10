@@ -327,6 +327,13 @@ export interface TrialResult {
   outcome: LanderOutcome;
   /** Lander state at the moment the trial terminated. */
   finalState: LanderState;
+  /**
+   * Terrain (notably `padX`) the trial was flown and scored against.
+   * Surfacing it lets callers see the scenario variation the scorer
+   * sampled rather than inferring it from the flown trajectory
+   * (issue #782).
+   */
+  terrain: LanderTerrain;
 }
 
 /** Result of scoring a creature across a (possibly single-trial) batch. */
@@ -597,7 +604,12 @@ function runEpisode(
     if (isTerminal(state, terrain)) break;
   }
   const outcome = classifyOutcome(state, terrain);
-  return { score: scoreFinalState(state, outcome, terrain), outcome, finalState: state };
+  return {
+    score: scoreFinalState(state, outcome, terrain),
+    outcome,
+    finalState: state,
+    terrain,
+  };
 }
 
 /**

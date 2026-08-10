@@ -71,9 +71,11 @@ import {
   initialState,
   type LanderState,
   scenarioComplexity,
+  WIDE_RANGES,
 } from "./physics.ts";
 import { generateScenarioPools } from "./scenarios.ts";
 import { appendMultiRunRun, loadMultiRunState } from "../common/multi_run_state.ts";
+import { makeCreatureExport } from "../common/creature_export_fixture.ts";
 
 /**
  * A fast, deterministic configuration suitable for unit tests. Under
@@ -489,20 +491,52 @@ Deno.test(
     // perturbedScenario (state + terrain, including padX) drives training.
     // With a moving pad in training, a controller cannot win by memorising
     // "pad at zero" — the scoring function must surface terrain variation
-    // so different trials touch down on different pad centres.
-    const creature = new Creature(INPUT_COUNT, OUTPUT_COUNT);
+    // so different trials are scored against different pad centres.
+    //
+    // Issue #782: assert on the pad centres the scorer actually used, not
+    // on the emergent spread of final-state x. The pad draw depends only
+    // on `trialSeed`, so the assertion holds for every controller; the
+    // previous emergent-spread form failed intermittently whenever the
+    // unseeded random creature happened to fly a narrow trajectory.
+    const creature = Creature.fromJSON(
+      makeCreatureExport({ input: INPUT_COUNT, output: OUTPUT_COUNT, hidden: 3, seed: 782 }),
+    );
     const result = scoreController(creature, MAX_STEPS, {
       trials: 20,
       trialSeed: 7,
       initialPerturbation: 1.0,
     });
-    const xs = result.trials.map((t) => t.finalState.x);
-    const xMin = Math.min(...xs);
-    const xMax = Math.max(...xs);
+    const padXs = result.trials.map((t) => t.terrain.padX);
+    const padMin = Math.min(...padXs);
+    const padMax = Math.max(...padXs);
+    // 20 uniform draws on ±WIDE_RANGES.padX must cover most of the range.
     assert(
-      xMax - xMin > 5,
-      `expected final-state x to span > 5 m across trials, got [${xMin}, ${xMax}]`,
+      padMax - padMin > WIDE_RANGES.padX,
+      `expected pad centres to span > ${WIDE_RANGES.padX} m across trials, got [${padMin}, ${padMax}]`,
     );
+    // Every trial must be scored against its own pad, never the default.
+    assertEquals(new Set(padXs).size, result.trials.length);
+  },
+);
+
+Deno.test(
+  "scoreController reports the terrain each trial was scored against (issue #782)",
+  () => {
+    // The single-trial default path runs on the canonical terrain, so the
+    // reported terrain must be the default one.
+    const creature = Creature.fromJSON(
+      makeCreatureExport({ input: INPUT_COUNT, output: OUTPUT_COUNT, hidden: 3, seed: 782 }),
+    );
+    const single = scoreController(creature, MAX_STEPS);
+    assertEquals(single.trials.length, 1);
+    assertEquals(single.trials[0].terrain, DEFAULT_TERRAIN);
+
+    // Unperturbed multi-trial batches also stay on the canonical terrain.
+    const batch = scoreController(creature, MAX_STEPS, { trials: 3, trialSeed: 5 });
+    assertEquals(batch.trials.length, 3);
+    for (const trial of batch.trials) {
+      assertEquals(trial.terrain, DEFAULT_TERRAIN);
+    }
   },
 );
 
