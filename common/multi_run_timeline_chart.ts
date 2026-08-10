@@ -12,7 +12,7 @@ import {
   enrichMilestonesWithCumulativeWallClock,
   holdoutScoreForMilestone,
 } from "./multi_run_state.ts";
-import { escapeAttr, escapeText } from "./chart_axis.ts";
+import { escapeAttr, escapeText } from "./svg_text.ts";
 import { makeScale } from "./chart_scale.ts";
 
 /** Options controlling {@link renderMultiRunTimelineChartSVG}. */

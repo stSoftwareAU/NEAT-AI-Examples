@@ -1,6 +1,8 @@
 /**
- * Unit tests for the shared chart axis renderers and SVG formatting
- * helpers.
+ * Unit tests for the shared chart axis renderers.
+ *
+ * The SVG escaping and number-formatting helpers they build on are
+ * covered by `./svg_text_test.ts` (issue #778).
  *
  * These are "what" tests — each case renders a real axis fragment and
  * asserts on the emitted structure (tick positions, label text,
@@ -10,15 +12,7 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 
 import { makeScale, makeXScale } from "./chart_scale.ts";
-import {
-  escapeAttr,
-  escapeText,
-  fmt,
-  formatAxisValue,
-  renderLeftAxis,
-  renderRightAxis,
-  renderXAxis,
-} from "./chart_axis.ts";
+import { renderLeftAxis, renderRightAxis, renderXAxis } from "./chart_axis.ts";
 
 /** Collect the `x` attribute of every `<text>` element in a fragment. */
 function textXs(svg: string): number[] {
@@ -29,30 +23,6 @@ function textXs(svg: string): number[] {
 function textBodies(svg: string): string[] {
   return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
 }
-
-Deno.test("fmt: rounds a coordinate to two decimal places", () => {
-  assertEquals(fmt(1.23456), "1.23");
-  assertEquals(fmt(1.239), "1.24");
-  assertEquals(fmt(70), "70");
-  assertEquals(fmt(-0.001), "0");
-});
-
-Deno.test("fmt: a non-finite coordinate degrades to 0", () => {
-  assertEquals(fmt(Infinity), "0");
-  assertEquals(fmt(NaN), "0");
-});
-
-Deno.test("formatAxisValue: rounds a tick label to three decimal places", () => {
-  assertEquals(formatAxisValue(0.123456), "0.123");
-  assertEquals(formatAxisValue(42), "42");
-  assertEquals(formatAxisValue(0.05), "0.05");
-  assertEquals(formatAxisValue(NaN), "0");
-});
-
-Deno.test("escapeText / escapeAttr: neutralise XML metacharacters", () => {
-  assertEquals(escapeText(`a & b < c > d`), "a &amp; b &lt; c &gt; d");
-  assertEquals(escapeAttr(`say "hi" & <bye>`), "say &quot;hi&quot; &amp; &lt;bye&gt;");
-});
 
 Deno.test("renderXAxis: places one tick at each scaled generation", () => {
   const scale = makeXScale(0, 40, 70, 470, false);

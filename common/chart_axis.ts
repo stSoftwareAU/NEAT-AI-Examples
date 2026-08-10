@@ -8,15 +8,16 @@
  * are parameters here; everything else — tick geometry, fonts, colours,
  * rotated axis titles — is emitted once.
  *
- * Also home to the deterministic number formatting and XML escaping the
- * chart bodies share, so axis fragments and chart fragments round
- * coordinates identically.
+ * The deterministic number formatting and XML escaping the axis
+ * fragments share with the chart bodies live in `./svg_text.ts`
+ * (issue #778), so both round coordinates identically.
  *
  * Pure string emission — no DOM, no dependencies. Output is
  * byte-identical for identical inputs.
  */
 
 import { logTicks, niceTicks } from "./chart_scale.ts";
+import { escapeText, fmt, formatScore } from "./svg_text.ts";
 
 /** Tick target for the X axis (the widest axis on every chart). */
 const X_AXIS_TICK_TARGET = 8;
@@ -106,7 +107,7 @@ export function renderLeftAxis(options: ValueAxisOptions): string {
     );
     out.push(
       `    <text x="${fmt(baseX - 8)}" y="${fmt(y)}" text-anchor="end" ` +
-        `dominant-baseline="middle">${formatAxisValue(t)}</text>`,
+        `dominant-baseline="middle">${formatScore(t)}</text>`,
     );
   }
   const midY = (scale(min) + scale(max)) / 2;
@@ -139,7 +140,7 @@ export function renderRightAxis(options: ValueAxisOptions): string {
     );
     out.push(
       `    <text x="${fmt(baseX + 8)}" y="${fmt(y)}" text-anchor="start" ` +
-        `dominant-baseline="middle">${formatAxisValue(t)}</text>`,
+        `dominant-baseline="middle">${formatScore(t)}</text>`,
     );
   }
   const midY = (scale(min) + scale(max)) / 2;
@@ -151,29 +152,4 @@ export function renderRightAxis(options: ValueAxisOptions): string {
   );
   out.push(`  </g>`);
   return out.join("\n");
-}
-
-/** Round a numeric coordinate to two decimal places for compact, deterministic output. */
-export function fmt(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 100) / 100).toString();
-}
-
-/** Format an axis value (score, error, count) to a short, deterministic string. */
-export function formatAxisValue(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 1000) / 1000).toString();
-}
-
-/** Escape XML metacharacters for use in element text content. */
-export function escapeText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/** Escape XML metacharacters for use inside a double-quoted attribute. */
-export function escapeAttr(s: string): string {
-  return escapeText(s).replace(/"/g, "&quot;");
 }

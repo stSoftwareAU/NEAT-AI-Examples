@@ -21,6 +21,8 @@
  * the other helpers in `common/`.
  */
 
+import { escapeAttr, escapeText, fmt, formatScore } from "./svg_text.ts";
+
 /** Statistics captured around a single `Creature.evolveDir` run. */
 export interface EvolveDirSummary {
   /** Final error returned by `evolveDir` (the `error` field). */
@@ -355,20 +357,8 @@ function renderCaption(
 }
 
 // ---------------------------------------------------------------------------
-// Number / text formatting
+// Duration formatting
 // ---------------------------------------------------------------------------
-
-/** Round a numeric coordinate to two decimal places for compact output. */
-function fmt(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 100) / 100).toString();
-}
-
-/** Format a score / error to three decimal places. */
-function formatScore(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 1000) / 1000).toString();
-}
 
 /**
  * Format a millisecond duration as a short, human-friendly string:
@@ -388,15 +378,4 @@ function formatDuration(ms: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours}h ${minutes}m`;
-}
-
-function escapeText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string): string {
-  return escapeText(s).replace(/"/g, "&quot;");
 }

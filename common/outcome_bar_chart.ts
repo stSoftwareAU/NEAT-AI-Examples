@@ -25,6 +25,8 @@
  * {@link ./milestone_chart.ts}.
  */
 
+import { escapeAttr, escapeText, fmt, formatScore } from "./svg_text.ts";
+
 /** Outcome categories supported by the renderer. */
 export type OutcomeCategory = "landed" | "crashed" | "out_of_bounds" | "flying";
 
@@ -298,29 +300,4 @@ function renderLegend(x: number, y: number, w: number): string {
   }
   out.push(`  </g>`);
   return out.join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// Number / text formatting
-// ---------------------------------------------------------------------------
-
-function fmt(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 100) / 100).toString();
-}
-
-function formatScore(v: number): string {
-  if (!Number.isFinite(v)) return "0";
-  return (Math.round(v * 1000) / 1000).toString();
-}
-
-function escapeText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string): string {
-  return escapeText(s).replace(/"/g, "&quot;");
 }

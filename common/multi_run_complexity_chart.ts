@@ -18,14 +18,8 @@
 
 import type { MultiRunMilestone } from "./multi_run_state.ts";
 import { selectVisibleBoundaryIndices } from "./multi_run_boundary_thinning.ts";
-import {
-  escapeAttr,
-  escapeText,
-  fmt,
-  renderLeftAxis,
-  renderRightAxis,
-  renderXAxis,
-} from "./chart_axis.ts";
+import { renderLeftAxis, renderRightAxis, renderXAxis } from "./chart_axis.ts";
+import { escapeAttr, escapeText, fmt } from "./svg_text.ts";
 import { makeScale, makeXScale, maxBy } from "./chart_scale.ts";
 
 /** Options controlling {@link renderMultiRunComplexityChartSVG}. */
