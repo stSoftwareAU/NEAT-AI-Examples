@@ -69,6 +69,12 @@ deno check         → Checked 51 files (common/)
 deno test          → ok | 1364 passed (32 steps) | 0 failed (10m16s)
 ```
 
+`./quality.sh`'s trailing example-runner section (24 full evolution runs) was **not** run to
+completion locally — it exceeds the worker's time budget and regenerates committed
+`docs/screenshots/*.svg` artefacts with per-run generation counts. The stages it runs before that
+section (`deno fmt`, `bash_syntax.sh`, `deno lint`, `deno check`, the unit suite) were each run
+directly and are green, as listed above; CI runs the full gate on this PR.
+
 ## Test Plan
 
 - **Added** `common/svg_text_test.ts` — 7 "what" tests calling the real helpers:
