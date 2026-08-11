@@ -1,9 +1,12 @@
-# Monitoring NEAT-AI during re-evolve runs
+# Monitoring NEAT-AI during long-running campaigns
 
 This document defines the procedure the worker follows when monitoring
 [NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI) and its `stSoftwareAU/*` supporting libraries
-during the re-evolve runs tracked in issues #371–#390. It is the single reference the running worker
-reads before raising a defect issue in a library repo.
+during a re-evolve or other long-run campaign, across the campaign's tracked issues. It is the
+single reference the running worker reads before raising a defect issue in a library repo.
+
+The procedure is general: apply it to whichever issues the current campaign tracks. Issues #371–#390
+were the first application and are now closed; nothing here is specific to them.
 
 ## 1. In-scope repos
 
@@ -18,14 +21,15 @@ Defect issues may be filed in the following `stSoftwareAU/*` repos:
 
 **Out of scope.** Third-party dependencies (`@std/*`, anything not under the `stSoftwareAU/*` GitHub
 organisation) are explicitly out of scope. Do not raise defect issues against them — record the
-symptom on the originating re-evolve issue instead.
+symptom on the originating campaign issue instead.
 
 ### Refreshing the list
 
 The list above must track NEAT-AI's own dependency graph. To refresh it without letting the doc
 silently rot, a future contributor should:
 
-1. Open NEAT-AI's [`deno.json`](https://github.com/stSoftwareAU/NEAT-AI/blob/main/deno.json).
+1. Open NEAT-AI's [`deno.json`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/deno.json)
+   (NEAT-AI's default branch is `Develop`, not `main`).
 2. Note the `neatCore` field — this is the `stSoftwareAU/NEAT-AI-core` revision and stays in scope.
 3. Scan the `imports` map for every `@stsoftware/*` JSR specifier. Each one maps to an
    `stSoftwareAU/*` repo on GitHub (for example, `@stsoftware/tags` ↔ `stSoftwareAU/TagsTS`).
@@ -68,7 +72,7 @@ Use a small set of likely matching terms — the error class, a signature keywor
 phrase. Two or three searches with different phrasings is reasonable.
 
 - If a matching open issue exists, **comment on it** with this run's specifics (link to the
-  originating `NEAT-AI-Examples` re-evolve issue, the NEAT-AI version, the stack trace or signature,
+  originating `NEAT-AI-Examples` campaign issue, the NEAT-AI version, the stack trace or signature,
   and the reproduction context) rather than filing a duplicate.
 - If no match exists, **file a new issue** using the template in section 4.
 
@@ -79,8 +83,8 @@ Use this body when raising a new issue in a target repo:
 ```markdown
 ## Originating run
 
-- Re-evolve issue: stSoftwareAU/NEAT-AI-Examples#<NNN> (one of #371–#390)
-- NEAT-AI version: <pinned per #370, e.g. @stsoftware/neat-ai@x.y.z>
+- Campaign issue: stSoftwareAU/NEAT-AI-Examples#<NNN> (the campaign's tracked issue for this run)
+- NEAT-AI version: <the version pinned for this campaign, e.g. @stsoftware/neat-ai@x.y.z>
 - NEAT-AI-core revision: <commit SHA, if relevant>
 
 ## Error signature
@@ -98,12 +102,12 @@ Use this body when raising a new issue in a target repo:
 <one of: hard failure / numerical / stability / other>
 ```
 
-Every field is required. A back-link to the originating re-evolve issue is non-negotiable — it is
-how the human triager finds the run artefacts.
+Every field is required. A back-link to the originating campaign issue is non-negotiable — it is how
+the human triager finds the run artefacts.
 
-## 5. Checklist snippet (for injection into re-evolve issues #371–#390)
+## 5. Checklist snippet (for injection into the campaign's tracked issues)
 
-The block below is the exact Markdown to inject into each re-evolve issue body's
+The block below is the exact Markdown to inject into each campaign issue body's
 `Acceptance Criteria` section. The HTML comment markers make the injection idempotent: a re-run of
 the injector replaces the existing block in place instead of appending a second copy.
 
@@ -119,7 +123,7 @@ the injector replaces the existing block in place instead of appending a second 
 
 ```mermaid
 flowchart LR
-    A[Evolution run for example #371-#390] --> B{Abnormal event detected?}
+    A[Evolution run for a campaign-tracked example] --> B{Abnormal event detected?}
     B -- No --> Z[Continue]
     B -- Yes --> C[Search target repo for open issue]
     C --> D{Match found?}
