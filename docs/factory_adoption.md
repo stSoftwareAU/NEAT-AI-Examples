@@ -4,6 +4,10 @@ This page is the canonical decision record for tracking issue
 [#517](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/517) — adopting the NEAT-AI
 **creature factory** across the example suite.
 
+> **Status as at 2026-08-11:** Group A is **complete** — all eight supervised examples seed from
+> `Creature.forDataset(...)`. The open remainder is Group B (six Tier-0 `forProblem` swaps) and
+> Group C (seven `forDataset` migrations); no follow-up issues are filed for them yet.
+
 The factory landed upstream in `@stsoftware/neat-ai@5.1.0`
 ([stSoftwareAU/NEAT-AI#2794](https://github.com/stSoftwareAU/NEAT-AI/issues/2794)) with the
 output-activation / loss coupling
@@ -46,16 +50,16 @@ from the unchanged mutation operators.
 These examples train on a labelled dataset (CSV, `.bin`, or in-memory truth table) and can use the
 full data-scanning factory.
 
-| Example                | Status      | Issue                                                               | Notes                                                                                                                                                                                                                       |
-| ---------------------- | ----------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mnist_classification` | ✅ Migrated | [#518](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/518) | `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })` — dropped hardcoded `[128, 64]` hidden seed.                                                                                                                      |
-| `stock_market`         | ✅ Migrated | [#519](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/519) | Regression seed — `IDENTITY` output activation, target-mean bias warm-start.                                                                                                                                                |
-| `xor_classification`   | ✅ Migrated | [#520](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/520) | Smoke-test — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output + small RELU hidden layer.                                                                                                                                          |
-| `adaptive_mutation`    | ✅ Migrated | [#533](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/533) | 4-bit even-parity classifier (4 → 1, binary) — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output + factory hidden layer.                                                                                                           |
-| `evolution_showcase`   | 🟡 Planned  | [#534](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/534) | Long-form flagship run; needs a deliberate departure write-up given its "noise → competent" framing.                                                                                                                        |
-| `discovery_at_scale`   | ✅ Migrated | [#535](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/535) | `evolveDir` over a binary `.bin` set built from a `buildLargeCreature(...)` reference — `BINARY_CROSS_ENTROPY` → LOGISTIC outputs (match the reference's LOGISTIC labels) + factory hidden layer.                           |
-| `memetic_evolution`    | ✅ Migrated | [#536](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/536) | Two `evolveDir` runs (memetic + control) — both seeds built via `BINARY_CROSS_ENTROPY` → `LOGISTIC` output (matches the oracle's `[0, 1]` targets) + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`. |
-| `crossover`            | ✅ Migrated | [#537](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/537) | Second-stage `evolveDir` seed — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output (matches Parent A's `(0, 1)` labels) + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`. Hand-crafted parents stay exempt.  |
+| Example                | Status      | Issue                                                               | Notes                                                                                                                                                                                                                            |
+| ---------------------- | ----------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mnist_classification` | ✅ Migrated | [#518](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/518) | `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })` — dropped hardcoded `[128, 64]` hidden seed.                                                                                                                           |
+| `stock_market`         | ✅ Migrated | [#519](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/519) | Regression seed — `IDENTITY` output activation, target-mean bias warm-start.                                                                                                                                                     |
+| `xor_classification`   | ✅ Migrated | [#520](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/520) | Smoke-test — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output + small RELU hidden layer.                                                                                                                                               |
+| `adaptive_mutation`    | ✅ Migrated | [#533](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/533) | 4-bit even-parity classifier (4 → 1, binary) — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output + factory hidden layer.                                                                                                                |
+| `evolution_showcase`   | ✅ Migrated | [#534](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/534) | Long-form flagship run — `Creature.forDataset(records, { cost: "MSE" })`: `IDENTITY` output coupled to the regression cost, target-mean bias warm-start + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`. |
+| `discovery_at_scale`   | ✅ Migrated | [#535](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/535) | `evolveDir` over a binary `.bin` set built from a `buildLargeCreature(...)` reference — `BINARY_CROSS_ENTROPY` → LOGISTIC outputs (match the reference's LOGISTIC labels) + factory hidden layer.                                |
+| `memetic_evolution`    | ✅ Migrated | [#536](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/536) | Two `evolveDir` runs (memetic + control) — both seeds built via `BINARY_CROSS_ENTROPY` → `LOGISTIC` output (matches the oracle's `[0, 1]` targets) + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`.      |
+| `crossover`            | ✅ Migrated | [#537](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/537) | Second-stage `evolveDir` seed — `BINARY_CROSS_ENTROPY` → `LOGISTIC` output (matches Parent A's `(0, 1)` labels) + factory hidden layer; bare baseline kept as `buildRandomSeedCreature`. Hand-crafted parents stay exempt.       |
 
 ### Group B — RL / control (Tier-0 `forProblem` only, no data scan)
 
@@ -74,8 +78,9 @@ labelled dataset. The data-scan path does not apply; only the Tier-0 factory (`C
 | `tsp_two_opt`      | `new Creature(INPUT_COUNT, OUTPUT_COUNT, { layers: [{count:16,squash:"TANH"},{count:12,squash:"LOGISTIC"}] })` | **Out of scope (revisit).** The example deliberately hand-picks a two-layer 16/12 `TANH+LOGISTIC` stack as part of the demo. Tier-0 would discard that hand-tuning. Defer until the owner decides whether to keep the hand-layered seed or accept the topology change. |
 
 **Group B summary:** six of seven (everything except `tsp_two_opt`) are eligible for Tier-0
-`Creature.forProblem(...)`. Migrations are not blocking the tracking issue acceptance criteria; they
-will be picked up per-example once Group A is complete.
+`Creature.forProblem(...)`. Migrations are not blocking the tracking issue acceptance criteria.
+Group A is complete, so these six Tier-0 swaps are one half of the open remainder; they are picked
+up per-example and no follow-up issues are filed for them yet.
 
 ### Group C — Mechanic demos
 
@@ -99,8 +104,9 @@ rationale.
 
 **Group C summary:** all seven NEAT seeds are `forDataset` candidates. The hand-crafted state each
 demo protects lives outside the seed in every case, so adopting the data-derived factory does not
-break the exemption listed in `AGENTS.md`. Migrations will be opened as per-example issues once
-Group A is complete.
+break the exemption listed in `AGENTS.md`. Group A is complete, so these seven `forDataset`
+migrations are the other half of the open remainder; they will be opened as per-example issues, none
+of which are filed yet.
 
 ## 🗺️ Adoption flow
 
@@ -109,10 +115,9 @@ flowchart LR
     BLOCK["🔒 Blocked on<br/>NEAT-AI #2793 + #2794"] --> SHIP["✅ Shipped in<br/>@stsoftware/neat-ai 5.1.0"]
     SHIP --> A["🅰️ Group A<br/>Supervised — forDataset"]
     SHIP --> B["🅱️ Group B<br/>RL/control — forProblem (Tier-0)"]
-    SHIP --> C["🅲 Group C<br/>Mechanic demos — forDataset (post-A)"]
+    SHIP --> C["🅲 Group C<br/>Mechanic demos — forDataset"]
 
-    A --> A_DONE["MNIST · Stock · XOR · adaptive_mutation · discovery_at_scale · memetic_evolution · crossover<br/>(merged into milestone/factory)"]
-    A --> A_TODO["evolution_showcase"]
+    A --> A_DONE["✅ Group A complete<br/>MNIST · Stock · XOR · adaptive_mutation · discovery_at_scale · memetic_evolution · crossover · evolution_showcase<br/>(merged into milestone/factory)"]
 
     B --> B_TIER0["6 × Tier-0 swap<br/>(cart_pole, lunar_lander,<br/>mountain_car, snake_game,<br/>maze_navigation, tsp_constructive)"]
     B --> B_DEFER["tsp_two_opt<br/>(hand-tuned 16/12 layers —<br/>revisit)"]
@@ -122,7 +127,6 @@ flowchart LR
     style BLOCK fill:#9c3030,stroke:#333,color:#fff
     style SHIP fill:#3c763d,stroke:#333,color:#fff
     style A_DONE fill:#3c763d,stroke:#333,color:#fff
-    style A_TODO fill:#d9a300,stroke:#333,color:#000
     style B_TIER0 fill:#d9a300,stroke:#333,color:#000
     style B_DEFER fill:#9b59b6,stroke:#333,color:#fff
     style C_FORDATASET fill:#d9a300,stroke:#333,color:#000
