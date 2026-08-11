@@ -35,3 +35,6 @@ full rationale is one click away.
   reinforcement examples as migrated (they all call `Creature.evolveRL()`) instead of showing an
   unticked scoreboard, and names `evolveRL()` rather than `evolveEnv()` as the event-driven API
   (#787).
+- [`docs/factory_adoption.md`](docs/factory_adoption.md) now records `evolution_showcase` as
+  migrated (#534 shipped), charts Group A as complete, and names Group B/C as the open remainder
+  instead of deferring them "once Group A is complete" (#788).
