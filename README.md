@@ -778,9 +778,16 @@ graph TD
 this repository against upstream
 [`NEAT-AI/COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md). It is
 the source of truth for which capabilities are demonstrated by which example, and which README
-passages need rewording so they no longer read as if NEAT-AI were "just textbook NEAT" (issue
+passages still need rewording so they no longer read as if NEAT-AI were "just textbook NEAT" (issue
 [#184](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/184), parent
 [#182](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/182)).
+
+Its verdicts and its per-README register are re-checked against this repository by
+`docs/neat_ai_feature_audit_test.ts`; rows whose follow-up has landed are marked **✅ Resolved**
+with the superseded wording struck through. Quoted passages that are _not_ struck through are
+verbatim snapshots as at the audit date — later rewrites may have reworded them, so re-read the
+README before acting on a quote
+([#790](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/790)).
 
 ## 🤝 Contributing
 
