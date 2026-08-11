@@ -1,8 +1,8 @@
 ## Summary
 
 Wires `maze_navigation` to the multi-run persistence helpers from
-[`common/multi_run_state.ts`](../../../common/multi_run_state.ts) and the aggregate chart renderers from
-[`common/multi_run_error_chart.ts`](../../../common/multi_run_error_chart.ts) /
+[`common/multi_run_state.ts`](../../../common/multi_run_state.ts) and the aggregate chart renderers
+from [`common/multi_run_error_chart.ts`](../../../common/multi_run_error_chart.ts) /
 [`common/multi_run_complexity_chart.ts`](../../../common/multi_run_complexity_chart.ts). The first
 invocation seeds evolution from random noise; subsequent invocations reload the saved champion via
 `Creature.fromJSON` and append fresh milestones to the merged history with a

@@ -10,8 +10,8 @@ without overwriting the canonical artefact. Closes #374.
 
 ### Why no warm continuation
 
-`crossover` is an **exempt** example under [AGENTS.md](../../../AGENTS.md) — the hand-crafted parents
-are the breeding demo — but the headline evolution stage still seeds from
+`crossover` is an **exempt** example under [AGENTS.md](../../../AGENTS.md) — the hand-crafted
+parents are the breeding demo — but the headline evolution stage still seeds from
 `new Creature(INPUT_COUNT, OUTPUT_COUNT)` per #213 and has no `multi_run_state` resume path. Warm-
 starting the minimal-seed `evolveDir` from a persisted champion would erase the noise → competent
 arc that the audit-mandated stage is meant to show. Bumping the wall-clock budget so the existing
