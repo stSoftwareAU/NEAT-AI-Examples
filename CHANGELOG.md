@@ -31,3 +31,7 @@ full rationale is one click away.
 
 - Milestones — the return value of `evolveDir` and the `evolverl_milestone` events from `evolveRL` /
   `evolveEnv` — are the supported telemetry surface for the noise → competent story (#298).
+- [`docs/event-driven-evolution.md`](docs/event-driven-evolution.md) now records the five
+  reinforcement examples as migrated (they all call `Creature.evolveRL()`) instead of showing an
+  unticked scoreboard, and names `evolveRL()` rather than `evolveEnv()` as the event-driven API
+  (#787).
