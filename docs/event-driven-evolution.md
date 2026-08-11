@@ -2,26 +2,26 @@
 
 > **Navigation page.** This doc summarises how the examples in this repository split between
 > **supervised batch evolution** (`Creature.evolveDir()`-style) and **reinforcement / event-driven
-> evolution** (`Creature.evolveEnv()`-style), and links each existing example to its category. The
-> full API spec for `evolveEnv()` lives upstream — see
+> evolution** (`Creature.evolveRL()`-style), and links each existing example to its category. The
+> full API spec lives upstream — see
 > [`stSoftwareAU/NEAT-AI` → `docs/event-driven-evolution.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/docs/event-driven-evolution.md).
 > Parent issue: [#230](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/230).
 
 ## 🗂️ Two paradigms
 
 NEAT-AI runs the same evolutionary loop in two very different ways. Knowing which fits your problem
-is the difference between calling `evolveDir()` and calling `evolveEnv()`.
+is the difference between calling `evolveDir()` and calling `evolveRL()`.
 
 | Example                                                     | Paradigm                        | API                                        |
 | ----------------------------------------------------------- | ------------------------------- | ------------------------------------------ |
 | [`mnist_classification`](../mnist_classification/README.md) | 📊 Supervised batch             | `Creature.evolveDir()` / `evolveDataSet()` |
 | [`xor_classification`](../xor_classification/README.md)     | 📊 Supervised batch             | `Creature.evolveDir()` / `evolveDataSet()` |
 | [`stock_market`](../stock_market/README.md)                 | 📊 Supervised batch             | `Creature.evolveDir()` / `evolveDataSet()` |
-| [`cart_pole`](../cart_pole/README.md)                       | 🎮 Reinforcement / event-driven | `Creature.evolveEnv()`                     |
-| [`mountain_car`](../mountain_car/README.md)                 | 🎮 Reinforcement / event-driven | `Creature.evolveEnv()`                     |
-| [`snake_game`](../snake_game/README.md)                     | 🎮 Reinforcement / event-driven | `Creature.evolveEnv()`                     |
-| [`maze_navigation`](../maze_navigation/README.md)           | 🎮 Reinforcement / event-driven | `Creature.evolveEnv()`                     |
-| [`lunar_lander`](../lunar_lander/README.md)                 | 🎮 Reinforcement / event-driven | `Creature.evolveEnv()`                     |
+| [`cart_pole`](../cart_pole/README.md)                       | 🎮 Reinforcement / event-driven | `Creature.evolveRL()`                      |
+| [`mountain_car`](../mountain_car/README.md)                 | 🎮 Reinforcement / event-driven | `Creature.evolveRL()`                      |
+| [`snake_game`](../snake_game/README.md)                     | 🎮 Reinforcement / event-driven | `Creature.evolveRL()`                      |
+| [`maze_navigation`](../maze_navigation/README.md)           | 🎮 Reinforcement / event-driven | `Creature.evolveRL()`                      |
+| [`lunar_lander`](../lunar_lander/README.md)                 | 🎮 Reinforcement / event-driven | `Creature.evolveRL()`                      |
 
 ```mermaid
 flowchart LR
@@ -33,7 +33,7 @@ flowchart LR
         S1 --> S2 --> S3 --> S2
     end
 
-    subgraph eventDriven ["🎮 Event-driven — evolveEnv()"]
+    subgraph eventDriven ["🎮 Event-driven — evolveRL()"]
         direction TB
         E1["env: starting observation"]
         E2["activate(observation)<br/>→ action"]
@@ -60,7 +60,7 @@ fitness is measured.
   outputs. Fitness is the aggregate error / accuracy over the corpus. Parallelism is trivial because
   each record is independent.
 
-- **Reinforcement / event-driven (`evolveEnv()`).** Fitness is a per-trajectory rollout against a
+- **Reinforcement / event-driven (`evolveRL()`).** Fitness is a per-trajectory rollout against a
   stepping environment. The next observation is produced by `env.step(action)` and depends on the
   creature's previous output, so once two creatures diverge they see entirely different observation
   streams. There is no on-disk dataset to mmap — the "data" is the trajectory the creature itself
@@ -76,39 +76,39 @@ Practical consequences:
 - Both loops parallelise per-creature: each rollout (or each batch sweep) is independent, so workers
   scale linearly with the population size.
 
-## 🚀 What `evolveEnv()` provides
+## 🚀 What `evolveRL()` provides
 
 This page is just the navigation entry point for Examples readers. The full API spec — argument
-shape, termination guards, exception contracts, and worked migration examples — lives upstream in
+shape, termination guards, exception contracts, and worked examples — lives upstream in
 [`stSoftwareAU/NEAT-AI`'s `docs/event-driven-evolution.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/docs/event-driven-evolution.md).
-Read that doc when you are migrating an event-driven example off its hand-rolled generation loop and
-onto the first-class API.
+Read that doc when you are writing a new event-driven example against the first-class API.
 
-**Telemetry is milestone-only.** `evolveEnv()` emits an `evolverl_milestone` event at each milestone
-generation (typically 1, 10, 100, 1000, 10000) with the best score and topology stats for that
-milestone, and returns the same milestone summary when the run completes. There is no per-generation
-hook — examples chart these milestones directly via
-[`common/milestone_chart.ts`](../common/milestone_chart.ts). See
+**`evolveRL()` vs `evolveEnv()`.** Upstream `Creature` exposes both. `evolveRL()` takes the
+class-shaped `EpisodeAdapter` contract and is what every event-driven example in this repository
+calls; `evolveEnv()` is the earlier sibling taking the object-shaped `LegacyEpisodeAdapter`. Both
+drive the same `Neat` outer loop with an episodic scorer, so the stop conditions and lifecycle
+events match `evolveDir()`. Reach for `evolveRL()`; see the upstream doc for the adapter shapes and
+the differences in detail.
+
+**Telemetry is milestone-only.** With `statistics: true`, `evolveRL()` emits an `evolverl_milestone`
+event at each milestone generation (1, 2, 5, 10, 20, 50, 100, … then powers of ten) carrying the
+best score and topology stats for that milestone, and returns the same milestone sequence as
+`milestones` on the run summary. There is no per-generation hook — examples chart these milestones
+directly via [`common/milestone_chart.ts`](../common/milestone_chart.ts). See
 [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the canonical decision
 record on why every-generation telemetry was retired in favour of milestone-only.
 
-The five reinforcement / event-driven examples in this repository will migrate one-by-one as the
-upstream API stabilises; the per-example sub-issues below track the actual code changes.
-
 ## ✅ Migration status
 
-The five event-driven examples each have their own migration sub-issue. The list below is the
-at-a-glance scoreboard — tick a box when the corresponding sub-issue closes. Each migration target
-is `evolveEnv()` with milestone-only telemetry (`evolverl_milestone` events plus the milestone
-summary returned by the call); see
-[#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the decision record.
+**All five reinforcement / event-driven examples are migrated.** Each drives `Creature.evolveRL()`
+with milestone-only telemetry (`evolverl_milestone` events plus the milestone sequence returned by
+the call); see [#298](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/298) for the decision
+record. The per-example hand-rolled generation loops are gone.
 
-- [ ] [`cart_pole` → `evolveEnv()` (milestone telemetry) — #236](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/236)
-- [ ] [`mountain_car` → `evolveEnv()` (milestone telemetry) — #237](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/237)
-- [ ] [`snake_game` → `evolveEnv()` (milestone telemetry) — #238](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/238)
-- [ ] [`maze_navigation` → `evolveEnv()` (milestone telemetry) — #239](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/239)
-- [ ] [`lunar_lander` → `evolveEnv()` (milestone telemetry) — #240](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/240)
-      (run last)
-
-When every box is ticked, the repository is fully migrated and the per-example hand-rolled evolution
-loops can be retired.
+| Example                                                    | Migration issue                                                                       |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`cart_pole`](../cart_pole/cart_pole.ts)                   | [#236](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/236)                   |
+| [`mountain_car`](../mountain_car/mountain_car.ts)          | [#290](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/290) (supersedes #237) |
+| [`snake_game`](../snake_game/snake_game.ts)                | [#238](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/238)                   |
+| [`maze_navigation`](../maze_navigation/maze_navigation.ts) | [#239](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/239)                   |
+| [`lunar_lander`](../lunar_lander/lunar_lander.ts)          | [#292](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/292) (supersedes #240) |
