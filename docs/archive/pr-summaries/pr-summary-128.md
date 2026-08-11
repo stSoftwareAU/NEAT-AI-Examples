@@ -14,7 +14,7 @@ questions raised in [#125](https://github.com/stSoftwareAU/NEAT-AI-Examples/issu
    supervised.
 
 The new section cross-links to the top-level
-[**🧭 Two Training Paradigms**](../README.md#-two-training-paradigms--supervised-vs-agent-evolution)
+[**🧭 Two Training Paradigms**](../../../README.md#-two-training-paradigms--supervised-vs-agent-evolution)
 section added in #126, anchoring the answers in the canonical worked example so future readers find
 them where they would naturally look. Closes #128.
 

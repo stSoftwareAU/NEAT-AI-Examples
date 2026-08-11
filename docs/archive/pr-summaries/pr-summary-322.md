@@ -1,9 +1,9 @@
 ## Summary
 
 Wires `maze_navigation` to the multi-run persistence helpers from
-[`common/multi_run_state.ts`](../common/multi_run_state.ts) and the aggregate chart renderers from
-[`common/multi_run_error_chart.ts`](../common/multi_run_error_chart.ts) /
-[`common/multi_run_complexity_chart.ts`](../common/multi_run_complexity_chart.ts). The first
+[`common/multi_run_state.ts`](../../../common/multi_run_state.ts) and the aggregate chart renderers
+from [`common/multi_run_error_chart.ts`](../../../common/multi_run_error_chart.ts) /
+[`common/multi_run_complexity_chart.ts`](../../../common/multi_run_complexity_chart.ts). The first
 invocation seeds evolution from random noise; subsequent invocations reload the saved champion via
 `Creature.fromJSON` and append fresh milestones to the merged history with a
 monotonically-increasing `cumulativeGen`. Both chart SVGs are re-rendered after every run.
@@ -78,12 +78,12 @@ sequenceDiagram
 
 Multi-run charts (committed):
 
-![Multi-run error vs cumulative generation](./screenshots/maze_navigation/milestones.svg)
+![Multi-run error vs cumulative generation](../../screenshots/maze_navigation/milestones.svg)
 
-![Multi-run complexity vs cumulative generation](./screenshots/maze_navigation/complexity.svg)
+![Multi-run complexity vs cumulative generation](../../screenshots/maze_navigation/complexity.svg)
 
 The animated champion-run SVG
-([`docs/screenshots/maze_navigation.svg`](./screenshots/maze_navigation.svg)) is unchanged in
+([`docs/screenshots/maze_navigation.svg`](../../screenshots/maze_navigation.svg)) is unchanged in
 purpose — still rendered every run, still shows the champion walking from start to goal.
 
 ### Pre-PR Security Self-Check

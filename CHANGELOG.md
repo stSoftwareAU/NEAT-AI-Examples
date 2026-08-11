@@ -16,6 +16,9 @@ full rationale is one click away.
 
 ### Changed
 
+- The PR-summary archive is now a single corpus at `docs/archive/pr-summaries/pr-summary-<PR>.md`;
+  the 195 summaries that sat loose in `docs/archive/` moved there and `CONTRIBUTING.md` records the
+  convention (#792).
 - MNIST training/selection cost switched from `CATEGORICAL_ERROR` (non-differentiable
   `1 − argmax accuracy`) to `CROSS_ENTROPY` (softmax + cross-entropy). Top-1 argmax accuracy is
   still reported but no longer drives evolution (#523).
@@ -29,6 +32,9 @@ full rationale is one click away.
 
 ### Documented
 
+- The PR-summary archive is consolidated at `docs/archive/pr-summaries/pr-summary-<PR>.md`; the 195
+  summaries stranded on the old flat `docs/archive/` path moved into it, and
+  [`CONTRIBUTING.md`](CONTRIBUTING.md) now names that path as the convention (#792).
 - Milestones — the return value of `evolveDir` and the `evolverl_milestone` events from `evolveRL` /
   `evolveEnv` — are the supported telemetry surface for the noise → competent story (#298).
 - [`docs/event-driven-evolution.md`](docs/event-driven-evolution.md) now records the five

@@ -51,6 +51,20 @@ Before submitting any changes, run the full quality gate (`./quality.sh`), which
 > Run `./quality.sh` early and often — it catches lint, formatting, test, and runtime issues all in
 > one go!
 
+## 📚 PR Summaries
+
+Every PR ships a summary describing what changed and why. Summaries are the project's durable memory
+of what worked and what failed, so they all live in **one** place:
+
+```text
+docs/archive/pr-summaries/pr-summary-<PR>.md
+```
+
+Nothing else belongs in `docs/archive/` — a summary written to `docs/`, or loose in `docs/archive/`,
+splits the corpus so a glob over the canonical path silently misses it. `docs/archive_test.ts`
+enforces the layout and checks that relative links inside each summary still resolve (paths are
+relative to the summary, so the repository root is `../../../`).
+
 ## 🆕 Adding a New Example
 
 Each example follows a consistent three-file pattern:
@@ -215,8 +229,20 @@ Before submitting a pull request, verify the following:
 - [ ] `README.md` is updated if your change adds or modifies an example
 - [ ] [`CHANGELOG.md`](CHANGELOG.md) has an `[Unreleased]` entry if the change is notable (a
       behaviour shift, a new example, or a dependency bump that changes results)
+- [ ] The PR summary is written to `docs/archive/pr-summaries/pr-summary-<PR>.md` (see
+      [PR Summaries](#-pr-summaries))
 - [ ] Commit messages are clear and reference the relevant issue number
 - [ ] The PR targets the `Develop` branch
+- [ ] The PR summary is written to `docs/archive/pr-summaries/pr-summary-<PR>.md`
+
+### 🗄️ PR-summary archive
+
+Every PR summary lives at `docs/archive/pr-summaries/pr-summary-<PR>.md` — one flat directory, one
+naming convention, no exceptions. That directory is the project's durable record of what worked and
+what failed, so it must stay greppable as a single corpus: a summary written anywhere else (the
+`docs/` root, or the old flat `docs/archive/` path) is invisible to anyone globbing the archive.
+`docs/archive_test.ts` enforces the layout (issue
+[#792](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/792)).
 
 ## 🔐 Code Owners & Branch Protection
 
