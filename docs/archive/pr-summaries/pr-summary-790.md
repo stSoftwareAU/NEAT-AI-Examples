@@ -48,16 +48,19 @@ audit records the date its verdicts were last verified ... FAILED
 superseded quotes really are gone from the README they are struck through for ... FAILED
 ```
 
-After the refresh:
+After the refresh, `./quality.sh < /dev/null` passes end to end (exit 0):
 
 ```text
-deno test --allow-read --allow-write --allow-env --no-check docs/
-ok | 28 passed | 0 failed
+SUCCESS: Deno Format / Bash Syntax / Deno Lint / Deno Type Check
+Unit Tests (parallel): ok | 1401 passed (32 steps) | 0 failed (10m4s)
+SUCCESS: MNIST evolveDir integration tests
+SUCCESS: MNIST exploration-campaign driver tests
+… all 21 example runs SUCCESS …
+Quality Check Summary — All examples passed!
 ```
 
-Full gate: `deno fmt --check` (579 files), `deno lint` (210 files), `deno check ./**/*.ts`, and the
-parallel unit suite — `ok | 1401 passed (32 steps) | 0 failed (10m3s)` — all clean. The example-run
-sections of `quality.sh` were not re-run; this change touches no example source.
+The example runs regenerate a handful of `docs/screenshots/*.svg` artefacts as a side-effect of the
+gate; those are reverted and are not part of this change, which touches no example source.
 
 ```mermaid
 flowchart LR
