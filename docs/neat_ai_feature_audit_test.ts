@@ -34,12 +34,24 @@ function tableRows(text: string): string[] {
   return text.split("\n").filter((line) => line.startsWith("|") && !/^\|[\s|:-]+\|$/.test(line));
 }
 
+/**
+ * Directories that are not this repository's own source: the support directories, plus every
+ * path `deno.json` excludes. CI checks sibling repositories (NEAT-AI-core, NEAT-AI-scorer)
+ * *into* the workspace, and those carry their own README.md — reusing the `exclude` list keeps
+ * this test agreeing with the config that already declares them foreign.
+ */
+function nonExampleDirectories(): Set<string> {
+  const excluded: string[] = JSON.parse(Deno.readTextFileSync("deno.json")).exclude ?? [];
+  return new Set(["docs", "common", "quality", ...excluded]);
+}
+
 /** Every `<example>/README.md` in the repository root. */
 function exampleReadmes(): string[] {
+  const skip = nonExampleDirectories();
   const found: string[] = [];
   for (const entry of Deno.readDirSync(".")) {
     if (!entry.isDirectory || entry.name.startsWith(".")) continue;
-    if (entry.name === "docs" || entry.name === "common" || entry.name === "quality") continue;
+    if (skip.has(entry.name)) continue;
     try {
       Deno.statSync(`${entry.name}/README.md`);
       found.push(`${entry.name}/README.md`);
