@@ -1,72 +1,85 @@
+# PR Summary — Issue #792
+
 ## Summary
 
-The PR-summary archive was split across two undocumented locations: 195 summaries sat loose as
-`docs/archive/pr-summary-*.md` (PRs #5–#447) while 101 lived under
-`docs/archive/pr-summaries/pr-summary-*.md` (#457 onward), so any glob over either path silently
-missed most of the corpus. This PR consolidates the archive into one location, repairs the relative
-links the move broke, and writes the convention down so the seam cannot re-open. Closes #792.
+The PR-summary archive was split across two undocumented locations: 195 summaries sat flat at
+`docs/archive/pr-summary-*.md` (PRs #5–#447) and 105 under `docs/archive/pr-summaries/` (PRs #457
+onward), so any glob over one path silently missed the other. This PR consolidates the archive into
+the single canonical directory `docs/archive/pr-summaries/` and writes the convention down. Closes
+#792.
 
-- `git mv` of all 195 loose files into `docs/archive/pr-summaries/` — a pure rename, no summary
-  content rewritten and no learnings lost. The directory now holds 300 summaries.
-- Fixed 16 relative links across 7 moved summaries. Most were already broken by the earlier
-  `docs/` → `docs/archive/` move (e.g. `../AGENTS.md` resolved to `docs/AGENTS.md`); they now use
-  the same depth as the existing subdirectory summaries — `../../../` for the repository root and
-  `../../screenshots/` for `docs/screenshots/`. A quoted link inside a code span in
-  `pr-summary-72.md` was deliberately left as-is: it quotes README text, not a live link.
-- `CONTRIBUTING.md` gains a **📚 PR Summaries** section naming
-  `docs/archive/pr-summaries/pr-summary-<PR>.md` as the canonical path, plus a PR-checklist item.
-- `CHANGELOG.md` records the reorganisation under `[Unreleased] / Changed`.
+What changed:
 
-## Evidence
-
-Documentation/CLI change — no web interface to screenshot. The deliverable is the archive layout
-itself, verified by `docs/archive_test.ts`:
-
-```text
-docs/archive_test.ts
-PR summaries live in docs/archive/pr-summaries/ ... ok
-No PR summary files remain loose in docs/archive/ ... ok
-No PR summary files remain in docs/ root ... ok
-Relative links in archived PR summaries resolve ... ok
-CONTRIBUTING.md documents the PR-summary archive location ... ok
-ok | 5 passed | 0 failed
-```
-
-All four new/updated assertions fail against the unfixed tree (195 loose files, 16 unresolvable
-links, no documented convention) and pass after the move.
+- `git mv` of the 195 flat `docs/archive/pr-summary-*.md` files into `docs/archive/pr-summaries/` —
+  a pure rename, no content changes, no learnings lost. There were no filename collisions between
+  the two sets.
+- Fixed the one relative link the move broke: `pr-summary-374.md` linked to `../../AGENTS.md`, now
+  `../../../AGENTS.md` (the convention the existing subdirectory summaries already use). A sweep of
+  every relative link in the moved files found this was the only one that resolved before the move.
+- Documented the location in both `CONTRIBUTING.md` ("Where PR Summaries Live") and `AGENTS.md` ("PR
+  Summaries"), including the `../../../` root-relative link depth for future summaries.
+- Rewrote `docs/archive_test.ts` to pin the single location. **Existing tests were modified, not
+  removed** — the old `PR summary files exist in docs/archive/` test asserted the flat layout that
+  this change deliberately retires, so it now asserts the canonical directory instead. The "no
+  summaries in `docs/` root" test is retained unchanged in behaviour.
 
 ```mermaid
 flowchart LR
     subgraph before ["❌ Before — split archive"]
-        A1["docs/archive/<br/>pr-summary-*.md<br/>195 files (#5–#447)"]
-        A2["docs/archive/pr-summaries/<br/>pr-summary-*.md<br/>101 files (#457+)"]
+        F1["docs/archive/<br/>pr-summary-*.md<br/>195 files, PRs #5–#447"]
+        F2["docs/archive/pr-summaries/<br/>pr-summary-*.md<br/>105 files, PRs #457+"]
     end
 
     subgraph after ["✅ After — one corpus"]
-        B1["docs/archive/pr-summaries/<br/>pr-summary-&lt;PR&gt;.md<br/>300 files"]
+        A1["docs/archive/pr-summaries/<br/>pr-summary-&lt;PR&gt;.md<br/>300 files"]
     end
 
-    A1 -->|git mv + link fixes| B1
-    A2 --> B1
-    B1 --> DOC["📄 CONTRIBUTING.md<br/>convention documented"]
-    B1 --> TEST["🧪 docs/archive_test.ts<br/>layout + links enforced"]
+    F1 -- "git mv" --> A1
+    F2 --> A1
 
     style before fill:#f8d7da,stroke:#dc3545,color:#333
     style after fill:#d4edda,stroke:#28a745,color:#333
 ```
 
+## Evidence
+
+This is a documentation/layout change with no web interface to screenshot. The evidence is the
+archive-layout test suite and the full quality gate.
+
+```
+$ deno test --no-check --allow-read docs/archive_test.ts
+running 4 tests from ./docs/archive_test.ts
+PR summaries live in docs/archive/pr-summaries/ ... ok (7ms)
+No PR summary files remain loose in docs/archive/ ... ok (124µs)
+No PR summary files remain in docs/ root ... ok (264µs)
+The archive location is documented ... ok (384µs)
+
+ok | 4 passed | 0 failed (10ms)
+```
+
+Before the move, the two new assertions failed
+(`Found PR summary files outside
+docs/archive/pr-summaries/: pr-summary-289.md, …` and
+`Expected CONTRIBUTING.md to name
+docs/archive/pr-summaries/pr-summary-<PR>.md`), which is the
+regression check for this issue: the suite is red against the split layout and green after
+consolidation.
+
+`./quality.sh < /dev/null` completed with exit code 0 — every section reported `SUCCESS` (Deno
+Format, Bash Syntax, Deno Lint, Deno Type Check, Unit Tests, both MNIST isolated suites, and all 21
+example runners), with no `FAILED` lines. `deno fmt` reflowed one paragraph in `pr-summary-374.md`
+around the corrected link; that reflow is committed.
+
 ## Test Plan
 
-- `docs/archive_test.ts` rewritten around the single location:
-  - `PR summaries live in docs/archive/pr-summaries/` — the directory holds the whole corpus (250+)
-    and every entry matches `pr-summary-<n>.md`.
-  - `No PR summary files remain loose in docs/archive/` — regression test for the split (replaces
-    the old test that asserted summaries sat loose in `docs/archive/`, which encoded the very
-    layout this issue removes).
-  - `No PR summary files remain in docs/ root` — retained unchanged.
-  - `Relative links in archived PR summaries resolve` — resolves every `./`/`../` markdown link
-    (code spans and fenced blocks excluded) against the file's own directory and asserts the target
-    exists, so a future move cannot silently break the corpus.
-  - `CONTRIBUTING.md documents the PR-summary archive location` — asserts the canonical path is
-    written down.
-- `./quality.sh` passes: `deno fmt`, `deno lint`, full `deno test` suite, and the example runners.
+- `docs/archive_test.ts::PR summaries live in docs/archive/pr-summaries/` — every summary is a file
+  in the canonical directory and matches `pr-summary-<PR>.md`.
+- `docs/archive_test.ts::No PR summary files remain loose in docs/archive/` — the regression test
+  for the split seam; fails against the pre-move tree.
+- `docs/archive_test.ts::No PR summary files remain in docs/ root` — retained from the previous
+  suite.
+- `docs/archive_test.ts::The archive location is documented` — `CONTRIBUTING.md` and `AGENTS.md`
+  both name `docs/archive/pr-summaries/pr-summary-<PR>.md`, so the convention cannot quietly
+  disappear.
+- Full `./quality.sh` gate (bash syntax, `deno lint`, `deno fmt --check`, `deno check`, unit tests,
+  example runners).
