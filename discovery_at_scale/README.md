@@ -6,6 +6,21 @@ topology and no pre-built `network.json`. NEAT discovers on its own how many hid
 synapses are needed to fit a larger ground-truth function — and the README quotes the _measured_
 numbers from the latest run via a single milestone-summary SVG.
 
+**Science-driven structural mutation, not random search.** Textbook NEAT grows a network with
+**random** add-node and add-connection mutations and judges each one blindly by fitness — at this
+size the blind walk is expensive.
+[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) is **error-driven** instead:
+it analyses every neuron's activation distribution across the dataset — flagging **saturated**,
+**dead**, **dormant**, **bimodal** and **bottleneck** neurons — correlates those signals with the
+loss, and proposes _targeted_ structural changes (rewire, replace, prune, split) through a
+GPU-accelerated pipeline. Upstream
+[`COMPARISON.md`](https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/COMPARISON.md) defines both
+halves: Feature 2 (error-guided structural evolution) and Feature 8 (discovery caching). Since the
+audit (#208) this runner grows its factory seed with `evolveDir`'s unchanged random mutation
+operators rather than calling `Creature.discoveryDir(...)`, so the framing above is the contrast to
+read the measured run against — see the closing section for what the Discovery path offers callers
+who want it.
+
 ```mermaid
 flowchart LR
     REF["🧬 Hand-crafted reference creature<br/>(buildLargeCreature — only used to label the .bin set)"]
