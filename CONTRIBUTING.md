@@ -233,6 +233,16 @@ Before submitting a pull request, verify the following:
       [PR Summaries](#-pr-summaries))
 - [ ] Commit messages are clear and reference the relevant issue number
 - [ ] The PR targets the `Develop` branch
+- [ ] The PR summary is written to `docs/archive/pr-summaries/pr-summary-<PR>.md`
+
+### 🗄️ PR-summary archive
+
+Every PR summary lives at `docs/archive/pr-summaries/pr-summary-<PR>.md` — one flat directory, one
+naming convention, no exceptions. That directory is the project's durable record of what worked and
+what failed, so it must stay greppable as a single corpus: a summary written anywhere else (the
+`docs/` root, or the old flat `docs/archive/` path) is invisible to anyone globbing the archive.
+`docs/archive_test.ts` enforces the layout (issue
+[#792](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/792)).
 
 ## 🔐 Code Owners & Branch Protection
 

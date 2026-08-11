@@ -401,6 +401,9 @@ suggest_improvements/
   suggest_improvements_test.ts     — Unit tests for the above
   run.sh                           — Runner script for the example
 
+docs/archive/pr-summaries/
+  pr-summary-<PR>.md               — Every PR summary; the whole archive lives here (#792)
+
 quality.sh                         — Runs all tests and examples
 quality/bash_syntax.sh             — `bash -n` syntax gate for every *.sh file
 deno.json                          — Deno configuration and dependencies
