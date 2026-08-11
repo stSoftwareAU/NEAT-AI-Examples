@@ -82,9 +82,9 @@ sequenceDiagram
     Charts-->>CLI: milestones.svg + complexity.svg
 ```
 
-![Cart-Pole multi-run error chart](../docs/screenshots/cart_pole/milestones.svg)
+![Cart-Pole multi-run error chart](../../screenshots/cart_pole/milestones.svg)
 
-![Cart-Pole multi-run complexity chart](../docs/screenshots/cart_pole/complexity.svg)
+![Cart-Pole multi-run complexity chart](../../screenshots/cart_pole/complexity.svg)
 
 ## Test Plan
 

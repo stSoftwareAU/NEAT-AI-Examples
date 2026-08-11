@@ -25,7 +25,7 @@ trace a monotonic-ish climb from gen 1 to gen 1000. No code under `lunar_lander/
 
 ## Evidence — milestone chart
 
-Per [`common/milestone_chart.ts`](../common/milestone_chart.ts), the left-axis is shared between
+Per [`common/milestone_chart.ts`](../../../common/milestone_chart.ts), the left-axis is shared between
 `bestScore` and `meanEpisodeSteps`. The graded reward bounds `bestScore` to `[-1, 0]` so its visual
 range on the shared axis is small relative to the step series (0 – ~170 here). The numerical climb
 is, however, unambiguous — every milestone now records a strictly improving best score:

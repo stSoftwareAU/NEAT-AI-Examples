@@ -16,6 +16,9 @@ full rationale is one click away.
 
 ### Changed
 
+- The PR-summary archive is now a single corpus at `docs/archive/pr-summaries/pr-summary-<PR>.md`;
+  the 195 summaries that sat loose in `docs/archive/` moved there and `CONTRIBUTING.md` records the
+  convention (#792).
 - MNIST training/selection cost switched from `CATEGORICAL_ERROR` (non-differentiable
   `1 − argmax accuracy`) to `CROSS_ENTROPY` (softmax + cross-entropy). Top-1 argmax accuracy is
   still reported but no longer drives evolution (#523).

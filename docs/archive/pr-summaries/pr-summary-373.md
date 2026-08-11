@@ -10,7 +10,7 @@ artefacts. Closes #373.
 
 ### Why the runner needed a budget bump
 
-`crispr_injection` is one of the **exempt** examples under [AGENTS.md](../AGENTS.md) — the
+`crispr_injection` is one of the **exempt** examples under [AGENTS.md](../../../AGENTS.md) — the
 hand-crafted edit gene is the demo — but the _runner_ structure is still two `evolveDir` phases
 (pre-injection from a minimal seed, then post-injection after the gene is spliced into the
 pre-injection champion). The previous defaults capped each phase at `maxIterations: 600` and

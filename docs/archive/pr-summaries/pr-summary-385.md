@@ -12,7 +12,7 @@ Depends on #384.
 
 ### Why a literal "+15 minutes resume" does not apply
 
-`neuron_pruning` is listed under [`AGENTS.md`](../AGENTS.md) as an exempt example because the
+`neuron_pruning` is listed under [`AGENTS.md`](../../../AGENTS.md) as an exempt example because the
 hand-crafted constant-neuron injection that pruning removes is the demo's whole point — but the NEAT
 seed itself is still mandated by issue #217 to be the minimal
 `new Creature(INPUT_COUNT,

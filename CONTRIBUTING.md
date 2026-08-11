@@ -51,6 +51,20 @@ Before submitting any changes, run the full quality gate (`./quality.sh`), which
 > Run `./quality.sh` early and often — it catches lint, formatting, test, and runtime issues all in
 > one go!
 
+## 📚 PR Summaries
+
+Every PR ships a summary describing what changed and why. Summaries are the project's durable memory
+of what worked and what failed, so they all live in **one** place:
+
+```text
+docs/archive/pr-summaries/pr-summary-<PR>.md
+```
+
+Nothing else belongs in `docs/archive/` — a summary written to `docs/`, or loose in `docs/archive/`,
+splits the corpus so a glob over the canonical path silently misses it. `docs/archive_test.ts`
+enforces the layout and checks that relative links inside each summary still resolve (paths are
+relative to the summary, so the repository root is `../../../`).
+
 ## 🆕 Adding a New Example
 
 Each example follows a consistent three-file pattern:
@@ -215,6 +229,8 @@ Before submitting a pull request, verify the following:
 - [ ] `README.md` is updated if your change adds or modifies an example
 - [ ] [`CHANGELOG.md`](CHANGELOG.md) has an `[Unreleased]` entry if the change is notable (a
       behaviour shift, a new example, or a dependency bump that changes results)
+- [ ] The PR summary is written to `docs/archive/pr-summaries/pr-summary-<PR>.md` (see
+      [PR Summaries](#-pr-summaries))
 - [ ] Commit messages are clear and reference the relevant issue number
 - [ ] The PR targets the `Develop` branch
 

@@ -14,9 +14,9 @@ milestone-only telemetry surface (see #298 for the decision record). Closes #301
 Backend / CLI change with no web interface to screenshot. Verified by:
 
 - New / updated unit tests in
-  [`xor_classification/xor_classification_test.ts`](../xor_classification/xor_classification_test.ts),
-  [`stock_market/stock_market_test.ts`](../stock_market/stock_market_test.ts), and
-  [`evolution_showcase/evolution_showcase_test.ts`](../evolution_showcase/evolution_showcase_test.ts).
+  [`xor_classification/xor_classification_test.ts`](../../../xor_classification/xor_classification_test.ts),
+  [`stock_market/stock_market_test.ts`](../../../stock_market/stock_market_test.ts), and
+  [`evolution_showcase/evolution_showcase_test.ts`](../../../evolution_showcase/evolution_showcase_test.ts).
   Each suite now exercises the new return-value path (happy + missing-fields error case) and asserts
   the rendered milestone SVG contains every numeric callout from the run summary.
 - Local example runs:
