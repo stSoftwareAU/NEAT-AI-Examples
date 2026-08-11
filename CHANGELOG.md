@@ -38,3 +38,7 @@ full rationale is one click away.
 - [`docs/factory_adoption.md`](docs/factory_adoption.md) now records `evolution_showcase` as
   migrated (#534 shipped), charts Group A as complete, and names Group B/C as the open remainder
   instead of deferring them "once Group A is complete" (#788).
+- [`docs/neat_ai_feature_audit.md`](docs/neat_ai_feature_audit.md) refreshed so it stops
+  contradicting the README that declares it the source of truth: the binary `.bin` row names the
+  twelve emitting examples, the MNIST and synthetic-synapse rows are marked resolved with their
+  superseded wording struck through, and the register lists the two missing TSP READMEs (#790).
