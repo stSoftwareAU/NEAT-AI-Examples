@@ -31,8 +31,9 @@ That is a separate root cause; filed as
 
 Documentation-only change plus its "what" tests — no UI or runtime behaviour, so nothing to
 screenshot. The verification path is `docs/neat_ai_feature_audit_test.ts`, which reads the published
-audit from disk and cross-checks it against the repository. All six cases fail against the audit as
-it stood before this change:
+audit from disk and cross-checks it against the repository. Five of the six cases fail against the
+audit as it stood before this change (`register only lists READMEs that exist` passed — the old
+register listed no phantom paths, it merely omitted two real ones):
 
 ```text
 register lists every example README in the repository ...
