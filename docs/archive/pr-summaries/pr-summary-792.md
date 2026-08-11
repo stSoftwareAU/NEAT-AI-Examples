@@ -50,8 +50,10 @@ flowchart LR
 File counts after the move:
 
 ```text
-$ ls docs/archive/pr-summary-*.md | wc -l          # 0 (no such files)
-$ ls docs/archive/pr-summaries/*.md | wc -l        # 301
+$ ls docs/archive/pr-summary-*.md 2>/dev/null | wc -l
+0
+$ ls docs/archive/pr-summaries/*.md | wc -l
+301
 ```
 
 Test run (the two new assertions fail against the unfixed tree and pass after the move — see Test
