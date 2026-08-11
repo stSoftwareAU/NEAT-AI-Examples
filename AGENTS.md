@@ -231,6 +231,15 @@ benchmark will expose the regression.
 Run `./quality.sh` before merging. It executes linting, formatting, unit tests, and all example
 programs. See [README.md](README.md#-quality-check) for full details.
 
+## 📚 PR Summaries
+
+Every PR summary lives at `docs/archive/pr-summaries/pr-summary-<PR>.md` — that directory is the
+single canonical home for the archive, so a glob over it sees the whole corpus
+([#792](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/792)). Never write a summary to
+`docs/` or `docs/archive/` directly. Links from a summary back to a repository file are relative to
+the summary, so the repository root is `../../../` (e.g. `../../../AGENTS.md`) and shared assets are
+under `../../screenshots/`.
+
 ## 📦 Shared Utilities
 
 The `common/` directory holds helpers that every example may reuse. Reach for these before
