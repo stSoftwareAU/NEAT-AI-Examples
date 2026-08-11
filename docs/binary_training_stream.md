@@ -33,8 +33,9 @@ const view = new Float32Array(buffer.buffer);
 Deno.writeFileSync(filePath, buffer);
 ```
 
-`xor_classification` uses the same shape directly (it writes a single `xor.bin` without going
-through `generateSyntheticData`), and the rest of the examples below delegate to the shared helper.
+`xor_classification` and `mnist_classification` use the same shape directly — each writes its own
+file without going through `generateSyntheticData` — and the rest of the examples below delegate to
+the shared helper.
 
 ## 🚀 Why binary is fast
 
@@ -84,8 +85,9 @@ Reading direction:
 
 1. The example produces a deterministic `Float32` record stream (inputs + targets) using a seeded
    PRNG.
-2. `generateSyntheticData` (or the example's own writer, in the case of `xor_classification`) packs
-   the records into one or more `.bin` files in the example's hidden working directory.
+2. `generateSyntheticData` (or the example's own writer, as in `xor_classification` and
+   `mnist_classification`) packs the records into one or more `.bin` files in the example's hidden
+   working directory.
 3. `creature.evolveDir(dataDir, …)` (or `creature.scoreDir(dataDir, …)`) walks every `.bin` file in
    the directory and streams the bytes straight into the WASM evaluator. No JSON, no CSV, no parsing
    — just `Float32Array` views over the file bytes.
@@ -106,6 +108,24 @@ or, in the XOR case, an inline writer that emits the identical format:
 | `crossover`          | `generateSyntheticData(parentA, …)`                | `.synthetic-crossover/data/synthetic_*.bin`          |
 | `intelligent_design` | `generateSyntheticData(creature, …)`               | `.synthetic-intelligent-design/data/synthetic_*.bin` |
 
+`mnist_classification` emits its stream from real data rather than a synthetic generator — see the
+table below.
+
+## 🔢 The MNIST example emits a `.bin` from real data
+
+`mnist_classification` decodes the canonical MNIST IDX gzip files and encodes every record into the
+same Float32 layout with its own writer, so the largest real-data example in the repository trains
+straight off the `.bin` stream:
+
+| Example                | Writer                                                           | Working directory                      |
+| ---------------------- | ---------------------------------------------------------------- | -------------------------------------- |
+| `mnist_classification` | `writeMnistTrainingBin(samples, outPath)` — IDX → `.bin` encoder | `.synthetic-mnist/bin/mnist_train.bin` |
+
+Each record is 784 Float32 input pixels (normalised to `[0, 1]`) followed by a 10-value one-hot
+target — a stride of `794 × 4 = 3176` bytes. The runner encodes all 60 000 training images up front
+and hands the directory to `Creature.evolveDir`, as its [README](../mnist_classification/README.md)
+describes.
+
 ## 📦 Examples that emit a single `training.bin`
 
 Four examples generate one dataset up front rather than a chunked stream. They all call the shared
@@ -124,23 +144,12 @@ The two network-driven examples build their datasets with the shared
 `generateNetworkDataset(targetNetwork, size, seed)` — uniform `[-1, 1]` inputs fed through the
 target network, whose outputs become the labels.
 
-## 🧭 Related examples that discuss the `.bin` stream
-
-These examples do not currently emit a `.bin` file themselves, but their READMEs discuss the binary
-training-data path as a NEAT-AI feature worth knowing about:
-
-- **`mnist_classification`** — operates on the canonical MNIST IDX gzip files directly to keep the
-  example self-contained. Its README's "Where NEAT-AI is faster than this demo suggests" section
-  calls out the IDX → `.bin` path as the production accelerator that the demo deliberately leaves
-  out.
-
-`synthetic_synapse` also discusses the stream in its README, but it does emit a `.bin` — see the
-`training.bin` table above.
-
 ## 🔗 See also
 
 - [`common/synthetic_data.ts`](../common/synthetic_data.ts) — the shared Float32-record writer.
 - [`xor_classification/xor_classification.ts`](../xor_classification/xor_classification.ts) —
   `writeXorDataset(...)`, an inline writer that emits the identical format for a single small file.
+- [`mnist_classification/mnist_classification.ts`](../mnist_classification/mnist_classification.ts)
+  — `writeMnistTrainingBin(...)`, the IDX → `.bin` encoder for the 60 000-record MNIST training set.
 - Issue [#182](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/182) — the original "make
   NEAT-AI's speed advantages visible" thread.
