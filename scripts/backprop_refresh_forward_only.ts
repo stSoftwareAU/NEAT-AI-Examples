@@ -47,7 +47,7 @@ import {
 } from "../xor_classification/xor_classification.ts";
 import { renderDecisionBoundarySVG } from "../xor_classification/svg.ts";
 
-async function prepareXor(): Promise<void> {
+function prepareXor(): void {
   const path = writeXorDataset(".synthetic-xor/data");
   console.log(`wrote ${path}`);
 }
@@ -139,7 +139,7 @@ async function renderStock(): Promise<void> {
 
 const cmd = Deno.args[0];
 if (cmd === "prepare-xor") {
-  await prepareXor();
+  prepareXor();
 } else if (cmd === "render-xor") {
   await renderXor();
 } else if (cmd === "prepare-stock") {
