@@ -59,8 +59,7 @@ Numbers below come from the persisted champion in
 [`docs/data/mnist_classification/creature.json`](../docs/data/mnist_classification/creature.json)
 and
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
-(multi-run resume at run 116, then a short
-[NEAT-AI-Backpropagation](https://github.com/stSoftwareAU/NEAT-AI-Backpropagation) refine). The
+(multi-run resume at run 116, then a short Lamarck smoke refine that lifted hold-out accuracy). The
 milestone history (one record per completed phase) lives at
 [`docs/data/mnist_classification/milestones.json`](../docs/data/mnist_classification/milestones.json).
 The earlier overnight campaign peak in
@@ -68,12 +67,20 @@ The earlier overnight campaign peak in
 / **43.10%** validation across ~21.8 h (115 phases); the current lineage champion sits lower after
 later resume runs and is the artefact this table describes.
 
+A follow-up 3-hour alternating [NEAT-AI-Lamarck](https://github.com/stSoftwareAU/NEAT-AI-Lamarck) +
+[NEAT-AI-Backpropagation](https://github.com/stSoftwareAU/NEAT-AI-Backpropagation) campaign (plain
+`rust_scorer` / MSE, Phase-0 parity enabled) ran via
+[`scripts/mnist_lamarck_backprop_campaign.sh`](../scripts/mnist_lamarck_backprop_campaign.sh). Train
+MSE improved inside Lamarck slices, but **every** candidate failed the hold-out test-accuracy gate
+(typical Lamarck ≈ 30.68% → 27.32%, backprop ≈ 30.68% → 30.16%), so the incumbent below was
+retained.
+
 | Metric                 |                                              Value |
 | ---------------------- | -------------------------------------------------: |
-| Test accuracy          |                                             29.53% |
-| Validation accuracy    |                                             29.77% |
+| Test accuracy          |                                             30.68% |
+| Validation accuracy    |                                             31.00% |
 | Campaign wall-clock    |                               ~21.8 h (115 phases) |
-| Topology               | 794 neurons / 7,704 synapses (forward-only 784→10) |
+| Topology               | 795 neurons / 7,709 synapses (forward-only 784→10) |
 | Cumulative generations |                                              5,650 |
 
 Regenerate charts and the prediction-grid SVG without evolving:

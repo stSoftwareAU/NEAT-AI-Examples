@@ -5,10 +5,10 @@
   "timeoutMinutes": 60,
   "seedNeurons": 794,
   "seedSynapses": 7696,
-  "finalNeurons": 794,
-  "finalSynapses": 7704,
-  "validationAccuracy": 0.2977,
-  "testAccuracy": 0.2953,
+  "finalNeurons": 795,
+  "finalSynapses": 7709,
+  "validationAccuracy": 0.31,
+  "testAccuracy": 0.3068,
   "stopCondition": "timeoutMinutes",
   "evolveDirError": 3.4461443690794744,
   "evolveDirScore": -2.4461443690794744,
@@ -16,5 +16,14 @@
   "runIndex": 116,
   "resumed": true,
   "backpropRefined": true,
-  "backpropNote": "NEAT-AI-Backpropagation train (lr=1e-4, step=5e-4, max-records=4096, 6 epochs) on forward-only champion"
+  "backpropNote": "NEAT-AI-Backpropagation train (lr=1e-4, step=5e-4, max-records=4096, 6 epochs) on forward-only champion",
+  "backpropLamarckRefined": true,
+  "lastPromoteSource": "lamarck-smoke",
+  "mseLamarckBackpropCampaign": {
+    "hours": 3,
+    "scorer": "MSE",
+    "cycles": 8,
+    "holdoutPromotions": 0,
+    "note": "Alternating NEAT-AI-Lamarck + NEAT-AI-Backpropagation with plain rust_scorer (MSE). Train MSE improved inside Lamarck, but every candidate failed the hold-out test-accuracy gate (typical Lamarck \u0394 \u2248 30.68%\u219227.32%, backprop \u0394 \u2248 30.68%\u219230.16%). Incumbent retained."
+  }
 }
