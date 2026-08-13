@@ -3,13 +3,19 @@
   "input": 784,
   "neurons": [
     {
+      "bias": 0.0,
+      "squash": "ABSOLUTE",
+      "type": "hidden",
+      "uuid": "5b4f8e4f-53d4-4a86-b172-e618c5def535"
+    },
+    {
       "bias": -822.0750812110391,
       "squash": "ISRU",
       "type": "output",
       "uuid": "output-0"
     },
     {
-      "bias": -1357.3853202657524,
+      "bias": -1253.4459709351183,
       "squash": "Softplus",
       "type": "output",
       "uuid": "output-1"
@@ -21,13 +27,13 @@
       "uuid": "output-2"
     },
     {
-      "bias": -4062.731541032953,
+      "bias": -2080.30312292715,
       "squash": "TANH",
       "type": "output",
       "uuid": "output-3"
     },
     {
-      "bias": -2.016684069013005,
+      "bias": -2.0222399014861066,
       "squash": "TAN",
       "type": "output",
       "uuid": "output-4"
@@ -39348,16 +39354,41 @@
       "fromUUID": "output-5",
       "toUUID": "output-6",
       "weight": 0.000051899999999999994
+    },
+    {
+      "fromUUID": "input-745",
+      "toUUID": "5b4f8e4f-53d4-4a86-b172-e618c5def535",
+      "weight": -0.023552551364249937
+    },
+    {
+      "fromUUID": "5b4f8e4f-53d4-4a86-b172-e618c5def535",
+      "toUUID": "output-0",
+      "weight": 0.028867513459481287
+    },
+    {
+      "fromUUID": "input-204",
+      "toUUID": "5b4f8e4f-53d4-4a86-b172-e618c5def535",
+      "weight": -0.003097933867025452
+    },
+    {
+      "fromUUID": "input-466",
+      "toUUID": "output-0",
+      "weight": 0.002169221633109005
+    },
+    {
+      "fromUUID": "input-745",
+      "toUUID": "output-0",
+      "weight": -0.027196143740504376
     }
   ],
   "tags": [
     {
       "name": "error",
-      "value": "3.4461443690794744"
+      "value": "3.4318334344525487"
     },
     {
       "name": "score",
-      "value": "-2.4461443690794744"
+      "value": "-2.4319106284525183"
     },
     {
       "name": "approach",
@@ -39370,6 +39401,10 @@
     {
       "name": "approach-logged",
       "value": "fine"
+    },
+    {
+      "name": "lamarck",
+      "value": "🦒 Lamarck · 4 accepts / 49 exps · last: 🧩 structural_add_neuron · 🎯 output-0 · score: -2.43191 improved by 0.016"
     }
   ]
 }
