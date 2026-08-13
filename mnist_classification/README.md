@@ -55,21 +55,25 @@ flowchart LR
 
 ## 📈 Latest measured run
 
-Numbers below come from the recorded-evolution exploration campaign (overnight loops × ~60 minutes,
-data-derived factory seed via `Creature.forDataset(records, { cost: "CROSS_ENTROPY" })`). The runner
-writes them to
+Numbers below come from the persisted champion in
+[`docs/data/mnist_classification/creature.json`](../docs/data/mnist_classification/creature.json)
+and
 [`docs/data/mnist_classification/run_summary.json`](../docs/data/mnist_classification/run_summary.json)
-so reviewers can verify every value. The milestone history (one record per completed phase) lives at
-[`docs/data/mnist_classification/milestones.json`](../docs/data/mnist_classification/milestones.json)
-and the saved champion at
-[`docs/data/mnist_classification/creature.json`](../docs/data/mnist_classification/creature.json).
+(multi-run resume at run 116, then a short
+[NEAT-AI-Backpropagation](https://github.com/stSoftwareAU/NEAT-AI-Backpropagation) refine). The
+milestone history (one record per completed phase) lives at
+[`docs/data/mnist_classification/milestones.json`](../docs/data/mnist_classification/milestones.json).
+The earlier overnight campaign peak in
+[`campaign_record.json`](../docs/data/mnist_classification/campaign_record.json) was **43.19%** test
+/ **43.10%** validation across ~21.8 h (115 phases); the current lineage champion sits lower after
+later resume runs and is the artefact this table describes.
 
 | Metric                 |                                              Value |
 | ---------------------- | -------------------------------------------------: |
-| Test accuracy          |                                             43.19% |
-| Validation accuracy    |                                             43.10% |
+| Test accuracy          |                                             29.53% |
+| Validation accuracy    |                                             29.77% |
 | Campaign wall-clock    |                               ~21.8 h (115 phases) |
-| Topology               | 794 neurons / 7,696 synapses (forward-only 784→10) |
+| Topology               | 794 neurons / 7,704 synapses (forward-only 784→10) |
 | Cumulative generations |                                              5,650 |
 
 Regenerate charts and the prediction-grid SVG without evolving:

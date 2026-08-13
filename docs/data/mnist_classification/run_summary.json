@@ -7,12 +7,14 @@
   "seedSynapses": 7696,
   "finalNeurons": 794,
   "finalSynapses": 7704,
-  "validationAccuracy": 0.2944,
-  "testAccuracy": 0.2866,
+  "validationAccuracy": 0.2977,
+  "testAccuracy": 0.2953,
   "stopCondition": "timeoutMinutes",
   "evolveDirError": 3.4461443690794744,
   "evolveDirScore": -2.4461443690794744,
   "evolveDirGenerations": 333,
   "runIndex": 116,
-  "resumed": true
+  "resumed": true,
+  "backpropRefined": true,
+  "backpropNote": "NEAT-AI-Backpropagation train (lr=1e-4, step=5e-4, max-records=4096, 6 epochs) on forward-only champion"
 }
