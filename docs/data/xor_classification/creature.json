@@ -1,80 +1,80 @@
 {
-  "semanticVersion": "4.0.0",
   "forwardOnly": true,
+  "input": 2,
   "neurons": [
     {
+      "bias": -0.06573475903399874,
       "type": "constant",
-      "uuid": "93d03ec6-100a-415d-8b7a-548e1cbcfb85",
-      "bias": -0.06573475903399874
+      "uuid": "93d03ec6-100a-415d-8b7a-548e1cbcfb85"
     },
     {
+      "bias": -1.118264119896082,
+      "squash": "HARD_TANH",
       "type": "hidden",
-      "uuid": "90e23935-37fc-4650-b377-1d31eb877e46",
-      "bias": -1.1184295228534507,
-      "squash": "HARD_TANH"
+      "uuid": "90e23935-37fc-4650-b377-1d31eb877e46"
     },
     {
+      "bias": 0.43798611811822685,
+      "squash": "SELU",
       "type": "hidden",
-      "uuid": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-      "bias": 0.4361485399422883,
-      "squash": "SELU"
+      "uuid": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
     },
     {
+      "bias": 0.3392578356880364,
+      "squash": "LeakyReLU",
       "type": "output",
-      "uuid": "output-0",
-      "bias": 0.3384536189868536,
-      "squash": "LeakyReLU"
+      "uuid": "output-0"
     }
   ],
+  "output": 1,
+  "semanticVersion": "4.0.0",
   "synapses": [
     {
-      "weight": 22.657368667697835,
       "fromUUID": "input-0",
-      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46"
+      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
+      "weight": 22.657368667697835
     },
     {
-      "weight": -3.8735489235261666,
       "fromUUID": "input-0",
-      "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
+      "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
+      "weight": -3.872101201709411
     },
     {
-      "weight": 3.567523966335278,
       "fromUUID": "input-1",
-      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46"
+      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
+      "weight": 3.5656882714136366
     },
     {
-      "weight": -0.6873354903621466,
       "fromUUID": "input-1",
-      "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
+      "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
+      "weight": -0.6859868419941981
     },
     {
-      "weight": -1.1231085206152525,
       "fromUUID": "input-1",
-      "toUUID": "output-0"
+      "toUUID": "output-0",
+      "weight": -1.123075124506128
     },
     {
-      "weight": -0.3739346,
       "fromUUID": "93d03ec6-100a-415d-8b7a-548e1cbcfb85",
-      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46"
+      "toUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
+      "weight": -0.395068011385003
     },
     {
-      "weight": 1.0714712537333073,
       "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-      "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15"
+      "toUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
+      "weight": 1.0701846663565129
     },
     {
-      "weight": 1.3930676939735513,
       "fromUUID": "90e23935-37fc-4650-b377-1d31eb877e46",
-      "toUUID": "output-0"
+      "toUUID": "output-0",
+      "weight": 1.3929043868903717
     },
     {
-      "weight": 0.4646301283059483,
       "fromUUID": "061d0fa4-0808-4069-bcf9-b13efe6f9a15",
-      "toUUID": "output-0"
+      "toUUID": "output-0",
+      "weight": 0.4641713905834094
     }
   ],
-  "input": 2,
-  "output": 1,
   "tags": [
     {
       "name": "error",
@@ -96,43 +96,5 @@
       "name": "approach-logged",
       "value": "fine"
     }
-  ],
-  "memetic": {
-    "generation": 4,
-    "score": 0.9998704941568761,
-    "biases": {
-      "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
-      "output-0": 0.3296528349728205
-    },
-    "weights": [],
-    "ancestry": [
-      {
-        "generation": 3,
-        "weights": [],
-        "biases": {
-          "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
-          "output-0": 0.3296528349728205
-        },
-        "score": 0.9998704941568761
-      },
-      {
-        "generation": 2,
-        "weights": [],
-        "biases": {
-          "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
-          "output-0": 0.3296528349728205
-        },
-        "score": 0.9998704941568761
-      },
-      {
-        "generation": 1,
-        "weights": [],
-        "biases": {
-          "90e23935-37fc-4650-b377-1d31eb877e46": -1.1209931702003737,
-          "output-0": 0.3296528349728205
-        },
-        "score": 0.9998704941568761
-      }
-    ]
-  }
+  ]
 }

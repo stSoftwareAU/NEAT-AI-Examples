@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST Classification — test accuracy vs wall-clock time chart">
-  <title>MNIST Classification — test accuracy vs wall-clock time</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="MNIST — test accuracy vs wall-clock time chart">
+  <title>MNIST — test accuracy vs wall-clock time</title>
   <rect width="800" height="400" fill="#fafafa"/>
-  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST Classification — test accuracy vs wall-clock time</text>
+  <text x="400" y="24" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">MNIST — test accuracy vs wall-clock time</text>
   <rect x="70" y="50" width="690" height="290" fill="#ffffff" stroke="#333333" stroke-width="1"/>
   <text x="415" y="376" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#333">Wall-clock time (hours)</text>
   <line x1="70.00" y1="340" x2="70.00" y2="344" stroke="#333"/>
