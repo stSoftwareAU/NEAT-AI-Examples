@@ -32,6 +32,9 @@ full rationale is one click away.
 
 ### Documented
 
+- The root `README.md` now leads with this repository's NEAT-AI family social preview
+  (`neat-ai-examples.png`), hot-linked from the hub so the artwork stays in one place and keeps
+  working in light and dark modes (#803).
 - The PR-summary archive is consolidated at `docs/archive/pr-summaries/pr-summary-<PR>.md`; the 195
   summaries stranded on the old flat `docs/archive/` path moved into it, and
   [`CONTRIBUTING.md`](CONTRIBUTING.md) now names that path as the convention (#792).

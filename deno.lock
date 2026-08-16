@@ -3,7 +3,6 @@
   "specifiers": {
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/bytes@1.0.6": "1.0.6",
-    "jsr:@std/cli@1.0.17": "1.0.17",
     "jsr:@std/cli@1.0.32": "1.0.32",
     "jsr:@std/crypto@1.1.0": "1.1.0",
     "jsr:@std/fmt@1.0.10": "1.0.10",
@@ -15,8 +14,9 @@
     "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/yaml@1": "1.2.0",
     "jsr:@std/yaml@1.2.0": "1.2.0",
-    "jsr:@stsoftware/neat-ai@6.3.5": "6.3.5",
-    "jsr:@stsoftware/tags@1.0.13": "1.0.13"
+    "jsr:@stsoftware/neat-ai@6.6.2": "6.6.2",
+    "jsr:@stsoftware/tags@1.0.13": "1.0.13",
+    "jsr:@stsoftware/tags@1.0.14": "1.0.14"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -27,9 +27,6 @@
     },
     "@std/bytes@1.0.6": {
       "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
-    },
-    "@std/cli@1.0.17": {
-      "integrity": "e15b9abe629e17be90cc6216327f03a29eae613365f1353837fa749aad29ce7b"
     },
     "@std/cli@1.0.32": {
       "integrity": "188b3a100d6202d64e3f5bd3d799c7fa4f6d77f92cc65eb7f641c1fa0aa92a66",
@@ -63,8 +60,8 @@
     "@std/yaml@1.2.0": {
       "integrity": "20beb41e4983ba3437dbefac62b14061ab058e8a187596f19d28ff9035f6e6cf"
     },
-    "@stsoftware/neat-ai@6.3.5": {
-      "integrity": "f58809b70fb3937c7918a75eda99d5e1f88dc650542b5a38933caf47d6e98655",
+    "@stsoftware/neat-ai@6.6.2": {
+      "integrity": "db0c365250ec01f9687a392d370cf2834cce160a05daa51635150753e6f13827",
       "dependencies": [
         "jsr:@std/assert",
         "jsr:@std/bytes",
@@ -72,13 +69,16 @@
         "jsr:@std/fmt@1.0.10",
         "jsr:@std/fs",
         "jsr:@std/path@1.1.6",
-        "jsr:@stsoftware/tags"
+        "jsr:@stsoftware/tags@1.0.13"
       ]
     },
     "@stsoftware/tags@1.0.13": {
-      "integrity": "c5ee40f804d08ed7308c373bab07c0bd96cf1a470db6d977e056a6c206a2a5a2",
+      "integrity": "c5ee40f804d08ed7308c373bab07c0bd96cf1a470db6d977e056a6c206a2a5a2"
+    },
+    "@stsoftware/tags@1.0.14": {
+      "integrity": "73decd9ad404498bc5a9e6f478b01487cfb20efe7b09be1507f34bd8583de0c5",
       "dependencies": [
-        "jsr:@std/cli@1.0.17"
+        "jsr:@std/cli"
       ]
     }
   },
@@ -90,8 +90,8 @@
       "jsr:@std/fs@1.0.24",
       "jsr:@std/path@1.1.6",
       "jsr:@std/yaml@1.2.0",
-      "jsr:@stsoftware/neat-ai@6.3.5",
-      "jsr:@stsoftware/tags@1.0.13"
+      "jsr:@stsoftware/neat-ai@6.6.2",
+      "jsr:@stsoftware/tags@1.0.14"
     ]
   }
 }
