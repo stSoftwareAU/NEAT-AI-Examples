@@ -83,6 +83,24 @@ Deno.test("quality.yml unit-tests job — NEAT-AI-scorer checkout does not persi
   }
 });
 
+Deno.test("quality.yml unit-tests job — every checkout drops the credential", () => {
+  const checkouts = unitTestsSteps().filter((s) =>
+    typeof s.uses === "string" && s.uses.includes("actions/checkout")
+  );
+  assert(checkouts.length > 0, "Expected actions/checkout steps in the unit-tests job");
+  for (const step of checkouts) {
+    const withBlock = (step.with ?? {}) as Record<string, unknown>;
+    assertEquals(
+      withBlock["persist-credentials"],
+      false,
+      `checkout step "${step.name}" must set persist-credentials: false — no step in this ` +
+        `job pushes anywhere, and the job runs the pull request's own test suite with ` +
+        `--allow-run=...,git, so a persisted GITHUB_TOKEN in any .git/config is readable ` +
+        `by it (Issue #819)`,
+    );
+  }
+});
+
 Deno.test("quality.yml unit-tests job — no step pushes back to the repository", () => {
   for (const step of unitTestsSteps()) {
     const run = String(step.run ?? "");
