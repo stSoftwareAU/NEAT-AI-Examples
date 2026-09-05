@@ -7,10 +7,16 @@
 // introduced by a merge commit is never linted — the bug reported in
 // Issue #435.
 
-import { assert, assertExists } from "@std/assert";
-import { loadWorkflow, triggers } from "./workflow_test_utils.ts";
+import { assert, assertEquals, assertExists } from "@std/assert";
+import { loadWorkflow, triggers, type Workflow } from "./workflow_test_utils.ts";
 
 const WORKFLOW = "markdown-lint.yml";
+
+/** Every step of every job in the workflow. */
+function allSteps(wf: Workflow): Array<Record<string, unknown>> {
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  return Object.values(jobs).flatMap((job) => (job.steps ?? []) as Array<Record<string, unknown>>);
+}
 
 Deno.test("markdown-lint workflow — triggers on push to Develop", async () => {
   const wf = await loadWorkflow(WORKFLOW);
@@ -84,6 +90,41 @@ Deno.test("markdown-lint workflow — markdownlint-cli2 install is version-pinne
     assert(
       !/markdownlint-cli2@next\b/.test(run),
       `install step must not reference markdownlint-cli2@next (got: ${run.trim()})`,
+    );
+  }
+});
+
+// Issue #814: `actions/checkout` writes the job's `GITHUB_TOKEN` into
+// `.git/config` as an auth header unless `persist-credentials: false` is set.
+// The `markdownlint` job only reads the checked-out Markdown — it never pushes
+// and fetches no private submodule — so the persisted credential buys nothing
+// and any later step (a compromised npm package, an injected script) could read
+// it back and act as the token.
+Deno.test("markdown-lint workflow — checkout does not persist a credential in the workspace", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  const checkouts = allSteps(wf).filter((s) =>
+    typeof s.uses === "string" && s.uses.includes("actions/checkout")
+  );
+  assert(checkouts.length > 0, "expected at least one actions/checkout step");
+  for (const step of checkouts) {
+    const withBlock = (step.with ?? {}) as Record<string, unknown>;
+    assertEquals(
+      withBlock["persist-credentials"],
+      false,
+      `checkout step "${step.name}" must set persist-credentials: false — the job never ` +
+        `pushes, so the GITHUB_TOKEN must not be left readable in .git/config`,
+    );
+  }
+});
+
+Deno.test("markdown-lint workflow — no step pushes back to the repository", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  for (const step of allSteps(wf)) {
+    const run = String(step.run ?? "");
+    assert(
+      !/\bgit\s+push\b/.test(run),
+      `step "${step.name}" pushes to the repository; dropping the persisted checkout ` +
+        `credential would break it — re-assess the #814 fix before allowing this`,
     );
   }
 });
