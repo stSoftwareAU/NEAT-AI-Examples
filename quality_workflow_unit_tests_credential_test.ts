@@ -42,6 +42,15 @@ function ownCheckouts(): Step[] {
   });
 }
 
+/** Checkout steps that clone the named external repository. */
+function checkoutsOf(repository: string): Step[] {
+  return unitTestsSteps().filter((s) => {
+    if (typeof s.uses !== "string" || !s.uses.includes("actions/checkout")) return false;
+    const withBlock = (s.with ?? {}) as Record<string, unknown>;
+    return withBlock["repository"] === repository;
+  });
+}
+
 Deno.test("quality.yml unit-tests job — checkout does not persist a credential", () => {
   const checkouts = ownCheckouts();
   assert(checkouts.length > 0, "Expected at least one actions/checkout step in the unit-tests job");
@@ -52,6 +61,24 @@ Deno.test("quality.yml unit-tests job — checkout does not persist a credential
       false,
       `checkout step "${step.name}" must set persist-credentials: false — the job never ` +
         `pushes, so the GITHUB_TOKEN must not be left readable in .git/config`,
+    );
+  }
+});
+
+Deno.test("quality.yml unit-tests job — NEAT-AI-scorer checkout does not persist a credential", () => {
+  const checkouts = checkoutsOf("stSoftwareAU/NEAT-AI-scorer");
+  assert(
+    checkouts.length > 0,
+    "Expected a NEAT-AI-scorer actions/checkout step in the unit-tests job",
+  );
+  for (const step of checkouts) {
+    const withBlock = (step.with ?? {}) as Record<string, unknown>;
+    assertEquals(
+      withBlock["persist-credentials"],
+      false,
+      `checkout step "${step.name}" must set persist-credentials: false — nothing in this ` +
+        `job pushes to NEAT-AI-scorer, so the GITHUB_TOKEN must not be left readable in ` +
+        `its .git/config (Issue #818)`,
     );
   }
 });

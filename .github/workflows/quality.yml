@@ -132,12 +132,18 @@ jobs:
         with:
           install-deps: "true"
 
+      # persist-credentials: false — the checkout only needs the token for the
+      # clone itself. Nothing later pushes to NEAT-AI-scorer or fetches a
+      # private submodule from it, and the job runs the PR's own test suite with
+      # --allow-run=...,git, so leaving the token in NEAT-AI-scorer/.git/config
+      # would only widen the blast radius (Issue #818).
       - name: Check out NEAT-AI-scorer for MNIST CATEGORICAL_ERROR tests
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: stSoftwareAU/NEAT-AI-scorer
           ref: Develop
           path: NEAT-AI-scorer
+          persist-credentials: false
 
       # rust_scorer depends on neat-core via `../../NEAT-AI-core/neat-core`
       # (sibling of NEAT-AI-scorer). actions/checkout cannot write outside
