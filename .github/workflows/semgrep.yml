@@ -50,6 +50,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
+          # The job only scans the checked-out tree — it never pushes back and
+          # fetches no private submodule — so keep the GITHUB_TOKEN out of
+          # .git/config where the scanner container could read it (Issue #820).
+          persist-credentials: false
 
       - name: Run Semgrep
         run: semgrep ci --config p/default
