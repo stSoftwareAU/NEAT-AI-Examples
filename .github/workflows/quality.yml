@@ -69,10 +69,16 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      # `persist-credentials: false` keeps the job's GITHUB_TOKEN out of
+      # `.git/config` (Issue #816). This job only runs `deno lint`,
+      # `deno fmt --check` and `deno check` — it never pushes and fetches no
+      # private submodule — so a persisted credential would only widen the
+      # blast radius of a compromised step.
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
+          persist-credentials: false
 
       # Install Deno + cache deps + `deno install --frozen`, shared with
       # the other jobs and workflows via the local composite action
