@@ -27,6 +27,40 @@ function allSteps(wf: Workflow): Array<Record<string, unknown>> {
   return steps;
 }
 
+// Issue #813: `actions/checkout` writes the job's `GITHUB_TOKEN` into
+// `.git/config` as an auth header unless `persist-credentials: false` is set.
+// This job only reads history (`gitleaks detect --log-opts`) — it never pushes
+// and fetches no private submodule — so the persisted credential buys nothing
+// and any later step, including a substituted binary, could read it back.
+Deno.test("gitleaks workflow — checkout does not persist a credential in the workspace", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  const checkouts = allSteps(wf).filter((s) =>
+    typeof s.uses === "string" && s.uses.includes("actions/checkout")
+  );
+  assert(checkouts.length > 0, "expected at least one actions/checkout step");
+  for (const step of checkouts) {
+    const withBlock = (step.with ?? {}) as Record<string, unknown>;
+    assertEquals(
+      withBlock["persist-credentials"],
+      false,
+      `checkout step "${step.name}" must set persist-credentials: false — the job never ` +
+        `pushes, so the GITHUB_TOKEN must not be left readable in .git/config`,
+    );
+  }
+});
+
+Deno.test("gitleaks workflow — no step pushes back to the repository", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  for (const step of allSteps(wf)) {
+    const run = String(step.run ?? "");
+    assert(
+      !/\bgit\s+push\b/.test(run),
+      `step "${step.name}" pushes to the repository; dropping the persisted checkout ` +
+        `credential would break it — re-assess the #813 fix before allowing this`,
+    );
+  }
+});
+
 Deno.test("gitleaks workflow — no run: step interpolates ${{ ... }} directly", async () => {
   const wf = await loadWorkflow(WORKFLOW);
   const steps = allSteps(wf);
