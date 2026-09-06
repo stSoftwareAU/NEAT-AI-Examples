@@ -11,8 +11,8 @@ already green.
 The `push:` block is removed. The `pull_request` (`branches: ["**"]`) and `workflow_dispatch`
 triggers are untouched, so PR gating and the CI re-dispatch helper behave exactly as before, and the
 required `Run quality checks` aggregate status still reports on every pull request. This completes
-the same fix already applied to `actionlint.yml` (#807) and `markdown-lint.yml` (#808) — `quality.yml`
-was the last checker still triggering on push. Closes #809.
+the same fix already applied to `actionlint.yml` (#807) and `markdown-lint.yml` (#808) —
+`quality.yml` was the last checker still triggering on push. Closes #809.
 
 ```mermaid
 flowchart LR
@@ -38,7 +38,13 @@ Backend/CI-only change — no web interface to screenshot.
   --allow-run=df,bash,git,deno .github/ quality_workflow_*.ts workflow_secret_job_isolation_test.ts`
   → `137 passed | 0 failed`, covering every other pinned property of this workflow (job timeouts,
   non-persisted checkout credentials, secret-job isolation, PR branch globs, Codecov action pin).
-- `./quality.sh` → see the gate note at the end of this summary.
+- `./quality.sh` → bash syntax, `deno lint`, `deno fmt --check`, `deno check` and the full unit-test
+  suite all passed, and the run reached the example stage. The `Suggest Improvements` example then
+  failed with `ERROR: rustup installation appears incomplete`, raised by
+  `NEAT-AI-Discovery/scripts/runlib.sh` in the sibling checkout. That failure is **environmental and
+  pre-existing**: the identical command was run against the untouched base clone at `e09edfd` (this
+  change absent) and failed the same way. The CI `examples` job installs its own toolchain and is
+  unaffected.
 
 ## Reviewer notes
 
@@ -53,11 +59,13 @@ Backend/CI-only change — no web interface to screenshot.
 
 ## Test Plan
 
-- `quality_workflow_pr_branches_test.ts` — the existing `push stays scoped to the Develop default
-  branch` test asserted the behaviour this issue removes, so it is **inverted, not deleted**, and
-  renamed `push does not re-run the gate on Develop`. It parses the workflow YAML and asserts no
-  `push` branch filter matches `Develop` (or a `milestone/<slug>` branch). It fails against the
-  unfixed workflow and passes after the fix, keeping the trigger pinned in both directions. This is
-  the documented business-logic test change.
+- `quality_workflow_pr_branches_test.ts` — the existing
+  `push stays scoped to the Develop default
+  branch` test asserted the behaviour this issue
+  removes, so it is **inverted, not deleted**, and renamed
+  `push does not re-run the gate on Develop`. It parses the workflow YAML and asserts no `push`
+  branch filter matches `Develop` (or a `milestone/<slug>` branch). It fails against the unfixed
+  workflow and passes after the fix, keeping the trigger pinned in both directions. This is the
+  documented business-logic test change.
 - The two `pull_request` tests in the same file are unchanged and still pin PR gating on `Develop`
   and on `milestone/<slug>` base branches (#677).
