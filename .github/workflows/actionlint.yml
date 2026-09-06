@@ -47,10 +47,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # `persist-credentials: false` keeps the workflow `GITHUB_TOKEN` out of
+      # `.git/config`: this job only downloads actionlint and lints the
+      # checked-out workflows, so it never pushes back and needs no private
+      # submodule. Leaving the credential on disk would only let a later
+      # compromised step read it back and act as the token (Issue #810).
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
+          persist-credentials: false
 
       # Pin actionlint to an exact release AND to the SHA-256 of that
       # release's asset: a release asset is mutable, so the version alone
