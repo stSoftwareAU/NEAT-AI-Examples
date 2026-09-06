@@ -59,10 +59,17 @@ jobs:
           echo "base_sha=${base_sha}" >> "$GITHUB_OUTPUT"
           echo "head_sha=${head_sha}" >> "$GITHUB_OUTPUT"
 
+      # `persist-credentials: false` keeps the job's GITHUB_TOKEN out of
+      # `.git/config`: this job only reviews the dependency-graph diff, so it
+      # never pushes back and needs no private submodule. The review action
+      # gets its own token via `repo-token` (defaulting to `github.token`),
+      # not from the checkout. Leaving the credential on disk would only let a
+      # later compromised step read it back and act as the token (Issue #812).
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
+          persist-credentials: false
 
       - name: Review dependencies
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
