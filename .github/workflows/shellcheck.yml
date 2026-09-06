@@ -41,10 +41,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # `persist-credentials: false` keeps the job's GITHUB_TOKEN out of
+      # `.git/config`: this job only lints the checked-out shell scripts, so it
+      # never pushes back and needs no private submodule. Leaving the
+      # credential on disk would only let a later compromised step read it back
+      # and act as the token (Issue #821).
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
+          persist-credentials: false
 
       # Lints with koalaman/shellcheck (https://github.com/koalaman/shellcheck),
       # preinstalled on the ubuntu-latest runner. Issue #751 dropped the
