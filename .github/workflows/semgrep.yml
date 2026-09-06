@@ -41,10 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      # semgrep/semgrep:latest — pinned to an immutable digest (Issue #555).
+      # Pinned to an immutable digest (Issue #555), carrying the release
+      # tag that digest resolves to so dependency updaters can raise bump
+      # PRs against it (Issue #825) — a tagless digest is untrackable.
       # Bump deliberately, the same way the action SHA pins are maintained:
       #   docker buildx imagetools inspect semgrep/semgrep:latest
-      image: semgrep/semgrep@sha256:7cad2bc2d1e44f87f0bf4be6d1fa23aa90fb72015bebc89fb91385d813987a03
+      # then record the new tag and digest together, below.
+      image: semgrep/semgrep:1.163.0@sha256:7cad2bc2d1e44f87f0bf4be6d1fa23aa90fb72015bebc89fb91385d813987a03
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

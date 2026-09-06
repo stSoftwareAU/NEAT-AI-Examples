@@ -8,9 +8,17 @@
 // silently pull and execute the new layers — with the optional
 // `SEMGREP_APP_TOKEN` secret in scope.
 //
+// A digest with no tag beside it is immutable but untrackable: the
+// dependency updaters (Renovate's `docker` manager, Dependabot's
+// `docker` ecosystem) resolve a bump from the *tag* and then rewrite
+// the digest, so a tagless pin freezes the image forever and no scan
+// notices it has drifted (Issue #825).
+//
 // These tests pin the contract:
 //   * the job-level container image is pinned to an immutable
 //     `@sha256:` digest (the focus of Issue #555),
+//   * that digest carries an explicit release tag so updaters can raise
+//     bump PRs against it (Issue #825),
 //   * the workflow runs on `ubuntu-latest` with read-only `contents`
 //     permission, and
 //   * it actually invokes the `semgrep` CLI so a regression fails CI
@@ -23,6 +31,41 @@ import { loadWorkflow } from "./workflow_test_utils.ts";
 
 const WORKFLOW = "semgrep.yml";
 
+/**
+ * Every job-level container image declared by the workflow, as
+ * `[jobKey, image]` pairs. `container:` may be a bare string or an
+ * object with an `image:` key — both spellings are collected.
+ */
+async function containerImages(): Promise<Array<[string, string]>> {
+  const wf = await loadWorkflow(WORKFLOW);
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const images: Array<[string, string]> = [];
+  for (const [jobKey, job] of Object.entries(jobs)) {
+    const container = (job as { container?: unknown }).container;
+    if (container === undefined) continue;
+    const image = typeof container === "string"
+      ? container
+      : (container as { image?: string }).image;
+    assertExists(image, `job '${jobKey}' container must declare an image`);
+    images.push([jobKey, image!]);
+  }
+  return images;
+}
+
+/**
+ * The tag of an image reference, or `undefined` when it carries none.
+ * The tag lives in the final path segment before any `@digest`, so a
+ * registry port (`registry:5000/image@sha256:…`) is not mistaken for one.
+ */
+function imageTag(image: string): string | undefined {
+  const name = image.split("@")[0];
+  const lastSegment = name.slice(name.lastIndexOf("/") + 1);
+  const colon = lastSegment.indexOf(":");
+  if (colon === -1) return undefined;
+  const tag = lastSegment.slice(colon + 1);
+  return tag === "" ? undefined : tag;
+}
+
 Deno.test("semgrep workflow — file exists and parses as YAML", async () => {
   const wf = await loadWorkflow(WORKFLOW);
   assertExists(wf, "workflow YAML must parse to an object");
@@ -30,31 +73,42 @@ Deno.test("semgrep workflow — file exists and parses as YAML", async () => {
 });
 
 Deno.test("semgrep workflow — job container image is pinned to a sha256 digest", async () => {
-  const wf = await loadWorkflow(WORKFLOW);
-  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
-  const digestPattern = /@sha256:[0-9a-f]{64}\b/;
-  let containerCount = 0;
-  for (const [jobKey, job] of Object.entries(jobs)) {
-    const container = (job as { container?: unknown }).container;
-    if (container === undefined) continue;
-    containerCount++;
-    // `container:` may be a bare string or an object with an `image:` key.
-    const image = typeof container === "string"
-      ? container
-      : (container as { image?: string }).image;
-    assertExists(
-      image,
-      `job '${jobKey}' container must declare an image`,
-    );
+  const images = await containerImages();
+  const digestPattern = /@sha256:[0-9a-f]{64}$/;
+  for (const [jobKey, image] of images) {
     assert(
-      digestPattern.test(image!),
+      digestPattern.test(image),
       `job '${jobKey}' container image must be pinned to an immutable ` +
         `@sha256: digest, not a floating tag (got '${image}'). See ` +
         `Issue #555 and the supply-chain hardening rules in AGENTS.md.`,
     );
   }
   assert(
-    containerCount > 0,
+    images.length > 0,
+    "expected at least one job to run inside a container",
+  );
+});
+
+Deno.test("semgrep workflow — digest pin carries a trackable release tag", async () => {
+  const images = await containerImages();
+  for (const [jobKey, image] of images) {
+    const tag = imageTag(image);
+    assertExists(
+      tag,
+      `job '${jobKey}' container image '${image}' pins a digest with no tag ` +
+        `beside it. Dependency updaters resolve bumps from the tag and then ` +
+        `rewrite the digest, so a tagless pin is frozen forever — write it as ` +
+        `name:<release-tag>@sha256:<digest> (Issue #825).`,
+    );
+    assert(
+      tag !== "latest",
+      `job '${jobKey}' container image '${image}' pins the floating 'latest' ` +
+        `tag. Updaters cannot resolve a version bump from 'latest' — use the ` +
+        `explicit release tag the digest corresponds to (Issue #825).`,
+    );
+  }
+  assert(
+    images.length > 0,
     "expected at least one job to run inside a container",
   );
 });
