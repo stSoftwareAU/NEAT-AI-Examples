@@ -1,25 +1,22 @@
 # Markdown Lint workflow for NEAT-AI-Examples
 #
 # Runs markdownlint-cli2 against every Markdown file in the repository
-# on each pull request and push to the default branch. Rule
-# customisations live in `.markdownlint-cli2.jsonc` at the repository
-# root.
-#
-# The default branch in this repository is `Develop`; `main` and
-# `master` are kept for portability with forks. Issue #435 — without
-# `Develop` in the push branches list, the workflow never triggered
-# automatically after a PR was merged into `Develop`.
+# on each pull request. Rule customisations live in
+# `.markdownlint-cli2.jsonc` at the repository root.
 
 name: Markdown Lint
 
 # `branches: ["**"]` (not `["*"]`) so PRs against base branches that
 # contain a `/` (e.g. `milestone/refresh-2026-05`) still trigger this
 # workflow. The single-`*` glob does NOT match `/` — Issue #435.
+#
+# There is deliberately no `push:` trigger: this is a PR gate, so a push
+# to `Develop` would only duplicate the run that already gated the pull
+# request — wasted CI minutes, and a chance of a red tick on the default
+# branch for a check that had already passed (Issue #808).
 on:
   pull_request:
     branches: ["**"]
-  push:
-    branches: [Develop]
   workflow_dispatch:
     inputs:
       pr_head_ref:
@@ -28,8 +25,7 @@ on:
         type: string
 
 # Cancel a superseded run as soon as a newer commit arrives on the same
-# ref, so rapid pushes to a PR (or to Develop) don't pile up duplicate
-# runs (Issue #554).
+# ref, so rapid pushes to a PR don't pile up duplicate runs (Issue #554).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
