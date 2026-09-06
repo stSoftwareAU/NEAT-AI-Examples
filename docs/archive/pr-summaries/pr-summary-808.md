@@ -41,9 +41,9 @@ Backend/CI-only change — no web interface to screenshot.
   workflow and passes after the fix, keeping the trigger pinned in both directions. This is the
   documented business-logic test change required by the issue.
 - The workflow's other pinned behaviours (PR `branches: ["**"]`, the exact-version
-  `markdownlint-cli2` pin from #442, `persist-credentials: false` from #814, and the ref-keyed
-  concurrency group from #554) are still covered by the unchanged tests in the same file and in
-  `.github/workflow_branch_filter_test.ts` / `.github/concurrency_workflow_test.ts`.
+  `markdownlint-cli2` pin from #442, the non-persisted checkout credential from #814, and the
+  ref-keyed concurrency group from #554) are still covered by the unchanged tests in the same file
+  and in `.github/workflow_branch_filter_test.ts` / `.github/concurrency_workflow_test.ts`.
 
 ## Scope
 
