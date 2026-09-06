@@ -1,9 +1,16 @@
 # GitHub Actions CI/CD workflow for NEAT-AI-Examples
 #
-# Runs the project quality checks on every push to the Develop default
-# branch and on every pull request, regardless of the base branch. This
-# automates the quality gate to ensure all examples remain functional
-# across contributions.
+# Runs the project quality checks on every pull request, regardless of
+# the base branch. This automates the quality gate to ensure all examples
+# remain functional across contributions.
+#
+# There is deliberately no `push:` trigger: this is a PR gate, so a push
+# to `Develop` would only duplicate the run that already gated the pull
+# request. That duplicate is the most expensive in the repository — it
+# rebuilds rust_scorer and re-runs the whole Deno suite — and it could
+# leave a red tick on the default branch for a check that had already
+# passed (Issue #809). The sibling checkers dropped the same trigger in
+# #807 (actionlint) and #808 (markdown-lint).
 #
 # The pull_request filter uses `branches: ["**"]` (not `["*"]`, which
 # does NOT match `/`) so PRs against base branches that contain a `/`
@@ -37,9 +44,6 @@
 name: Quality Check
 
 on:
-  push:
-    branches:
-      - Develop
   pull_request:
     branches: ["**"]
   workflow_dispatch:
@@ -50,9 +54,9 @@ on:
         type: string
 
 # Cancel a superseded run as soon as a newer commit arrives on the same
-# ref, so rapid pushes to a PR (or to Develop) don't pile up duplicate
-# runs — the expensive Rust build plus full Deno suite is the worst
-# offender (Issue #554).
+# ref, so rapid pushes to a PR don't pile up duplicate runs — the
+# expensive Rust build plus full Deno suite is the worst offender
+# (Issue #554).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
