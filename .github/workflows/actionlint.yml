@@ -1,10 +1,10 @@
 # actionlint workflow for NEAT-AI-Examples (Issue #508)
 #
 # Lints every GitHub Actions workflow under `.github/workflows/` on each
-# pull request and on pushes to the default branch. Catches typos,
-# expression mistakes, shellcheck issues inside `run:` blocks, and
-# unsafe patterns (e.g. unpinned actions, missing permissions) before
-# they reach Develop and break a downstream CI run.
+# pull request. Catches typos, expression mistakes, shellcheck issues
+# inside `run:` blocks, and unsafe patterns (e.g. unpinned actions,
+# missing permissions) before they reach Develop and break a downstream
+# CI run.
 #
 # The actionlint binary is downloaded directly from the rhysd/actionlint
 # release tarball — same pattern used by `gitleaks.yml` — so the only
@@ -17,11 +17,14 @@ name: Actionlint
 # `branches: ["**"]` (not `["*"]`) so PRs against base branches that
 # contain a `/` (e.g. `milestone/refresh-2026-05`) still trigger this
 # workflow. The single-`*` glob does NOT match `/` — Issue #435.
+#
+# There is deliberately no `push:` trigger: this is a PR gate, so a push
+# to `Develop` would only duplicate the run that already gated the pull
+# request — wasted CI minutes, and a chance of a red tick on the default
+# branch for a check that had already passed (Issue #807).
 on:
   pull_request:
     branches: ["**"]
-  push:
-    branches: [Develop]
   workflow_dispatch:
     inputs:
       pr_head_ref:
@@ -30,8 +33,7 @@ on:
         type: string
 
 # Cancel a superseded run as soon as a newer commit arrives on the same
-# ref, so rapid pushes to a PR (or to Develop) don't pile up duplicate
-# runs (Issue #554).
+# ref, so rapid pushes to a PR don't pile up duplicate runs (Issue #554).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -45,10 +47,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # `persist-credentials: false` keeps the workflow `GITHUB_TOKEN` out of
+      # `.git/config`: this job only downloads actionlint and lints the
+      # checked-out workflows, so it never pushes back and needs no private
+      # submodule. Leaving the credential on disk would only let a later
+      # compromised step read it back and act as the token (Issue #810).
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.pr_head_ref || github.ref }}
+          persist-credentials: false
 
       # Pin actionlint to an exact release AND to the SHA-256 of that
       # release's asset: a release asset is mutable, so the version alone

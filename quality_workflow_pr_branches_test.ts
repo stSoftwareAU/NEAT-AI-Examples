@@ -98,12 +98,23 @@ Deno.test("pull_request still triggers on Develop PRs", () => {
   );
 });
 
-Deno.test("push stays scoped to the Develop default branch", () => {
+// Business-logic change (Issue #809): Quality Check is a PR gate, so it no
+// longer runs on push to the default branch. The previous test here asserted
+// the opposite (`push.branches` must include `Develop`); that post-merge run
+// only duplicated the run that already gated the pull request — the most
+// expensive duplicate in the repository, since it rebuilds rust_scorer and
+// re-runs the whole Deno suite — and could leave a red tick on `Develop` for
+// a check that had already passed. The assertion is inverted rather than
+// deleted so the trigger stays pinned in both directions.
+Deno.test("push does not re-run the gate on Develop", () => {
   const wf = readWorkflow(QUALITY_PATH);
-  const branches: string[] = triggers(wf).push.branches;
+  const push = triggers(wf).push as { branches?: string[] } | undefined;
+  if (push === undefined || push === null) return; // no push trigger at all — the expected shape.
+  const branches: string[] = push.branches ?? [];
   assert(
-    anyBranchMatches(branches, "Develop"),
-    `push must trigger on Develop, got: ${JSON.stringify(branches)}`,
+    !anyBranchMatches(branches, "Develop"),
+    `push must not reach the default branch 'Develop' — the PR run already gated it ` +
+      `(got ${JSON.stringify(branches)}). See Issue #809.`,
   );
   assert(
     !anyBranchMatches(branches, "milestone/refresh-2026-05"),

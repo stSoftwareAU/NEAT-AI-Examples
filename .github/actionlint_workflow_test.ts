@@ -6,8 +6,8 @@
 // `Develop` without anyone noticing until it broke a downstream run.
 //
 // This test pins the contract for a dedicated actionlint workflow:
-//   * triggers on every pull request (against any base branch) and on
-//     pushes to the default branch `Develop`,
+//   * triggers on every pull request (against any base branch) and not
+//     on pushes to the default branch `Develop` (Issue #807),
 //   * runs on `ubuntu-latest` with read-only `contents` permission,
 //     mirroring the other lint workflows, and
 //   * actually invokes `actionlint` so workflow regressions fail the
@@ -41,15 +41,23 @@ Deno.test("actionlint workflow — triggers on pull_request to any branch", asyn
   );
 });
 
-Deno.test("actionlint workflow — triggers on push to Develop", async () => {
+// Business-logic change (Issue #807): this workflow is a PR gate, so it
+// no longer runs on push to the default branch. The previous test here
+// asserted the opposite (`push.branches` must include `Develop`); the
+// post-merge run was a duplicate of the run that already gated the PR,
+// burning CI minutes and able to leave a red tick on `Develop` for a
+// check that had already passed. The assertion is inverted rather than
+// deleted so the trigger stays pinned in both directions.
+Deno.test("actionlint workflow — does not re-run on push to Develop", async () => {
   const wf = await loadWorkflow(WORKFLOW);
   const t = triggers(wf);
   const push = t.push as { branches?: string[] } | undefined;
-  assertExists(push, "workflow must trigger on push so regressions on Develop fail loudly");
-  assertExists(push.branches, "push trigger must declare branches");
+  if (push === undefined || push === null) return; // no push trigger at all — the expected shape.
+  const branches = push.branches ?? [];
   assert(
-    push.branches.includes("Develop"),
-    `push trigger must include the default branch 'Develop' (got ${JSON.stringify(push.branches)})`,
+    !branches.includes("Develop") && !branches.includes("**") && !branches.includes("*"),
+    `push must not reach the default branch 'Develop' — the PR run already gated it ` +
+      `(got ${JSON.stringify(branches)}). See Issue #807.`,
   );
 });
 

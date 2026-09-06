@@ -4,7 +4,7 @@
   <img width="720" src="https://raw.githubusercontent.com/stSoftwareAU/NEAT-AI/Develop/docs/brand/social-previews/neat-ai-examples.png" alt="NEAT-AI-Examples — worked TypeScript projects you can run today">
 </p>
 
-[![Quality Check](https://github.com/stSoftwareAU/NEAT-AI-Examples/actions/workflows/quality.yml/badge.svg?branch=Develop)](https://github.com/stSoftwareAU/NEAT-AI-Examples/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/stSoftwareAU/NEAT-AI-Examples/actions/workflows/quality.yml/badge.svg?event=pull_request)](https://github.com/stSoftwareAU/NEAT-AI-Examples/actions/workflows/quality.yml)
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-blue.svg)](LICENSE)
 [![Deno](https://img.shields.io/badge/Deno-2.x-black?logo=deno)](https://deno.land/)
 
