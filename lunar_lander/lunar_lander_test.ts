@@ -201,78 +201,62 @@ Deno.test("gradedTerminalReward returns a value in [-1, 0) for every non-landed 
   }
 });
 
-Deno.test("gradedTerminalReward: softer crash > harder crash (less negative)", () => {
-  const soft: LanderState = {
-    x: 5,
-    y: 0,
-    vx: 1,
-    vy: -2,
-    angle: 0,
-    angularV: 0,
-    fuel: 0,
-  };
-  const hard: LanderState = {
-    x: 5,
-    y: 0,
-    vx: 10,
-    vy: -20,
-    angle: 0,
-    angularV: 0,
-    fuel: 0,
-  };
-  const rSoft = gradedTerminalReward(soft, DEFAULT_TERRAIN);
-  const rHard = gradedTerminalReward(hard, DEFAULT_TERRAIN);
-  assertGreater(rSoft, rHard);
-});
+/**
+ * The shared baseline for the {@link gradedTerminalReward} ordering
+ * cases: an off-pad, upright, non-spinning crash at moderate speed.
+ * Each case overrides only the field whose shaping dimension it
+ * exercises, so every other signal is held constant.
+ */
+const ORDERING_BASE: LanderState = {
+  x: 10,
+  y: 0,
+  vx: 3,
+  vy: -3,
+  angle: 0,
+  angularV: 0,
+  fuel: 0,
+};
 
-Deno.test("gradedTerminalReward: closer to pad > farther from pad", () => {
-  // Hold every other signal constant so the distance contribution
-  // alone drives the difference.
-  const near: LanderState = {
-    x: 2,
-    y: 0,
-    vx: 3,
-    vy: -3,
-    angle: 0.3,
-    angularV: 0,
-    fuel: 0,
-  };
-  const far: LanderState = { ...near, x: 40 };
-  const rNear = gradedTerminalReward(near, DEFAULT_TERRAIN);
-  const rFar = gradedTerminalReward(far, DEFAULT_TERRAIN);
-  assertGreater(rNear, rFar);
-});
+/**
+ * One entry per shaping dimension `gradedTerminalReward` grades on:
+ * impact speed, distance from the pad, tilt, and spin. `better` and
+ * `worse` are overrides applied to {@link ORDERING_BASE}; omitting
+ * `better` means the baseline itself is the better state.
+ */
+const ORDERING_CASES: ReadonlyArray<{
+  name: string;
+  better?: Partial<LanderState>;
+  worse: Partial<LanderState>;
+}> = [
+  {
+    name: "softer crash > harder crash (less negative)",
+    better: { x: 5, vx: 1, vy: -2 },
+    worse: { x: 5, vx: 10, vy: -20 },
+  },
+  {
+    name: "closer to pad > farther from pad",
+    better: { x: 2, angle: 0.3 },
+    worse: { x: 40, angle: 0.3 },
+  },
+  {
+    name: "upright > tilted (less negative)",
+    worse: { angle: 1.2 },
+  },
+  {
+    name: "non-spinning > spinning (less negative)",
+    worse: { angularV: 4 },
+  },
+];
 
-Deno.test("gradedTerminalReward: upright > tilted (less negative)", () => {
-  const upright: LanderState = {
-    x: 10,
-    y: 0,
-    vx: 3,
-    vy: -3,
-    angle: 0,
-    angularV: 0,
-    fuel: 0,
-  };
-  const tilted: LanderState = { ...upright, angle: 1.2 };
-  const rUp = gradedTerminalReward(upright, DEFAULT_TERRAIN);
-  const rTilt = gradedTerminalReward(tilted, DEFAULT_TERRAIN);
-  assertGreater(rUp, rTilt);
-});
-
-Deno.test("gradedTerminalReward: non-spinning > spinning (less negative)", () => {
-  const still: LanderState = {
-    x: 10,
-    y: 0,
-    vx: 3,
-    vy: -3,
-    angle: 0,
-    angularV: 0,
-    fuel: 0,
-  };
-  const spinning: LanderState = { ...still, angularV: 4 };
-  const rStill = gradedTerminalReward(still, DEFAULT_TERRAIN);
-  const rSpin = gradedTerminalReward(spinning, DEFAULT_TERRAIN);
-  assertGreater(rStill, rSpin);
+Deno.test("gradedTerminalReward orders states by shaping dimension", async (t) => {
+  for (const testCase of ORDERING_CASES) {
+    await t.step(testCase.name, () => {
+      assertGreater(
+        gradedTerminalReward({ ...ORDERING_BASE, ...testCase.better }, DEFAULT_TERRAIN),
+        gradedTerminalReward({ ...ORDERING_BASE, ...testCase.worse }, DEFAULT_TERRAIN),
+      );
+    });
+  }
 });
 
 Deno.test("gradedTerminalReward respects [-1, 0] bounds across a state sweep", () => {
