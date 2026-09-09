@@ -45,6 +45,18 @@ export interface FetchDatasetOptions {
    * digest before being trusted.
    */
   sha256?: string;
+  /**
+   * Optional callback reporting download progress. It is invoked once per
+   * chunk of the response body, after that chunk's write to the
+   * `<path>.part` scratch file has been awaited, with the cumulative
+   * number of bytes written so far. Useful for progress reporting on the
+   * large datasets these examples download (MNIST is tens of megabytes).
+   *
+   * The callback is never invoked for a cache hit or a rejected URL, so
+   * the first call is proof the download is under way and the scratch
+   * file is open.
+   */
+  onProgress?: (bytesWritten: number) => void;
 }
 
 /**
@@ -160,6 +172,44 @@ async function removeIfPresent(path: string): Promise<void> {
 }
 
 /**
+ * Streams `body` into `path`, invoking `onProgress` with the cumulative
+ * byte count after each chunk's write has been awaited. Writing chunk by
+ * chunk (rather than a bare `pipeTo`) is what makes download progress an
+ * observable event rather than something a caller has to guess at;
+ * back-pressure is unchanged because each write is still awaited.
+ *
+ * Any failure is rethrown so the caller can clean up the scratch file and
+ * fall through to the next mirror — a partial write is never reported as
+ * a success.
+ */
+async function streamToFile(
+  body: ReadableStream<Uint8Array>,
+  path: string,
+  onProgress?: (bytesWritten: number) => void,
+): Promise<void> {
+  const file = await Deno.open(path, { write: true, create: true, truncate: true });
+  const writer = file.writable.getWriter();
+  let bytesWritten = 0;
+  try {
+    for await (const chunk of body) {
+      await writer.write(chunk);
+      bytesWritten += chunk.byteLength;
+      onProgress?.(bytesWritten);
+    }
+    await writer.close();
+  } catch (err) {
+    // Best-effort release of the file handle; the original failure below
+    // is what the caller must see, so an abort failure never masks it.
+    try {
+      await writer.abort(err);
+    } catch {
+      // The stream was already errored — nothing left to release.
+    }
+    throw err;
+  }
+}
+
+/**
  * Downloads a dataset file with on-disk caching and optional integrity
  * verification.
  *
@@ -261,8 +311,7 @@ export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
     // file at `path` that a later run would treat as a cache hit.
     const partPath = `${path}.part`;
     try {
-      const file = await Deno.open(partPath, { write: true, create: true, truncate: true });
-      await response.body.pipeTo(file.writable);
+      await streamToFile(response.body, partPath, opts.onProgress);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await removeIfPresent(partPath);

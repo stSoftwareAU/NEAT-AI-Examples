@@ -295,6 +295,10 @@ Behaviour:
 - Verifies the digest after writing; on mismatch the scratch file is deleted and the call rejects.
 - Tries each mirror in turn; an HTTP error or network failure on one mirror falls back to the next,
   and the final error message lists every URL that was tried.
+- Reports progress through the optional `onProgress(bytesWritten)` callback — invoked once per
+  chunk, after that chunk's write to the scratch file has been awaited, with the cumulative byte
+  count. It never fires for a cache hit or a rejected URL, so the first call is proof the download
+  is under way ([#852](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/852)).
 
 The helper relies on Deno's built-in `fetch` and `crypto.subtle` — no extra dependencies are added.
 
