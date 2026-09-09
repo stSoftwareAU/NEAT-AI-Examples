@@ -15,9 +15,11 @@
 import { assert, assertEquals } from "@std/assert";
 import {
   compositeActionNames,
+  IGNORE_SCRIPTS_FLAG,
   INSTALL_VERIFIED_TOOL,
   loadCompositeAction,
   loadWorkflow,
+  npmInstallsRunningLifecycleScripts,
   unpinnedUses,
   unverifiedDownloads,
   usesRefs,
@@ -180,6 +182,121 @@ Deno.test("download policy — ignores steps that never touch the network", () =
   assertEquals(unverifiedDownloads({}), []);
   assertEquals(
     unverifiedDownloads({ jobs: { lint: { steps: [{ name: "Test", run: "deno test" }] } } }),
+    [],
+  );
+});
+
+// --- npm lifecycle-script execution (Issue #849) ----------------------------
+//
+// An exact version pin fixes which release of the named package npm fetches,
+// but npm still executes any `preinstall` / `install` / `postinstall` script
+// declared by that package or by its unpinned transitive dependencies. Any
+// pull request — including one from a fork — triggers these workflows, so a
+// compromised dependency would run attacker code on the runner. Every npm
+// install or package execution must therefore pass `--ignore-scripts`.
+
+const SCRIPTS_ADVICE = `must pass ${IGNORE_SCRIPTS_FLAG}, so a compromised package or ` +
+  "transitive dependency cannot execute a lifecycle script on the runner.";
+
+Deno.test("npm policy — no workflow installs an npm package with lifecycle scripts enabled", async (t) => {
+  const names = await workflowNames();
+  assert(names.length > 0, "expected at least one workflow under .github/workflows");
+  for (const name of names) {
+    await t.step(name, async () => {
+      const wf = await loadWorkflow(name);
+      assertEquals(
+        npmInstallsRunningLifecycleScripts(wf),
+        [],
+        `${name}: the following ${SCRIPTS_ADVICE}`,
+      );
+    });
+  }
+});
+
+Deno.test("npm policy — no composite action installs an npm package with lifecycle scripts enabled", async (t) => {
+  const names = await compositeActionNames();
+  assert(names.length > 0, "expected at least one composite action under .github/actions");
+  for (const name of names) {
+    await t.step(name, async () => {
+      const action = await loadCompositeAction(name);
+      assertEquals(
+        npmInstallsRunningLifecycleScripts(action),
+        [],
+        `${name}: the following ${SCRIPTS_ADVICE}`,
+      );
+    });
+  }
+});
+
+Deno.test("npm policy — flags a version-pinned global install that still runs scripts", () => {
+  const offenders = npmInstallsRunningLifecycleScripts({
+    jobs: {
+      lint: {
+        steps: [
+          { name: "Install linter", run: "npm install -g some-linter@1.2.3" },
+          { name: "Run linter", run: "some-linter ." },
+        ],
+      },
+    },
+  });
+  assertEquals(offenders, ["job 'lint' step 'Install linter'"]);
+});
+
+Deno.test("npm policy — flags npm ci, the i/add aliases and the npx runner", () => {
+  const offenders = npmInstallsRunningLifecycleScripts({
+    jobs: {
+      build: {
+        steps: [
+          { name: "ci", run: "npm ci" },
+          { name: "i", run: "npm i -g tool@1.0.0" },
+          { name: "add", run: "npm add tool@1.0.0" },
+          { name: "npx", run: "npx tool@1.0.0 --check" },
+        ],
+      },
+    },
+  });
+  assertEquals(offenders, [
+    "job 'build' step 'ci'",
+    "job 'build' step 'i'",
+    "job 'build' step 'add'",
+    "job 'build' step 'npx'",
+  ]);
+});
+
+Deno.test("npm policy — flags a multi-command block where only one install is guarded", () => {
+  const offenders = npmInstallsRunningLifecycleScripts({
+    jobs: {
+      lint: {
+        steps: [{
+          name: "Install tools",
+          run: `set -euo pipefail\nnpm install -g ${IGNORE_SCRIPTS_FLAG} first@1.0.0\n` +
+            `npm install -g second@2.0.0`,
+        }],
+      },
+    },
+  });
+  assertEquals(offenders, ["job 'lint' step 'Install tools'"], "each install is judged on its own");
+});
+
+Deno.test("npm policy — accepts a guarded install split over a line continuation", () => {
+  const offenders = npmInstallsRunningLifecycleScripts({
+    runs: {
+      using: "composite",
+      steps: [{
+        name: "Install linter",
+        run: `npm install -g \\\n  ${IGNORE_SCRIPTS_FLAG} \\\n  some-linter@1.2.3`,
+      }],
+    },
+  });
+  assertEquals(offenders, [], "a flag on a continuation line still guards the install");
+});
+
+Deno.test("npm policy — ignores steps that never invoke npm", () => {
+  assertEquals(npmInstallsRunningLifecycleScripts({}), []);
+  assertEquals(
+    npmInstallsRunningLifecycleScripts({
+      jobs: { test: { steps: [{ name: "Test", run: "deno test" }] } },
+    }),
     [],
   );
 });

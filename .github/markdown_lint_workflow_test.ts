@@ -9,7 +9,12 @@
 // duplicate (Issue #808).
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { loadWorkflow, triggers, type Workflow } from "./workflow_test_utils.ts";
+import {
+  loadWorkflow,
+  npmInstallsRunningLifecycleScripts,
+  triggers,
+  type Workflow,
+} from "./workflow_test_utils.ts";
 
 const WORKFLOW = "markdown-lint.yml";
 
@@ -134,4 +139,33 @@ Deno.test("markdown-lint workflow — no step pushes back to the repository", as
         `credential would break it — re-assess the #814 fix before allowing this`,
     );
   }
+});
+
+// Issue #849 — supply-chain hardening, second half. The exact version pin
+// added for #442 fixes which release of `markdownlint-cli2` npm fetches, but
+// `npm install` still executes any `preinstall` / `install` / `postinstall`
+// script declared by that package or by any of its transitive dependencies,
+// whose versions nothing here pins. Any pull request runs this job, so a
+// compromised dependency would execute on the runner with no PR-side action
+// required. `--ignore-scripts` closes that path.
+Deno.test("markdown-lint workflow — the npm install runs no lifecycle scripts (#849)", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  const installSteps = allSteps(wf).filter((s) => {
+    const run = String(s.run ?? "");
+    return run.includes("markdownlint-cli2") && /\bnpm\b|\bnpx\b/.test(run);
+  });
+  assert(installSteps.length > 0, "workflow must install markdownlint-cli2 via npm/npx");
+  for (const step of installSteps) {
+    const run = String(step.run);
+    assert(
+      run.includes("--ignore-scripts"),
+      `install step "${step.name}" must pass --ignore-scripts so a compromised package or ` +
+        `transitive dependency cannot run a lifecycle script on the runner (got: ${run.trim()})`,
+    );
+  }
+  assertEquals(
+    npmInstallsRunningLifecycleScripts(wf),
+    [],
+    "no step in the workflow may install or execute an npm package with lifecycle scripts enabled",
+  );
 });

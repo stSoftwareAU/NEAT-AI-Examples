@@ -30,6 +30,13 @@ full rationale is one click away.
 - `@stsoftware/neat-ai` pinned to `6.0.3`, picking up the upstream `FineTunePopulation` fix that
   rejected a legitimate score of exactly `0` and broke `./adaptive_mutation/run.sh` (#702).
 
+### Security
+
+- The CI `markdownlint-cli2` install now runs with `--ignore-scripts`, so a compromised package — or
+  any of its unpinned transitive dependencies — cannot execute an npm lifecycle script on the
+  pull-request runner. A repository-wide workflow policy test holds the rule for every future npm
+  install (#849).
+
 ### Documented
 
 - The root `README.md` now leads with this repository's NEAT-AI family social preview
