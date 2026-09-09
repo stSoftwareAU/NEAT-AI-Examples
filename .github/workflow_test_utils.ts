@@ -168,3 +168,47 @@ export function unpinnedUses(doc: Workflow): string[] {
     .filter(({ uses }) => !uses.startsWith("./") && !shaPattern.test(uses))
     .map(({ location, uses }) => `${location} uses '${uses}'`);
 }
+
+/**
+ * npm commands that can execute a package's `preinstall` / `install` /
+ * `postinstall` lifecycle scripts. `npm install`, its `i` / `add` aliases,
+ * `npm ci`, and the `npx` / `npm exec` package runners all do.
+ */
+const NPM_LIFECYCLE_COMMAND = /(^|[;&|(]\s*|\s)(npm\s+(install|i|add|ci|exec)\b|npx\b)/;
+
+/** The flag that stops npm running any lifecycle script during an install. */
+export const IGNORE_SCRIPTS_FLAG = "--ignore-scripts";
+
+/**
+ * Splits a `run:` body into logical lines, joining trailing-backslash
+ * continuations so a flag on the second physical line still counts.
+ */
+function logicalLines(run: string): string[] {
+  return run.replace(/\\\r?\n\s*/g, " ").split("\n");
+}
+
+/**
+ * The `run:` commands that install or execute an npm package without
+ * `--ignore-scripts` (Issue #849).
+ *
+ * A version pin fixes which release of the named package is fetched, but npm
+ * still runs whatever `preinstall` / `install` / `postinstall` scripts that
+ * package — or any of its unpinned transitive dependencies — declares. A
+ * compromised dependency therefore gets arbitrary code execution on the runner
+ * for every pull request. `--ignore-scripts` closes that path; it is passed on
+ * the command line rather than via a repository `.npmrc` because an `.npmrc`
+ * is a hidden file this repository does not commit, and a per-command flag is
+ * visible at the point of use.
+ */
+export function npmInstallsRunningLifecycleScripts(doc: Workflow): string[] {
+  const offenders: string[] = [];
+  for (const { location, run } of runSteps(doc)) {
+    for (const line of logicalLines(run)) {
+      if (!NPM_LIFECYCLE_COMMAND.test(line)) continue;
+      if (line.includes(IGNORE_SCRIPTS_FLAG)) continue;
+      offenders.push(location);
+      break;
+    }
+  }
+  return offenders;
+}
