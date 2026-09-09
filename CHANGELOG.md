@@ -16,6 +16,10 @@ full rationale is one click away.
 
 ### Changed
 
+- `fetchDataset` (`common/data_cache.ts`) gained an optional `onProgress(bytesWritten)` callback
+  reporting the cumulative bytes written to the `<path>.part` scratch file. It replaces the fixed 50
+  ms wall-clock wait in the atomic-write unit test with the real event, so the unit suite no longer
+  races the clock (#852).
 - The PR-summary archive is now a single corpus at `docs/archive/pr-summaries/pr-summary-<PR>.md`;
   the 195 summaries that sat loose in `docs/archive/` moved there and `CONTRIBUTING.md` records the
   convention (#792).

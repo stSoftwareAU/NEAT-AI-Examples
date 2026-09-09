@@ -135,13 +135,10 @@ Deno.test("fetchDataset writes atomically — final path never sees partial byte
   const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
   const dest = join(tmp, "atomic.bin");
   const partPath = `${dest}.part`;
+  const firstChunk = new TextEncoder().encode("first-chunk");
 
-  // The server holds the response open until the test releases it,
-  // letting us inspect the on-disk state mid-flight.
-  let releaseFirstChunk!: () => void;
-  const firstChunkSent = new Promise<void>((resolve) => {
-    releaseFirstChunk = resolve;
-  });
+  // The server holds the second chunk until the test releases it, so the
+  // download is provably mid-flight while we inspect the on-disk state.
   let releaseSecondChunk!: () => void;
   const secondChunkAllowed = new Promise<void>((resolve) => {
     releaseSecondChunk = resolve;
@@ -150,8 +147,7 @@ Deno.test("fetchDataset writes atomically — final path never sees partial byte
   const server = startServer(() => {
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        controller.enqueue(new TextEncoder().encode("first-chunk"));
-        releaseFirstChunk();
+        controller.enqueue(firstChunk);
         await secondChunkAllowed;
         controller.enqueue(new TextEncoder().encode("-final"));
         controller.close();
@@ -160,18 +156,26 @@ Deno.test("fetchDataset writes atomically — final path never sees partial byte
     return new Response(stream);
   });
 
+  // `onProgress` fires only once `fetchDataset` has received and written a
+  // chunk, so the test observes the real event instead of guessing how long
+  // the runtime takes to pump it through. No wall-clock wait (#852).
+  let firstChunkWritten!: () => void;
+  const firstChunkOnDisk = new Promise<void>((resolve) => {
+    firstChunkWritten = resolve;
+  });
+
   const fetchPromise = fetchDataset({
     url: `http://localhost:${server.port}/atomic`,
     path: dest,
+    onProgress: () => firstChunkWritten(),
   });
   // Ensure we observe the fetchPromise regardless of teardown order.
   fetchPromise.catch(() => {});
 
   try {
-    // Wait for the first chunk to be enqueued and (likely) flushed to disk.
-    await firstChunkSent;
-    // Give the runtime a moment to pump the first chunk through pipeTo.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Racing against `fetchPromise` keeps a failed download loud (it
+    // rejects here) instead of hanging on a promise that never resolves.
+    await Promise.race([firstChunkOnDisk, fetchPromise]);
 
     const destExistsMidFlight = existsSync(dest);
     const partExistsMidFlight = existsSync(partPath);
@@ -189,7 +193,6 @@ Deno.test("fetchDataset writes atomically — final path never sees partial byte
       true,
       "scratch .part file must hold the in-flight bytes",
     );
-
     assertEquals(existsSync(dest), true, "final destination should exist after success");
     assertEquals(existsSync(partPath), false, "scratch .part file should be cleaned up");
     const got = await Deno.readFile(dest);
@@ -380,6 +383,66 @@ Deno.test("fetchDataset honours a matching digest as a cache hit", async () => {
     assertEquals(server.count, 1, "second call should not re-download when digest matches");
   } finally {
     await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset reports cumulative bytes written via onProgress", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const chunks = ["alpha", "beta", "gamma"].map((s) => new TextEncoder().encode(s));
+  const total = chunks.reduce((sum, c) => sum + c.byteLength, 0);
+  const server = startServer(() =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      }),
+    )
+  );
+  const dest = join(tmp, "progress.bin");
+  const seen: number[] = [];
+
+  try {
+    await fetchDataset({
+      url: `http://localhost:${server.port}/x`,
+      path: dest,
+      onProgress: (bytesWritten) => seen.push(bytesWritten),
+    });
+
+    assertEquals(seen.length > 0, true, "onProgress should be called at least once");
+    assertEquals(seen.at(-1), total, "the last report should be the total byte count");
+    assertEquals(
+      seen.every((v, i) => i === 0 || v > seen[i - 1]),
+      true,
+      `reports should increase monotonically, got ${JSON.stringify(seen)}`,
+    );
+    assertEquals(Deno.statSync(dest).size, total, "the final file should hold every byte");
+  } finally {
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset does not call onProgress when the URL is rejected", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const dest = join(tmp, "never.bin");
+  let calls = 0;
+
+  try {
+    await assertRejects(
+      () =>
+        fetchDataset({
+          url: "file:///etc/passwd",
+          path: dest,
+          onProgress: () => calls++,
+        }),
+      Error,
+      "https",
+    );
+    assertEquals(calls, 0, "no bytes are written, so no progress should be reported");
+  } finally {
     await Deno.remove(tmp, { recursive: true });
   }
 });
