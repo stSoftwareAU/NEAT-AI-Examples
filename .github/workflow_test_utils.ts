@@ -212,3 +212,102 @@ export function npmInstallsRunningLifecycleScripts(doc: Workflow): string[] {
   }
   return offenders;
 }
+
+/** The path-classification job that per-job CI gating depends on (Issue #888). */
+export const CHANGES_JOB = "changes";
+
+/** The local composite action every `changes` job must classify with. */
+export const DETECT_CHANGES_ACTION = "./.github/actions/detect-changes";
+
+/** Every `needs.changes.outputs.<name>` reference, with what follows it. */
+const CHANGES_OUTPUT_REF = new RegExp(
+  `needs\\.${CHANGES_JOB}\\.outputs\\.([A-Za-z0-9_-]+)(\\s*(?:==|!=)\\s*(?:'[^']*'|[^\\s)}]+))?`,
+  "g",
+);
+
+/** A comparison written the other way round, e.g. `'true' == needs.changes…`. */
+const REVERSED_CHANGES_COMPARISON = new RegExp(
+  `(?:==|!=)\\s*needs\\.${CHANGES_JOB}\\.outputs\\.[A-Za-z0-9_-]+`,
+  "g",
+);
+
+/** The only comparison a `changes` output may take: a positive "skip" verdict. */
+const FAIL_SAFE_COMPARISON = /^\s*!=\s*'false'$/;
+
+/**
+ * The fail-safe gate contract for every job that `needs:` the `changes`
+ * classifier (Issue #888), returned as human-readable violations.
+ *
+ * A job skipped by `if:` reports success, so it satisfies a required status
+ * check. The skip must therefore need a positive `'false'` verdict:
+ *
+ * - The job's `if:` must include `!cancelled()` (or `always()`). Without it
+ *   the implicit `success()` skips the job whenever `changes` fails — a
+ *   checkout flake would turn a required check green without running it.
+ * - Every comparison against a `changes` output — in the job `if:`, a step
+ *   `if:`, or an expression anywhere in the job — must be `!= 'false'`.
+ *   `== 'true'` (or any other form) skips the work when the output is empty
+ *   because `changes` failed.
+ * - Every referenced output must be one the `changes` job declares; a typo
+ *   reads as empty and silently disables the skip, or worse, a later
+ *   rewrite to `== 'true'` would skip the job for ever.
+ * - The `changes` job itself must classify with the shared composite action
+ *   from a `fetch-depth: 2` checkout, so the merge commit's first parent is
+ *   the base branch tip.
+ */
+export function changesGateViolations(doc: Workflow): string[] {
+  const jobs = (doc?.jobs ?? {}) as Record<string, Record<string, unknown>>;
+  const violations: string[] = [];
+  const gated = Object.entries(jobs).filter(([, job]) => {
+    const needs = job?.needs === undefined ? [] : [job.needs].flat();
+    return needs.includes(CHANGES_JOB);
+  });
+  if (gated.length === 0) return violations;
+
+  const changes = jobs[CHANGES_JOB];
+  if (!changes) {
+    return [`jobs 'needs: ${CHANGES_JOB}' but no '${CHANGES_JOB}' job is defined`];
+  }
+  const declared = Object.keys((changes.outputs ?? {}) as Record<string, unknown>);
+
+  for (const [key, job] of gated) {
+    const condition = String(job.if ?? "");
+    if (!condition.includes("!cancelled()") && !condition.includes("always()")) {
+      violations.push(
+        `job '${key}' 'if:' must include '!cancelled()' so a failed '${CHANGES_JOB}' still runs it (got '${condition}')`,
+      );
+    }
+    const body = JSON.stringify(job);
+    for (const match of body.matchAll(CHANGES_OUTPUT_REF)) {
+      const [, name, comparison] = match;
+      const ref = `needs.${CHANGES_JOB}.outputs.${name}`;
+      if (!declared.includes(name)) {
+        violations.push(`job '${key}' reads undeclared output '${ref}'`);
+      }
+      if (comparison !== undefined && !FAIL_SAFE_COMPARISON.test(comparison)) {
+        violations.push(
+          `job '${key}' compares ${ref}${comparison}; a '${CHANGES_JOB}' output may only be compared with "!= 'false'"`,
+        );
+      }
+    }
+    for (const [reversed] of body.matchAll(REVERSED_CHANGES_COMPARISON)) {
+      violations.push(
+        `job '${key}' compares ${reversed.trim()}; put the '${CHANGES_JOB}' output first and compare with "!= 'false'"`,
+      );
+    }
+  }
+
+  const steps = (changes.steps ?? []) as Array<Record<string, unknown>>;
+  if (!steps.some((step) => step.uses === DETECT_CHANGES_ACTION)) {
+    violations.push(`job '${CHANGES_JOB}' must classify with '${DETECT_CHANGES_ACTION}'`);
+  }
+  const checkout = steps.find((step) => String(step.uses ?? "").startsWith("actions/checkout@"));
+  const withBlock = (checkout?.with ?? {}) as Record<string, unknown>;
+  if (Number(withBlock["fetch-depth"]) !== 2) {
+    violations.push(`job '${CHANGES_JOB}' must check out with 'fetch-depth: 2'`);
+  }
+  if (withBlock["persist-credentials"] !== false) {
+    violations.push(`job '${CHANGES_JOB}' must check out with 'persist-credentials: false'`);
+  }
+  return violations;
+}

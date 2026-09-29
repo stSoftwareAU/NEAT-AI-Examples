@@ -161,6 +161,13 @@ Deno.test("quality workflow — three parallel work jobs with no inter-job needs
       );
     }
   }
+  // static-checks is deliberately ungated (Issue #888): it is fast and
+  // `deno fmt --check` covers Markdown, so it runs on every pull request.
+  assertEquals(
+    (jobs["static-checks"] as { needs?: unknown }).needs,
+    undefined,
+    "static-checks must not 'needs:' anything — it runs on every pull request",
+  );
 });
 
 // A docs-only pull request skips the examples job (Issue #888), but the
