@@ -168,6 +168,8 @@ DENO_TEST_FLAGS=(
   --allow-net
   --allow-ffi
   --allow-run="${DENO_TEST_ALLOW_RUN}"
+  # Quiet on success; failures still print in full (#885).
+  --reporter=dot
 )
 
 if deno test --parallel "${DENO_TEST_FLAGS[@]}" \

@@ -242,6 +242,8 @@ jobs:
             --allow-ffi
             --allow-run="${DENO_TEST_ALLOW_RUN}"
             --coverage=.coverage
+            # Quiet on success; failures still print in full (#885).
+            --reporter=dot
           )
           # --ignore REPLACES deno.json's "exclude" for file discovery, so the
           # in-workspace NEAT-AI-scorer / NEAT-AI-core checkouts must be
