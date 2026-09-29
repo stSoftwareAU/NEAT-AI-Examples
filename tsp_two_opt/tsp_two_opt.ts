@@ -28,7 +28,12 @@ import { format } from "@std/fmt/duration";
 import { parseArgs } from "@std/cli/parse-args";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import { Creature, type CreatureExport, safeWriteJson } from "@stsoftware/neat-ai";
+import {
+  Creature,
+  type CreatureExport,
+  type LegacyEpisodeAdapter,
+  safeWriteJson,
+} from "@stsoftware/neat-ai";
 
 import {
   loadInstance,
@@ -186,7 +191,7 @@ export function buildEpisodicAdapter(
     temperature?: number;
     random?: () => number;
   } = {},
-) {
+): LegacyEpisodeAdapter<TwoOptEpisodeState, Float32Array> {
   const seedTour = nearestNeighbourTour(instance.cities, 0);
   const seedLength = tourLength(instance.cities, seedTour);
   const denom = Math.max(1e-9, seedLength);
