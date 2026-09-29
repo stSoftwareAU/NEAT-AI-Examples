@@ -1,9 +1,10 @@
 /**
  * Print hold-out validation/test accuracy for a creature JSON path.
  *
- * Usage:
- *   deno run -A scripts/mnist_holdout_score.ts <creature.json>
- *   deno run -A scripts/mnist_holdout_score.ts --compare <before.json> <after.json>
+ * Usage (use the scoped `HOLDOUT_DENO_FLAGS` from
+ * `mnist_lamarck_backprop_campaign.sh`, never `-A` — issue #872):
+ *   deno run <scoped flags> scripts/mnist_holdout_score.ts <creature.json>
+ *   deno run <scoped flags> scripts/mnist_holdout_score.ts --compare <before.json> <after.json>
  *
  * Always emits exactly one JSON object on stdout (last line). The neat-ai
  * version banner may still appear earlier; consumers must parse the JSON line.
