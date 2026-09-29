@@ -146,6 +146,29 @@ Deno.test("changes gate — flags an unsafe comparison in a step if: or expressi
   ]);
 });
 
+Deno.test("changes gate — flags a bare truthy reference in a job if:", () => {
+  // An empty output (failed `changes`) is falsy, so this form skips the job
+  // and the required check reports success without the work having run.
+  const wf = compliant();
+  wf.jobs.semgrep.if = "${{ !cancelled() && needs.changes.outputs.code_changed }}";
+  assertEquals(changesGateViolations(wf), [
+    "job 'semgrep' tests needs.changes.outputs.code_changed without \"!= 'false'\"; an empty output from a failed 'changes' job would skip it",
+  ]);
+});
+
+Deno.test("changes gate — flags contains() and fromJSON() tests of an output in an if:", () => {
+  const wf = compliant();
+  wf.jobs.semgrep.if =
+    "${{ !cancelled() && contains(needs.changes.outputs.code_changed, 'true') }}";
+  wf.jobs.semgrep.steps = [
+    { if: "${{ fromJSON(needs.changes.outputs.code_changed) }}", run: "semgrep ci" },
+    { if: "needs.changes.outputs.code_changed", run: "semgrep scan" },
+  ];
+  const bare =
+    "job 'semgrep' tests needs.changes.outputs.code_changed without \"!= 'false'\"; an empty output from a failed 'changes' job would skip it";
+  assertEquals(changesGateViolations(wf), [bare, bare, bare]);
+});
+
 Deno.test("changes gate — flags a reference to an undeclared output", () => {
   const wf = compliant();
   wf.jobs.semgrep.if = "${{ !cancelled() && needs.changes.outputs.code_chnaged != 'false' }}";

@@ -231,6 +231,16 @@ const REVERSED_CHANGES_COMPARISON = new RegExp(
   "g",
 );
 
+/**
+ * A `changes` output tested with no comparison at all — bare truthiness,
+ * `contains(…)`, `fromJSON(…)`. Reversed comparisons are excluded here
+ * because {@link REVERSED_CHANGES_COMPARISON} already reports them.
+ */
+const UNCOMPARED_CHANGES_REF = new RegExp(
+  `(?<!(?:==|!=)\\s*)needs\\.${CHANGES_JOB}\\.outputs\\.[A-Za-z0-9_-]+(?![A-Za-z0-9_-]|\\s*(?:==|!=))`,
+  "g",
+);
+
 /** The only comparison a `changes` output may take: a positive "skip" verdict. */
 const FAIL_SAFE_COMPARISON = /^\s*!=\s*'false'$/;
 
@@ -247,7 +257,9 @@ const FAIL_SAFE_COMPARISON = /^\s*!=\s*'false'$/;
  * - Every comparison against a `changes` output — in the job `if:`, a step
  *   `if:`, or an expression anywhere in the job — must be `!= 'false'`.
  *   `== 'true'` (or any other form) skips the work when the output is empty
- *   because `changes` failed.
+ *   because `changes` failed. In a job or step `if:` the output must be
+ *   compared at all: a bare truthy reference, `contains(…)` or `fromJSON(…)`
+ *   is falsy on an empty output and skips the work the same way.
  * - Every referenced output must be one the `changes` job declares; a typo
  *   reads as empty and silently disables the skip, or worse, a later
  *   rewrite to `== 'true'` would skip the job for ever.
@@ -294,6 +306,19 @@ export function changesGateViolations(doc: Workflow): string[] {
       violations.push(
         `job '${key}' compares ${reversed.trim()}; put the '${CHANGES_JOB}' output first and compare with "!= 'false'"`,
       );
+    }
+    // A condition decides whether work runs, so it must spell out the
+    // fail-safe comparison. Pass-throughs (step `env:`, `with:`) may still
+    // read an output bare, as the aggregate's `CODE_CHANGED` does.
+    const steps = (job.steps ?? []) as Array<Record<string, unknown>>;
+    const conditions = [job.if, ...steps.map((step) => step?.if)]
+      .filter((condition) => condition !== undefined).map(String);
+    for (const condition of conditions) {
+      for (const [ref] of condition.matchAll(UNCOMPARED_CHANGES_REF)) {
+        violations.push(
+          `job '${key}' tests ${ref} without "!= 'false'"; an empty output from a failed '${CHANGES_JOB}' job would skip it`,
+        );
+      }
     }
   }
 
