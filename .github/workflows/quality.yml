@@ -36,6 +36,15 @@
 # JS path and needs Deno alone, so the ~2-minute Rust build is not
 # duplicated.
 #
+# Docs-only pull requests (Issue #888): a cheap `changes` job classifies
+# the changed paths. When every path is documentation, the examples job
+# is skipped and unit-tests skips the rust_scorer build, running the
+# suite on the JS scorer instead — many tests read the Markdown docs, so
+# they still gate a docs change. static-checks always runs: it is fast
+# and `deno fmt --check` covers Markdown. Skips use job/step `if:`, never
+# workflow-level `paths:`, so every required status context still
+# reports.
+#
 # This workflow also generates a coverage report and uploads it to
 # Codecov on pull requests. It is the sole quality workflow for the
 # repository — the previous deno-quality.yml was a duplicate and was
@@ -114,10 +123,15 @@ jobs:
   # Unit tests + coverage. This is the only job that builds rust_scorer
   # and sets the NEAT_AI_RUST_SCORER_* env vars, so the scorer/core
   # checkouts, sibling symlink, and Rust toolchain live here alone.
+  #
+  # Docs-only pull requests skip the Rust steps (Issue #888) and the suite
+  # falls back to the JS scorer.
   unit-tests:
     name: Unit tests + coverage
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: changes
+    if: ${{ !cancelled() }}
 
     steps:
       # persist-credentials: false — this job runs the PR's own test suite with
@@ -142,6 +156,7 @@ jobs:
       # --allow-run=...,git, so leaving the token in NEAT-AI-scorer/.git/config
       # would only widen the blast radius (Issue #818).
       - name: Check out NEAT-AI-scorer for MNIST CATEGORICAL_ERROR tests
+        if: ${{ needs.changes.outputs.code_changed != 'false' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: stSoftwareAU/NEAT-AI-scorer
@@ -160,6 +175,7 @@ jobs:
       # --allow-run=...,git, so a token left in NEAT-AI-core/.git/config would
       # only widen the blast radius (Issue #819).
       - name: Check out NEAT-AI-core (path dependency for neat-core)
+        if: ${{ needs.changes.outputs.code_changed != 'false' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: stSoftwareAU/NEAT-AI-core
@@ -168,6 +184,7 @@ jobs:
           persist-credentials: false
 
       - name: Link NEAT-AI-core sibling path expected by Cargo
+        if: ${{ needs.changes.outputs.code_changed != 'false' }}
         run: |
           set -euo pipefail
           if [ ! -e "$GITHUB_WORKSPACE/../NEAT-AI-core" ]; then
@@ -175,6 +192,7 @@ jobs:
           fi
 
       - name: Install Rust toolchain
+        if: ${{ needs.changes.outputs.code_changed != 'false' }}
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
           toolchain: stable
@@ -190,6 +208,7 @@ jobs:
       # unchanged because cargo still recompiles anything whose source
       # changed.
       - name: Cache cargo registry and rust_scorer build
+        if: ${{ needs.changes.outputs.code_changed != 'false' }}
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -201,6 +220,7 @@ jobs:
             rust-scorer-${{ runner.os }}-
 
       - name: Build rust_scorer
+        if: ${{ needs.changes.outputs.code_changed != 'false' }}
         run: RUSTFLAGS="-D warnings" cargo build --release -p rust_scorer
         working-directory: NEAT-AI-scorer
 
@@ -214,11 +234,13 @@ jobs:
       # GitHub-hosted runners are CPU-only (no GPU). MNIST evolveDir tests
       # pass timeoutMinutes: 0 and discoverySampleRate: -1 so Discovery is
       # never scheduled; only the CPU rust_scorer batch path is exercised.
+      # Without a rust_scorer build (docs-only, #888) the scorer is off
+      # and the binary path empty, so the suite runs on the JS scorer.
       - name: Run unit tests with coverage
         env:
-          NEAT_AI_RUST_SCORER_ENABLED: "true"
-          NEAT_AI_RUST_SCORER_BINARY_PATH: ${{ github.workspace }}/NEAT-AI-scorer/target/release/rust_scorer
-          NEAT_AI_RUST_SCORER_BATCH: "true"
+          NEAT_AI_RUST_SCORER_ENABLED: ${{ needs.changes.outputs.code_changed != 'false' && 'true' || 'false' }}
+          NEAT_AI_RUST_SCORER_BINARY_PATH: ${{ needs.changes.outputs.code_changed != 'false' && format('{0}/NEAT-AI-scorer/target/release/rust_scorer', github.workspace) || '' }}
+          NEAT_AI_RUST_SCORER_BATCH: ${{ needs.changes.outputs.code_changed != 'false' && 'true' || 'false' }}
         run: |
           set -euo pipefail
           # Probe the built rust_scorer for CATEGORICAL_ERROR support (#502).
@@ -329,11 +351,15 @@ jobs:
           fail_ci_if_error: false
 
   # Examples — run the JS path of each demo. No Rust build: these run the
-  # JS scorer and need Deno only.
+  # JS scorer and need Deno only. Skipped on docs-only pull requests
+  # (Issue #888); `!cancelled()` plus `!= 'false'` runs it whenever the
+  # classification is anything but a positive "docs only".
   examples:
     name: Examples
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code_changed != 'false' }}
 
     steps:
       # `persist-credentials: false` keeps the job's GITHUB_TOKEN out of
@@ -376,6 +402,29 @@ jobs:
           SUGGEST_QUICK: "1"
         run: ./suggest_improvements/run.sh
 
+  # Classify the changed paths (Issue #888). Runs no pull-request code
+  # beyond the committed classifier and needs no token: the merge commit
+  # is diffed against its first parent, so `fetch-depth: 2` is enough.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code_changed: ${{ steps.detect.outputs.changed }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Classify changed paths
+        id: detect
+        uses: ./.github/actions/detect-changes
+        with:
+          mode: code
+
   # Aggregate gate. Branch protection on Develop requires a status check
   # named "Run quality checks" — the name of the former single job. The
   # split (PR #585) renamed that job into three, so the required context
@@ -383,27 +432,39 @@ jobs:
   # Keep a job with that exact name that depends on the three real jobs,
   # so the required check still reports. `if: always()` ensures it runs
   # (and therefore reports) even when a dependency fails, and it fails
-  # the gate unless all three succeeded.
+  # the gate unless all three succeeded. The one tolerated skip is
+  # examples on a positively classified docs-only change (Issue #888).
   quality:
     name: Run quality checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [static-checks, unit-tests, examples]
+    needs: [changes, static-checks, unit-tests, examples]
     if: ${{ always() }}
     steps:
       - name: Verify all quality jobs passed
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code_changed }}
           STATIC_CHECKS_RESULT: ${{ needs.static-checks.result }}
           UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
           EXAMPLES_RESULT: ${{ needs.examples.result }}
         run: |
           set -euo pipefail
+          echo "changes:       ${CHANGES_RESULT} (code_changed=${CODE_CHANGED})"
           echo "static-checks: ${STATIC_CHECKS_RESULT}"
           echo "unit-tests:    ${UNIT_TESTS_RESULT}"
           echo "examples:      ${EXAMPLES_RESULT}"
-          if [ "${STATIC_CHECKS_RESULT}" != "success" ] || \
+          examples_ok=false
+          if [ "${EXAMPLES_RESULT}" = "success" ]; then
+            examples_ok=true
+          elif [ "${EXAMPLES_RESULT}" = "skipped" ] && [ "${CODE_CHANGED}" = "false" ]; then
+            echo "examples skipped: docs-only change (Issue #888)"
+            examples_ok=true
+          fi
+          if [ "${CHANGES_RESULT}" != "success" ] || \
+             [ "${STATIC_CHECKS_RESULT}" != "success" ] || \
              [ "${UNIT_TESTS_RESULT}" != "success" ] || \
-             [ "${EXAMPLES_RESULT}" != "success" ]; then
+             [ "${examples_ok}" != "true" ]; then
             echo "One or more quality jobs did not succeed" >&2
             exit 1
           fi

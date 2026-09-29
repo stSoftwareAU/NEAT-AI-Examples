@@ -116,6 +116,11 @@ Deno.test("quality workflow — Suggest Improvements example runs in quick mode 
 // A fifth job, `coverage-upload` (Issue #747), consumes the lcov artefact
 // produced by `unit-tests` and holds `CODECOV_TOKEN`. It runs no
 // pull-request code, so it too is excluded from the work-job invariants.
+//
+// A sixth job, `changes` (Issue #888), classifies the changed paths so a
+// docs-only pull request skips the examples job and the rust_scorer
+// build. It is the only job a work job may `needs:`; the work jobs still
+// never depend on each other.
 
 // The three real work jobs that run in parallel.
 const WORK_JOBS = ["static-checks", "unit-tests", "examples"] as const;
@@ -123,6 +128,9 @@ const WORK_JOBS = ["static-checks", "unit-tests", "examples"] as const;
 // The aggregate gate job that fans in on the work jobs to report the
 // required status context.
 const GATE_JOB = "quality";
+
+// The path-classification job the gated work jobs depend on (Issue #888).
+const CHANGES_JOB = "changes";
 
 // deno-lint-ignore no-explicit-any
 function stepNames(job: any): string[] {
@@ -136,18 +144,45 @@ Deno.test("quality workflow — three parallel work jobs with no inter-job needs
   const keys = Object.keys(jobs).sort();
   assertEquals(
     keys,
-    ["coverage-upload", "examples", "quality", "static-checks", "unit-tests"],
-    "quality workflow must define the static-checks, unit-tests, and examples work jobs, the aggregate 'quality' gate, and the secret-bearing coverage-upload job (Issues #582, PR #585, Issue #747)",
+    ["changes", "coverage-upload", "examples", "quality", "static-checks", "unit-tests"],
+    "quality workflow must define the static-checks, unit-tests, and examples work jobs, the aggregate 'quality' gate, the secret-bearing coverage-upload job, and the 'changes' classifier (Issues #582, PR #585, Issue #747, Issue #888)",
   );
-  // None of the work jobs declares `needs:` — they run in parallel so
-  // the critical path is the slowest job, not the sum of all steps.
+  // No work job depends on another — they run in parallel so the
+  // critical path is the slowest job, not the sum of all steps. The only
+  // permitted dependency is the fast 'changes' classifier (Issue #888).
   for (const key of WORK_JOBS) {
-    assertEquals(
-      (jobs[key] as { needs?: unknown }).needs,
-      undefined,
-      `work job '${key}' must not declare 'needs:' so the jobs run in parallel`,
-    );
+    const raw = (jobs[key] as { needs?: string | string[] }).needs;
+    const needs = raw === undefined ? [] : [raw].flat();
+    for (const dep of needs) {
+      assertEquals(
+        dep,
+        CHANGES_JOB,
+        `work job '${key}' may only 'needs:' the '${CHANGES_JOB}' job so the work jobs run in parallel`,
+      );
+    }
   }
+});
+
+// A docs-only pull request skips the examples job (Issue #888), but the
+// gate must stay fail-safe: the skip needs a positive "docs only"
+// verdict, and a cancelled run must not proceed.
+Deno.test("quality workflow — examples job is skipped only on a positive docs-only verdict", async () => {
+  const wf = await loadWorkflow(WORKFLOW);
+  const jobs = wf.jobs as Record<string, Record<string, unknown>>;
+  const condition = String(jobs["examples"].if ?? "");
+  assert(
+    condition.includes("!cancelled()"),
+    `examples 'if:' must include '!cancelled()' (got '${condition}')`,
+  );
+  assert(
+    condition.includes("needs.changes.outputs.code_changed != 'false'"),
+    `examples 'if:' must skip only when code_changed is exactly 'false' so a missing verdict still runs it (got '${condition}')`,
+  );
+  const changes = jobs[CHANGES_JOB] as { outputs?: Record<string, string> };
+  assert(
+    changes.outputs?.code_changed,
+    "the 'changes' job must expose a 'code_changed' output",
+  );
 });
 
 Deno.test("quality workflow — aggregate 'quality' gate fans in on the three work jobs", async () => {
@@ -165,12 +200,20 @@ Deno.test("quality workflow — aggregate 'quality' gate fans in on the three wo
     "Run quality checks",
     "aggregate gate must keep the required status-context name 'Run quality checks'",
   );
-  // It depends on every work job so it cannot pass unless they all do.
+  // It depends on every work job so it cannot pass unless they all do,
+  // and on 'changes' so it can tell a docs-only skip from a failure.
   const needs = [...((gate.needs as string[] | undefined) ?? [])].sort();
   assertEquals(
     needs,
-    [...WORK_JOBS].sort(),
-    "aggregate gate must 'needs:' exactly the three work jobs",
+    [...WORK_JOBS, CHANGES_JOB].sort(),
+    "aggregate gate must 'needs:' exactly the three work jobs and 'changes'",
+  );
+  // It must always run so the required context reports even when a
+  // dependency fails or is skipped (#677, Issue #888).
+  assertEquals(
+    gate.if,
+    "${{ always() }}",
+    "aggregate gate must keep 'if: ${{ always() }}'",
   );
 });
 
