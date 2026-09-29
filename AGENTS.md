@@ -295,6 +295,10 @@ Behaviour:
 - Verifies the digest after writing; on mismatch the scratch file is deleted and the call rejects.
 - Tries each mirror in turn; an HTTP error or network failure on one mirror falls back to the next,
   and the final error message lists every URL that was tried.
+- Abandons a mirror that goes silent: when no data arrives for `timeoutMs` (default `60_000`) —
+  before the response headers or between body chunks — the attempt is aborted and the next mirror is
+  tried. The timer resets on every chunk, so a slow download that keeps making progress is never cut
+  off ([#886](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/886)).
 - Reports progress through the optional `onProgress(bytesWritten)` callback — invoked once per
   chunk, after that chunk's write to the scratch file has been awaited, with the cumulative byte
   count. It never fires for a cache hit or a rejected URL, so the first call is proof the download
