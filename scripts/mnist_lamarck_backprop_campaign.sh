@@ -58,6 +58,19 @@ if [[ ! -d "${DATA_DIR}" ]] || ! compgen -G "${DATA_DIR}"/*.bin >/dev/null; then
   exit 1
 fi
 
+# Scoped permissions for the hold-out scorer (issues #419, #872). The env
+# allowlist and sys APIs mirror NEAT_AI_ENV_VARS / NEAT_EXAMPLE_ALLOW_SYS in
+# common/example_runner_preamble.sh; the network is limited to the MNIST
+# dataset host and jsr.io (NEAT-AI's WASM payload).
+HOLDOUT_DENO_FLAGS=(
+  --no-prompt
+  --allow-read
+  --allow-write
+  "--allow-env=HOME,USERPROFILE,DENO_TEST,NEAT_AI_DISCOVERY_LIB_PATH,NEAT_AI_DISCOVERY_VERBOSE,NEAT_AI_TRACE_PREDICTION,NEAT_AI_WORKER_INIT_TIMEOUT_MS,NEAT_DISCOVERY_AWAIT_CLEANUP,NEAT_TRAINING_READ_SEQUENTIAL,NEAT_AI_RUST_SCORER_ENABLED,NEAT_AI_RUST_SCORER_BINARY_PATH"
+  "--allow-net=storage.googleapis.com,jsr.io"
+  "--allow-sys=systemMemoryInfo,hostname"
+)
+
 # Deno/neat-ai may print a version banner before the JSON object. Keep the
 # last "{"…"}" line from mixed stdout+stderr.
 json_line() {
@@ -72,7 +85,7 @@ print(lines[-1])
 
 holdout() {
   # Merge stderr so the banner cannot break piping; json_line picks the object.
-  deno run --allow-read --allow-write --allow-net --allow-env --allow-sys \
+  deno run "${HOLDOUT_DENO_FLAGS[@]}" \
     "${REPO_ROOT}/scripts/mnist_holdout_score.ts" "$1" 2>&1 | json_line
 }
 
@@ -87,7 +100,7 @@ promote_if_better() {
   local cmp_raw cmp_json improved before_test after_test before_val after_val
   set +e
   cmp_raw="$(
-    deno run --allow-read --allow-write --allow-net --allow-env --allow-sys \
+    deno run "${HOLDOUT_DENO_FLAGS[@]}" \
       "${REPO_ROOT}/scripts/mnist_holdout_score.ts" \
       --compare "${CREATURE}" "${candidate}" 2>&1
   )"
