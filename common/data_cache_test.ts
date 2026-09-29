@@ -6,7 +6,7 @@
  * inspecting the implementation.
  */
 
-import { assertEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { existsSync } from "@std/fs";
 import { join } from "@std/path";
 
@@ -573,28 +573,56 @@ Deno.test("fetchDataset rejects a non-positive timeout before any network I/O", 
 Deno.test("fetchDataset keeps a slow download that never stalls", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
   const chunk = new TextEncoder().encode("trickle;");
-  const chunks = 8;
-  // Each gap is well inside the timeout, but the whole body outlasts it.
-  const gapMs = 25;
-  const timeoutMs = 150;
-  const server = startServer(() =>
-    new Response(
+  // The body as a whole outlasts the stall timeout, so the download only
+  // succeeds if every chunk restarts the timer. To keep scheduler latency
+  // out of the verdict (AGENTS.md: no timing assertions in unit tests), the
+  // server sends the next chunk only after the client reports the previous
+  // one, and a single gap would have to stall for ~2 s to fail the test.
+  const timeoutMs = 2_000;
+  const gapMs = 50;
+  let received = 0;
+  let onReceived = () => {};
+  const waitForClient = async (bytes: number) => {
+    while (received < bytes) {
+      await new Promise<void>((resolve) => onReceived = resolve);
+    }
+  };
+  let sent = 0;
+  const server = startServer(() => {
+    const started = performance.now();
+    return new Response(
       new ReadableStream<Uint8Array>({
         async start(controller) {
-          for (let i = 0; i < chunks; i++) {
-            await new Promise((resolve) => setTimeout(resolve, gapMs));
+          // Keep trickling until the body has outlasted the timeout.
+          while (performance.now() - started <= timeoutMs * 1.25) {
             controller.enqueue(chunk);
+            sent += chunk.byteLength;
+            await waitForClient(sent);
+            await new Promise((resolve) => setTimeout(resolve, gapMs));
           }
           controller.close();
         },
       }),
-    )
-  );
+    );
+  });
   const dest = join(tmp, "slow.bin");
 
   try {
-    await fetchDataset({ url: `http://localhost:${server.port}/x`, path: dest, timeoutMs });
-    assertEquals((await Deno.readFile(dest)).byteLength, chunk.byteLength * chunks);
+    const began = performance.now();
+    await fetchDataset({
+      url: `http://localhost:${server.port}/x`,
+      path: dest,
+      timeoutMs,
+      onProgress: (bytes) => {
+        received = bytes;
+        onReceived();
+      },
+    });
+    assertEquals((await Deno.readFile(dest)).byteLength, sent);
+    assert(
+      performance.now() - began > timeoutMs,
+      "the download must outlast the stall timeout to prove the timer resets",
+    );
   } finally {
     await server.stop();
     await Deno.remove(tmp, { recursive: true });

@@ -42,7 +42,7 @@ all of them test behaviour against the local test server:
 | fails over when a mirror stalls mid-body | A body that stops mid-stream is abandoned; no `.part` remains.   |
 | names the timeout when the only mirror…  | The error reports `no data received for 50 ms`.                  |
 | rejects a non-positive timeout…          | `0`, `-1`, `NaN` and `Infinity` are rejected with zero requests. |
-| keeps a slow download that never stalls  | 8 chunks 25 ms apart finish under a 150 ms stall timeout.        |
+| keeps a slow download that never stalls  | A body trickled past a 2 s stall timeout still completes.        |
 
 The slow-download test fails if the timer is not reset on each chunk, which is how a whole-request
 cap would behave. That confirms it guards the issue's stated risk.
