@@ -446,3 +446,157 @@ Deno.test("fetchDataset does not call onProgress when the URL is rejected", asyn
     await Deno.remove(tmp, { recursive: true });
   }
 });
+
+Deno.test("fetchDataset fails over when a mirror never sends a response", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const payload = new TextEncoder().encode("from the responsive mirror");
+  const { promise: released, resolve: release } = Promise.withResolvers<void>();
+  // Accepts the connection but holds the response until the test ends.
+  const hung = startServer(async () => {
+    await released;
+    return new Response("too late");
+  });
+  const working = startServer(() => new Response(payload));
+  const dest = join(tmp, "hung.bin");
+
+  try {
+    await fetchDataset({
+      url: [
+        `http://localhost:${hung.port}/x`,
+        `http://localhost:${working.port}/x`,
+      ],
+      path: dest,
+      timeoutMs: 50,
+    });
+
+    assertEquals(await Deno.readFile(dest), payload);
+    assertEquals(working.count, 1, "the responsive mirror should be used");
+  } finally {
+    release();
+    await hung.stop();
+    await working.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset fails over when a mirror stalls mid-body", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const payload = new TextEncoder().encode("complete payload");
+  let stalledStream: ReadableStreamDefaultController<Uint8Array> | undefined;
+  // Sends one chunk, then goes silent without closing the stream.
+  const stalling = startServer(() =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          stalledStream = controller;
+          controller.enqueue(new TextEncoder().encode("partial"));
+        },
+      }),
+    )
+  );
+  const working = startServer(() => new Response(payload));
+  const dest = join(tmp, "stall.bin");
+
+  try {
+    await fetchDataset({
+      url: [
+        `http://localhost:${stalling.port}/x`,
+        `http://localhost:${working.port}/x`,
+      ],
+      path: dest,
+      timeoutMs: 50,
+    });
+
+    assertEquals(await Deno.readFile(dest), payload, "no stalled bytes may leak in");
+    assertEquals(existsSync(`${dest}.part`), false, "scratch file should be removed");
+  } finally {
+    try {
+      stalledStream?.close();
+    } catch {
+      // The server may already have cancelled the stream.
+    }
+    await stalling.stop();
+    await working.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset names the timeout when the only mirror hangs", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const { promise: released, resolve: release } = Promise.withResolvers<void>();
+  const hung = startServer(async () => {
+    await released;
+    return new Response("too late");
+  });
+
+  try {
+    await assertRejects(
+      () =>
+        fetchDataset({
+          url: `http://localhost:${hung.port}/x`,
+          path: join(tmp, "never.bin"),
+          timeoutMs: 50,
+        }),
+      Error,
+      "no data received for 50 ms",
+    );
+  } finally {
+    release();
+    await hung.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset rejects a non-positive timeout before any network I/O", async () => {
+  const tmp = Deno.makeTempDirSync({ prefix: "data_cache_test_" });
+  const server = startServer(() => new Response("unused"));
+  try {
+    for (const timeoutMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      await assertRejects(
+        () =>
+          fetchDataset({
+            url: `http://localhost:${server.port}/x`,
+            path: join(tmp, "x.bin"),
+            timeoutMs,
+          }),
+        Error,
+        "timeoutMs",
+      );
+    }
+    assertEquals(server.count, 0, "an invalid timeout must fail before fetching");
+  } finally {
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("fetchDataset keeps a slow download that never stalls", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "data_cache_test_" });
+  const chunk = new TextEncoder().encode("trickle;");
+  const chunks = 8;
+  // Each gap is well inside the timeout, but the whole body outlasts it.
+  const gapMs = 25;
+  const timeoutMs = 150;
+  const server = startServer(() =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        async start(controller) {
+          for (let i = 0; i < chunks; i++) {
+            await new Promise((resolve) => setTimeout(resolve, gapMs));
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        },
+      }),
+    )
+  );
+  const dest = join(tmp, "slow.bin");
+
+  try {
+    await fetchDataset({ url: `http://localhost:${server.port}/x`, path: dest, timeoutMs });
+    assertEquals((await Deno.readFile(dest)).byteLength, chunk.byteLength * chunks);
+  } finally {
+    await server.stop();
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
