@@ -61,6 +61,15 @@ Deno.test("code mode — any source file among docs needs the code checks", asyn
   }
 });
 
+Deno.test("code mode — a renamed code file still counts as code (relies on --no-renames)", async () => {
+  // The caller must diff with `--no-renames` so a code-to-docs rename
+  // reports both paths; a collapsed rename would print only
+  // `docs/tool.md` and misclassify this as docs-only (Issue #888 review).
+  const result = await classify(["code"], ["tool.sh", "docs/tool.md"]);
+  assertEquals(result.code, 0);
+  assertEquals(result.stdout, "true");
+});
+
 Deno.test("code mode — an empty change list fails safe to running the checks", async () => {
   const result = await classify(["code"], ["", ""]);
   assertEquals(result.code, 0);
