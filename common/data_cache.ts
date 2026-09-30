@@ -57,6 +57,37 @@ export interface FetchDatasetOptions {
    * file is open.
    */
   onProgress?: (bytesWritten: number) => void;
+  /**
+   * Stall timeout in milliseconds for each mirror (default
+   * {@link DEFAULT_TIMEOUT_MS}). A mirror is abandoned — and the next one
+   * tried — when it sends nothing for this long, either before the
+   * response headers arrive or between body chunks. The timer resets on
+   * every chunk, so a slow download that keeps making progress is never
+   * cut off. Must be a positive finite number.
+   */
+  timeoutMs?: number;
+}
+
+/** Default per-mirror stall timeout: a minute of silence abandons a mirror. */
+export const DEFAULT_TIMEOUT_MS = 60_000;
+
+/**
+ * An abort signal that fires after `ms` of inactivity. `touch()` restarts
+ * the countdown; `clear()` must be called once the mirror attempt ends so
+ * no timer outlives it.
+ */
+function stallTimer(ms: number) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const touch = () => {
+    clearTimeout(timer);
+    timer = setTimeout(
+      () => controller.abort(new Error(`no data received for ${ms} ms`)),
+      ms,
+    );
+  };
+  touch();
+  return { signal: controller.signal, touch, clear: () => clearTimeout(timer) };
 }
 
 /**
@@ -216,7 +247,8 @@ async function streamToFile(
  * Returns the destination path on success. Throws an `Error` with a
  * message that lists every attempted URL when no mirror succeeds, and
  * a digest-mismatch error (with the partial file removed) when the
- * downloaded bytes do not match the expected SHA-256.
+ * downloaded bytes do not match the expected SHA-256. A mirror that
+ * sends nothing for `timeoutMs` is abandoned and the next one tried.
  *
  * **Security — URL provenance.** Callers must supply URLs from a
  * trusted source: hard-coded constants, a digest-pinned manifest, or a
@@ -258,6 +290,12 @@ export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
   for (const url of urls) {
     validateUrl(url);
   }
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(
+      `fetchDataset: timeoutMs must be a positive finite number, got ${timeoutMs}`,
+    );
+  }
 
   // Cache hit? Optionally re-validate against the expected digest.
   if (await fileExists(path)) {
@@ -276,70 +314,80 @@ export async function fetchDataset(opts: FetchDatasetOptions): Promise<string> {
 
   const errors: string[] = [];
   for (const url of urls) {
-    let response: Response;
+    // Bounds every await on this mirror, so a host that accepts the
+    // connection but never answers cannot stall the fail-over loop.
+    const stall = stallTimer(timeoutMs);
     try {
-      // `redirect: "error"` turns any 3xx into a fetch error, blocking
-      // the classic SSRF bypass where a legitimate host redirects to a
-      // private / metadata target. Callers that genuinely need to follow
-      // a redirect should resolve it themselves and pass the final URL.
-      response = await fetch(url, { redirect: "error" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      errors.push(`${url}: ${message}`);
-      continue;
-    }
-
-    if (!response.ok) {
-      // Drain the body so the connection can be released.
+      let response: Response;
       try {
-        await response.body?.cancel();
-      } catch {
-        // ignore — best-effort cleanup
+        // `redirect: "error"` turns any 3xx into a fetch error, blocking
+        // the classic SSRF bypass where a legitimate host redirects to a
+        // private / metadata target. Callers that genuinely need to follow
+        // a redirect should resolve it themselves and pass the final URL.
+        response = await fetch(url, { redirect: "error", signal: stall.signal });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`${url}: ${message}`);
+        continue;
       }
-      errors.push(`${url}: HTTP ${response.status} ${response.statusText}`.trim());
-      continue;
-    }
 
-    if (!response.body) {
-      errors.push(`${url}: response has no body`);
-      continue;
-    }
+      if (!response.ok) {
+        // Drain the body so the connection can be released.
+        try {
+          await response.body?.cancel();
+        } catch {
+          // ignore — best-effort cleanup
+        }
+        errors.push(`${url}: HTTP ${response.status} ${response.statusText}`.trim());
+        continue;
+      }
 
-    // Stream to a sibling scratch file and only rename onto the final
-    // path after the digest check passes. A process kill or full disk
-    // mid-download leaves the scratch file behind, never a truncated
-    // file at `path` that a later run would treat as a cache hit.
-    const partPath = `${path}.part`;
-    try {
-      await streamToFile(response.body, partPath, opts.onProgress);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await removeIfPresent(partPath);
-      errors.push(`${url}: ${message}`);
-      continue;
-    }
+      if (!response.body) {
+        errors.push(`${url}: response has no body`);
+        continue;
+      }
 
-    if (expectedDigest) {
-      const actual = await computeSha256(partPath);
-      if (actual !== expectedDigest) {
+      // Stream to a sibling scratch file and only rename onto the final
+      // path after the digest check passes. A process kill or full disk
+      // mid-download leaves the scratch file behind, never a truncated
+      // file at `path` that a later run would treat as a cache hit.
+      const partPath = `${path}.part`;
+      try {
+        await streamToFile(response.body, partPath, (bytesWritten) => {
+          stall.touch();
+          opts.onProgress?.(bytesWritten);
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         await removeIfPresent(partPath);
-        throw new Error(
-          `fetchDataset: digest mismatch for ${url} ` +
-            `(expected ${expectedDigest}, got ${actual})`,
-        );
+        errors.push(`${url}: ${message}`);
+        continue;
       }
-    }
 
-    try {
-      await Deno.rename(partPath, path);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await removeIfPresent(partPath);
-      errors.push(`${url}: rename failed: ${message}`);
-      continue;
-    }
+      if (expectedDigest) {
+        const actual = await computeSha256(partPath);
+        if (actual !== expectedDigest) {
+          await removeIfPresent(partPath);
+          throw new Error(
+            `fetchDataset: digest mismatch for ${url} ` +
+              `(expected ${expectedDigest}, got ${actual})`,
+          );
+        }
+      }
 
-    return path;
+      try {
+        await Deno.rename(partPath, path);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await removeIfPresent(partPath);
+        errors.push(`${url}: rename failed: ${message}`);
+        continue;
+      }
+
+      return path;
+    } finally {
+      stall.clear();
+    }
   }
 
   throw new Error(
