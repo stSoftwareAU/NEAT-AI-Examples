@@ -34,8 +34,16 @@ permissions:
   contents: read
 
 jobs:
+  # Issue #888 — skipped when the `changes` job finds nothing relevant: a pull
+  # request that touches no Markdown (and not the lint config) has nothing new
+  # to lint. A job skipped by `if:` reports success, so a required check never
+  # hangs pending (a workflow-level `paths:` filter would). The skip needs a
+  # positive `'false'` verdict: a failed or missing classification still runs
+  # it.
   markdownlint:
     name: Lint Markdown
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.markdown_changed != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -79,3 +87,25 @@ jobs:
 
       - name: Run markdownlint-cli2
         run: markdownlint-cli2 "**/*.md" "#node_modules"
+
+  # Classifies the pull request's changed paths for the gate above
+  # (Issue #888). Checks out the default merge ref with `fetch-depth: 2`
+  # so the merge commit's first parent is the base branch tip.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      markdown_changed: ${{ steps.detect.outputs.changed }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Classify changed paths
+        id: detect
+        uses: ./.github/actions/detect-changes
+        with:
+          mode: markdown

@@ -1,0 +1,46 @@
+# Detect whether a pull request changed paths that need the gated CI jobs
+# (Issue #888).
+#
+# Diffs the checked-out merge commit against its first parent (the base
+# branch tip), so the caller must check out the default merge ref with
+# `fetch-depth: 2`. No token is needed. Any event other than
+# `pull_request` (schedule, workflow_dispatch) reports `true`, so those
+# runs always do the full work. A failed diff fails the step loudly
+# rather than defaulting to a skip.
+name: Detect changes
+description: Classify the pull request's changed paths as code or Markdown
+
+inputs:
+  mode:
+    description: "`code` (skip only docs-only changes) or `markdown` (run only for Markdown changes)"
+    required: true
+
+outputs:
+  changed:
+    description: "`true` when the gated work is needed, otherwise `false`"
+    value: ${{ steps.classify.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify changed paths
+      id: classify
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        if [ "${EVENT_NAME}" != "pull_request" ]; then
+          echo "Event '${EVENT_NAME}' is not a pull request — running the gated jobs"
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+        # --no-renames: default rename detection prints only a renamed
+        # file's destination, hiding a code-to-docs rename's deleted
+        # source path from the classifier below.
+        changed_paths="$(git diff --no-renames --name-only HEAD^1 HEAD)"
+        printf 'Changed paths:\n%s\n' "${changed_paths}"
+        verdict="$(printf '%s\n' "${changed_paths}" | bash "${GITHUB_ACTION_PATH}/../../scripts/detect_code_changes.sh" "${MODE}")"
+        echo "Mode '${MODE}': changed=${verdict}"
+        echo "changed=${verdict}" >> "${GITHUB_OUTPUT}"
