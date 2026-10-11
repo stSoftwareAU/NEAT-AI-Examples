@@ -8,8 +8,9 @@ work jobs are gated on its verdict. Closes #888.
   against its first parent (`HEAD^1..HEAD`, `fetch-depth: 2`, no token) and feeds the path list to
   `.github/scripts/detect_code_changes.sh`.
   - `code` mode reports `false` only when every path is docs (`*.md`, images, `LICENSE`).
-  - `markdown` mode reports `true` when any `*.md` path changed, or the markdownlint config, its
-    workflow or the classifier itself.
+  - `markdown` mode reports `true` when any `*.md` path changed, or any markdownlint config or
+    ignore file at any depth (`.markdownlint*`, root or nested), its workflow or the classifier
+    itself.
   - Any event other than `pull_request` (schedule, `workflow_dispatch`) always reports `true`.
 - **Gated jobs:**
   - `actionlint`, `deno-audit`, `dependency-review`, `semgrep` and `shellcheck` skip on docs-only

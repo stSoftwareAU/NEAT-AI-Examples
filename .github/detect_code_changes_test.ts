@@ -81,6 +81,11 @@ Deno.test("markdown mode — a Markdown or lint-config change needs markdown-lin
     const path of [
       "docs/factory_adoption.md",
       ".markdownlint-cli2.jsonc",
+      ".markdownlint.yaml",
+      ".markdownlintignore",
+      "docs/.markdownlint.json",
+      "docs/.markdownlint-cli2.jsonc",
+      "docs/archive/.markdownlint.yml",
       ".github/workflows/markdown-lint.yml",
       ".github/scripts/detect_code_changes.sh",
       ".github/actions/detect-changes/action.yml",
@@ -96,6 +101,7 @@ Deno.test("markdown mode — a code-only change needs no markdown-lint", async (
   const result = await classify(["markdown"], [
     "common/chart_scale.ts",
     "docs/screenshots/chart.svg",
+    "docs/markdownlint_notes.txt",
   ]);
   assertEquals(result.code, 0);
   assertEquals(result.stdout, "false");

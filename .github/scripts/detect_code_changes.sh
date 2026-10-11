@@ -6,7 +6,7 @@
 # Reads one repository-relative path per line on stdin and prints `true`
 # when the gated work is needed, `false` when it can safely be skipped.
 #   code     — `false` only when every path is documentation or an image.
-#   markdown — `true` when any path is Markdown or markdown-lint config.
+#   markdown — `true` when any path is Markdown or markdownlint config (any depth).
 # An empty list prints `true`: when in doubt, run the checks (fail safe).
 set -euo pipefail
 
@@ -30,7 +30,11 @@ is_docs_only() {
 # Paths whose change can alter the markdown-lint verdict.
 is_markdown_relevant() {
   case "$1" in
-    *.md | .markdownlint-cli2.jsonc | .github/workflows/markdown-lint.yml) return 0 ;;
+    *.md | .github/workflows/markdown-lint.yml) return 0 ;;
+    # Any markdownlint config or ignore file (.markdownlint-cli2.*, .markdownlint.*,
+    # .markdownlintignore) at any depth: markdownlint-cli2 applies a nested one to
+    # that directory's files, and `*` in a case pattern also matches `/`.
+    .markdownlint* | */.markdownlint*) return 0 ;;
     .github/scripts/detect_code_changes.sh | .github/actions/detect-changes/*) return 0 ;;
     *) return 1 ;;
   esac
