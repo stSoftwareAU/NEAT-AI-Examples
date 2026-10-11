@@ -72,3 +72,12 @@ flowchart TD
 - [x] `./quality.sh` passes.
 - [ ] On this PR (it changes code), every gated job runs.
 - [ ] On a later docs-only PR, gated jobs show as skipped and the required checks are green.
+
+## Docs sweep
+
+Docs sweep: section: README.md `## ✅ Quality Check` (lines 570–571, "runs the same pipeline on every
+push and pull request to `Develop`") documents the changed surface (`quality.yml` and
+`.github/scripts/detect_code_changes.sh`). It stays true: the workflow still triggers on every push
+and pull request. Only individual work jobs skip on docs-only PRs, and that gating is documented in
+this summary. Nothing else in `README.md`, `AGENTS.md` or `docs/` names `detect_code_changes.sh`,
+`detect-changes` or the markdownlint gating.
