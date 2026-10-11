@@ -4,6 +4,8 @@
 !.gitignore
 !.github
 !.markdownlint-cli2.jsonc
+# Build image and threat-model brief for Anthropic's OSS Scanner.
+!.oss-scanner
 # deno.lock is tracked so CI can use --frozen and reject silent
 # transitive bumps (issue #418).
 run.log
