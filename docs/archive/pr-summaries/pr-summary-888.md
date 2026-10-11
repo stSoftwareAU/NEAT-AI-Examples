@@ -75,8 +75,8 @@ flowchart TD
 
 ## Docs sweep
 
-Docs sweep: section: README.md `## ✅ Quality Check` (lines 570–571, "runs the same pipeline on every
-push and pull request to `Develop`") documents the changed surface (`quality.yml` and
+Docs sweep: section: README.md `## ✅ Quality Check` (lines 570–571, "runs the same pipeline on
+every push and pull request to `Develop`") documents the changed surface (`quality.yml` and
 `.github/scripts/detect_code_changes.sh`). It stays true: the workflow still triggers on every push
 and pull request. Only individual work jobs skip on docs-only PRs, and that gating is documented in
 this summary. Nothing else in `README.md`, `AGENTS.md` or `docs/` names `detect_code_changes.sh`,
