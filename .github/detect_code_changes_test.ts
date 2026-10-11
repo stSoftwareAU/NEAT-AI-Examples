@@ -97,6 +97,14 @@ Deno.test("markdown mode — a Markdown or lint-config change needs markdown-lin
   }
 });
 
+Deno.test("markdown mode — a non-ASCII or git-quoted Markdown path needs markdown-lint", async () => {
+  for (const path of ["docs/café.md", '"docs/caf\\303\\251.md"', '"docs/a\\"b.txt"']) {
+    const result = await classify(["markdown"], ["common/chart_scale.ts", path]);
+    assertEquals(result.code, 0);
+    assertEquals(result.stdout, "true", `${path} must trigger markdown-lint`);
+  }
+});
+
 Deno.test("markdown mode — a code-only change needs no markdown-lint", async () => {
   const result = await classify(["markdown"], [
     "common/chart_scale.ts",

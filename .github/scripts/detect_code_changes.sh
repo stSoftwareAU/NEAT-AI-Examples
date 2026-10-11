@@ -36,6 +36,9 @@ is_markdown_relevant() {
     # that directory's files, and `*` in a case pattern also matches `/`.
     .markdownlint* | */.markdownlint*) return 0 ;;
     .github/scripts/detect_code_changes.sh | .github/actions/detect-changes/*) return 0 ;;
+    # A path git still C-quotes (quote, backslash or control character) can't
+    # be pattern-matched reliably, so run the lint (fail safe).
+    \"*) return 0 ;;
     *) return 1 ;;
   esac
 }

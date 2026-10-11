@@ -38,8 +38,10 @@ runs:
         fi
         # --no-renames: default rename detection prints only a renamed
         # file's destination, hiding a code-to-docs rename's deleted
-        # source path from the classifier below.
-        changed_paths="$(git diff --no-renames --name-only HEAD^1 HEAD)"
+        # source path from the classifier below. core.quotePath=false: by
+        # default git C-quotes a non-ASCII path ("docs/caf\303\251.md"),
+        # which no `*.md` pattern matches.
+        changed_paths="$(git -c core.quotePath=false diff --no-renames --name-only HEAD^1 HEAD)"
         printf 'Changed paths:\n%s\n' "${changed_paths}"
         verdict="$(printf '%s\n' "${changed_paths}" | bash "${GITHUB_ACTION_PATH}/../../scripts/detect_code_changes.sh" "${MODE}")"
         echo "Mode '${MODE}': changed=${verdict}"
