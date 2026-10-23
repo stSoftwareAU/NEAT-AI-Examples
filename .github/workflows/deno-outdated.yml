@@ -39,6 +39,9 @@ name: Deno Dependency Auto-Bump
 
 on:
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - Develop
   # Emergency fast-lane for an actively-exploited advisory: a maintainer can
@@ -73,9 +76,7 @@ jobs:
     name: Auto-bump Deno dependencies on PR
     # Run for same-repo PRs (forks cannot be pushed to) or for a manual
     # emergency dispatch (#603).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+    if: (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -151,7 +152,7 @@ jobs:
   push-bump:
     name: Push the bump commit
     needs: auto-bump
-    if: needs.auto-bump.outputs.pushed == 'true'
+    if: (needs.auto-bump.outputs.pushed == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

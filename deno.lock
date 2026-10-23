@@ -13,7 +13,7 @@
     "jsr:@std/path@1.1.6": "1.1.6",
     "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/yaml@1.3.0": "1.3.0",
-    "jsr:@stsoftware/neat-ai@7.0.54": "7.0.54",
+    "jsr:@stsoftware/neat-ai@7.0.62": "7.0.62",
     "jsr:@stsoftware/tags@1.0.34": "1.0.34"
   },
   "jsr": {
@@ -58,8 +58,8 @@
     "@std/yaml@1.3.0": {
       "integrity": "b250103854378b8b36cbff0fe95aec017d3d9ce86b489c67605180c602fb4922"
     },
-    "@stsoftware/neat-ai@7.0.54": {
-      "integrity": "6b1f1b9f10c283941e8d5baa0e967a93f8006ce5ea419336a3ce504925aa086f",
+    "@stsoftware/neat-ai@7.0.62": {
+      "integrity": "6a4a49dcafbce08277c8b40c2218862111a067f9e8abf66d13920d6ebb219fb3",
       "dependencies": [
         "jsr:@std/assert",
         "jsr:@std/bytes",
@@ -85,7 +85,7 @@
       "jsr:@std/fs@1.0.24",
       "jsr:@std/path@1.1.6",
       "jsr:@std/yaml@1.3.0",
-      "jsr:@stsoftware/neat-ai@7.0.54",
+      "jsr:@stsoftware/neat-ai@7.0.62",
       "jsr:@stsoftware/tags@1.0.34"
     ]
   }

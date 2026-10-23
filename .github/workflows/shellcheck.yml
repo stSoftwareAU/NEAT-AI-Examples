@@ -18,6 +18,9 @@ name: ShellCheck
 # workflow. The single-`*` glob does NOT match `/` — Issue #435.
 on:
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: ["**"]
   workflow_dispatch:
     inputs:
@@ -44,7 +47,7 @@ jobs:
   shellcheck:
     name: Lint shell scripts
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code_changed != 'false' }}
+    if: (!cancelled() && needs.changes.outputs.code_changed != 'false') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -105,6 +108,7 @@ jobs:
   # (Issue #888). Checks out the default merge ref with `fetch-depth: 2`
   # so the merge commit's first parent is the base branch tip.
   changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect changed paths
     runs-on: ubuntu-latest
     timeout-minutes: 5

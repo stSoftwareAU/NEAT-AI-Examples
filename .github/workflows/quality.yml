@@ -54,6 +54,9 @@ name: Quality Check
 
 on:
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: ["**"]
   workflow_dispatch:
     inputs:
@@ -77,6 +80,7 @@ jobs:
   # Static checks — lint, formatting, and type-checking. Deno only; no
   # Rust build or external repo checkouts needed.
   static-checks:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Static checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -131,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: changes
-    if: ${{ !cancelled() }}
+    if: (!cancelled()) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
 
     steps:
       # persist-credentials: false — this job runs the PR's own test suite with
@@ -322,6 +326,7 @@ jobs:
   # mutation. The upload is deliberately NOT part of the aggregate gate:
   # fail_ci_if_error stays false so a Codecov outage cannot block a PR.
   coverage-upload:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Upload coverage to Codecov
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -361,7 +366,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code_changed != 'false' }}
+    if: (!cancelled() && needs.changes.outputs.code_changed != 'false') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
 
     steps:
       # `persist-credentials: false` keeps the job's GITHUB_TOKEN out of
@@ -408,6 +413,7 @@ jobs:
   # beyond the committed classifier and needs no token: the merge commit
   # is diffed against its first parent, so `fetch-depth: 2` is enough.
   changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect changed paths
     runs-on: ubuntu-latest
     timeout-minutes: 5
