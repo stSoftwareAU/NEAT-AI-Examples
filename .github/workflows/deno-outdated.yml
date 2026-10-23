@@ -76,7 +76,7 @@ jobs:
     name: Auto-bump Deno dependencies on PR
     # Run for same-repo PRs (forks cannot be pushed to) or for a manual
     # emergency dispatch (#603).
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    if: (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -152,7 +152,7 @@ jobs:
   push-bump:
     name: Push the bump commit
     needs: auto-bump
-    if: ${{ (needs.auto-bump.outputs.pushed == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    if: (needs.auto-bump.outputs.pushed == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
