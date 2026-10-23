@@ -14,9 +14,6 @@ name: Gitleaks
 # workflow. The single-`*` glob does NOT match `/` — Issue #435.
 on:
   pull_request:
-    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
-    # once, when the PR is marked ready.
-    types: [opened, synchronize, reopened, ready_for_review]
     branches: ["**"]
   workflow_dispatch:
     inputs:
@@ -37,7 +34,6 @@ permissions:
 
 jobs:
   gitleaks:
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Scan for secrets
     runs-on: ubuntu-latest
     timeout-minutes: 15
