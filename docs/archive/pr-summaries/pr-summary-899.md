@@ -95,13 +95,63 @@ distinguish setup, strategy and compaction. Graft was attempted but returned "no
 
 ## Acceptance Criteria
 
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
 - **missing** — Replace existing compaction with shared Rust core API (or released NEAT-AI adapter),
-  keeping only strategy-specific logic. — reason: the required core and adapter issues are open; the
-  local rewrite is retained until their merged, green, released APIs are verified.
-- **missing** — Use latest compatible merged/released pins and normal dependency sync; verify all
+  keeping only strategy-specific logic. — evidence:
+  `neuron_pruning/neuron_pruning.ts::pruneConstantNeurons` — reviewer: missing — reason: the
+  released sources still lack the required unified API and adapter; the local rewrite remains
+  pending the parent release contract.
+- **partial** — Use latest compatible merged/released pins and normal dependency sync; verify all
   existing tests, compatibility of serialized creatures and relevant performance/score semantics. —
-  reason: current-version deterministic parity is covered, but shared-engine pins, full
-  compatibility, native/WASM parity and performance cannot be accepted before the upstream releases.
+  evidence:
+  `neuron_pruning/neuron_pruning_test.ts::pruneConstantNeurons - preserves genuine Creature serialisation without pruning the champion`
+  and `pruneConstantNeurons - freezes chained folds, removal reports and held-out scores` —
+  reviewer: partial — reason: existing serialisation and analytical score parity are covered, but
+  pins remain at 7.0.62 and full-suite, migrated native/WASM and performance verification remain
+  outstanding.
+
+## Standards Review
+
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+
+`CODING-STANDARDS.md` is absent from this repository. The independent standards reviewer checked the
+complete branch diff against the applicable [AGENTS.md](../../../AGENTS.md) instead.
+
+- **clean** — Australian English, observable output/topology/report/score tests, genuine Creature
+  fixtures, adjacent Deno tests, canonical summary location, unchanged minimal random evolution seed
+  and milestone telemetry; no source-inspection, reference-identity or timing assertions added.
+
+## Completion-check retry evidence
+
+The executor and independent spec reviewer rechecked the release dependency on 26 November 2026.
+Neither unmet criterion can be marked `met`; this summary update does not complete the migration.
+
+- NEAT-AI-core#779 and NEAT-AI#4196 are still open. The parent #775 explicitly requires the
+  predecessor API to be merged, green and released before production consumers switch.
+- The latest NEAT-AI release is still
+  [v7.1.41](https://github.com/stSoftwareAU/NEAT-AI/releases/tag/v7.1.41), published on 23 November,
+  before the migration issues. Its
+  [CompactCreature.ts](https://github.com/stSoftwareAU/NEAT-AI/blob/v7.1.41/src/compact/CompactCreature.ts)
+  imports and calls the TypeScript `foldConstants` implementation. Its
+  [bundled declarations](https://github.com/stSoftwareAU/NEAT-AI/blob/v7.1.41/wasm_activation/pkg/wasm_activation.d.ts)
+  export individual pruning functions, with no `compact_creature` export; its
+  [core revision pin](https://github.com/stSoftwareAU/NEAT-AI/blob/v7.1.41/wasm_activation/pkg/neat_core_rev.txt)
+  is `1d44889e405e4e0cfb553321b44cc39e7d771f5f`.
+- The newer released core WASM bundle at `9ef3668def917ffa3266c212d2990f1c77cab27d` also has no
+  unified compaction entry point in its
+  [core exports](https://github.com/stSoftwareAU/NEAT-AI-core/blob/9ef3668def917ffa3266c212d2990f1c77cab27d/neat-core/src/lib.rs).
+  Individual neuron-pruning primitives have a separate cascade/canonicalisation contract; they do
+  not establish the missing migration API or the demo's sampled-constant/report parity.
+- No runtime or dependency change was made during this retry: an unrelated version bump would not
+  supply the required released adapter. The repository's normal dependency sync remains
+  `./bump-deps.sh`, which refreshes `deno.json` and then `deno.lock` with `deno install`, once a
+  compatible migration release exists.
+- Reran the targeted pruning/evaluator suite with stdin from `/dev/null`: **35 passed, 0 failed**.
+  Reran the synthetic-edge pruning tests with stdin from `/dev/null`: **2 passed, 0 failed**. The
+  evolution tests still log a missing `neat_ai_backpropagation` library; these passes establish
+  existing behaviour, not native training or migrated-engine parity. The prior full quality-gate
+  timeout remains the latest complete-suite attempt; the worker reruns the gate after this retry.
 
 ## Test Plan
 
