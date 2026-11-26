@@ -24,6 +24,7 @@ import {
   assertStringIncludes,
   assertThrows,
 } from "@std/assert";
+import { Creature } from "@stsoftware/neat-ai";
 
 import {
   buildDemoNetwork,
@@ -46,6 +47,7 @@ import {
 import { renderNeuronPruningSVG } from "./svg.ts";
 import { renderEvolveDirSummarySvg } from "../common/evolve_dir_summary.ts";
 import { buildLargeCreature } from "../common/large_creature.ts";
+import { makeCreatureExport } from "../common/creature_export_fixture.ts";
 
 /**
  * Small config used throughout the test suite — keeps each test fast
@@ -167,10 +169,111 @@ Deno.test("detectConstantNeurons - rejects negative threshold", () => {
 
 Deno.test("pruneConstantNeurons - returns empty when no constants are supplied", () => {
   const network = buildDemoNetwork(SMALL_CONFIG);
-  const before = network.neurons.length;
+  const before = cloneNetwork(network);
   const records = pruneConstantNeurons(network, []);
-  assertEquals(records.length, 0);
-  assertEquals(network.neurons.length, before);
+  assertEquals(records, []);
+  assertEquals(network, before);
+});
+
+/** Two constants feeding a variable hidden neuron and two outputs, including a constant chain. */
+function buildPruningParityCreature(): Creature {
+  const creature = Creature.fromJSON(
+    makeCreatureExport({ input: 2, output: 2, hidden: 3, seed: 899 }),
+  );
+  for (const synapse of [...creature.synapses]) {
+    creature.disconnect(synapse.from, synapse.to);
+  }
+  const biases = [0, 0, 0.5, 0.125, -0.75, 0.25, -0.5];
+  for (const neuron of creature.neurons.slice(creature.input)) {
+    neuron.squash = "IDENTITY";
+    neuron.bias = biases[neuron.index];
+  }
+  for (
+    const [from, to, weight] of [
+      [0, 2, 0],
+      [0, 3, 2],
+      [2, 3, 0.5],
+      [2, 4, 1],
+      [3, 5, 0.5],
+      [2, 5, 2],
+      [4, 5, -1],
+      [1, 6, 0.25],
+      [3, 6, -1],
+      [4, 6, 2],
+      [2, 6, -0.5],
+    ]
+  ) {
+    creature.connect(from, to, weight);
+  }
+  creature.validate();
+  return creature;
+}
+
+Deno.test("pruneConstantNeurons - freezes chained folds, removal reports and held-out scores", () => {
+  const champion = buildPruningParityCreature();
+  const originalExport = champion.exportJSON();
+  const network = networkFromCreature(champion);
+  const detectionData = [
+    { inputs: new Float32Array([-1, 0]), targets: new Float32Array([0, 0]) },
+    { inputs: new Float32Array([1, 1]), targets: new Float32Array([0, 0]) },
+  ];
+  const constants = detectConstantNeurons(network, detectionData, 0);
+  assertEquals(constants, [
+    { index: 2, constantOutput: 0.5 },
+    { index: 4, constantOutput: -0.25 },
+  ]);
+  const heldOut = [[0, -1], [0.5, 0.5], [-0.5, 1]].map(([x, y]) => ({
+    inputs: new Float32Array([x, y]),
+    targets: new Float32Array([1.6875 + x + 0.125, -1.625 - 2 * x + 0.25 * y - 0.25]),
+  }));
+  const before = cloneNetwork(network);
+  // Each target differs from the analytical output by 1/8 and -1/4 respectively.
+  assertEquals(heldOutScore(before, heldOut), -0.078125);
+  const records = pruneConstantNeurons(network, [...constants].reverse());
+  assertEquals(records, [
+    { neuronIndex: 2, constantOutput: 0.5, biasFoldTargets: [3, 4, 5, 6] },
+    { neuronIndex: 4, constantOutput: -0.25, biasFoldTargets: [5, 6] },
+  ]);
+  assertEquals(network.inputCount, 2);
+  assertEquals(network.outputCount, 2);
+  assertEquals(network.neurons.length, 5);
+  assertEquals(network.synapses.length, 4);
+  assertEquals(heldOutScore(network, heldOut), -0.078125);
+  for (const point of [...detectionData, ...heldOut]) {
+    const [x, y] = point.inputs;
+    const expected = [1.6875 + x, -1.625 - 2 * x + 0.25 * y];
+    assertEquals(Array.from(forward(before, point.inputs).slice(-2)), expected);
+    assertEquals(Array.from(forward(network, point.inputs).slice(-2)), expected);
+  }
+  assertEquals(champion.exportJSON(), originalExport);
+  const compacted = cloneNetwork(network);
+  assertEquals(detectConstantNeurons(network, detectionData, 0), []);
+  assertEquals(pruneConstantNeurons(network, []), []);
+  assertEquals(network, compacted);
+});
+
+Deno.test("pruneConstantNeurons - preserves genuine Creature serialisation without pruning the champion", () => {
+  const champion = buildPruningParityCreature();
+  const exported = champion.exportJSON();
+  const restored = Creature.fromJSON(JSON.parse(JSON.stringify(exported)));
+  restored.validate();
+  assertEquals(restored.exportJSON(), exported);
+  const network = networkFromCreature(restored);
+  const dataset = [
+    { inputs: new Float32Array([-1, 0]), targets: new Float32Array([0.6875, 0.375]) },
+    { inputs: new Float32Array([1, 1]), targets: new Float32Array([2.6875, -3.375]) },
+  ];
+  for (const point of dataset) {
+    restored.clearState();
+    assertEquals(restored.activate(point.inputs), point.targets);
+  }
+  pruneConstantNeurons(network, detectConstantNeurons(network, dataset, 0));
+  const originalNetwork = networkFromCreature(champion);
+  pruneConstantNeurons(originalNetwork, detectConstantNeurons(originalNetwork, dataset, 0));
+  assertEquals(network, originalNetwork);
+  assertEquals(network.neurons.length, 5);
+  assertEquals(heldOutScore(network, dataset), 0);
+  assertEquals(restored.exportJSON(), exported);
 });
 
 Deno.test(

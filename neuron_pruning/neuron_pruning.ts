@@ -5,10 +5,9 @@
  * Demonstrates how NEAT-AI keeps creatures lean by removing hidden
  * neurons whose activations don't vary across the held-out dataset, and
  * folding their constant contribution into the downstream neurons'
- * biases. The folded creature is mathematically equivalent to the
- * original on the sampled dataset — every removed neuron only ever
- * output one value, so its contribution to a downstream neuron is the
- * same constant on every record.
+ * biases. For genuinely constant neurons, folding preserves analytical
+ * outputs within floating-point tolerance. Sampled low variance alone
+ * does not guarantee constant behaviour on unseen inputs.
  *
  * Under #303 the per-generation `onTrainingEvent` hook and the chunked
  * `evolveDir` loop were removed in favour of NEAT-AI's supported
@@ -33,9 +32,9 @@
  *    for the `Refresh-2026-05` milestone — +15 minutes of additional
  *    wall-clock evolution budget on top of the original audit limit).
  *
- * The pruning operation then runs on the **evolved** champion: hidden
- * neurons are deliberately converted to constant-output (zero incoming
- * weights, non-zero bias) so pruning has something to remove, then
+ * The pruning operation then runs on an analytical copy of the evolved
+ * champion: hidden neurons are deliberately converted to constant-output
+ * (zero incoming weights, non-zero bias) so pruning has something to remove, then
  * detected by activation variance and folded into downstream biases.
  * Per `AGENTS.md`, this hand-crafted constant-neuron injection is
  * exempt from the no-warm-start policy because the demo's whole point
@@ -219,7 +218,7 @@ export interface NeuronPruningResult {
   evolutionSummary: EvolveDirSummary;
   /** Total wall-clock time of the run, in milliseconds. */
   wallClockMs: number;
-  /** Final pruned champion creature. */
+  /** Evolved champion Creature, before analytical remapping, injection and pruning. */
   champion: Creature;
 }
 
@@ -568,7 +567,7 @@ export function creatureHeldOutScore(
  *      evolved champion. The call's return value populates an
  *      {@link EvolveDirSummary} (final error, score, generations,
  *      wall-clock + seed/final topology) — no per-generation hook.
- *   3. Inject deliberately constant-output hidden neurons.
+ *   3. Convert to an analytical network and inject constant-output hidden neurons.
  *   4. Score pre-prune, detect constant neurons, fold biases, drop the
  *      constant neurons, score post-prune.
  */
