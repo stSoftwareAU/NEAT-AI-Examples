@@ -133,6 +133,11 @@ distinguish setup, strategy and compaction. Graft was attempted but returned "no
   synthetic_synapse/synthetic_synapse_example_test.ts --filter pruneCreature`
   passed: 2 tests, covering synthetic-edge membership/threshold pruning and negative-threshold
   refusal.
+- `timeout 900 ./quality.sh < /dev/null` timed out with exit `124` during parallel unit tests.
+  Repository formatting, Bash syntax, lint and type checking passed; the native scorer built. The
+  full unit suite produced no final verdict, and the isolated integration suites and example runs
+  were not reached. Watchdog worker imports also logged `runtime dropped the dispatch task`; the dot
+  reporter does not identify which remaining test consumed the timeout. No retry was run.
 
 ## Deno regression avoided
 
@@ -143,4 +148,5 @@ Used the existing Deno fixture, test runner, formatter, linter and type checker.
 Shared-engine migration, candidate rejection/rollback, native/WASM compaction parity, released-pin
 compatibility and performance remain unverified. Sampled low variance can identify approximately
 constant neurons; the current demo reports scores without a candidate acceptance veto. No benchmark
-or private deployment check was run.
+or private deployment check was run. The complete quality gate remains unverified after its timeout;
+resume it with `timeout 900 ./quality.sh < /dev/null` once the release gates are satisfied.
