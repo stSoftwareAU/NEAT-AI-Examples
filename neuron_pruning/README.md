@@ -7,9 +7,10 @@ or Deno). _MSE_ = mean-squared error.
 
 `neuron_pruning.ts` demonstrates one of NEAT-AI's simplest, most effective tricks for keeping
 creatures lean: removing hidden neurons whose activations don't vary across the held-out dataset and
-folding their bias contribution into the surviving downstream neurons. Because the pruned neurons
-only ever produce one value, the folded creature is **mathematically equivalent** on every record —
-the score does not regress, but the neuron count drops and the network gets smaller and faster.
+folding their bias contribution into the surviving downstream neurons. The demonstration operates on
+a separate analytical network: for genuinely constant neurons, folding preserves its outputs within
+floating-point tolerance while reducing its topology. Detection uses sampled variance; nearly
+constant neurons are an approximation, not a guarantee about unseen inputs.
 
 Per the audit in [issue #217](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/217), the seed
 passed to NEAT-AI is **minimal** — only `new Creature(INPUT_COUNT, OUTPUT_COUNT)` with no
@@ -24,8 +25,8 @@ seed itself is still the minimal `new Creature(INPUT_COUNT, OUTPUT_COUNT)`.
 
 ![Neuron pruning — pruned neurons greyed out, bias-fold arrows in coral](../docs/screenshots/neuron_pruning.svg)
 
-The headline topology before/after panel above is unchanged in shape. Its held-out score callouts
-are now sourced from the milestone summary path below.
+The topology panel reports analytical held-out scores before and after pruning. The milestone
+summary below reports the evolution run alongside the post-prune analytical topology counts.
 
 ![evolveDir milestone summary](../docs/screenshots/neuron_pruning/evolution_summary.svg)
 
@@ -51,7 +52,7 @@ every record. Constant-activation removal is the cheapest possible fix:
 | ------------------ | ------------------------------- | -------------------------------------------------------------------- |
 | Cost per forward   | All neurons evaluated           | Constant neurons removed — fewer ops per record                      |
 | Weight count       | Every dead synapse still walked | Synapses incident on pruned neurons removed                          |
-| Behavioural change | n/a                             | None on the sampled dataset — folded bias is exact                   |
+| Behavioural change | n/a                             | Outputs preserved for genuinely constant neurons, within tolerance   |
 | Failure mode       | Slowly bloating creatures       | Genuinely useful neurons could be pruned at high `varianceThreshold` |
 
 ## 🔧 How It Works
@@ -61,16 +62,20 @@ flowchart TD
     SEED["🌱 Minimal seed<br/>new Creature(INPUT, OUTPUT)<br/>no hidden hint"]
     EVOLVE["🧬 single evolveDir call on .bin training set<br/>(NEAT learns structure)"]
     SUM["📈 EvolveDirSummary<br/>(error, score, time, generation<br/>+ seed/final topology)"]
+    COPY["Analytical copy<br/>(unsupported activations remapped to TANH)"]
+    SAVE["Save evolved champion.json<br/>(before analytical changes)"]
     INJECT["💀 Inject constant-output neurons<br/>(zero incoming weights, non-zero bias)"]
     SCORE1["📏 Score on held-out set"]
-    DETECT["🔍 Detect constant neurons<br/>(activation variance &lt; threshold)"]
+    DETECT["🔍 Detect constant neurons<br/>(activation variance ≤ threshold)"]
     FOLD["➕ For every constant neuron c:<br/>add weight·output to each<br/>downstream neuron's bias"]
     DROP["🗑️ Remove c and its synapses<br/>re-index surviving neurons"]
-    SCORE2["📏 Score on held-out set<br/>(must match pre-prune within tolerance)"]
+    SCORE2["📏 Report post-prune held-out score<br/>(no candidate acceptance veto)"]
 
     SEED --> EVOLVE
     EVOLVE --> SUM
-    EVOLVE --> INJECT
+    EVOLVE --> SAVE
+    EVOLVE --> COPY
+    COPY --> INJECT
     INJECT --> SCORE1
     SCORE1 --> DETECT
     DETECT --> FOLD
@@ -128,6 +133,26 @@ lives in [`common/feed_forward_network.ts`](../common/feed_forward_network.ts) a
 the `synthetic_synapse` demo, so the activation-ordering rule is stated in exactly one place
 ([#775](https://github.com/stSoftwareAU/NEAT-AI-Examples/issues/775)).
 
+### Shared Rust compaction migration
+
+The [migration audit](../docs/archive/pr-summaries/pr-summary-899.md) identifies
+`pruneConstantNeurons` as a local compaction rewrite: constant bias folding, neuron removal and
+synapse reindexing. Constant injection, variance detection, scoring, reports and milestone telemetry
+remain specific to this demonstration. The synthetic-synapse example's removal of its own injected
+edges is a separate strategy and stays there.
+
+As checked on 26 November 2026, the required
+[core release](https://github.com/stSoftwareAU/NEAT-AI-core/issues/779) and
+[TypeScript adapter](https://github.com/stSoftwareAU/NEAT-AI/issues/4196) issues are open. Runtime
+migration is deferred until their APIs are merged, green and released with verified native/WASM
+artefacts. The current implementation remains local. Its deterministic parity tests freeze the
+existing behaviour; they do not establish shared-engine compatibility or performance.
+
+The future adapter must operate on the analytical network after activation remapping, preserve the
+original snapshot for unsupported or rejected candidates, and retain the existing scoring and
+reporting semantics. Today the demo reports pre/post scores without a candidate acceptance veto. The
+saved evolved champion remains distinct from the remapped, injected and pruned analytical network.
+
 ## 📊 Milestone Telemetry
 
 The single `evolveDir` call's return value is captured as an `EvolveDirSummary` and exposed on the
@@ -141,7 +166,7 @@ demo's result (`evolutionSummary`). The headline summary panel quotes:
 
 Held-out score callouts on the topology panel (pre-prune / post-prune scores) are computed locally
 against the held-out dataset and surfaced alongside the milestone summary so the bias-fold step's
-"no regression" guarantee is visible at a glance.
+observed score difference is visible at a glance.
 
 ## 📤 Output
 
@@ -152,7 +177,9 @@ against the held-out dataset and surfaced alongside the milestone summary so the
   bias-fold targets. A mirror copy is also written to `.neuron-pruning/output/neuron_pruning.svg`.
 - `docs/screenshots/neuron_pruning/evolution_summary.svg` — milestone summary SVG sourced from the
   single `evolveDir` call's return value.
-- `.neuron-pruning/creatures/champion.json` — the final pruned champion creature.
+- `.neuron-pruning/creatures/champion.json` — the evolved champion Creature, before analytical
+  activation remapping, constant injection and pruning. The SVG shows the analytical network; it
+  does not describe a rewrite of this saved Creature.
 
 ## 🧪 Tests
 
@@ -166,6 +193,9 @@ against the held-out dataset and surfaced alongside the milestone summary so the
 - `pruneConstantNeurons` preserves every output to floating-point tolerance — bias-folding is
   mathematically exact for genuinely constant neurons — and records bias-fold targets per pruned
   neuron in ascending order.
+- A deterministic genuine-Creature fixture freezes chained constant folds into a surviving hidden
+  neuron and two outputs, exact removal reports, topology reduction, held-out score parity, a
+  repeated no-op, and unchanged champion exports across a Creature JSON round-trip.
 - `generateDataset` is deterministic for a given seed and rejects non-positive sizes.
 - `writeBinaryDataset` emits a Float32 `.bin` of the expected size.
 - `runNeuronPruningDemo` reduces the neuron count and the post-prune held-out score does not regress
